@@ -1,24 +1,22 @@
 <!--
 SYNC IMPACT REPORT
-Version change: (none) → 1.0.0
-Bump rationale: Initial ratification. No prior constitution existed; all template
-placeholders replaced with concrete project governance.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR. Principle V is materially expanded with two explicit
+decision filters (anticipated-change filter and reversibility test) and a new
+schema-hedge rule. No principle removed or redefined incompatibly. A new
+subsection is added to Development Workflow. Recorded in ADR-0001.
 
-Modified principles: none (initial adoption)
+Modified principles:
+  - V. Modular By Seam, Flat Within — expanded with "Anticipated change filter",
+    "Reversibility test", and "Hedge the schema, not the code". Prior guidance
+    ("no new layer until a second concrete case", prohibition on speculative
+    generality) retained unchanged.
 
 Added sections:
-  - Core Principles I–VI (Every Slice Ships To The Phone; Test-First On State
-    Transitions; Anki Is Authoritative And Read-Mostly; Vertical Slices Only;
-    Modular By Seam, Flat Within; Decisions Are Recorded)
-  - Additional Constraints (Technology Stack)
-  - Development Workflow
-  - Governance
+  - Development Workflow → "Anticipated Changes" (spec section requirement and
+    the rolling docs/anticipated-changes.md register)
 
 Removed sections: none
-
-Template placeholders resolved: PROJECT_NAME, PRINCIPLE_1..5_NAME/DESCRIPTION
-  (extended to 6 principles), SECTION_2_NAME/CONTENT, SECTION_3_NAME/CONTENT,
-  GOVERNANCE_RULES, CONSTITUTION_VERSION, RATIFICATION_DATE, LAST_AMENDED_DATE
 
 Deferred items:
   - TODO(PROJECT_NAME): Working title "Language Reader" is in use throughout.
@@ -99,6 +97,34 @@ it. Speculative generality — an interface with one implementation outside the 
 a plugin system with one plugin, configuration for values that never vary — is PROHIBITED. New
 seams are added by amending this constitution, never improvised mid-feature.
 
+**Anticipated change filter.** Seam placement is driven by an explicit register of
+anticipated changes, not by intuition. Every feature specification MUST list the future
+capabilities it can foresee, and each entry MUST be rated on two axes: how plausible the change
+is, and what retrofitting it later would cost.
+
+**Reversibility test.** The two ratings above resolve as follows, and a new seam requires BOTH
+conditions:
+
+| | Expensive to retrofit | Cheap to retrofit |
+|---|---|---|
+| **Likely** | Build the seam NOW | Defer; record it in the spec |
+| **Unlikely** | Hedge the schema (see below) | Ignore entirely |
+
+A change is EXPENSIVE to retrofit if deferring it would later require migrating populated
+tables, changing a persisted identifier, or changing a contract an external system depends on. A
+change is CHEAP to retrofit if deferring it would cost only a mechanical code refactor —
+extracting an interface from a concrete implementation, moving a function, renaming a type.
+Structural refactoring of code is cheap and getting cheaper; migration of accumulated data is
+not. Uncertainty about which cell an item falls into MUST be resolved toward "cheap", because
+the cost of a wrong abstraction exceeds the cost of a late one.
+
+**Hedge the schema, not the code.** For changes that are unlikely but expensive to retrofit, the
+correct response is NOT an abstraction. It is a data model that does not preclude the change —
+an unused column, a surrogate identifier in place of a natural key, a nullable field reserved
+for a later concept. Such hedges MUST be recorded in the anticipated-changes register with the
+change they protect against. Hedges cost nothing at runtime and remove the migration; an
+abstraction built for a case that never arrives costs comprehension forever.
+
 Rationale: Modularity and over-engineering are different axes. Seams determine whether the
 project can grow; layers determine whether it can be debugged. This principle authorizes
 structure at named, justified boundaries and forbids it everywhere else, so that abstraction is
@@ -143,6 +169,14 @@ ambiguity is resolved silently by the implementing agent rather than surfaced.
 Every feature branch ends with a deploy and a phone check, per Principle I. ADRs are authored
 during `plan`, per Principle VI.
 
+**Anticipated Changes.** Every specification MUST contain an "Anticipated Changes" section
+listing foreseeable future capabilities, each rated for plausibility and retrofit cost per
+Principle V. `plan` MUST consult this section when justifying seams, and MUST NOT introduce a
+seam that is not traceable to an entry in it. The union of these lists is maintained in
+`docs/anticipated-changes.md`; ratings there are revised as the project learns, and a revision
+that moves an item into the "build the seam now" cell is a trigger for planning work, not a
+silent edit.
+
 ## Governance
 
 This constitution supersedes ad-hoc practice. Where a plan, task, or implementation conflicts
@@ -161,4 +195,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
+**Version**: 1.1.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
