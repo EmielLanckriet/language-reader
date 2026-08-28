@@ -2,71 +2,77 @@
 
 **Status**: Accepted
 **Date**: 2026-08-28
-**Relates to**: Constitution Principle V (amended v1.1.0 → v1.2.0);
-[ADR-0001](0001-seam-placement-policy.md); [ADR-0002](0002-word-identity-and-token-model.md)
+**Relates to**: Constitution Principle V (amended v1.1.0 → v1.2.0); ADR-0001; ADR-0002
 
 ## Context
 
-ADR-0001 established the reversibility test: a change is expensive to retrofit if deferring it
-would require migrating populated tables, changing a persisted identifier, or changing an
-external contract.
+ADR-0001 established a reversibility test: a change is expensive to retrofit if it would require
+migrating populated tables, changing a persisted identifier, or changing an external contract.
+That test is serviceable but imprecise. Applying it during the word-identity design (ADR-0002)
+exposed the imprecision — it rates *any* schema change as expensive, which is wrong, and it
+offered no way to distinguish two cases that behave completely differently:
 
-Applying that test during ADR-0002 exposed an imprecision. "Migrating populated tables" treats
-all populated tables alike, but they are not alike. The `token` table is large and populated,
-yet changing its shape costs nothing of consequence, because tokens are computed from source
-text that is preserved verbatim — a better token model is obtained by recomputation. The
-`word_status` table is smaller, and changing its shape is severe, because its contents exist
-nowhere else and were accumulated over months of reading.
+- **Word status** is accumulated by the user over months. It exists nowhere else. If its key is
+  wrong, there is no recovery.
+- **Tokens** are the output of a segmenter run over source text. If the token model is wrong, the
+  tokens are discarded and recomputed. Nothing is lost.
 
-The distinction that matters is not whether a table holds rows. It is whether those rows could
-be reproduced if deleted.
+Both are populated tables. Under the v1.1.0 test both rate expensive, and the recommendation
+would have been to hedge both. That would have meant building a span-list token model up front
+for a case (discontiguous words) that v1 does not handle — precisely the speculative structure
+Principle V exists to prevent.
+
+The distinction that actually predicts retrofit cost is not whether data is persisted. It is
+whether it can be regenerated.
 
 ## Decision
 
-Principle V's reversibility test is refined by a prior classification. All persisted data is
-either:
+Persisted data is classified as **earned** or **derived**, and the reversibility test is applied
+to that classification rather than to persistence.
 
-- **Earned** — produced by the user's irreplaceable effort or by an external system of record.
-  Word status, review history, notes, reading position, and anything imported from Anki. If
-  deleted, it cannot be reconstructed.
-- **Derived** — computed from earned data, source material, or reference data. Segmentation,
-  tokens, pronunciations, definitions, frequency annotations. If deleted, it can be recomputed.
+**Earned data** is produced by the user or by an irreproducible external process. It cannot be
+recomputed from anything the system retains. Examples: word status, review history, user notes,
+reading position, anything imported from the Anki collection. Decisions about the shape of earned
+data are one-way doors and MUST be settled before the data starts accumulating.
 
-The rules follow:
+**Derived data** is computed from inputs the system preserves. It can be discarded and rebuilt.
+Examples: tokens, segmentation, pronunciation annotations, dictionary joins, frequency rankings,
+computed statistics. Changing the shape of derived data is a recompute, not a migration, and MUST
+be deferred under Principle V.
 
-1. Changes to **earned** data structure are EXPENSIVE by default. Hedge the schema per Principle
-   V before the first row is written.
-2. Changes to **derived** data structure are CHEAP by default, regardless of row count. Defer
-   them. Recomputation is not migration.
-3. Derived data is cheap **only while its inputs are retained**. Any pipeline that discards its
-   input silently converts derived data into earned data. Inputs to derivation MUST therefore be
-   preserved verbatim, and discarding one is a decision requiring an ADR.
-
-Rule 3 is the load-bearing one: it is what makes the classification true rather than merely
-convenient.
+**Corollary — preserve the inputs.** Derived data is only cheap to change while its inputs are
+retained. Source text MUST be preserved verbatim, and any parameters needed to reproduce a
+derivation (analyzer name and version, per ADR-0002) MUST be recorded alongside the output. A
+derivation whose inputs were discarded has silently become earned data.
 
 ## Alternatives Rejected
 
-**Leave ADR-0001's test as written.** Rejected because "migrating populated tables" gave the
-wrong answer on the two largest tables in the design, in opposite directions — it would have
-over-protected tokens and under-protected status history.
+**Keep the v1.1.0 test unchanged and rely on judgment for individual cases.** Rejected because
+the developer is explicitly building architectural judgment rather than exercising it, and
+case-by-case judgment in that position resolves toward whatever an implementing agent proposes.
+ADR-0001 rejected this reasoning for seam placement; it applies here for the same reason.
 
-**Classify by table size or write frequency.** Rejected as uncorrelated with the actual cost.
-Token counts exceed status counts by orders of magnitude while mattering far less.
+**Classify by table rather than by field.** Rejected as too coarse. A single table can hold both:
+`token` is derived, but if a user could annotate a token directly, that annotation would be
+earned and would constrain the table.
 
-**Replace the reversibility test entirely.** Rejected because the earned/derived distinction
-does not cover persisted identifiers or external contracts, which remain expensive for reasons
-unrelated to reproducibility. This refines the test; it does not supersede it.
+**Treat all persisted data as earned, to be safe.** Rejected. This is the v1.1.0 behaviour, and
+it is the failure mode this ADR exists to correct: it licenses hedging everywhere, which is
+design-up-front wearing a safety argument.
 
 ## Consequences
 
-**Easier.** Most retrofit-cost questions now have a mechanical answer — ask whether the data can
-be recomputed — instead of requiring judgment the developer does not yet have. It also yields a
-positive obligation that is easy to check: retain the inputs.
+**Easier.** The test now gives different answers for cases that genuinely differ, and it gives
+them mechanically rather than by taste. It supplies a positive reason to preserve source text and
+record analyzer versions, which previously read as unmotivated caution. It correctly permitted
+single-span tokens in ADR-0002 while correctly forbidding a surface-form status key.
 
-**Harder.** Storage grows, since raw source text is kept alongside everything derived from it.
-This is accepted; text is small and the option it preserves is large.
+**Harder.** Every persisted field now needs a classification, and the classification is a
+judgment that can be got wrong. The corollary adds a standing obligation: retaining inputs and
+recording derivation parameters, without which the classification quietly becomes false.
 
-**Revisit if.** Retained inputs become genuinely costly to store — plausible if video is added
-later, where the input is not small. At that point rule 3 forces an explicit ADR rather than a
-silent deletion, which is the intended behaviour.
+**Revisit if.** Data classified as derived turns out in practice not to be regenerable — for
+instance because an analyzer version becomes unavailable, or a derivation depends on a network
+service whose responses change. That would mean the classification is aspirational rather than
+factual, and reproducibility of derivations would need to become an enforced requirement rather
+than an assumed property.

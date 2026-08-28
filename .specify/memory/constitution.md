@@ -1,17 +1,18 @@
 <!--
 SYNC IMPACT REPORT
 Version change: 1.1.0 → 1.2.0
-Bump rationale: MINOR. Principle V gains a prior classification (earned vs derived
-data) that refines the reversibility test, plus a retention obligation. No
-principle removed or redefined incompatibly. Recorded in ADR-0003.
+Bump rationale: MINOR. The reversibility test in Principle V is refined with the
+earned/derived classification, which supersedes persistence as the criterion for
+retrofit cost, plus a preserve-the-inputs obligation. No principle removed or
+redefined incompatibly. Recorded in ADR-0003.
 
 Modified principles:
-  - V. Modular By Seam, Flat Within — adds "Earned versus derived data" ahead of
-    the reversibility test, and the retention obligation that makes the
-    classification hold. Prior guidance retained unchanged.
+  - V. Modular By Seam, Flat Within — reversibility test now classifies persisted
+    data as earned or derived and applies the expensive/cheap rating to that
+    classification. Adds the corollary that derivation inputs and parameters MUST
+    be preserved. Prior guidance retained.
 
 Added sections: none
-
 Removed sections: none
 
 Deferred items:
@@ -128,6 +129,22 @@ extracting an interface from a concrete implementation, moving a function, renam
 Structural refactoring of code is cheap and getting cheaper; migration of accumulated data is
 not. Uncertainty about which cell an item falls into MUST be resolved toward "cheap", because
 the cost of a wrong abstraction exceeds the cost of a late one.
+
+**Earned versus derived data.** Persistence alone does not make data expensive to change;
+irreproducibility does. Every persisted field MUST be classified:
+
+- **Earned** — produced by the user or an irreproducible external process, recoverable from
+  nothing the system retains. Word status, review history, notes, reading position, imported
+  collection data. The shape of earned data MUST be settled before it begins accumulating.
+- **Derived** — computed from inputs the system preserves, and therefore discardable and
+  rebuildable. Tokens, segmentation, pronunciation annotations, dictionary joins, computed
+  statistics. Changing the shape of derived data is a recompute rather than a migration, and
+  MUST be deferred.
+
+Corollary: derived data is cheap to change only while its inputs are retained. Source inputs MUST
+be preserved verbatim, and the parameters needed to reproduce a derivation — analyzer name and
+version, model identifiers — MUST be recorded with the output. A derivation whose inputs were
+discarded has silently become earned data and loses this exemption.
 
 **Hedge the schema, not the code.** For changes that are unlikely but expensive to retrofit, the
 correct response is NOT an abstraction. It is a data model that does not preclude the change —

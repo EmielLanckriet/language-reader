@@ -12,10 +12,13 @@ Each entry carries two ratings:
 - **Plausibility** — how likely is it that this is actually built? `high` / `medium` / `low`.
   This is a judgment only the developer can make. It is a bet, and it is revised as the project
   learns.
-- **Retrofit cost** — what deferring would cost. `expensive` if it would later require migrating
-  populated tables, changing a persisted identifier, or changing a contract an external system
-  depends on. `cheap` if it would cost only a mechanical code refactor. Ambiguous cases are
-  rated `cheap` by rule.
+- **Retrofit cost** — what deferring would cost, judged on the earned/derived classification
+  (Constitution Principle V, [ADR-0003](adr/0003-earned-versus-derived-data.md)) rather than on
+  whether the data is persisted. `expensive` if the data is **earned** — produced by the user or
+  an irreproducible external process, and recoverable from nothing the system retains. `cheap` if
+  it is **derived** — recomputable from preserved inputs, and therefore a recompute rather than a
+  migration. Code structure is always `cheap`. Ambiguous cases are rated `cheap` by rule.
+  Derived data stays cheap only while its inputs are retained.
 
 They combine into an action:
 
