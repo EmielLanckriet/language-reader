@@ -1,18 +1,24 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.1.0 → 1.2.0
-Bump rationale: MINOR. The reversibility test in Principle V is refined with the
-earned/derived classification, which supersedes persistence as the criterion for
-retrofit cost, plus a preserve-the-inputs obligation. No principle removed or
-redefined incompatibly. Recorded in ADR-0003.
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR. A principle is added (VII) and Principle II's mandatory
+list is materially expanded. Technology Stack gains Dafny and narrows the Chinese
+segmenter. No principle removed or redefined incompatibly. Recorded in ADR-0004
+(readability) and ADR-0005 (verified kernels).
 
 Modified principles:
-  - V. Modular By Seam, Flat Within — reversibility test now classifies persisted
-    data as earned or derived and applies the expensive/cheap rating to that
-    classification. Adds the corollary that derivation inputs and parameters MUST
-    be preserved. Prior guidance retained.
+  - II. Test-First On State Transitions — adds lexeme merge/split and status event
+    replay to the mandatory list; adds the rule that properties proved in Dafny are
+    not duplicated as example-based tests; states that derived data is tested for
+    invariants rather than exact values.
+  - VII. Readable Over Clever — ADDED. Readability ranked above brevity and
+    cleverness, with a source-versus-artifact carve-out for generated code.
 
-Added sections: none
+Added sections:
+  - Core Principles → VII. Readable Over Clever
+  - Additional Constraints → Dafny; segmenter narrowed to pkuseg; optional LLM
+    enrichment tier
+
 Removed sections: none
 
 Deferred items:
@@ -43,6 +49,8 @@ questions into observable facts.
 Tests MUST be written before implementation for the following, and only the following, areas:
 
 - Word status transitions (`unknown` / `learning` / `known` / `ignored`) and their legal edges
+- **Lexeme merge and split**, including status resolution
+- **Status event replay** — that folding the event log reproduces current status
 - Review scheduling logic
 - Text segmentation correctness
 - Anki export payload construction
@@ -50,9 +58,23 @@ Tests MUST be written before implementation for the following, and only the foll
 Property-based tests MUST be used where the state space is large enough to make example-based
 tests unconvincing. UI components, wiring, and glue code are explicitly EXEMPT.
 
-Rationale: These four areas are the only parts of the system with real invariants; everywhere
-else, tests would be ceremony that slows learning without buying correctness. Narrow, mandatory
-rigor is sustainable. Universal TDD on a solo exploratory project is not.
+**Derived data is tested for its invariants, never for exact values.** Segmentation output MUST
+be asserted on properties — spans non-overlapping, spans covering the input exactly, offsets
+valid, every token resolving to a lexeme, re-segmentation idempotent for a fixed analyzer
+version — and MUST NOT be asserted against expected segmentations. Word-hood is undefined and
+analyzer-dependent, so expected values encode one analyzer's judgment and break on every
+upgrade. Earned data, by contrast, is asserted exactly.
+
+**Properties proved in a verified kernel are not re-tested in Python** (see Principle VII and
+ADR-0005). What is tested at that boundary is the adapter: that values are correctly marshalled
+into and out of the kernel.
+
+Rationale: These areas are the only parts of the system with real invariants; everywhere else,
+tests would be ceremony that slows learning without buying correctness. Narrow, mandatory rigor
+is sustainable. Universal TDD on a solo exploratory project is not. Merge and split are on this
+list because ADR-0002's claim that word identity is revisable depends entirely on their
+correctness, and because correcting segmentation — a user-facing feature — is implemented by
+them.
 
 ### III. Anki Is Authoritative And Read-Mostly
 
@@ -168,13 +190,47 @@ Rationale: With open-ended scope these decisions will be revisited, often after 
 has been forgotten. Unrecorded rationale is the most expensive artifact to lose, and it is the
 cheapest to capture at the moment of choosing.
 
+### VII. Readable Over Clever
+
+Readability ranks above brevity and above cleverness. Where a shorter, more elegant, or more
+idiomatic construction is harder to follow than a longer plain one, the plain one MUST be
+chosen. Explicit over implicit; a named intermediate over a dense expression; a longer function
+with a clear sequence over a short one requiring several inferences; comments that explain *why*
+rather than restating *what*.
+
+**Source versus artifact.** This principle governs code a human is expected to read and modify.
+It does NOT govern generated artifacts, which are judged by whether their *source* is readable —
+compiler output is not held to the standard of the language it was compiled from. An artifact
+qualifies only if its source is in the repository and is what gets edited, generation is
+reproducible by a committed command, it sits behind a hand-written interface, and it is never
+hand-edited.
+
+Dafny-generated Python qualifies. **Agent-generated Python does NOT** — it has no retained
+editable source, its generation is not reproducible, and it is edited directly thereafter. It is
+held to this principle in full.
+
+Rationale: The developer is learning software engineering through this project rather than
+arriving with it, so reading the code is a substantial part of the point rather than a
+maintenance overhead. An unwritten preference of this kind gets traded away silently whenever
+something else is locally convenient; written down, it can be argued against. See ADR-0004.
+
 ## Additional Constraints
 
 **Technology Stack.** The following stack is fixed; deviation requires an ADR.
 
 - **Backend**: Python 3, FastAPI, SQLite on a persistent Fly.io volume.
-- **Chinese NLP**: jieba or pkuseg for segmentation, pypinyin for pinyin, CC-CEDICT for
-  dictionary data.
+- **Chinese NLP**: pkuseg (`spacy-pkuseg`) for segmentation, pypinyin for pronunciation,
+  CC-CEDICT for dictionary data. jieba is NOT used: segmentation quality is a known pain point
+  from the developer's own experience with comparable tools, and starting at the weakest option
+  would defer to a state already known to disappoint. A user dictionary MUST be supported.
+- **Segmentation correction**: the analyzer's output is never authoritative. User corrections
+  are earned data, anchored on character offsets per ADR-0002, and MUST survive re-segmentation.
+- **Verified kernels**: Dafny 4.11.0, self-contained install, compiled to Python via
+  `dafny build -t:py`. Scoped to small pure algebraic components of the domain core — merge and
+  split first. Never for I/O, database, HTTP, NLP, or UI. See ADR-0005.
+- **LLM enrichment** (optional tier): context-appropriate glosses, heteronym resolution, and
+  re-segmentation of short passages. It supplements the local segmenter and dictionary; it does
+  NOT replace them, and the system MUST remain fully functional without it.
 - **Dutch NLP**: spaCy `nl_core_news_sm`.
 - **Frontend**: SvelteKit, delivered as an installable PWA. Mobile-first. Reading MUST work
   offline.
@@ -223,4 +279,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 1.2.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
+**Version**: 1.3.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
