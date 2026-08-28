@@ -1,20 +1,16 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.0.0 → 1.1.0
-Bump rationale: MINOR. Principle V is materially expanded with two explicit
-decision filters (anticipated-change filter and reversibility test) and a new
-schema-hedge rule. No principle removed or redefined incompatibly. A new
-subsection is added to Development Workflow. Recorded in ADR-0001.
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR. Principle V gains a prior classification (earned vs derived
+data) that refines the reversibility test, plus a retention obligation. No
+principle removed or redefined incompatibly. Recorded in ADR-0003.
 
 Modified principles:
-  - V. Modular By Seam, Flat Within — expanded with "Anticipated change filter",
-    "Reversibility test", and "Hedge the schema, not the code". Prior guidance
-    ("no new layer until a second concrete case", prohibition on speculative
-    generality) retained unchanged.
+  - V. Modular By Seam, Flat Within — adds "Earned versus derived data" ahead of
+    the reversibility test, and the retention obligation that makes the
+    classification hold. Prior guidance retained unchanged.
 
-Added sections:
-  - Development Workflow → "Anticipated Changes" (spec section requirement and
-    the rolling docs/anticipated-changes.md register)
+Added sections: none
 
 Removed sections: none
 
@@ -102,7 +98,22 @@ anticipated changes, not by intuition. Every feature specification MUST list the
 capabilities it can foresee, and each entry MUST be rated on two axes: how plausible the change
 is, and what retrofitting it later would cost.
 
-**Reversibility test.** The two ratings above resolve as follows, and a new seam requires BOTH
+**Earned versus derived data.** Before applying the reversibility test, persisted data MUST be
+classified. Data is EARNED if it results from the user's irreplaceable effort or from an external
+system of record — word status, review history, notes, reading position, anything imported from
+Anki — and cannot be reconstructed if lost. Data is DERIVED if it is computed from earned data,
+source material, or reference data — segmentation, tokens, pronunciations, definitions,
+frequency annotations — and can be recomputed.
+
+Changes to the structure of EARNED data are expensive by default and MUST be hedged before the
+first row is written. Changes to the structure of DERIVED data are cheap by default REGARDLESS
+OF ROW COUNT, and MUST be deferred; recomputation is not migration.
+
+This holds only while the inputs to derivation are retained. Any pipeline that discards its
+input silently converts derived data into earned data. Inputs MUST therefore be preserved
+verbatim, and discarding one is a decision requiring an ADR.
+
+**Reversibility test.** The remaining cases resolve as follows, and a new seam requires BOTH
 conditions:
 
 | | Expensive to retrofit | Cheap to retrofit |
@@ -195,4 +206,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
+**Version**: 1.2.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
