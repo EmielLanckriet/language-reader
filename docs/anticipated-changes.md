@@ -79,8 +79,11 @@ settled in an ADR and no longer open questions.
 
 | Change | Plausibility | Retrofit cost | Reasoning | Action |
 |---|---|---|---|---|
-| Word identity refinement (merge/split of lexemes) | high | cheap ↓ | **Decided** (ADR-0002, ADR-0005). **Promoted to slice 1** — no longer deferred. Correcting segmentation *is* merging and splitting adjacent tokens, so these are user-facing operations, not background machinery. Verified in Dafny, since ADR-0002's revisability claim depends on their correctness. | **Built in slice 1, verified** |
-| Word-status history / statistics over time | high | **expensive** | Earned data. If only current status is stored, past transitions are unrecoverable — they were never written. No amount of retained input helps. | **Decided** — `status_event` log from first migration |
+| Word identity refinement (merge/split of lexemes) | high | cheap ↓ | **Decided** (ADR-0002, ADR-0005). Correcting segmentation *is* merging and splitting adjacent tokens, so these are user-facing operations, not background machinery. Verified in Dafny, since ADR-0002's revisability claim depends on their correctness. | **Built in slice 2, verified** |
+| Word-status history over time | high | **expensive** | Earned data. If only current status is stored, past transitions are unrecoverable — they were never written. No amount of retained input helps. | **Decided** — `status_event` log from first migration |
+| Per-word encounter statistics (counts, first/last seen) | high | **cheap** — but see the row below | **Derived**, provided the events they fold over exist. Every statistic is a fold over `status_event` and `reading_session`; adding a new one later is a new fold, not a migration. Do not decide now which statistics are wanted. | Defer entirely |
+| Recording that a word was encountered | high | **expensive** | **Earned.** No fold recovers an encounter that was never written. Recorded as `reading_session(document_id, from_offset, to_offset, at, user_id)` — a few rows per session — and NOT as one event per token render, which would produce millions of rows and freeze statistics against a segmentation that is going to change. Encounters are then derived by intersecting sessions with tokens, so re-segmenting retroactively corrects history. | **Built in slice 1**, with the reader |
+| Colouring words by statistic rather than status | medium | cheap | Pure presentation over derived data. Worth trying as intensity *within* a status colour rather than a second dimension; status colouring is already visually busy. | Defer |
 | Multiple users / accounts | medium | **expensive** | Adding a tenant key to populated earned tables. | **Decided** — `user_id` on earned tables, defaulted to one local user |
 | Multi-span tokens (离合词 帮忙, Dutch *opbellen*) | medium | cheap | Derived data: tokens are recomputed from retained raw text, so this is a recompute rather than a migration. Cost of deferring is that separable verbs are mis-segmented in the interim. | Defer |
 | Word-level notes or tags by the user | medium | **expensive** | Earned data — reclassified upward under ADR-0003. Cheap as an additive table, but the table must exist before notes are written or there is nothing to migrate from. | Hedge when first note feature lands |
@@ -111,6 +114,13 @@ abbreviations as distinct words. The honest test is whether the known-word count
 after a few weeks of real reading. Note this is no longer a trigger for *building* merge — merge
 ships in slice 1 for segmentation correction — but for deciding whether the Chinese provider
 should normalize them automatically rather than leaving it to manual correction.
+
+**Is slice 0's database disposable?** Slice 0 uses a per-character dummy segmenter, so its
+lexemes are mostly single characters and its word statuses are statuses on the wrong units. If
+that data is disposable, slice 0's hedges are about getting the schema *shape* right rather than
+preserving rows. The hedges are kept regardless because they cost almost nothing — but the plan
+must not *depend* on wiping, because "we will clear it before it matters" rarely survives two
+weeks of real use.
 
 **Is manual correction enough, or does the segmenter need replacing?** Slice 1 ships pkuseg plus
 correction. If corrections are frequent enough to be tedious, that is the signal to add the user

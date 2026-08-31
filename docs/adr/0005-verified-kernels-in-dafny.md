@@ -42,7 +42,7 @@ verification and the desired learning exercise are the same piece of code.
 
 **In scope.** Small, pure, algebraic components of the domain core:
 
-- Lexeme merge and split, including status resolution — slice 1.
+- Lexeme merge and split, including status resolution — slice 2.
 - Status event replay: that folding the `status_event` log reproduces current status.
 - Offset anchoring across re-segmentation: that retained character offsets stay valid when the
   token stream is recomputed — a candidate, not yet committed.
@@ -71,7 +71,12 @@ module by construction. This is a foreseen outcome, not a failure.
 - `dotnet tool install -g dafny` **FAILS** on this machine: Dafny 4.11.0 targets `net8.0` and the
   installed SDK is .NET 6.0.132. Recorded so it is not rediscovered.
 - The self-contained release is used instead: `dafny-4.11.0-x64-ubuntu-22.04.zip`, unpacked to
-  `~/.local/opt/dafny`. It bundles its own runtime and does not use the system .NET.
+  `~/.local/opt/dafny`. It bundles its own runtime and does not use the system .NET. It is NOT on
+  `PATH`; invoke it by full path or add it deliberately.
+- **Planned before slice 2**: install .NET 8 and move to `dotnet tool install -g dafny`. The
+  self-contained build is a stopgap that no package manager tracks and that must be upgraded by
+  hand. Dafny is not used until slice 2, so there is time to do this properly rather than under
+  deadline.
 - Confirmed end to end: `dafny verify` proves the lemmas; `dafny build -t:py` emits a Python
   package; the result imports and runs from ordinary Python. Datatype constructors surface as
   `Status_Known()`, top-level functions as `module_.default__.FunctionName`. The hand-written
@@ -110,8 +115,8 @@ must know that editing the generated Python is meaningless. Verification time is
 build.
 
 **On the .NET situation.** The self-contained binary avoids the SDK version problem entirely, but
-it also means Dafny will not track system updates. If .NET 8 is later installed for other reasons,
-switching to `dotnet tool install` would be a simplification.
+it also means Dafny will not track system updates. Installing .NET 8 and switching to
+`dotnet tool install` is planned before slice 2, when Dafny is first actually used.
 
 **Revisit if.** Verification of merge/split turns out to require modelling so much of the
 surrounding data structure that the kernel stops being small — that would mean the operations are
