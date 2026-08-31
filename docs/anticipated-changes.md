@@ -107,6 +107,21 @@ owned by the language provider. Chinese v1 uses the analyzer's surface form unno
 看看 ≠ 看, 北大 ≠ 北京大学, and heteronyms share a lexeme. Dutch will later use lemmas without a
 migration.
 
+## Decided: Slice 0's Database Is Disposable
+
+Slice 0 uses a per-character dummy segmenter, so its lexemes are mostly single characters and its
+word statuses attach to the wrong units. That data is explicitly disposable and may be wiped
+before slice 1.
+
+Every hedge is still built in slice 0 — `provenance`, `user_id`, `status_event`,
+`raw_content` + `content_type`, surrogate lexeme ids, character-offset anchoring — because they
+cost almost nothing and because slice 0's schema then *is* the real schema, so slice 1 is not
+also a migration slice.
+
+What changes is the stakes, not the work: a mistake in slice 0's schema shape is corrected by
+wiping rather than by migrating. This exemption expires when slice 1 ships, at which point word
+status becomes earned data in the full sense.
+
 ## Open
 
 **Does over-counting become annoying in practice?** Chinese v1 treats reduplications and
@@ -114,13 +129,6 @@ abbreviations as distinct words. The honest test is whether the known-word count
 after a few weeks of real reading. Note this is no longer a trigger for *building* merge — merge
 ships in slice 1 for segmentation correction — but for deciding whether the Chinese provider
 should normalize them automatically rather than leaving it to manual correction.
-
-**Is slice 0's database disposable?** Slice 0 uses a per-character dummy segmenter, so its
-lexemes are mostly single characters and its word statuses are statuses on the wrong units. If
-that data is disposable, slice 0's hedges are about getting the schema *shape* right rather than
-preserving rows. The hedges are kept regardless because they cost almost nothing — but the plan
-must not *depend* on wiping, because "we will clear it before it matters" rarely survives two
-weeks of real use.
 
 **Is manual correction enough, or does the segmenter need replacing?** Slice 1 ships pkuseg plus
 correction. If corrections are frequent enough to be tedious, that is the signal to add the user
