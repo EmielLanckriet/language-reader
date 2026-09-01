@@ -144,6 +144,29 @@ export async function openDatabase(): Promise<OpenDatabase> {
 	}
 }
 
+/** Whether the browser promised not to evict the reader's data. */
+export type Persistence = 'granted' | 'denied' | 'unavailable';
+
+/**
+ * Ask the browser not to evict this origin's storage.
+ *
+ * Without this, OPFS data is "best effort": a browser under storage pressure may delete it, and
+ * the reader would open the app to an empty library that looks exactly like data loss, because it
+ * is. Chrome grants it readily once a site is installed to the home screen — which is why
+ * installability stops being optional the moment slice 1's data is worth keeping.
+ *
+ * Returns rather than throws. A refusal is information to show the reader, not a failure to start.
+ */
+export async function requestPersistentStorage(): Promise<Persistence> {
+	if (typeof navigator === 'undefined' || !navigator.storage?.persist) return 'unavailable';
+	try {
+		if (await navigator.storage.persisted()) return 'granted';
+		return (await navigator.storage.persist()) ? 'granted' : 'denied';
+	} catch {
+		return 'unavailable';
+	}
+}
+
 /**
  * This installation's identity, created once and then never changed.
  *

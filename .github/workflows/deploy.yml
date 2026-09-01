@@ -1,0 +1,62 @@
+# Build the reader and publish it to GitHub Pages.
+#
+# GitHub Pages was chosen because it needs no payment method and has nothing that can lapse
+# (ADR-0007). There is no server here: this publishes static files, and every byte of reader data
+# stays in the browser's origin-private file system on the phone.
+name: Deploy
+
+on:
+  push:
+    branches: [main, master]
+  # So a deploy can be re-run without an empty commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. Queued rather than cancelled, so a push during a deploy still ships.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # The gates that must hold before anything ships: types, lint, and the tests that
+      # Principle II makes mandatory.
+      - run: npm run check
+      - run: npm run lint
+      - run: npm test
+
+      - name: Build
+        # A project site is served from /<repo>/, so every asset URL needs that prefix. Derived
+        # from the repository name rather than hard-coded, so a rename does not break the deploy.
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

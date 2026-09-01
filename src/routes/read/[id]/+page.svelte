@@ -4,13 +4,15 @@
 	import { session } from '$lib/storage/session';
 	import { codePointsOf } from '$lib/domain/offsets';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
+	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import { recordDiagnostic, describeError } from '$lib/diagnostics/log';
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
 	let loading = $state(true);
-	let problem = $state<string | null>(null);
+	let problem = $state<unknown>(null);
 	let chosen = $state<Token | null>(null);
 
 	/**
@@ -35,7 +37,8 @@
 			document = loaded;
 			states = repository.getStates(lexemesIn(loaded));
 		} catch (error) {
-			problem = error instanceof Error ? error.message : String(error);
+			problem = error;
+			await record(error);
 		} finally {
 			loading = false;
 		}
@@ -63,8 +66,18 @@
 			});
 			states = repository.getStates(lexemesIn(document));
 		} catch (error) {
-			const detail = error instanceof Error ? error.message : String(error);
-			problem = `That mark could not be saved. ${detail}`;
+			problem = error;
+			await record(error);
+		}
+	}
+
+	/** Failures go to the on-device record as well as to the screen (FR-021). */
+	async function record(error: unknown) {
+		try {
+			const { db } = await session();
+			recordDiagnostic(db, 'storage', describeError(error));
+		} catch {
+			// The database is the thing that failed. Nothing further to try.
 		}
 	}
 
@@ -84,7 +97,7 @@
 {#if loading}
 	<p class="loading">Opening…</p>
 {:else if problem}
-	<p class="notice problem" role="alert">{problem}</p>
+	<ErrorNotice error={problem} onretry={() => load(Number(page.params.id))} />
 {:else if document}
 	<h1>{document.title}</h1>
 	<p class="subtitle">Segmented by {document.analyzer} v{document.analyzerVersion}</p>

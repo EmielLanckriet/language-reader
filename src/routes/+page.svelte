@@ -4,6 +4,8 @@
 	import { pasteSource } from '$lib/content/paste';
 	import { characterSplitter } from '$lib/analyzer/character';
 	import { RejectedInput } from '$lib/content/types';
+	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import { recordDiagnostic, describeError } from '$lib/diagnostics/log';
 	import { MAXIMUM_CHARACTERS } from '$lib/content/paste';
 	import { codePointLength } from '$lib/domain/offsets';
 	import type { DocumentSummary } from '$lib/storage/repository';
@@ -12,7 +14,7 @@
 	let pasted = $state('');
 	let loading = $state(true);
 	let saving = $state(false);
-	let problem = $state<string | null>(null);
+	let problem = $state<unknown>(null);
 	let warning = $state<string | null>(null);
 
 	// Counted in characters, matching the limit the content source enforces (FR-020). Shown live
@@ -25,15 +27,20 @@
 
 	async function load() {
 		try {
-			const { repository, durability } = await session();
+			const { repository, durability, persistence } = await session();
 			documents = repository.listDocuments();
 			if (durability === 'memory') {
 				warning =
-					'This browser would not give the app persistent storage, so anything you save ' +
+					'This browser would not give the app a place to store data, so anything you save ' +
 					'will disappear when you close the tab.';
+			} else if (persistence !== 'granted') {
+				warning =
+					'The browser has not promised to keep your saved reading. It may be deleted if ' +
+					'the device runs short of space.';
 			}
 		} catch (error) {
-			problem = `The library could not be opened. ${describe(error)}`;
+			problem = error;
+			await record('storage', error);
 		} finally {
 			loading = false;
 		}
@@ -51,18 +58,23 @@
 			documents = repository.listDocuments();
 		} catch (error) {
 			// A refused paste and a broken database are different problems and read differently
-			// (FR-018, FR-022). Collapsing them into "something went wrong" is what this avoids.
-			problem =
-				error instanceof RejectedInput
-					? error.message
-					: `It could not be saved. ${describe(error)}`;
+			// (FR-018, FR-022). Collapsing them into "something went wrong" is what this avoids,
+			// and ErrorNotice is what tells them apart.
+			problem = error;
+			if (!(error instanceof RejectedInput)) await record('storage', error);
 		} finally {
 			saving = false;
 		}
 	}
 
-	function describe(error: unknown): string {
-		return error instanceof Error ? error.message : String(error);
+	/** Failures go to the on-device record as well as to the screen (FR-021). */
+	async function record(kind: 'storage' | 'unexpected', error: unknown) {
+		try {
+			const { db } = await session();
+			recordDiagnostic(db, kind, describeError(error));
+		} catch {
+			// The database is the thing that failed. Nothing further to try.
+		}
 	}
 </script>
 
@@ -84,7 +96,7 @@
 </p>
 
 {#if problem}
-	<p class="notice problem" role="alert">{problem}</p>
+	<ErrorNotice error={problem} />
 {/if}
 
 <button onclick={save} disabled={saving || pasted.trim() === ''}>
