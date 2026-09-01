@@ -50,10 +50,13 @@ settled in an ADR and no longer open questions.
 | Traditional Chinese alongside Simplified | low | cheap ↓ | Reclassified as orthographic variation, not a Chinese quirk (Dutch spelling reforms are the same phenomenon). Simplified→traditional is many-to-one, so it is a lexeme merge — tractable now that identity is a surrogate id. | Defer |
 | Per-language word-identity rules | medium | cheap ↓ | **Decided** (ADR-0002): the identity rule is owned by the language provider, not the schema. Adding Dutch lemma identity needs no migration. | Defer |
 | Split heteronyms (长 cháng vs zhǎng) into distinct lexemes | medium | cheap | Lexeme split driven by token pronunciations already recorded at ingest, plus one nullable discriminator column. | Defer |
-| Better segmenter than the current one | high | cheap | Derived data. `analyzer` + `analyzer_version` are recorded per document, so swapping is a recompute. Starting at pkuseg rather than jieba because segmentation quality is a known annoyance from LingQ, not a hypothetical one. | Defer (swap freely) |
+| Better segmenter than the current one | high | cheap | Derived data. `analyzer` + `analyzer_version` are recorded per document, so swapping is a recompute. Starting at pkuseg rather than jieba because segmentation quality is a known annoyance from LingQ, not a hypothetical one. **See the open question on `Intl.Segmenter` below — the choice of segmenter may not be a Python question at all.** | Defer (swap freely) |
+| Vocabulary-overlay segmentation (known words win over the dictionary) | high | cheap | Derived. Layer the learner's own known terms over the segmenter's output by greedy longest match, so a word being studied is never split. Borrowed from Sapling. Complements manual correction and is self-improving: correcting once fixes every later occurrence everywhere. | **Consider for slice 1** |
+| TTS segmentation disagreeing with reader segmentation | medium | cheap | jieba is a **global** singleton and the Kokoro front-end (misaki) follows it, so a reader segmenting with pkuseg and a TTS path segmenting with jieba will disagree within one sentence. `sentencegen/tts.py` already solves this generically by nudging jieba toward a target segmentation, gated on the words concatenating back to the sentence exactly. The reader's segmentation is therefore an *input* to TTS, not an independent choice. | Defer (solution known) |
 | User segmentation corrections | high | **expensive** | **Earned data.** No segmenter can be right, because word-hood is undefined and the correct split is learner-dependent. Corrections are the actual fix, and they must survive re-segmentation — which they do, being anchored on character offsets. | **Built in slice 1** |
 | User dictionary feeding the segmenter | medium | cheap | Additive word list; improves accuracy cheaply. Corrections can feed it. | Defer |
 | LLM gloss / heteronym / re-segmentation enrichment | medium | cheap | Supplements the local segmenter and dictionary, never replaces them. Viable for short content — subtitles and transcripts, both rated high — where per-passage cost is trivial. System must work fully without it. | Defer |
+| Local LLM rather than an API for enrichment | medium | cheap | The developer already runs Qwen3-4B-Instruct via `llama_cpp` in `sentencegen`. Free, offline, no key. Honest caveat: a 4B model produces weaker context-appropriate glosses than a frontier model, and glossing is the task where quality is the entire value. Worth measuring rather than assuming either way. | Defer |
 
 ## Content Sources
 
@@ -93,7 +96,9 @@ settled in an ADR and no longer open questions.
 | Change | Plausibility | Retrofit cost | Reasoning | Action |
 |---|---|---|---|---|
 | Frequency / HSK-level word ordering | high | cheap | Additive reference data joined at read time, expressed as value + scheme. | Defer |
-| Audio / TTS for words and sentences | high | cheap | Derived; additive field and a UI control. | Defer |
+| TTS for words and sentences | high | cheap | Derived. **Already solved** in the developer's `sentencegen` project: Kokoro v1.1-zh server-side in Python, to a standard already vetted against Google TTS. No browser model download is needed — see Borrowed Approaches for the three load-bearing details. | Defer (approach known) |
+| Audio content with synced text (listen while reading) | high | cheap | Distinct from TTS: playing authentic recordings with the text following along. Derived, given the media file and its cues are retained. The developer listens more than they read, so this is closer to essential than the rating suggests. | **Slice 3** |
+| Speech-to-text for audio without a transcript | medium | cheap | Content source. Lower priority than it looks: subtitles and YouTube transcripts both rate high and arrive *with* text. If a transcript is produced by STT it is derived and **the audio is the retained input** — keeping only the transcript forfeits re-deriving it with a better model, the same trap as discarding source text. | Defer |
 | Offline reading (PWA) | high | medium | Required by Principle I, so not deferred. Retrofitting offline onto an API-chatty client is real rework. | Respect from slice 1 |
 | Character stroke order / handwriting | low | cheap | Isolated feature, additive reference data. | Defer |
 
@@ -122,7 +127,53 @@ What changes is the stakes, not the work: a mistake in slice 0's schema shape is
 wiping rather than by migrating. This exemption expires when slice 1 ships, at which point word
 status becomes earned data in the full sense.
 
+## Borrowed Approaches
+
+Studied in other projects so they are not reinvented. Reading these is not a dependency on them.
+
+**From [Sapling](https://github.com/Danacus/sapling)** (Danacus; TypeScript/Svelte, local-first,
+no licence file so nothing may be copied verbatim without asking):
+
+- **`Intl.Segmenter` segments Chinese in the browser**, using ICU's own dictionaries, built into
+  every current browser and Node 22, with nothing to download. Imperfect — it prefers 自行 + 车 to
+  自行车 — but free and serverless. See the open question below.
+- **Vocabulary overlay by greedy longest match.** ICU decides the spans nobody claimed; the
+  learner's own terms override it wherever they have an opinion. Neither half works alone: the
+  dictionary alone splits words being studied, and terms alone leave unstudied words as loose
+  characters.
+- **Two keys, not one, for word identity.** `termKey` answers "same spelling?", `readingKey`
+  answers "same reading?", and their pair identifies a card — with tones never folded, since
+  tone is the whole difference between the two 长s. A reading-*less* entry deliberately collides
+  with every spelling of itself, because a bare 长 is a claim about spelling with nothing in it to
+  distinguish. Reached independently of ADR-0002 and arriving at the same place; useful as the
+  known destination for our deferred heteronym split.
+- **Subtitle-following rules**, each a bug we would otherwise have shipped: a gap stays on the
+  last line that *started* (cues do not tile a recording, and blinking off between every pair
+  would flicker through a conversation); `start` is inclusive; a sentence with no timings is
+  skipped rather than landed on; before the first timed sentence the answer is "no line", not
+  line 0.
+- **The concatenation invariant** — reassembling tokens reproduces the input exactly — and an
+  `isWord` flag separating word-like segments from punctuation. Both match decisions already made
+  here (FR-005, and the assumption that punctuation is tiled but not markable), which is
+  reassuring rather than new.
+
+**From `sentencegen`** (the developer's own; see [ADR-0006](adr/0006-anki-integration-boundary.md)
+for why the projects stay independent): the AnkiDroid write constraints, the sync-down-first
+rule, backup-before-write, refuse-while-desktop-holds-the-lock, prune-and-await-media. And three
+load-bearing Kokoro details, each of which caused a silent bug: misaki rather than espeak (whose
+Mandarin has stress but no tone), `ZHG2P(version="1.1")` with the matching 171-symbol vocabulary
+(the tokenizer silently *drops* unknown symbols, so a v1.0 front-end deletes every Chinese
+symbol), and reconciling jieba's segmentation so fused compounds are not rushed.
+
 ## Open
+
+**Should segmentation happen in the browser rather than on the server?** `Intl.Segmenter` removes
+the premise that Python is forced — segmentation, the reason the backend exists, may not need a
+backend. That would make offline reading trivial (currently an unresolved tension: the
+constitution requires it while the architecture is a server API), remove pkuseg, and dissolve the
+jieba/TTS coupling above. Against it: ICU quality is likely below pkuseg, and a server is still
+wanted for cross-device data. This is an architectural fork, not a detail, and needs an ADR
+before `/speckit-plan`.
 
 **Does over-counting become annoying in practice?** Chinese v1 treats reduplications and
 abbreviations as distinct words. The honest test is whether the known-word count feels wrong
