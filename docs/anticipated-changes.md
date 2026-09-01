@@ -182,6 +182,24 @@ Mandarin has stress but no tone), `ZHG2P(version="1.1")` with the matching 171-s
 (the tokenizer silently *drops* unknown symbols, so a v1.0 front-end deletes every Chinese
 symbol), and reconciling jieba's segmentation so fused compounds are not rushed.
 
+## Decided: Prefer Local Computation, Ideally On-Device
+
+Where two designs both work, prefer the one that computes closer to the reader: on the phone over
+the server, on the server over a third-party service. The application is deployed rather than run
+from a laptop because the reader is a **phone user who needs it available**, not because
+server-side computation is preferred — a distinction that had been recorded backwards and was
+being used as an argument against local approaches.
+
+"Where feasible" is doing real work in that sentence: an LLM analyzer cannot run on a phone, and
+that is a reason to run it elsewhere, not a reason to abandon the preference. What the preference
+decides is the ties — and it tilts the open browser-segmentation question below toward
+`Intl.Segmenter`, which computes on the device and needs no round trip.
+
+This is a preference ordering rather than a rule, but it is written down for the reason ADR-0004
+gives: an unwritten preference is traded away silently whenever something else is locally
+convenient. **It may warrant a constitutional principle rather than a register entry — that is an
+open decision, not one taken here.**
+
 ## Decided: The Analyzer Is A User Choice, Per Document
 
 Three modes, all implementations of the existing language-provider seam, each recorded as its own

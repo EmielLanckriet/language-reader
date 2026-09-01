@@ -52,14 +52,28 @@ Passed on the first iteration. Three qualifications, recorded rather than glosse
    one-way doors, and omitting them means later fabricating history that was never recorded. The
    spec states this explicitly rather than leaving it to be discovered during planning.
 
-**For `/speckit-clarify` to probe** — assumptions made in the absence of an explicit decision,
-each of which changes the data model if wrong:
+## Re-validated After Clarification — 2026-09-01
 
-- Punctuation, digits, whitespace and Latin text are tokens for tiling purposes but are not
-  markable.
-- ~~"Unknown" is an explicitly recorded state~~ — **resolved before clarify.** The state set is now
-  a declared placeholder (FR-006a) and absence of a record means never-judged (FR-006b). What
-  remains for clarify: whether discrete states are the right shape to start from at all, given
-  LingQ uses graded familiarity levels rather than named states.
-- Character offsets are Unicode code points, counted identically on both sides. The two runtime
-  environments do not do this by default, so this is asserted by test.
+16/16 → 16/16 passing. No item changed state. The three qualifications above still hold, and
+qualification 3 now covers more requirements: FR-010a, FR-010b and FR-010c also support no visible
+slice-0 capability, for the same earned-data reason.
+
+Five clarifications were integrated: access credential (FR-019), document size limit (FR-020),
+tap-opens-a-menu (FR-006), failure visibility (FR-021, FR-022, SC-009), and dual timestamps on
+history (FR-010, FR-010c). One raised a consequence beyond its own question — that state may
+later be computed from signals the reader does not supply — producing FR-010a's
+observations-not-conclusions rule.
+
+**Outstanding — assumptions still unprobed**, deferred because the five-question quota went to
+higher-impact items. None blocks planning; each is recorded in Assumptions and is cheap to revise:
+
+- Punctuation, digits, whitespace and Latin text are tokens for tiling purposes but not markable.
+  Low risk: reversible, and it only widens what can be marked.
+- Character offsets are Unicode code points counted identically on both sides. **The highest-risk
+  outstanding item** — the two runtime environments disagree by default, and a mismatch corrupts
+  every stored position silently. Mitigated by being asserted in tests rather than assumed, but it
+  deserves attention during planning.
+- Whether discrete states are the right starting shape at all, given comparable tools use graded
+  familiarity levels. Now largely defused: FR-006a makes the set extensible and FR-010a makes
+  current state a projection, so a move to graded levels is a change of projection rather than of
+  schema.

@@ -23,6 +23,28 @@ merging and splitting tokens (slice 2); Anki export (slice 3); import from EPUB,
 YouTube, or web pages; offline capability and home-screen installability; accounts, login, or any
 notion of a second user.
 
+## Clarifications
+
+### Session 2026-09-01
+
+- Q: Should the deployed application require any credential to read or write, given its URL is on
+  the public internet? → A: Yes — a single shared secret held in an environment variable, sent by
+  the client and stored in the browser. No accounts, no user model.
+- Q: When the reader taps a token, how do they choose which state to give it? → A: A tap opens a
+  small menu of states and the reader picks one. Noted alongside: state may later depend on
+  signals the reader does not supply directly (encounter counts, whether the meaning was looked
+  up), so current state is treated as a projection over recorded observations rather than a value
+  the reader alone sets.
+- Q: When a word is marked, which clock decides where that judgment sits in the history? → A:
+  Both are stored — when the reader asserted it, and when the server received it. Slice 0 orders
+  by the server clock; how they combine is decided in slice 1 when offline marking arrives.
+- Q: When something goes wrong while using the app on the phone, how is the cause found? → A:
+  Structured server logs, plus errors surfaced in the interface with enough detail to act on —
+  which layer failed and why. No client-side error reporting service.
+- Q: What is the largest document slice 0 has to accept and display? → A: Roughly 5,000
+  characters, refused above that with a clear message. No pagination in slice 0; the "full
+  chapter" case moves to slice 1. Accepted on the basis that raising it later is cheap.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Save and read a text (Priority: P1)
@@ -111,12 +133,16 @@ closed, and complete Stories 1 and 2.
   units. Any disagreement between server and interface about what counts as one character would
   silently corrupt every stored position. Offsets are defined once, in Unicode code points, and
   this is asserted by test.
-- **Very long text**: a full chapter must remain usable on a phone rather than freezing it.
+- **Text over the size limit**: refused on submission with a message stating the limit and the
+  submitted length, before any document is created. Slice 0 does not paginate, so a full chapter
+  is out of scope rather than slow — see FR-020.
 - **Same text pasted twice**: produces two documents; marks are shared because they attach to
   words, not to documents.
 - **Text containing newlines**: paragraph structure is preserved rather than collapsed.
 - **Rapid repeated taps** on one token: the final state is what the reader chose, and history
   records what happened rather than a corrupted sequence.
+- **Missing or wrong credential**: the request is refused and the reader is told the credential is
+  the problem, rather than shown an empty library that looks like data loss.
 
 ## Requirements *(mandatory)*
 
@@ -135,8 +161,9 @@ closed, and complete Stories 1 and 2.
   use, and MUST be replaceable without changing anything else.
 - **FR-005**: Tokens MUST tile their document exactly: no gaps, no overlaps, in order, and
   reassembling them MUST reproduce the source content.
-- **FR-006**: The reader MUST be able to assign a state to any word-like token, and MUST see
-  states distinguished visually.
+- **FR-006**: Tapping a word-like token MUST open a menu of the available states, from which the
+  reader picks one. States MUST be distinguished visually in the text. A menu rather than a
+  cycling tap, because FR-006a refuses to promise a small fixed number of states.
 - **FR-006a**: The set of available states MUST be **extensible without schema change**. It is
   configuration, not a fixed structure. Slice 0 ships *unknown*, *learning*, *known*, *ignored* as
   a placeholder set; nothing may depend on there being exactly four, on their names, or on their
@@ -153,10 +180,26 @@ closed, and complete Stories 1 and 2.
   rewriting accumulated marks.
 - **FR-009**: The rule deciding which occurrences count as the same word MUST belong to the
   per-language component, not to the storage design.
-- **FR-010**: Every state change MUST be appended to a permanent history recording what changed,
-  from what to what, and when. History is never overwritten or deleted.
-- **FR-011**: Replaying that history from the beginning MUST reproduce exactly the current state
-  of every word.
+- **FR-010**: Every judgment the reader makes about a word MUST be appended to a permanent
+  history, recording the word, **what the reader asserted**, and **two times: when the reader
+  asserted it, as reported by their device, and when the server received it**. History is never
+  overwritten or deleted.
+- **FR-010c**: Slice 0 orders history by the server time, since every judgment is made online and
+  the device clock may drift. The device time is recorded but not yet relied upon. Both MUST be
+  stored from the first migration: offline marking in slice 1 makes judgments minutes or hours
+  before the server sees them, and whichever time is not recorded at the moment of the judgment is
+  unrecoverable afterwards.
+- **FR-010a**: The history MUST record **observations, not conclusions**. An entry states that the
+  reader asserted a value, not that the word's state became that value. Current state is a
+  *projection* over the history, and the rule producing it MUST be replaceable without rewriting
+  any entry. This matters because state may later depend on signals the reader does not supply
+  directly — how often a word has been encountered, whether its meaning was looked up — at which
+  point a stored conclusion would be a superseded fold frozen into the log.
+- **FR-010b**: Slice 0's projection is the trivial one: the reader's most recent assertion about a
+  word is its current state. No signal other than an explicit assertion exists yet. Nothing may
+  depend on this remaining the rule.
+- **FR-011**: Replaying that history from the beginning through the current projection MUST
+  reproduce exactly the current state of every word.
 - **FR-012**: Every stored state MUST record **how it was acquired**, so that marks made in the
   application can later be told apart from marks imported from elsewhere.
 - **FR-013**: Every record of reader-created data MUST carry an owner, defaulting to a single
@@ -168,6 +211,23 @@ closed, and complete Stories 1 and 2.
 - **FR-017**: The interface MUST be legible and operable at phone width without horizontal
   scrolling, and tap targets MUST be large enough to hit reliably.
 - **FR-018**: Rejected input MUST produce an explanation of what was wrong, not a silent failure.
+- **FR-019**: Every request that reads or modifies reader data MUST require a single shared
+  credential, supplied by configuration rather than stored in the repository. A request without it
+  MUST be refused. The credential is entered once and retained by the browser; it is not an
+  account, carries no identity, and MUST NOT be confused with the owner recorded under FR-013.
+- **FR-021**: The server MUST emit structured logs for every request and every failure, readable
+  from the deployment platform without additional tooling.
+- **FR-022**: A failure the reader encounters MUST be shown in the interface with enough detail to
+  identify which layer failed and why — distinguishing at minimum a rejected credential, a refused
+  input, a server error, and a request that never completed. A blank screen or a bare "something
+  went wrong" does not satisfy this. Rationale: developer tools are not readily available on
+  Android, and Principle I makes the phone the place failures are first met, so an error the
+  reader cannot read costs a round trip to another device.
+- **FR-020**: Documents larger than approximately 5,000 characters MUST be refused on submission,
+  with a message stating both the limit and the submitted size. Slice 0 renders a document in full
+  and does not paginate. Raising this limit later is a presentation change over derived data —
+  page boundaries are computed from the character offsets FR-014 already requires — and touches no
+  stored data.
 
 ### Requirements Deliberately Included Before They Are Used
 
@@ -211,6 +271,9 @@ Constitution Principle V, and the specific items are drawn from `docs/anticipate
 - **SC-007**: Replaying the full history reproduces current state for 100% of words.
 - **SC-008**: The reader completes a full paste-read-mark cycle on their own phone, away from the
   development machine. This slice is not complete until this happens.
+- **SC-009**: Every failure deliberately induced on the phone — wrong credential, oversized input,
+  server stopped, network dropped — is identifiable from what the interface shows, without
+  consulting another device.
 
 ## Anticipated Changes
 
@@ -222,6 +285,23 @@ records what specifically is expected to change about *this slice's* output.
   this is a recompute against retained source content, not a migration. FR-003's requirement to
   record analyzer name and version is what makes existing documents identifiable as
   dummy-segmented and re-derivable.
+- **The size limit rises and pagination arrives in slice 1.** Cheap by construction: tokens are
+  derived and page boundaries are computed from character offsets rather than stored, so nothing
+  earned is disturbed. The one thing to protect is the API returning retained raw content *and*
+  tokens, so slice 1's offline caching is not built on a whole-document-only shape.
+- **Offline marking arrives in slice 1**, at which point device time and server time diverge and
+  the rule combining them must be decided. FR-010c requires both from the first migration so that
+  decision can be made with the evidence rather than by reconstruction. The append-only history is
+  already the right structure for merging offline writes: appended entries union without conflict
+  resolution.
+- **State may become computed rather than asserted.** Encounter counts arrive with reading
+  sessions in slice 1, and lookup events with the dictionary. Both are *earned* — no fold recovers
+  an encounter or a lookup that was never written — so they are recorded when the features that
+  generate them land. The rule combining them into a state is a projection and is deliberately not
+  designed now; adding a projection later is free, given FR-010a. Note that automatic state
+  drift is a known source of complaint in comparable tools, where words become "known" merely by
+  being scrolled past, so this warrants an experiment over recorded signals rather than a rule
+  chosen up front.
 - **Reading sessions arrive in slice 1**, recorded as a document with an offset range and a time,
   from which encounter statistics are derived. FR-014's character-offset anchoring is the
   precondition.
@@ -252,9 +332,9 @@ records what specifically is expected to change about *this slice's* output.
   every character displayed.
 - **Character offsets are Unicode code points**, counted identically on server and client. This is
   asserted by test rather than assumed, because the two environments count differently by default.
-- **One reader, no authentication.** The public URL is unlisted. This is acceptable because the
-  slice holds no sensitive data and its contents are disposable; it is not acceptable beyond
-  slice 1 and is tracked in the register.
+- **One reader, one shared secret, no accounts.** Access is gated by a single static credential,
+  not by a user model. This closes the write endpoint without introducing accounts, which stay out
+  of scope. Multi-reader support remains a separate, tracked change.
 - **Network connectivity is assumed.** Offline capability is explicitly out of scope.
 - **A phone running a current Android browser is available for the Principle I check.**
 
