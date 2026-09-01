@@ -78,6 +78,7 @@ settled in an ADR and no longer open questions.
 | Anki sync client replacing `.apkg` export | high | cheap | Second implementation behind the export seam. | Defer |
 | Import known words FROM the existing Anki collection | medium | **expensive** | Earned data from an external system of record. Needs a provenance marker distinguishing imported status from status earned in-app; retrofitting it means backfilling every row with a guess. | **Decided** — `provenance` column from first migration |
 | Non-Anki SRS target | low | cheap | The export seam covers this. | Defer |
+| Build our own FSRS scheduler instead of exporting to Anki | medium | cheap | `py-fsrs`/`ts-fsrs` make the algorithm a library, so this is a build decision, not a data one — **and it is already hedged**: `status_event` and `reading_session` are exactly the history a scheduler would need to start from, so choosing this later costs no lost data. The real risk is not technical: keeping Anki for years of tuned history while also reviewing in the reader means **two review queues and neither has the full picture**, which is worse than either alone. Migrating fully means giving up AnkiDroid's review UI and `sentencegen`'s nightly enrichment, and building a review app instead of a reading app. Arrives naturally at slice 4, by which point months of real use will have shown whether the export step is friction or fine. | **Decide at slice 4** |
 | Cloze / sentence cards rather than word cards | low | cheap | Different payload construction at the export boundary. | Defer |
 
 ## Data Model
@@ -101,7 +102,7 @@ settled in an ADR and no longer open questions.
 | TTS for words and sentences | high | cheap | Derived. **Already solved** in the developer's `sentencegen` project: Kokoro v1.1-zh server-side in Python, to a standard already vetted against Google TTS. No browser model download is needed — see Borrowed Approaches for the three load-bearing details. | Defer (approach known) |
 | Audio content with synced text (listen while reading) | high | cheap | Distinct from TTS: playing authentic recordings with the text following along. Derived, given the media file and its cues are retained. The developer listens more than they read, so this is closer to essential than the rating suggests. | **Slice 3** |
 | Speech-to-text for audio without a transcript | medium | cheap | Content source. Lower priority than it looks: subtitles and YouTube transcripts both rate high and arrive *with* text. If a transcript is produced by STT it is derived and **the audio is the retained input** — keeping only the transcript forfeits re-deriving it with a better model, the same trap as discarding source text. | Defer |
-| Offline reading (PWA) | high | medium | Required by Principle I, so not deferred. Retrofitting offline onto an API-chatty client is real rework. | Respect from slice 1 |
+| Offline reading (PWA) | high | medium | **Not negotiable.** It is in the constitution because the developer requires it, not as an aspiration to be traded away later. Retrofitting offline onto an API-chatty client is real rework, so the API shape must serve it from slice 1. Reading offline implies *marking* offline, which implies queued writes and merge — and the append-only `status_event` log is already the right structure for that, since append-only logs merge without conflict resolution. The hedge built for history turns out to be the offline mechanism too. | **Architecture constraint from slice 1** |
 | Character stroke order / handwriting | low | cheap | Isolated feature, additive reference data. | Defer |
 
 ---
@@ -192,11 +193,19 @@ than a compromise, and it is cheap to test by reading. **Note the circularity th
 general problem hard**: segmentation depends on knowing which words exist, identity depends on
 the reading, and the reading depends on segmentation.
 
+**Heteronyms specifically are more tractable than the circularity suggests.** Google TTS reads
+多音字 correctly, which is proof the resolution is solvable rather than merely hard — and a
+TTS G2P front-end must resolve every polyphone to speak at all, so it *is* a source of
+context-resolved readings. The developer's own stack already computes them: `sentencegen` uses
+misaki's `ZHG2P` for Kokoro, chosen precisely because espeak's Mandarin carries stress but no
+tone. None of this touches same-reading homographs, where audio is identical and therefore
+carries no signal at all — which remains the open half.
+
 **Should segmentation happen in the browser rather than on the server?** `Intl.Segmenter` removes
 the premise that Python is forced — segmentation, the reason the backend exists, may not need a
-backend. That would make offline reading trivial (currently an unresolved tension: the
-constitution requires it while the architecture is a server API), remove pkuseg, and dissolve the
-jieba/TTS coupling above. Against it: ICU quality is likely below pkuseg, and a server is still
+backend. That would make offline reading much easier — though offline is
+required either way, so the question is which path serves it, not whether to attempt it — and
+would remove pkuseg and dissolve the jieba/TTS coupling above. Against it: ICU quality is likely below pkuseg, and a server is still
 wanted for cross-device data. This is an architectural fork, not a detail, and needs an ADR
 before `/speckit-plan`.
 
