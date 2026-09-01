@@ -95,12 +95,23 @@ structural rather than engineered. No irreplaceable data on infrastructure someo
 Slice 0 becomes materially smaller: no backend, no database server, no volume, and no access
 credential, since there is no server to authenticate to.
 
-**Harder — and this is the real cost.** **pkuseg is lost.** It was chosen over jieba specifically
-because segmentation quality is a known annoyance from the developer's own use of comparable
-tools, and `Intl.Segmenter` is likely below it. Three things mitigate: the vocabulary overlay,
-where the reader's known words override the dictionary and improve as they read; manual
-correction, already scheduled for slice 2 and always the real answer; and options 1 and 3 above.
-None of these is measured yet, and the mitigation should not be assumed to be sufficient.
+**Harder — and this is the real cost.** **pkuseg is lost**, and confirmed so rather than assumed:
+it publishes platform-specific wheels with compiled extensions, so it is not installable in
+Pyodide off the shelf; using it would mean building a wheel for emscripten and shipping its model
+files. Pyodide brings jieba (pure Python) and pypinyin (a pure wheel), but jieba is the segmenter
+that was rejected as too weak in the first place. pkuseg was chosen because segmentation quality
+is a known annoyance from the developer's own use of comparable tools, and `Intl.Segmenter` is
+likely below it.
+
+Four things mitigate, and the fourth is the strongest: the vocabulary overlay, where the reader's
+known words override the dictionary and improve as they read; manual correction, scheduled for
+slice 2 and always the real answer; options 1 and 3 above; and **ensemble segmentation with
+disagreement-triggered escalation** (see `docs/anticipated-changes.md`), which extracts quality
+from structure rather than from any single better model, and which fixes the one thing hybrid
+analysis could not — a boundary error, because two segmenters disagreeing keeps *both* candidates
+visible rather than losing the compound before anything can flag it.
+
+None of these is measured yet, and the mitigation should not be assumed sufficient.
 
 **Cross-device stops being free.** A single server previously made phone and laptop agree by
 construction. That now requires an export file or real sync, and has been dropped from slice 0 by

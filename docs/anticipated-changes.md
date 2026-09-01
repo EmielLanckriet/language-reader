@@ -206,6 +206,42 @@ computation is local by construction. The preference now decides narrower questi
 add Pyodide, whether to call an LLM — rather than the architecture. It may still warrant a
 constitutional principle; that remains an open decision.
 
+## Decided: Ensemble Segmentation, Escalating On Disagreement
+
+Run several cheap local segmenters over the same text. Where they **agree**, accept the result.
+Where they **disagree**, that span is flagged: the disagreement is a free, local, reliable signal
+of exactly where segmentation is hard.
+
+**Why this beats a single better model, and what it fixes.** Hybrid analysis could resolve a
+word's reading or sense but could not repair a wrong *boundary*: a locally mis-split 花钱 is gone
+before anything flags it, so no later step can ask about it. An ensemble does not lose it — one
+segmenter emitted 花钱 and another emitted 花 + 钱, so both candidates are in hand and the
+disagreement is itself the flag. This is the fix to a gap previously recorded as unfixable.
+
+**Three sources exist already, at no additional cost:**
+
+1. `Intl.Segmenter` — ICU's dictionaries, built into the browser.
+2. **CC-CEDICT longest-match** — the dictionary is shipped for glosses regardless, so using it as
+   a second opinion is free.
+3. **The reader's own known words** — the vocabulary overlay, which improves as they read.
+
+A fourth, **jieba via Pyodide**, is available if measurement justifies the download. Confirmed:
+jieba is pure Python and works; **pkuseg does not** — it publishes platform wheels with compiled
+extensions and would need an emscripten build plus its model files.
+
+**Diversity matters more than count.** `Intl.Segmenter` and CC-CEDICT longest-match are both
+dictionary-driven and will fail together on the same novel compounds, so their agreement is weaker
+evidence than it appears. jieba's HMM treats unknown words differently, which is what would make
+it a genuinely additional signal rather than a third vote from the same family. Count votes with
+that in mind; do not treat unanimity among correlated sources as confidence.
+
+**Ensembling detects; it does not resolve.** A flagged span still needs a resolver: the LLM when
+online, the reader when correcting, or a heuristic — most sources agreeing, or longest match — when
+neither is available. Flagged spans are also exactly the right input to the LLM tier, which
+answers the per-passage cost question by sending only what is hard.
+
+All of this is derived data over retained text, so it is recomputable and costs no schema.
+
 ## Decided: The Analyzer Is A User Choice, Per Document
 
 Three modes, all implementations of the existing language-provider seam, each recorded as its own
