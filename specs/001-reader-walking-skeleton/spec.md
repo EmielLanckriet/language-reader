@@ -51,9 +51,13 @@ own as a plain reading surface even with no marking.
 
 ### User Story 2 - Mark what I know (Priority: P2)
 
-The reader taps any token and assigns it one of four states — unknown, learning, known, or
-ignored. Tokens are visually distinguished by their state, so the reader can see at a glance how
-much of a passage is familiar.
+The reader taps any token and assigns it a state. Tokens carrying a state are visually
+distinguished from each other and from untouched text, so the reader can see at a glance how much
+of a passage is familiar.
+
+Slice 0 offers *unknown*, *learning*, *known* and *ignored*. That set is a **placeholder**, like
+the dummy analyzer — enough to exercise marking, not a decision about what states this product
+ends up having.
 
 **Why this priority**: This is the earned data the entire product is built to accumulate, and the
 first thing whose loss would matter. It depends on Story 1 but is separately valuable and
@@ -131,8 +135,17 @@ closed, and complete Stories 1 and 2.
   use, and MUST be replaceable without changing anything else.
 - **FR-005**: Tokens MUST tile their document exactly: no gaps, no overlaps, in order, and
   reassembling them MUST reproduce the source content.
-- **FR-006**: The reader MUST be able to assign any token one of exactly four states — unknown,
-  learning, known, ignored — and MUST see states distinguished visually.
+- **FR-006**: The reader MUST be able to assign a state to any word-like token, and MUST see
+  states distinguished visually.
+- **FR-006a**: The set of available states MUST be **extensible without schema change**. It is
+  configuration, not a fixed structure. Slice 0 ships *unknown*, *learning*, *known*, *ignored* as
+  a placeholder set; nothing may depend on there being exactly four, on their names, or on their
+  order. Adding a state later is additive and cheap; **redefining what an existing state means is
+  not**, because it reinterprets marks already made.
+- **FR-006b**: **Absence of a record means the word has never been judged**, which is distinct
+  from any state the reader can choose. A record exists only where the reader made an explicit
+  judgment — including a deliberate downgrade to *unknown*, which is a judgment and creates a
+  record like any other. Words merely displayed and never touched cost no rows.
 - **FR-007**: A state MUST attach to the **word**, not to the occurrence, so that marking a word in
   one document marks every occurrence of it everywhere, including in documents saved later.
 - **FR-008**: Word identity MUST be represented by an internal identifier that is independent of
@@ -230,8 +243,13 @@ records what specifically is expected to change about *this slice's* output.
 - **Whitespace, punctuation, digits, and Latin text are displayed but not markable.** They are
   tokens for the purpose of tiling the document exactly (FR-005) but carry no state and are not
   tappable. Marking punctuation would pollute the word list with items that can never be studied.
-- **"Unknown" is a real recorded state, not the absence of a record.** A word deliberately marked
-  unknown is different from one never seen, and only an explicit state distinguishes them.
+- **The state set is a placeholder, not a decision.** Four states ship in slice 0 because marking
+  needs something to choose between. Whether this product wants four discrete states, a numeric
+  familiarity level, or something else is deliberately unsettled, and FR-006a keeps it so.
+- **Absence of a record means never judged.** Explicitly marking a word *unknown* is a judgment
+  and creates a record; a word you merely read past has none. Both remain distinguishable — the
+  first has a state change in the history, the second has nothing — without writing a row for
+  every character displayed.
 - **Character offsets are Unicode code points**, counted identically on server and client. This is
   asserted by test rather than assumed, because the two environments count differently by default.
 - **One reader, no authentication.** The public URL is unlisted. This is acceptable because the

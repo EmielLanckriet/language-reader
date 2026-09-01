@@ -57,6 +57,9 @@ each of which changes the data model if wrong:
 
 - Punctuation, digits, whitespace and Latin text are tokens for tiling purposes but are not
   markable.
-- "Unknown" is an explicitly recorded state, distinct from a word never encountered.
+- ~~"Unknown" is an explicitly recorded state~~ — **resolved before clarify.** The state set is now
+  a declared placeholder (FR-006a) and absence of a record means never-judged (FR-006b). What
+  remains for clarify: whether discrete states are the right shape to start from at all, given
+  LingQ uses graded familiarity levels rather than named states.
 - Character offsets are Unicode code points, counted identically on both sides. The two runtime
   environments do not do this by default, so this is asserted by test.
