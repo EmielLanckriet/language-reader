@@ -242,8 +242,12 @@ fails. See ADR-0007.
 - **Chinese analysis**: `Intl.Segmenter` for segmentation, a JavaScript library for pronunciation,
   CC-CEDICT as a data file. The analyzer's output is never authoritative; user corrections are
   earned data anchored on character offsets (ADR-0002).
-- **Verified kernels**: Dafny 4.11.0, compiled with `dafny build -t:js`, requiring `bignumber.js`.
-  Scope unchanged from ADR-0005 — small pure algebraic components only.
+- **Verified kernels**: Dafny 4.11.0 installed as a `dotnet tool`, compiled with
+  `dafny build -t:js`, requiring `bignumber.js`. Scope unchanged from ADR-0005 — small pure
+  algebraic components only.
+- **Toolchain versions** (verified working 2026-09-01): Node 24.20.0 LTS via `nvm`; .NET SDK
+  10.0.400 LTS with the 8.0 runtime, user-local in `~/.dotnet`; spec-kit 1.0.3. All installed
+  without `sudo` and without altering system packages.
 - **Anki integration**: `.apkg` export. The reader remains independent of `sentencegen`
   (ADR-0006).
 - **LLM analysis** (optional tier): called directly from the browser with the reader's own key,

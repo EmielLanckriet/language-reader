@@ -69,24 +69,41 @@ module by construction. This is a foreseen outcome, not a failure.
 
 ## Toolchain (verified working, 2026-08-28)
 
-- **Dafny 4.11.0.**
-- `dotnet tool install -g dafny` **FAILS** on this machine: Dafny 4.11.0 targets `net8.0` and the
-  installed SDK is .NET 6.0.132. Recorded so it is not rediscovered.
-- The self-contained release is used instead: `dafny-4.11.0-x64-ubuntu-22.04.zip`, unpacked to
-  `~/.local/opt/dafny`. It bundles its own runtime and does not use the system .NET. It is NOT on
-  `PATH`; invoke it by full path or add it deliberately.
-- **Planned before slice 2**: install .NET 8 and move to `dotnet tool install -g dafny`. The
-  self-contained build is a stopgap that no package manager tracks and that must be upgraded by
-  hand. Dafny is not used until slice 2, so there is time to do this properly rather than under
-  deadline.
-- Confirmed end to end for **Python**: `dafny verify` proves the lemmas; `dafny build -t:py` emits
-  a Python package; the result imports and runs from ordinary Python. Datatype constructors
-  surface as `Status_Known()`, top-level functions as `module_.default__.FunctionName`.
-- **Superseded by ADR-0007: the target is now `js`, also confirmed working.** `dafny build -t:js`
-  verifies the same lemmas, emits `Status.js`, and runs under Node. It requires `bignumber.js` as
-  an npm dependency, because Dafny integers are arbitrary-precision; without it the build fails at
-  the run step with `Cannot find module 'bignumber.js'`, which looks like a Dafny failure and is
-  not.
+- **Dafny 4.11.0**, installed via `dotnet tool install -g dafny`. **This is now the live setup**;
+  the notes below supersede the self-contained stopgap previously recorded here.
+- The tool install originally **failed** on .NET 6.0.132, because Dafny 4.11.0 targets `net8.0`.
+  Resolved by installing .NET properly (2026-09-01): SDK **10.0.400 LTS** plus the **8.0 runtime**,
+  both user-local under `~/.dotnet` via `dotnet-install.sh`, no `sudo` and no system packages
+  touched.
+- **The 8.0 runtime is required even with the 10 SDK.** .NET tools do not roll forward across major
+  versions by default, so a `net8.0` tool will not run on a 10-only machine. Installing the SDK
+  alone is not enough.
+- **`DOTNET_ROOT` must be set to `~/.dotnet`.** Without it the tool shim finds the apt-installed
+  `/usr/bin/dotnet` (.NET 6) and fails with a bare "You must install or update .NET to run this
+  application", which names neither the real cause nor the fix. Exported from `~/.bashrc` alongside
+  the PATH entry.
+- **The `dotnet tool` package does not bundle Z3, and Dafny cannot verify anything without it.**
+  This is the one respect in which the "proper" install is worse than the self-contained release.
+  Symptom: `Z3 is not found` on every `verify` or `build`.
+- **Putting Z3 on `PATH` does not fix it.** Dafny looks for an executable named exactly `z3`, or
+  for a `z3/bin/z3-4.12.1` layout beside its own binary. A directory containing `z3-4.12.1` on
+  `PATH` is ignored.
+- **The fix**: copy a `z3` directory to
+  `~/.dotnet/tools/.store/dafny/<version>/dafny/<version>/tools/net8.0/any/z3`. The self-contained
+  release bundles a matched pair (`z3-4.12.1` and `z3-4.14.1`) and is retained at
+  `~/.local/opt/dafny` **solely as the source of Z3**; the Dafny binary there is no longer used.
+- **`dotnet tool update dafny` will delete that Z3 directory**, because it replaces the version
+  directory wholesale. Verification will then fail with the same unhelpful message. Re-copy Z3
+  after every Dafny upgrade. Recorded here because this will otherwise cost an hour.
+- **Confirmed working on the updated toolchain (2026-09-01)**: `dafny verify` proves the lemmas,
+  `dafny build -t:js` emits `Status.js`, and it runs under **Node 24.20.0**. The `-t:py` target
+  also still works; `js` is the live one per ADR-0007.
+- `-t:js` requires **`bignumber.js`** as an npm dependency, because Dafny integers are
+  arbitrary-precision. Without it the build fails at the run step with `Cannot find module
+  'bignumber.js'`, which reads as a Dafny failure and is not.
+- Generated shapes for Python were: datatype constructors as `Status_Known()`, top-level functions
+  as `module_.default__.FunctionName`. The hand-written adapter exists to hide whichever shapes the
+  active target produces.
 - The hand-written adapter exists to hide the generated shapes, whichever target is used.
 
 ## Alternatives Rejected
@@ -121,9 +138,10 @@ managed by any package manager and must be upgraded by hand. Contributors — an
 must know that editing the generated Python is meaningless. Verification time is added to the
 build.
 
-**On the .NET situation.** The self-contained binary avoids the SDK version problem entirely, but
-it also means Dafny will not track system updates. Installing .NET 8 and switching to
-`dotnet tool install` is planned before slice 2, when Dafny is first actually used.
+**On the .NET situation — resolved.** Done on 2026-09-01, ahead of slice 2 rather than under
+deadline. Dafny is now a managed `dotnet tool`, so `dotnet tool update` upgrades it. The residual
+manual step is Z3, which must be re-copied after each upgrade; that is a worse arrangement than
+the self-contained release had, and is the honest cost of the move.
 
 **Revisit if.** Verification of merge/split turns out to require modelling so much of the
 surrounding data structure that the kernel stops being small — that would mean the operations are

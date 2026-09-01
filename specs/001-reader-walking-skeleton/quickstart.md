@@ -5,10 +5,16 @@ proving the slice works.
 
 ## Prerequisites
 
-- Node 20 or later (Node 18 is installed on this machine and will need upgrading — SvelteKit 2 and
-  the SQLite-WASM tooling both expect 20+)
+- **Node 24.20.0 LTS** — installed 2026-09-01 via `nvm`, set as the default and loaded from
+  `~/.bashrc`. Replaces the Ubuntu 24.04 system Node 18, which was below SvelteKit 2's minimum. The
+  system package is untouched; `nvm` shadows it on `PATH`.
 - A GitHub repository with Pages enabled
 - An Android phone on the same wifi as the development machine
+
+Also installed on this machine, for slice 2 rather than slice 0: **.NET SDK 10.0.400 LTS with the
+8.0 runtime** (user-local in `~/.dotnet`) and **Dafny 4.11.0** as a `dotnet tool`. Not needed here;
+see [ADR-0005](../../docs/adr/0005-verified-kernels-in-dafny.md) for its two non-obvious
+requirements — `DOTNET_ROOT`, and Z3 having to be placed by hand.
 
 ## Setup
 
