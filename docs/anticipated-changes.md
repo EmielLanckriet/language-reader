@@ -57,7 +57,7 @@ settled in an ADR and no longer open questions.
 | TTS segmentation disagreeing with reader segmentation | medium | cheap | jieba is a **global** singleton and the Kokoro front-end (misaki) follows it, so a reader segmenting with pkuseg and a TTS path segmenting with jieba will disagree within one sentence. `sentencegen/tts.py` already solves this generically by nudging jieba toward a target segmentation, gated on the words concatenating back to the sentence exactly. The reader's segmentation is therefore an *input* to TTS, not an independent choice. | Defer (solution known) |
 | User segmentation corrections | high | **expensive** | **Earned data.** No segmenter can be right, because word-hood is undefined and the correct split is learner-dependent. Corrections are the actual fix, and they must survive re-segmentation — which they do, being anchored on character offsets. | **Built in slice 1** |
 | User dictionary feeding the segmenter | medium | cheap | Additive word list; improves accuracy cheaply. Corrections can feed it. | Defer |
-| LLM gloss / heteronym / re-segmentation enrichment | medium | cheap | Supplements the local segmenter and dictionary, never replaces them. Viable for short content — subtitles and transcripts, both rated high — where per-passage cost is trivial. System must work fully without it. | Defer |
+| LLM as a **joint** analyzer: segmentation, reading and contextual gloss in one pass | high | cheap | **Re-framed and promoted.** Its value is not better glossing but that it is *joint*: a pipeline commits to a segmentation using information the gloss step no longer has, and a split of 花钱 into 花 + 钱 cannot be repaired downstream because there is no 花钱 left to reason about. One pass that sees the whole sentence has no such propagation. No classical tool offers this — joint segmentation + POS is standard, joint segmentation + *sense* is not, because sense inventories are not agreed. An LLM needs no inventory since it writes the gloss. For short content (subtitles, transcripts — both rated high) it is plausibly the **primary** analyzer, not a supplement; cost, latency and offline keep the local segmenter primary for bulk text. Architecturally free: just another named analyzer with a version, its gloss derived annotation on the token. | Defer; **reconsider ordering at slice 1** |
 | Local LLM rather than an API for enrichment | medium | cheap | The developer already runs Qwen3-4B-Instruct via `llama_cpp` in `sentencegen`. Free, offline, no key. Honest caveat: a 4B model produces weaker context-appropriate glosses than a frontier model, and glossing is the task where quality is the entire value. Worth measuring rather than assuming either way. | Defer |
 
 ## Content Sources
@@ -215,6 +215,14 @@ tier already in the register, better justified than when it was added.
 Full WSD's bottleneck is not the model but the **sense inventory** — Chinese sense resources have
 patchy coverage and disagree — which is why the inventory-free options above are the practical
 ones.
+
+**On "by the time you have segmented, the context is gone."** True of the analyzer's own
+reasoning, and the reason pipelines lose to joint models. Not true of this system's storage:
+`raw_content` is retained verbatim and tokens are derived, so re-analysing with a better or joint
+model is a recompute rather than a lost opportunity (ADR-0003). What cannot be repaired after the
+fact is the pass the learner actually *reads with* — which is the argument for the joint LLM
+analyzer above, and the same complaint about first-pass segmentation quality arriving from a
+third direction.
 
 **The likely resolution is sense *ranking*, not sense *splitting*.** What a reader wants on
 tapping 花 is the right sense shown first, not two 花 entries in their word list. That is
