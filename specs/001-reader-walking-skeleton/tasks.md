@@ -71,18 +71,18 @@ nothing added or dropped. Delivers a plain reading surface even with no marking.
 
 ### Tests first
 
-- [ ] T015 [P] [US1] Write failing property test in `tests/domain/tiling.test.ts` asserting tokens are ordered, non-overlapping, gapless and reassemble to the input exactly — over generated inputs mixing hanzi, Latin text, punctuation, newlines and astral-plane characters. **Never assert an expected segmentation.**
+- [X] T015 [P] [US1] Write failing property test in `tests/domain/tiling.test.ts` asserting tokens are ordered, non-overlapping, gapless and reassemble to the input exactly — over generated inputs mixing hanzi, Latin text, punctuation, newlines and astral-plane characters. **Never assert an expected segmentation.**
 
 ### Implementation
 
-- [ ] T016 [US1] Implement `src/lib/domain/tiling.ts` — the tiling invariants of FR-005 as a checkable function over a token list and its source content, so the rule lives in one place rather than only inside T015's assertions
-- [ ] T017 [P] [US1] Define the `Analyzer` interface in `src/lib/analyzer/types.ts` per contracts/analyzer.md — `analyze` returns a `Promise`, deliberately, so a later async and fallible analyzer fits
-- [ ] T018 [P] [US1] Define the `ContentSource` interface in `src/lib/content/types.ts` per contracts/content-source.md
-- [ ] T019 [US1] Implement the placeholder analyzer in `src/lib/analyzer/character.ts` — one token per code point, `name: "character-splitter"`, `version: "1"`, `isWord` true for CJK ranges. **Do not improve it.**
-- [ ] T020 [US1] Implement `src/lib/content/paste.ts` — validate non-empty and at most 5,000 Unicode code points, measured through `src/lib/domain/offsets.ts`; emit `text/plain` with a title from the opening characters (FR-018, FR-020)
-- [ ] T021 [US1] Implement `saveDocument`, `listDocuments` and `getDocument` in `src/lib/storage/repository.ts`; `saveDocument` rejects analyzer output failing `src/lib/domain/tiling.ts`, and `getDocument` returns retained raw content **and** tokens, per contracts/repository.md
-- [ ] T022 [US1] Build the library screen in `src/routes/+page.svelte` — list saved documents, paste-and-save form, rejection messages
-- [ ] T023 [US1] Build the reader screen in `src/routes/read/[id]/+page.svelte` — render tokens as discrete elements, mobile-first, no horizontal scroll (FR-017)
+- [X] T016 [US1] Implement `src/lib/domain/tiling.ts` — the tiling invariants of FR-005 as a checkable function over a token list and its source content, so the rule lives in one place rather than only inside T015's assertions
+- [X] T017 [P] [US1] Define the `Analyzer` interface in `src/lib/analyzer/types.ts` per contracts/analyzer.md — `analyze` returns a `Promise`, deliberately, so a later async and fallible analyzer fits
+- [X] T018 [P] [US1] Define the `ContentSource` interface in `src/lib/content/types.ts` per contracts/content-source.md
+- [X] T019 [US1] Implement the placeholder analyzer in `src/lib/analyzer/character.ts` — one token per code point, `name: "character-splitter"`, `version: "1"`, `isWord` true for CJK ranges. **Do not improve it.**
+- [X] T020 [US1] Implement `src/lib/content/paste.ts` — validate non-empty and at most 5,000 Unicode code points, measured through `src/lib/domain/offsets.ts`; emit `text/plain` with a title from the opening characters (FR-018, FR-020)
+- [X] T021 [US1] Implement `saveDocument`, `listDocuments` and `getDocument` in `src/lib/storage/repository.ts`; `saveDocument` rejects analyzer output failing `src/lib/domain/tiling.ts`, and `getDocument` returns retained raw content **and** tokens, per contracts/repository.md
+- [X] T022 [US1] Build the library screen in `src/routes/+page.svelte` — list saved documents, paste-and-save form, rejection messages
+- [X] T023 [US1] Build the reader screen in `src/routes/read/[id]/+page.svelte` — render tokens as discrete elements, mobile-first, no horizontal scroll (FR-017)
 
 **Checkpoint**: US1 is independently usable. Paste, save, reopen, read. Nothing is markable yet.
 
@@ -109,7 +109,7 @@ appearance survived. Open a second document containing a marked word; it already
 - [ ] T029 [US2] Implement `src/lib/domain/history.ts` — append-only entry construction recording *what was asserted*, never what the state became (FR-010a)
 - [ ] T030 [US2] Implement `assertState` in `src/lib/storage/repository.ts` — append `status_event` first, allocating `device_seq` and writing `provenance` (`manual` in slice 0, per data-model.md) and `user_id`, then update `word_state` carrying the same two values; never the reverse (FR-012, FR-013)
 - [ ] T031 [US2] Implement `getStates`, `readHistory` and `rebuildProjection` in `src/lib/storage/repository.ts` per contracts/repository.md; `rebuildProjection` must be exercised by T025, not merely written
-- [ ] T032 [US2] Implement find-or-create of lexemes in `src/lib/storage/repository.ts`, applying the language provider's identity rule rather than the repository's own (FR-009)
+- [X] T032 [US2] Implement find-or-create of lexemes in `src/lib/storage/repository.ts`, applying the language provider's identity rule rather than the repository's own (FR-009). **Landed early, in T021**: `token`'s `CHECK ((is_word = 1) = (lexeme_id IS NOT NULL))` means a document cannot be saved without resolving its word tokens to lexemes, so this is a prerequisite of US1 rather than of US2. The rule is exposed as `Analyzer.lexemeKey`, which the contract's obligation 5 requires but its interface sketch omits
 - [ ] T033 [US2] Build the state menu in `src/lib/ui/StateMenu.svelte` — opens on tap, lists available states from configuration, every target at least 44x44 CSS pixels (FR-017)
 - [ ] T034 [US2] Wire tapping and visual state distinction into `src/routes/read/[id]/+page.svelte`; untouched words must be visually distinct from any chosen state (FR-006b)
 

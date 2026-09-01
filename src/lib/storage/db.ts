@@ -44,6 +44,30 @@ export function run(db: Database, sql: string, bind: SqlValue[] = []): void {
 }
 
 /**
+ * Run `work` in a transaction, rolling back if it throws.
+ *
+ * Every write that spans more than one statement goes through this. The history and the projection
+ * it feeds must land together or not at all, and allocating a device sequence number outside the
+ * transaction that uses it would leave a gap looking exactly like a lost entry.
+ */
+export function transact<T>(db: Database, work: () => T): T {
+	db.exec('BEGIN');
+	try {
+		const result = work();
+		db.exec('COMMIT');
+		return result;
+	} catch (error) {
+		db.exec('ROLLBACK');
+		throw error;
+	}
+}
+
+/** The id SQLite assigned to the row just inserted. */
+export function lastInsertId(db: Database): number {
+	return Number(queryRows(db, 'SELECT last_insert_rowid() AS id')[0].id);
+}
+
+/**
  * Migrations are numbered, plain SQL, and applied in order — no ORM and no migration framework.
  * Reading the schema means reading the SQL, which is the point (ADR-0008, Principle VII).
  */
@@ -78,19 +102,14 @@ export function applyMigrations(db: Database): void {
 	for (const migration of MIGRATIONS) {
 		if (alreadyApplied(db, migration.version)) continue;
 
-		db.exec('BEGIN');
-		try {
+		transact(db, () => {
 			db.exec(migration.sql);
 			run(db, 'INSERT INTO schema_migration (version, name, applied_at) VALUES (?, ?, ?)', [
 				migration.version,
 				migration.name,
 				new Date().toISOString()
 			]);
-			db.exec('COMMIT');
-		} catch (error) {
-			db.exec('ROLLBACK');
-			throw error;
-		}
+		});
 	}
 }
 
