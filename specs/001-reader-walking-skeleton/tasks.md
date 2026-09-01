@@ -127,7 +127,7 @@ complete Stories 1 and 2.
 - [ ] T034 [P] [US3] Request persistent storage with `navigator.storage.persist()` at first write in `src/lib/storage/db.ts`, recording the outcome to diagnostics
 - [ ] T035 [US3] Verify the production build locally with `npm run build && npm run preview`, confirming `paths.base` resolves assets correctly
 - [ ] T036 [US3] Add the GitHub Pages deployment workflow in `.github/workflows/deploy.yml` and enable Pages on the repository
-- [ ] T037 [US3] Deploy, then complete a full paste–read–mark cycle **on the phone, away from the development machine** (SC-008). **This slice is not complete until this passes.**
+- [ ] T037 [US3] Deploy, then complete a full paste–read–mark cycle **on the phone, away from the development machine** — steps 1–5 of `specs/001-reader-walking-skeleton/quickstart.md` § Validation (SC-008). **This slice is not complete until this passes.**
 
 **Checkpoint**: Principle I satisfied. The slice is shippable.
 
@@ -135,10 +135,10 @@ complete Stories 1 and 2.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T038 [P] Verify astral-plane handling by hand: paste a passage containing an Extension-B hanzi, mark tokens on both sides of it, reload, confirm marks land on the right tokens. This fails silently if offsets are wrong anywhere
+- [ ] T038 [P] Verify astral-plane handling by hand per `specs/001-reader-walking-skeleton/quickstart.md` § Two checks that are easy to skip — paste a passage with an Extension-B hanzi, mark tokens either side, reload, confirm marks land on the right tokens. Fails silently if any offset is counted in UTF-16 units
 - [ ] T039 [P] Call `rebuildProjection()` against a database holding real marks and confirm nothing changes — the executable proof that `word_state` is a cache
 - [ ] T040 [P] Induce each failure from quickstart.md step 4 on the phone and confirm each is identifiable from the interface alone (SC-009)
-- [ ] T041 [P] Measure against SC-002 and SC-003 on the phone: a 2,000-character document renders within 2 s, a state change shows within 200 ms
+- [ ] T041 [P] Measure SC-002 and SC-003 on the phone and record the figures in `specs/001-reader-walking-skeleton/quickstart.md` — a 2,000-character document renders within 2 s, a state change shows within 200 ms
 - [ ] T042 Write `README.md` covering setup, the phone development loop with `--host`, tests, and deployment
 - [ ] T043 Record in `docs/anticipated-changes.md` anything slice 0 revealed that should change slice 1's plan
 
