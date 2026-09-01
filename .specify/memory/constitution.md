@@ -1,30 +1,34 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.2.0 → 1.3.0
-Bump rationale: MINOR. A principle is added (VII) and Principle II's mandatory
-list is materially expanded. Technology Stack gains Dafny and narrows the Chinese
-segmenter. No principle removed or redefined incompatibly. Recorded in ADR-0004
-(readability) and ADR-0005 (verified kernels).
+Version change: 1.3.0 → 1.4.0
+Bump rationale: MINOR, and the judgement is worth stating. The Technology Stack
+is replaced wholesale — the backend, database server and hosting platform are
+removed — but no principle is removed or redefined incompatibly. Principle I
+keeps its substance (a slice is not done until deployed and used on a phone) and
+loses only the name of a specific host. Principle II's mandatory list is
+unchanged; only its tooling moves language. Semantic versioning here governs the
+constitution as a document, not the size of the engineering change. Recorded in
+ADR-0007.
 
 Modified principles:
-  - II. Test-First On State Transitions — adds lexeme merge/split and status event
-    replay to the mandatory list; adds the rule that properties proved in Dafny are
-    not duplicated as example-based tests; states that derived data is tested for
-    invariants rather than exact values.
-  - VII. Readable Over Clever — ADDED. Readability ranked above brevity and
-    cleverness, with a source-versus-artifact carve-out for generated code.
+  - I. Every Slice Ships To The Phone — no longer names Fly.io; requires the app
+    be deployed to its host and installed on the phone.
+  - II. Test-First On State Transitions — tooling moves from pytest/hypothesis to
+    vitest and a property-based library, following the domain core to TypeScript.
+    The mandatory list and the exemptions are unchanged.
 
-Added sections:
-  - Core Principles → VII. Readable Over Clever
-  - Additional Constraints → Dafny; segmenter narrowed to pkuseg; optional LLM
-    enrichment tier
-
+Added sections: none
 Removed sections: none
+
+Rewritten:
+  - Additional Constraints → Technology Stack. No server, no backend language, no
+    database server, no hosting subscription. Browser storage, Intl.Segmenter,
+    static hosting. Records the three preserved options (Pyodide, native wrapper,
+    laptop-side import) as available rather than rejected.
 
 Deferred items:
   - TODO(PROJECT_NAME): Working title "Language Reader" is in use throughout.
-    The final product name has not been chosen. Renaming is a PATCH-level
-    amendment and requires no ADR.
+    Renaming is a PATCH-level amendment and requires no ADR.
 
 Follow-up: none blocking.
 -->
@@ -35,9 +39,10 @@ Follow-up: none blocking.
 
 ### I. Every Slice Ships To The Phone
 
-Every feature MUST be deployed to Fly.io and exercised on a real Android phone before it is
-considered complete. Working on localhost is not "done". A feature that has never run on the
-target device has not been validated.
+Every feature MUST be deployed to its host and exercised on a real Android phone, from the
+installed app, before it is considered complete. Working on localhost is not "done". A feature
+that has never run on the target device has not been validated. This principle names no specific
+host: what it requires is that the thing you use is the thing you shipped.
 
 Rationale: The primary risk on this project is accumulating architectural decisions that were
 never tested against reality. The developer is solo and cannot evaluate an architecture by
@@ -57,6 +62,10 @@ Tests MUST be written before implementation for the following, and only the foll
 
 Property-based tests MUST be used where the state space is large enough to make example-based
 tests unconvincing. UI components, wiring, and glue code are explicitly EXEMPT.
+
+Tooling follows the domain core's language: `vitest` as runner and a property-based library such
+as `fast-check`. The mandatory list above and the exemptions are language-independent and are
+unchanged by this.
 
 **Derived data is tested for its invariants, never for exact values.** Segmentation output MUST
 be asserted on properties — spans non-overlapping, spans covering the input exactly, offsets
@@ -218,27 +227,35 @@ something else is locally convenient; written down, it can be argued against. Se
 
 **Technology Stack.** The following stack is fixed; deviation requires an ADR.
 
-- **Backend**: Python 3, FastAPI, SQLite on a persistent Fly.io volume.
-- **Chinese NLP**: pkuseg (`spacy-pkuseg`) for segmentation, pypinyin for pronunciation,
-  CC-CEDICT for dictionary data. jieba is NOT used: segmentation quality is a known pain point
-  from the developer's own experience with comparable tools, and starting at the weakest option
-  would defer to a state already known to disappoint. A user dictionary MUST be supported.
-- **Segmentation correction**: the analyzer's output is never authoritative. User corrections
-  are earned data, anchored on character offsets per ADR-0002, and MUST survive re-segmentation.
-- **Verified kernels**: Dafny 4.11.0, self-contained install, compiled to Python via
-  `dafny build -t:py`. Scoped to small pure algebraic components of the domain core — merge and
-  split first. Never for I/O, database, HTTP, NLP, or UI. See ADR-0005.
-- **LLM enrichment** (optional tier): context-appropriate glosses, heteronym resolution, and
-  re-segmentation of short passages. It supplements the local segmenter and dictionary; it does
-  NOT replace them, and the system MUST remain fully functional without it.
-- **Dutch NLP**: spaCy `nl_core_news_sm`.
-- **Frontend**: SvelteKit, delivered as an installable PWA. Mobile-first. Reading MUST work
-  offline.
-- **Deployment**: Fly.io with a persistent volume. The project MUST be containerized from the
-  first commit.
-- **Anki integration**: `.apkg` export via genanki for v1. A sync client built on the official
-  `anki` Python library is the intended successor path and MUST remain reachable from the
-  export seam in Principle V.
+**There is no server.** No backend, no database server, no hosting subscription, and nothing that
+requires a payment method or can lapse. This is a reliability requirement rather than a cost
+optimisation: a design depending on a subscription its owner will not maintain is a design that
+fails. See ADR-0007.
+
+- **Application**: TypeScript and SvelteKit, built as an installable, offline-capable web app.
+  Mobile-first. The domain core MUST NOT import framework or storage APIs (Principle V).
+- **Storage**: browser storage on the device. The app MUST request persistent storage via
+  `navigator.storage.persist()`, and MUST provide an export file early — browser storage is
+  evictable by default, and reader data is earned and irreplaceable.
+- **Hosting**: a free static host that requires no payment method. The repository holds code only;
+  reader data never reaches it.
+- **Chinese analysis**: `Intl.Segmenter` for segmentation, a JavaScript library for pronunciation,
+  CC-CEDICT as a data file. The analyzer's output is never authoritative; user corrections are
+  earned data anchored on character offsets (ADR-0002).
+- **Verified kernels**: Dafny 4.11.0, compiled with `dafny build -t:js`, requiring `bignumber.js`.
+  Scope unchanged from ADR-0005 — small pure algebraic components only.
+- **Anki integration**: `.apkg` export. The reader remains independent of `sentencegen`
+  (ADR-0006).
+- **LLM analysis** (optional tier): called directly from the browser with the reader's own key,
+  pay-per-use, never a subscription. The app MUST remain fully functional without it.
+
+**Preserved options, available rather than rejected** (ADR-0007). Taking any of these is additive
+and needs no revisiting of the no-server decision:
+
+1. **Pyodide** — jieba and pypinyin in the browser, if measurement shows `Intl.Segmenter` is
+   materially worse on real reading material.
+2. **A native wrapper** over the same codebase, if browser storage proves unreliable in practice.
+3. **A laptop-side Python import tool**, producing a file the phone imports.
 
 Every new dependency MUST carry a named justification, per Principle V.
 
@@ -279,4 +296,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 1.3.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-08-28
+**Version**: 1.4.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-01

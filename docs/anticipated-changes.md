@@ -75,7 +75,8 @@ settled in an ADR and no longer open questions.
 
 | Change | Plausibility | Retrofit cost | Reasoning | Action |
 |---|---|---|---|---|
-| Anki sync client replacing `.apkg` export | high | cheap | Second implementation behind the export seam. | Defer |
+| Anki `.apkg` export | high | medium ↑ | **Re-rated under ADR-0007.** genanki is Python, and there is no Python in the browser, so building an `.apkg` client-side needs a JavaScript writer for Anki's format — real work, and a format that is not trivial. Two cheaper routes: export a plain word list the laptop turns into a deck, or run the export through Pyodide. Not a data problem; the export seam is unaffected. | Defer; decide route at slice 4 |
+| Anki sync client replacing `.apkg` export | medium ↓ | cheap | Second implementation behind the export seam. Harder without a server, since sync needs credentials and a network client; the laptop route sidesteps it entirely. | Defer |
 | Import known words FROM the existing Anki collection | medium | **expensive** | Earned data from an external system of record. Needs a provenance marker distinguishing imported status from status earned in-app; retrofitting it means backfilling every row with a guess. | **Decided** — `provenance` column from first migration |
 | Non-Anki SRS target | low | cheap | The export seam covers this. | Defer |
 | Build our own FSRS scheduler instead of exporting to Anki | medium | cheap | `py-fsrs`/`ts-fsrs` make the algorithm a library, so this is a build decision, not a data one — **and it is already hedged**: `status_event` and `reading_session` are exactly the history a scheduler would need to start from, so choosing this later costs no lost data. The real risk is not technical: keeping Anki for years of tuned history while also reviewing in the reader means **two review queues and neither has the full picture**, which is worse than either alone. Migrating fully means giving up AnkiDroid's review UI and `sentencegen`'s nightly enrichment, and building a review app instead of a reading app. Arrives naturally at slice 4, by which point months of real use will have shown whether the export step is friction or fine. | **Decide at slice 4** |
@@ -197,8 +198,12 @@ decides is the ties — and it tilts the open browser-segmentation question belo
 
 This is a preference ordering rather than a rule, but it is written down for the reason ADR-0004
 gives: an unwritten preference is traded away silently whenever something else is locally
-convenient. **It may warrant a constitutional principle rather than a register entry — that is an
-open decision, not one taken here.**
+convenient.
+
+**Largely settled by [ADR-0007](adr/0007-no-server-browser-first.md)**: there is no server, so
+computation is local by construction. The preference now decides narrower questions — whether to
+add Pyodide, whether to call an LLM — rather than the architecture. It may still warrant a
+constitutional principle; that remains an open decision.
 
 ## Decided: The Analyzer Is A User Choice, Per Document
 
@@ -307,7 +312,14 @@ presentation over derived data: no schema, no discriminator, no migration, and i
 gracefully, whereas a wrong split corrupts the word list. A flashcard scheduler would need the
 split; a reader probably does not.
 
-**Should segmentation happen in the browser rather than on the server?** `Intl.Segmenter` removes
+**~~Should segmentation happen in the browser rather than on the server?~~ Decided by
+[ADR-0007](adr/0007-no-server-browser-first.md): in the browser, because there is no server.**
+What remains open is narrower and is a *measurement*, not an argument: is `Intl.Segmenter`
+materially worse than jieba on text this reader would actually read? If it is, and neither the
+vocabulary overlay nor manual correction closes the gap, Pyodide brings jieba and pypinyin into
+the browser at a one-off download cached after installation. The original framing follows.
+
+**Superseded framing —** `Intl.Segmenter` removes
 the premise that Python is forced — segmentation, the reason the backend exists, may not need a
 backend, and it would dissolve the jieba/TTS coupling above.
 

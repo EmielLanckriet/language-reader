@@ -12,8 +12,8 @@ useful for language learning.
 
 ## Purpose And Non-Goals
 
-This slice deliberately does the least possible while still touching persistence, API, interface,
-deployment, and the developer's actual phone. Simplifications listed under Out Of Scope are
+This slice deliberately does the least possible while still touching storage, domain logic,
+interface, deployment, and the developer's actual phone. Simplifications listed under Out Of Scope are
 **scheduled decisions, not oversights**, and MUST NOT be "improved" during implementation. A
 change that makes this slice more useful but larger is a defect against its purpose.
 
@@ -27,20 +27,28 @@ notion of a second user.
 
 ### Session 2026-09-01
 
-- Q: Should the deployed application require any credential to read or write, given its URL is on
-  the public internet? → A: Yes — a single shared secret held in an environment variable, sent by
-  the client and stored in the browser. No accounts, no user model.
+- Q: Where does the data live, and is there a server? → A: **No server** (ADR-0007). All reader
+  data is stored on the device by the browser; hosting is a free static host with no payment
+  method and nothing that can lapse. Cross-device is dropped from this slice. This supersedes the
+  credential question below, which assumed a server to authenticate to.
+
+- ~~Q: Should the deployed application require any credential to read or write?~~ **Superseded**
+  by the no-server decision above: there is no server to authenticate to, and no reader data
+  leaves the device.
 - Q: When the reader taps a token, how do they choose which state to give it? → A: A tap opens a
   small menu of states and the reader picks one. Noted alongside: state may later depend on
   signals the reader does not supply directly (encounter counts, whether the meaning was looked
   up), so current state is treated as a projection over recorded observations rather than a value
   the reader alone sets.
-- Q: When a word is marked, which clock decides where that judgment sits in the history? → A:
-  Both are stored — when the reader asserted it, and when the server received it. Slice 0 orders
-  by the server clock; how they combine is decided in slice 1 when offline marking arrives.
+- Q: When a word is marked, what decides where that judgment sits in the history? → A: Originally
+  answered as device time plus server-receipt time. **Revised under the no-server decision**: with
+  no server there is no server clock, so each entry records the device's wall-clock time, a device
+  identifier, and a per-device counter that only increases. Ordering within one device is exact;
+  ordering across devices is decided when a second device exists.
 - Q: When something goes wrong while using the app on the phone, how is the cause found? → A:
-  Structured server logs, plus errors surfaced in the interface with enough detail to act on —
-  which layer failed and why. No client-side error reporting service.
+  Errors surfaced in the interface with enough detail to act on, plus a diagnostics record kept on
+  the device. **Revised under the no-server decision**: there are no server logs, so the
+  device-side record carries the whole burden. No third-party error reporting service.
 - Q: What is the largest document slice 0 has to accept and display? → A: Roughly 5,000
   characters, refused above that with a clear message. No pagination in slice 0; the "full
   chapter" case moves to slice 1. Accepted on the basis that raising it later is cheap.
@@ -102,24 +110,27 @@ their appearance survived.
 
 ### User Story 3 - Use it on my phone (Priority: P3)
 
-The reader opens a public URL on their Android phone and uses the application there, away from
-the machine it was built on.
+The reader opens the deployed application on their Android phone and uses it there, away from the
+machine it was built on. Their documents and marks are stored on the phone itself.
 
 **Why this priority**: Governed by Principle I — a feature that has never run on the target device
 has not been validated. Listed last because it depends on the others existing, but it is the
 condition on which this slice is complete.
 
-**Independent Test**: Open the URL on the phone over mobile data, with the development machine
-closed, and complete Stories 1 and 2.
+**Independent Test**: Open the application on the phone, with the development machine closed, and
+complete Stories 1 and 2.
 
 **Acceptance Scenarios**:
 
-1. **Given** a deployed application, **When** the reader opens its URL on their phone, **Then** the
+1. **Given** a deployed application, **When** the reader opens it on their phone, **Then** the
    interface is legible and usable at phone width without horizontal scrolling.
-2. **Given** work done on the phone, **When** the reader later opens the same URL on a laptop,
-   **Then** the same documents and marks are present.
-3. **Given** the server has restarted, **When** the reader returns, **Then** no documents or marks
-   have been lost.
+2. **Given** documents and marks made on the phone, **When** the reader closes the application and
+   reopens it later, **Then** everything is present and unchanged.
+3. **Given** a new version has been deployed, **When** the reader reloads, **Then** no documents or
+   marks have been lost.
+
+**Not in this slice**: the same data appearing on a second device. With storage on the device,
+cross-device requires an export file or real sync, both scheduled later.
 
 ---
 
@@ -130,9 +141,11 @@ closed, and complete Stories 1 and 2.
 - **Non-Chinese content**: Latin letters, digits, punctuation, and whitespace appear in real
   Chinese text. They are displayed faithfully and are not markable (see Assumptions).
 - **Characters outside the Basic Multilingual Plane**: rare Chinese characters occupy two UTF-16
-  units. Any disagreement between server and interface about what counts as one character would
-  silently corrupt every stored position. Offsets are defined once, in Unicode code points, and
-  this is asserted by test.
+  units, so a string's length in code units differs from its length in characters. Mixing the two
+  ways of counting — `.length` against iterating the string — silently corrupts every stored
+  position. Offsets are defined once, in Unicode code points, and this is asserted by test. It
+  matters beyond this application: an export read by any tool that counts in code points, such as
+  anything written in Python, must agree about where a token starts.
 - **Text over the size limit**: refused on submission with a message stating the limit and the
   submitted length, before any document is created. Slice 0 does not paginate, so a full chapter
   is out of scope rather than slow — see FR-020.
@@ -141,8 +154,8 @@ closed, and complete Stories 1 and 2.
 - **Text containing newlines**: paragraph structure is preserved rather than collapsed.
 - **Rapid repeated taps** on one token: the final state is what the reader chose, and history
   records what happened rather than a corrupted sequence.
-- **Missing or wrong credential**: the request is refused and the reader is told the credential is
-  the problem, rather than shown an empty library that looks like data loss.
+- **Storage unavailable or full**: the reader is told storage is the problem, rather than shown an
+  empty library that looks like data loss.
 
 ## Requirements *(mandatory)*
 
@@ -181,14 +194,16 @@ closed, and complete Stories 1 and 2.
 - **FR-009**: The rule deciding which occurrences count as the same word MUST belong to the
   per-language component, not to the storage design.
 - **FR-010**: Every judgment the reader makes about a word MUST be appended to a permanent
-  history, recording the word, **what the reader asserted**, and **two times: when the reader
-  asserted it, as reported by their device, and when the server received it**. History is never
-  overwritten or deleted.
-- **FR-010c**: Slice 0 orders history by the server time, since every judgment is made online and
-  the device clock may drift. The device time is recorded but not yet relied upon. Both MUST be
-  stored from the first migration: offline marking in slice 1 makes judgments minutes or hours
-  before the server sees them, and whichever time is not recorded at the moment of the judgment is
-  unrecoverable afterwards.
+  history, recording the word, **what the reader asserted**, the device's wall-clock time, **the
+  identity of the device that recorded it**, and **a counter that increases with every entry that
+  device makes**. History is never overwritten or deleted.
+- **FR-010c**: Slice 0 orders history by the per-device counter, which is exact within a device
+  and immune to clock drift, adjustment, and time-zone changes. Wall-clock time is recorded for
+  display and for later cross-device ordering, but is not what orders the log. Device identity and
+  counter MUST be stored from the first version even though only one device exists: when a second
+  one appears, merging two histories requires knowing which device produced each entry and in what
+  order, and neither can be reconstructed afterwards. Wall-clock time alone cannot do this, because
+  two devices' clocks disagree and nothing records by how much.
 - **FR-010a**: The history MUST record **observations, not conclusions**. An entry states that the
   reader asserted a value, not that the word's state became that value. Current state is a
   *projection* over the history, and the rule producing it MUST be replaceable without rewriting
@@ -203,24 +218,23 @@ closed, and complete Stories 1 and 2.
 - **FR-012**: Every stored state MUST record **how it was acquired**, so that marks made in the
   application can later be told apart from marks imported from elsewhere.
 - **FR-013**: Every record of reader-created data MUST carry an owner, defaulting to a single
-  local reader. No interface for a second reader exists in this slice.
+  local reader. No interface for a second reader exists in this slice. With storage on the device
+  this is groundwork for merging data across the reader's *own* devices, not for multiple people.
 - **FR-014**: Any stored position into a document MUST be expressed as a character offset into the
   retained source content, never as a position in the token sequence.
-- **FR-015**: All reader-created data MUST survive application restart and redeployment.
-- **FR-016**: The application MUST be reachable at a public URL and usable on an Android phone.
+- **FR-015**: All reader-created data MUST survive closing and reopening the application,
+  restarting the device, and deploying a new version of the application.
+- **FR-016**: The application MUST be deployed to its host and usable on an Android phone. All
+  reader data MUST be stored on the device; no reader data may be sent anywhere.
 - **FR-017**: The interface MUST be legible and operable at phone width without horizontal
   scrolling, and tap targets MUST be large enough to hit reliably.
 - **FR-018**: Rejected input MUST produce an explanation of what was wrong, not a silent failure.
-- **FR-019**: Every request that reads or modifies reader data MUST require a single shared
-  credential, supplied by configuration rather than stored in the repository. A request without it
-  MUST be refused. The credential is entered once and retained by the browser; it is not an
-  account, carries no identity, and MUST NOT be confused with the owner recorded under FR-013.
-- **FR-021**: The server MUST emit structured logs for every request and every failure, readable
-  from the deployment platform without additional tooling.
+- **FR-021**: Failures MUST be recorded on the device in a form the reader can retrieve and read
+  without developer tools — a diagnostics view or a log the export includes. With no server there
+  are no server logs, and Android offers no convenient console.
 - **FR-022**: A failure the reader encounters MUST be shown in the interface with enough detail to
-  identify which layer failed and why — distinguishing at minimum a rejected credential, a refused
-  input, a server error, and a request that never completed. A blank screen or a bare "something
-  went wrong" does not satisfy this. Rationale: developer tools are not readily available on
+  identify what failed and why — distinguishing at minimum a refused input, a storage failure, and
+  an unexpected error. A blank screen or a bare "something went wrong" does not satisfy this. Rationale: developer tools are not readily available on
   Android, and Principle I makes the phone the place failures are first met, so an error the
   reader cannot read costs a round trip to another device.
 - **FR-020**: Documents larger than approximately 5,000 characters MUST be refused on submission,
@@ -238,6 +252,8 @@ history that was never recorded or migrating accumulated data. This is the stand
 Constitution Principle V, and the specific items are drawn from `docs/anticipated-changes.md`.
 
 ### Key Entities
+
+All entities live on the reader's device. Nothing is stored remotely.
 
 - **Document**: something the reader saved and reads. Holds the source content verbatim, a
   declaration of its content kind, its language, and which analyzer and version produced its
@@ -263,17 +279,17 @@ Constitution Principle V, and the specific items are drawn from `docs/anticipate
   milliseconds, so marking a passage does not feel like waiting.
 - **SC-004**: Marking 100 words in one sitting results in exactly 100 states and exactly 100
   history entries, with no losses and no duplicates.
-- **SC-005**: After a deliberate restart of the running service, 100% of documents, states, and
-  history are intact.
+- **SC-005**: After closing the application, restarting the phone, and deploying a new version,
+  100% of documents, states, and history are intact.
 - **SC-006**: Reassembling any document's tokens reproduces its source content exactly, for every
   document, including ones containing punctuation, Latin text, newlines, and characters outside
   the Basic Multilingual Plane.
 - **SC-007**: Replaying the full history reproduces current state for 100% of words.
 - **SC-008**: The reader completes a full paste-read-mark cycle on their own phone, away from the
   development machine. This slice is not complete until this happens.
-- **SC-009**: Every failure deliberately induced on the phone — wrong credential, oversized input,
-  server stopped, network dropped — is identifiable from what the interface shows, without
-  consulting another device.
+- **SC-009**: Every failure deliberately induced on the phone — oversized input, storage refused,
+  malformed data — is identifiable from what the interface shows, without consulting another
+  device.
 
 ## Anticipated Changes
 
@@ -285,15 +301,21 @@ records what specifically is expected to change about *this slice's* output.
   this is a recompute against retained source content, not a migration. FR-003's requirement to
   record analyzer name and version is what makes existing documents identifiable as
   dummy-segmented and re-derivable.
+- **Offline capability and home-screen installation arrive in slice 1.** Both are nearly free
+  given data is already on the device — what is missing is an offline cache for the application
+  itself. Installation additionally unlocks `navigator.storage.persist()`, which is what stops the
+  browser evicting earned data, so it stops being optional the moment slice 1's data matters.
+- **An export file arrives in slice 1 or soon after.** With no server, it is the only backup and
+  the only route to a second device. Anki uses the same pairing: a local collection plus an export.
 - **The size limit rises and pagination arrives in slice 1.** Cheap by construction: tokens are
   derived and page boundaries are computed from character offsets rather than stored, so nothing
-  earned is disturbed. The one thing to protect is the API returning retained raw content *and*
-  tokens, so slice 1's offline caching is not built on a whole-document-only shape.
-- **Offline marking arrives in slice 1**, at which point device time and server time diverge and
-  the rule combining them must be decided. FR-010c requires both from the first migration so that
-  decision can be made with the evidence rather than by reconstruction. The append-only history is
-  already the right structure for merging offline writes: appended entries union without conflict
-  resolution.
+  earned is disturbed. The one thing to protect is that stored documents keep their raw content
+  alongside their tokens, so a paginator has the text to work from.
+- **A second device arrives with the export file or with sync**, at which point two histories must
+  merge and the rule for interleaving them must be decided. FR-010c requires device identity and a
+  per-device counter from the first version so that decision can be made with evidence rather than
+  by reconstruction. The append-only history is already the right structure: appended entries union
+  without conflict resolution, which is how Anki merges collections.
 - **State may become computed rather than asserted.** Encounter counts arrive with reading
   sessions in slice 1, and lookup events with the dictionary. Both are *earned* — no fold recovers
   an encounter or a lookup that was never written — so they are recorded when the features that
@@ -330,16 +352,20 @@ records what specifically is expected to change about *this slice's* output.
   and creates a record; a word you merely read past has none. Both remain distinguishable — the
   first has a state change in the history, the second has nothing — without writing a row for
   every character displayed.
-- **Character offsets are Unicode code points**, counted identically on server and client. This is
-  asserted by test rather than assumed, because the two environments count differently by default.
-- **One reader, one shared secret, no accounts.** Access is gated by a single static credential,
-  not by a user model. This closes the write endpoint without introducing accounts, which stay out
-  of scope. Multi-reader support remains a separate, tracked change.
-- **Network connectivity is assumed.** Offline capability is explicitly out of scope.
+- **Character offsets are Unicode code points**, never UTF-16 code units. Asserted by test rather
+  than assumed, because the obvious way to measure a string in this environment gives code units.
+- **One reader, no accounts, no credential.** There is no server to authenticate to and no reader
+  data leaves the device, so there is nothing to gate. Multi-reader support remains a separate,
+  tracked change.
+- **Network connectivity is assumed for loading the application.** Reader data is on the device,
+  but slice 0 ships no offline cache for the application itself, so it must be loaded online.
+  Offline capability and home-screen installation arrive in slice 1, where they also unlock the
+  persistent-storage request that protects earned data.
 - **A phone running a current Android browser is available for the Principle I check.**
 
 ## Dependencies
 
-- A Fly.io account with a persistent volume, for deployment and for data surviving restarts.
-- An Android phone on which the deployed URL can be opened.
+- A free static host requiring no payment method. Nothing that can lapse; no persistent volume,
+  no database, no subscription.
+- An Android phone with a current browser.
 - No dictionary, pronunciation, or language data is required by this slice.
