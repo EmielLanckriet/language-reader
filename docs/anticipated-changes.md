@@ -237,8 +237,31 @@ that in mind; do not treat unanimity among correlated sources as confidence.
 
 **Ensembling detects; it does not resolve.** A flagged span still needs a resolver: the LLM when
 online, the reader when correcting, or a heuristic — most sources agreeing, or longest match — when
-neither is available. Flagged spans are also exactly the right input to the LLM tier, which
-answers the per-passage cost question by sending only what is hard.
+neither is available.
+
+**Send the LLM the candidates, not just the text.** Retained raw content means the whole sentence
+is always available, so a flagged span goes out as *"here is the sentence; one segmenter says
+花钱, another says 花 + 钱; which is right here?"* This is better than asking for a segmentation in
+two ways. It is an easier task — choosing between two options beats producing one from scratch.
+And it is **validatable**: an open-ended segmentation can hallucinate a tiling that does not
+reproduce the input, which then has to be caught against FR-005 and somehow recovered from,
+whereas a choice between candidates is constrained to options already known to tile correctly.
+The failure mode disappears rather than being handled.
+
+This gives the LLM two distinct roles, both worth keeping:
+
+| Role | Cost | Ceiling | Safety |
+|---|---|---|---|
+| **Joint analyzer** — segments a whole passage | High | Higher: catches errors where every local segmenter agrees but is wrong | Output must be validated |
+| **Disagreement resolver** — picks between candidates on flagged spans | Low | Bounded: no disagreement, no flag | Constrained to valid options |
+
+The resolver is the everyday path; the joint analyzer earns its cost on short content such as
+subtitle lines, where a whole passage is a few dozen characters.
+
+**No server is involved in either.** The browser calls the API directly with the reader's own key,
+pay-per-use rather than by subscription, so nothing can lapse — and if the key is absent or out of
+credit the application still works on local segmentation alone. The key is held on the device,
+MUST NOT appear in the repository, and MUST be excluded from the export file.
 
 All of this is derived data over retained text, so it is recomputable and costs no schema.
 
