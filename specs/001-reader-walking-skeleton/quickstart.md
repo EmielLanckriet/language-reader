@@ -8,6 +8,12 @@ proving the slice works.
 - **Node 24.20.0 LTS** — installed 2026-09-01 via `nvm`, set as the default and loaded from
   `~/.bashrc`. Replaces the Ubuntu 24.04 system Node 18, which was below SvelteKit 2's minimum. The
   system package is untouched; `nvm` shadows it on `PATH`.
+
+  **`nvm` only shadows it in interactive shells.** A non-interactive shell — a script, a hook, an
+  agent running commands — does not source `~/.nvm/nvm.sh`, so `/usr/bin/node` wins and `node
+  --version` reports 18. Run `nvm use` (there is an `.nvmrc`) or put
+  `~/.nvm/versions/node/v24.20.0/bin` on `PATH` explicitly. Same shape as ADR-0005's `DOTNET_ROOT`
+  problem, and it will bite again.
 - A GitHub repository with Pages enabled
 - An Android phone on the same wifi as the development machine
 
@@ -31,7 +37,9 @@ build is there. Use this loop throughout; the deploy is for finishing the slice,
 
 ```bash
 npm test              # vitest, once
-npm run test:watch    # while working
+npm run test:unit     # while working
+npm run check         # types
+npm run lint          # formatting and lint
 ```
 
 Test-first is mandatory for three of these (Constitution Principle II). They fail before their

@@ -466,3 +466,57 @@ should normalize them automatically rather than leaving it to manual correction.
 **Is manual correction enough, or does the segmenter need replacing?** Slice 1 ships pkuseg plus
 correction. If corrections are frequent enough to be tedious, that is the signal to add the user
 dictionary or the LLM tier. Neither is a migration, so waiting for the evidence costs nothing.
+
+## What Slice 0 Revealed
+
+Recorded at the end of slice 0 (T046). These are things the implementation taught that the plan did
+not know, and that should change how slice 1 is approached.
+
+**Persistent storage is probably not granted until the app is installed.**
+`navigator.storage.persist()` is asked for at startup and its answer recorded. Chrome grants it
+readily to an installed site and is much less willing before that. The register previously called
+home-screen installability "nearly free" and scheduled it with offline caching; it is better
+understood as **the thing that protects earned data from eviction**. Until it ships, a browser under
+storage pressure may delete the reader's marks, and nothing will have visibly failed. This raises
+installability's priority in slice 1 rather than changing its cost.
+
+**The OPFS VFS choice is load-bearing and was nearly wrong.** The plain OPFS VFS needs a Worker and
+COOP/COEP response headers, which a static host cannot set. The SAH-pool VFS
+(`installOpfsSAHPoolVfs`) runs on the main thread and needs no headers, which is what makes
+SQLite-in-the-browser compatible with free static hosting at all. It also takes an *exclusive lease*
+on its files, so exactly one connection may exist per origin — which is why there is a single
+session module rather than per-screen connections. Anything in slice 1 that wants a Worker (a
+segmenter, an ONNX model) has to reckon with the database not being reachable from it.
+
+**SQLite-WASM runs under Node, so storage is testable without a browser.** This was not assumed
+during planning and it changes what is cheap: the schema, migrations, the append path and the
+projection rebuild are all exercised in plain `vitest` against an in-memory database. Slice 1 should
+assume the same for reading sessions and the dictionary rather than reaching for a browser harness.
+
+**Lexemes are created at import time, not at marking time.** The `token` table's
+`CHECK ((is_word = 1) = (lexeme_id IS NOT NULL))` means a document cannot be saved without resolving
+every word token to a lexeme. This moved find-or-create into slice 0's US1 and it has a consequence
+for slice 1: **re-segmenting an existing document is not only a token recompute, it creates
+lexemes.** The character-lexemes slice 0 accumulated will be orphaned rather than migrated, which is
+consistent with this slice's data being disposable — but the exemption expires when slice 1 ships,
+and after that a re-segmentation needs a decided answer for what happens to marks on the old
+lexemes. That is the first thing merge and split (slice 2) will be asked to do.
+
+**The language provider owns word identity as a function, not as a convention.** FR-009 became
+`Analyzer.lexemeKey(surface)`. The repository applies whatever it returns and holds no opinion.
+The contract's obligations required this; its interface sketch omitted it. For Chinese in slice 0
+it is the identity function, so when Dutch arrives wanting dictionary forms, that is one function
+and no migration.
+
+**GitHub Pages needs the shell published twice.** Pages serves its own 404 for any path it has no
+file for, so a bookmarked `/read/3`, or a reload while reading, would never reach the app. Pages
+does serve a repository's own `404.html`, from which the client router recovers. The build writes
+the fallback under both names. Worth remembering when the export file and any deep-linked view
+arrive.
+
+**Toolchain notes.** Current SvelteKit has no `svelte.config.js` — adapter, `paths` and `prerender`
+are arguments to the `sveltekit()` Vite plugin. Prettier's formatting pass rewrites every markdown
+file it is allowed to touch, including the constitution, the ADRs and this register; `docs/`,
+`specs/`, `.specify/` and `.claude/` are excluded from it deliberately, and that exclusion should
+survive any tooling change.
+

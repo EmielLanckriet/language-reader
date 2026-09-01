@@ -142,8 +142,8 @@ complete Stories 1 and 2.
 - [X] T042 [P] Call `rebuildProjection()` against a database holding real marks and confirm nothing changes — the executable proof that `word_state` is a cache
 - [ ] T043 [P] Induce each failure from quickstart.md step 4 on the phone and confirm each is identifiable from the interface alone (SC-009)
 - [ ] T044 [P] Measure SC-001, SC-002 and SC-003 on the phone and record the figures in `specs/001-reader-walking-skeleton/quickstart.md` — opening the app to markable tokens under 30 s, a 2,000-character document rendering within 2 s, a state change showing within 200 ms
-- [ ] T045 Write `README.md` covering setup, the phone development loop with `--host`, tests, and deployment
-- [ ] T046 Record in `docs/anticipated-changes.md` anything slice 0 revealed that should change slice 1's plan
+- [X] T045 Write `README.md` covering setup, the phone development loop with `--host`, tests, and deployment
+- [X] T046 Record in `docs/anticipated-changes.md` anything slice 0 revealed that should change slice 1's plan
 
 ---
 
