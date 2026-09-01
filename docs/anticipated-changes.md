@@ -182,6 +182,31 @@ Mandarin has stress but no tone), `ZHG2P(version="1.1")` with the matching 171-s
 (the tokenizer silently *drops* unknown symbols, so a v1.0 front-end deletes every Chinese
 symbol), and reconciling jieba's segmentation so fused compounds are not rushed.
 
+## Decided: Analysis Is Import-Time, Reading Is Render-Time
+
+A document is analysed once, when imported: segmented, romanized and glossed by whichever
+analyzer is configured. The output is stored as derived data. **Reading renders precomputed
+tokens and runs no analyzer at all** — no model, no inference, no round trip.
+
+This is the load-bearing rule for offline, and it holds whatever the analyzer is. What the phone
+caches is the analyzer's *output*, never its machinery, so analyzer size and speed are absent
+from the read path entirely. An LLM analyzer is therefore compatible with offline reading; an
+on-device LLM is not needed and is ruled out — phone-sized models are weak at exactly the
+disambiguation this is for, and Sapling's 439 MB TTS download shows what shipping a model to a
+browser costs.
+
+Consequences, each feeding the slice-1 offline ADR:
+
+- **Glosses are computed for the whole document at import**, not on demand, or tapping a word
+  offline would fail.
+- **Importing offline needs a local analyzer.** Most sources are fetched and therefore online
+  anyway; pasted text is the case wanting a fallback, and `Intl.Segmenter` is one that costs
+  nothing to ship.
+- **Segmentation corrections work offline** — merge and split are pure operations over stored
+  tokens, needing no model. Another reason the verified kernel is dependency-free.
+- The API must return retained raw content *and* tokens, so the client can hold everything
+  reading needs and so the browser-versus-server question above stays open.
+
 ## Open
 
 **How much homography does a reader actually have to resolve?** A flashcard scheduler suffers
@@ -232,9 +257,12 @@ split; a reader probably does not.
 
 **Should segmentation happen in the browser rather than on the server?** `Intl.Segmenter` removes
 the premise that Python is forced — segmentation, the reason the backend exists, may not need a
-backend. That would make offline reading much easier — though offline is
-required either way, so the question is which path serves it, not whether to attempt it — and
-would remove pkuseg and dissolve the jieba/TTS coupling above. Against it: ICU quality is likely below pkuseg, and a server is still
+backend, and it would dissolve the jieba/TTS coupling above.
+
+**Corrected framing**: this was previously said to make offline reading "trivial". It does not,
+because offline reading was never gated on the segmenter — see the import-time rule below.
+Browser segmentation buys offline *importing* and less server dependency, which are real but
+narrower. Against it: ICU quality is likely below pkuseg, and a server is still
 wanted for cross-device data. This is an architectural fork, not a detail, and needs an ADR
 before `/speckit-plan`.
 
