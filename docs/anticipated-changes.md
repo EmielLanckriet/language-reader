@@ -241,9 +241,33 @@ the scoring path is not, and is where most of the quality lives.
 Python and works; **pkuseg does not** — it publishes platform wheels with compiled extensions and
 would need an emscripten build plus its model files.
 
-**A small in-browser LLM is the wrong tool here, and is not merely expensive.** Choosing between
-two candidate segmentations is a scoring problem, which word frequencies answer directly. The task
-that resists frequencies is *sense* disambiguation — 花 flower against 花 to spend, where both
+**Correction: frequency scoring does not resolve disagreements.** A maximum-probability path over
+word frequencies is *context-free* — it returns the same answer for a character sequence wherever
+it appears. But segmenters disagree precisely **because** a span is context-dependent
+(结婚的和尚未结婚的 splitting as 和尚 / 未 or 和 / 尚未), so the disagreement set is enriched for
+exactly the cases frequency cannot decide. Frequency scoring is still worth having as a diverse
+ensemble member; it is not the resolver.
+
+**The resolver should be a small sequence tagger, not a small LLM.** Chinese word segmentation is
+character tagging, a narrow and long-studied task with strong small models. Two families fit on a
+phone: a **BiLSTM-CRF character tagger** (embedding table plus a small recurrent net, contextual by
+construction, order of 5–20 MB), or a **tiny Chinese BERT** (4 layers, 256 hidden; roughly 10–30 MB
+at int8). Either runs on CPU via ONNX Runtime Web or Transformers.js — **no WebGPU**, which matters
+given mobile support. Both are two orders of magnitude smaller than Qwen3-4B.
+
+For segmentation a small specialist likely **beats** a large generalist: LLMs are not particularly
+good at CWS. This is the inverse of sense disambiguation, where size is the whole story.
+
+*Honest cost*: a turnkey Chinese CWS model already exported to ONNX may exist, but that needs
+verifying rather than assuming; the realistic path may be converting a PyTorch model or
+fine-tuning a small encoder. Real work, and of a different kind from shipping a data file.
+
+*Consequence to weigh first*: a contextual tagger this good would probably be the **primary**
+segmenter, with `Intl.Segmenter` demoted to fallback — simplifying the ensemble rather than
+extending it.
+
+**A small in-browser LLM remains the wrong tool.** The task that resists frequencies is *sense*
+disambiguation — 花 flower against 花 to spend, where both
 readings are identical and both common — and that is exactly where a 0.5B–1B model is confidently
 wrong, on the only cases anyone would ask it about. A wrong gloss that is trusted is worse than no
 gloss. WebLLM (WebGPU), wllama (llama.cpp in WebAssembly) and Transformers.js all exist and are
