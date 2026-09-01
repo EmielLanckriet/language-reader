@@ -480,13 +480,32 @@ understood as **the thing that protects earned data from eviction**. Until it sh
 storage pressure may delete the reader's marks, and nothing will have visibly failed. This raises
 installability's priority in slice 1 rather than changing its cost.
 
-**The OPFS VFS choice is load-bearing and was nearly wrong.** The plain OPFS VFS needs a Worker and
-COOP/COEP response headers, which a static host cannot set. The SAH-pool VFS
-(`installOpfsSAHPoolVfs`) runs on the main thread and needs no headers, which is what makes
-SQLite-in-the-browser compatible with free static hosting at all. It also takes an *exclusive lease*
-on its files, so exactly one connection may exist per origin — which is why there is a single
-session module rather than per-screen connections. Anything in slice 1 that wants a Worker (a
-segmenter, an ONNX model) has to reckon with the database not being reachable from it.
+**Persisting to OPFS requires a Worker. This is unresolved at the end of slice 0.**
+
+The plan assumed the SAH-pool VFS (`installOpfsSAHPoolVfs`) could run on the main thread, needing
+no COOP/COEP headers a static host cannot set. Half of that is right: it does not need the headers,
+unlike the plain OPFS VFS, which needs `SharedArrayBuffer` and therefore cross-origin isolation.
+
+The other half is wrong. SAH-pool needs `FileSystemFileHandle.createSyncAccessHandle()`, and that
+method is `[Exposed=DedicatedWorker]` — **it does not exist on the main thread**. Measured directly
+in Chrome: every other OPFS API is present, `navigator.storage.getDirectory()` succeeds, and
+`createSyncAccessHandle` is absent. sqlite-wasm reports this as "Missing required OPFS APIs" and
+the application falls back to an in-memory database.
+
+So as it stands **nothing persists**, which fails FR-015 and SC-005 and makes the Principle I phone
+check a demonstration of a broken app. This was found by running the built app in headless Chrome
+rather than on the phone, which is the only reason it was found before the phone check rather than
+during it.
+
+The fix is to run SQLite in a dedicated Worker — sqlite-wasm ships `sqlite3-worker1.mjs` and a
+promiser for exactly this. The consequence is that the repository's methods become asynchronous.
+The domain core is untouched, which is Principle V.4 paying for itself: `offsets`, `tiling`,
+`state` and `history` have no idea where anything is stored, so the change stops at the storage
+adapter and its callers.
+
+The other consequence, once it is in a Worker, is that the Worker holds the exclusive lease on the
+database files, so *anything else* wanting a Worker in slice 1 — an ONNX segmenter, a model loader
+— has to reckon with the database not being reachable from it.
 
 **SQLite-WASM runs under Node, so storage is testable without a browser.** This was not assumed
 during planning and it changes what is cheap: the schema, migrations, the append path and the
