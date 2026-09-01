@@ -1,0 +1,19 @@
+# Package Managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# Miscellaneous
+/static/
+
+# Authored prose, not generated code. The constitution, the ADRs, the anticipated-changes
+# register and the spec-kit artifacts are hand-wrapped and hand-edited; Prettier reflows their
+# tables and rewrites *emphasis* as _emphasis_, which produces large diffs that say nothing.
+# Formatting them is not a decision this project's tooling gets to make.
+docs/
+specs/
+.specify/
+.claude/
+README.md
