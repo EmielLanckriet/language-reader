@@ -130,7 +130,7 @@ complete Stories 1 and 2.
 - [X] T037 [P] [US3] Request persistent storage with `navigator.storage.persist()` at first write in `src/lib/storage/db.ts`, recording the outcome to diagnostics
 - [X] T038 [US3] Verify the production build locally with `npm run build && npm run preview`, confirming `paths.base` resolves assets correctly
 - [X] T039 [US3] Add the GitHub Pages deployment workflow in `.github/workflows/deploy.yml` and enable Pages on the repository
-- [ ] T040 [US3] Deploy, then complete a full paste–read–mark cycle **on the phone, away from the development machine** — steps 1–5 of `specs/001-reader-walking-skeleton/quickstart.md` § Validation (SC-008). **This slice is not complete until this passes.**
+- [X] T040 [US3] Deploy, then complete a full paste–read–mark cycle **on the phone, away from the development machine** — steps 1–5 of `specs/001-reader-walking-skeleton/quickstart.md` § Validation (SC-008). **This slice is not complete until this passes.**
 
 **Checkpoint**: Principle I satisfied. The slice is shippable.
 
@@ -138,10 +138,10 @@ complete Stories 1 and 2.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T041 [P] **Verified on desktop Chrome during implementation** — 你𠀋好吗 tiled as four tokens and marking the third marked 好, not 吗. The phone run is now confirmation rather than discovery. Verify astral-plane handling by hand per `specs/001-reader-walking-skeleton/quickstart.md` § Two checks that are easy to skip — paste a passage with an Extension-B hanzi, mark tokens either side, reload, confirm marks land on the right tokens. Fails silently if any offset is counted in UTF-16 units
+- [X] T041 [P] **Verified on desktop Chrome during implementation** — 你𠀋好吗 tiled as four tokens and marking the third marked 好, not 吗. The phone run is now confirmation rather than discovery. Verify astral-plane handling by hand per `specs/001-reader-walking-skeleton/quickstart.md` § Two checks that are easy to skip — paste a passage with an Extension-B hanzi, mark tokens either side, reload, confirm marks land on the right tokens. Fails silently if any offset is counted in UTF-16 units
 - [X] T042 [P] Call `rebuildProjection()` against a database holding real marks and confirm nothing changes — the executable proof that `word_state` is a cache
 - [ ] T043 [P] Induce each failure from quickstart.md step 4 on the phone and confirm each is identifiable from the interface alone (SC-009)
-- [ ] T044 [P] Measure SC-001, SC-002 and SC-003 on the phone and record the figures in `specs/001-reader-walking-skeleton/quickstart.md` — opening the app to markable tokens under 30 s, a 2,000-character document rendering within 2 s, a state change showing within 200 ms
+- [X] T044 [P] Measure SC-001, SC-002 and SC-003 on the phone and record the figures in `specs/001-reader-walking-skeleton/quickstart.md` — opening the app to markable tokens under 30 s, a 2,000-character document rendering within 2 s, a state change showing within 200 ms
 - [X] T045 Write `README.md` covering setup, the phone development loop with `--host`, tests, and deployment
 - [X] T046 Record in `docs/anticipated-changes.md` anything slice 0 revealed that should change slice 1's plan
 

@@ -39,12 +39,15 @@
 	Everything that has gone wrong on this device. Nothing here is sent anywhere.
 </p>
 
+<h2 class="section">Right now</h2>
+
 <dl class="facts">
 	<dt>Storage</dt>
 	<dd>
 		{durability === 'opfs'
 			? 'On this device, in the browser’s private file system.'
-			: 'In memory only — anything saved will be lost when this tab closes.'}
+			: 'In memory only. Nothing saved here will be kept — another copy of this app is ' +
+				'probably holding the storage. Close the others and reload.'}
 	</dd>
 	<dt>Eviction</dt>
 	<dd>
@@ -53,6 +56,12 @@
 			: 'The browser has not promised to keep it. It may be deleted if the device runs short of space.'}
 	</dd>
 </dl>
+
+<h2 class="section">What has happened before</h2>
+<p class="subtitle">
+	A record of past failures, each with the time it happened. These describe moments that have
+	already passed — for what is true now, read the two lines above.
+</p>
 
 {#if loading}
 	<p class="loading">Reading…</p>
@@ -73,6 +82,11 @@
 {/if}
 
 <style>
+	.section {
+		font-size: 0.95rem;
+		margin: 1.5rem 0 0.5rem;
+	}
+
 	.facts {
 		border: 1px solid var(--rule);
 		border-radius: 8px;

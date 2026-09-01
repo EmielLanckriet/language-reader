@@ -34,15 +34,9 @@ async function start(): Promise<Session> {
 	// for it. Requested once, at startup, before anything is written.
 	const [opened, persistence] = await Promise.all([repository.opened, requestPersistentStorage()]);
 
-	if (persistence !== 'granted') {
-		// Recorded rather than acted on: there is nothing useful to do about a refusal except tell
-		// the reader. Chrome grants this readily once a site is installed to the home screen.
-		await repository.recordDiagnostic(
-			'persistence',
-			`The browser did not grant persistent storage (${persistence}). ` +
-				`Saved reading may be evicted if the device runs short of space.`
-		);
-	}
+	// Deliberately *not* recorded as a diagnostic. Whether persistence was granted is a steady
+	// state, not an event, and the diagnostics view reports it live. Writing a row per page load
+	// buried the actual failures under hundreds of copies of the same sentence.
 
 	return {
 		repository,

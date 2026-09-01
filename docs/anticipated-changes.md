@@ -542,3 +542,25 @@ file it is allowed to touch, including the constitution, the ADRs and this regis
 `specs/`, `.specify/` and `.claude/` are excluded from it deliberately, and that exclusion should
 survive any tooling change.
 
+**The OPFS lease is exclusive, and losing it degrades silently.** Found during the slice 0 phone
+check. The installed app and a browser tab are the same origin but cannot both hold the SAH-pool
+lease: whichever loses falls back to an in-memory database. It says so, but quietly, and the losing
+copy keeps working perfectly — you can paste a document into it, read it, mark it, and lose all of
+it on reload.
+
+This is not exotic. Install to the home screen, later follow a link to the same site in the browser,
+and you have two copies. Slice 0 mitigated it by naming the likely cause in the interface rather
+than reporting "storage unavailable", which is true and useless.
+
+**It needs a real answer before slice 1**, where the data is not disposable. Options not yet
+evaluated: coordinate with the Web Locks API so the second copy refuses to write rather than
+writing somewhere useless; use a `SharedWorker` so both copies talk to one database; or detect the
+condition and put the app into an explicit read-only mode. The last is probably the honest one — a
+second copy that silently accepts writes is worse than one that declines them.
+
+**A related lesson about diagnostics.** The record initially wrote a row on every page load
+reporting whether persistence was granted. That is a *steady state*, not an event, and it buried
+the actual failures under hundreds of copies of the same sentence — while the entries themselves
+read as present-tense alarms, so a stale one looked like a live problem. Diagnostics record events;
+current state belongs in a panel that is read live. Worth remembering when reading sessions start
+generating volume.

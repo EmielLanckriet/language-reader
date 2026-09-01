@@ -17,6 +17,7 @@
 	let saving = $state(false);
 	let problem = $state<unknown>(null);
 	let warning = $state<string | null>(null);
+	let losingData = $state<string | null>(null);
 
 	// Counted in characters, matching the limit the content source enforces (FR-020). Shown live
 	// so the reader can see they are over the limit before pressing anything.
@@ -31,9 +32,14 @@
 			const { repository, durability, persistence } = await session();
 			documents = await repository.listDocuments();
 			if (durability === 'memory') {
-				warning =
-					'This browser would not give the app a place to store data, so anything you save ' +
-					'will disappear when you close the tab.';
+				// By far the most common cause on a phone is a second copy of the app: the OPFS
+				// lease is exclusive, so a browser tab and the installed app cannot both hold it,
+				// and the loser degrades to memory. Saying only "storage unavailable" is true and
+				// useless — the reader needs to know there is something they can do about it.
+				losingData =
+					'Nothing you save here will be kept. Another copy of this app is probably open — ' +
+					'the installed app and a browser tab cannot share storage. Close the others, ' +
+					'then reload this page.';
 			} else if (persistence !== 'granted') {
 				warning =
 					'The browser has not promised to keep your saved reading. It may be deleted if ' +
@@ -83,7 +89,9 @@
 <h1>Reader</h1>
 <p class="subtitle">Paste Chinese text, then tap words as you read.</p>
 
-{#if warning}
+{#if losingData}
+	<p class="notice problem" role="alert">{losingData}</p>
+{:else if warning}
 	<p class="notice warning">{warning}</p>
 {/if}
 
