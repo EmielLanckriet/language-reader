@@ -125,6 +125,20 @@ is therefore a recompute, not a migration, and nothing irreplaceable is at risk.
 place in this design where deferral is genuinely safe rather than merely hopeful, and the reason
 is the earned/derived distinction recorded in ADR-0003.
 
+**Amendment, 2026-09-01 — the split mechanism is incomplete.** Decision 3 defers heteronym
+splitting and says it "may be split later using recorded token pronunciations". That works only
+where the reading differs (长 cháng / zhǎng). It does nothing for homographs sharing a reading
+(花 huā *flower* / *to spend*; 会 huì *can* / *meeting*), where the recorded pronunciation carries
+no signal at all. Separating those requires a **sense** discriminator supplied by the learner or a
+model. This was confirmed as an unsolved problem by the author of Sapling, which reached the same
+reading-based scheme independently and still finds homographs unresolved.
+
+Nothing in this ADR needs changing, and one rejected alternative is vindicated: declining to add a
+reading-shaped discriminator column early was right, because pronunciation is the wrong axis for
+half the cases. What changes is the claim's strength — refining identity is *possible* because
+identity is a surrogate id, but the rule by which it should be refined is an **open problem, not
+a deferred decision**. See `docs/anticipated-changes.md`.
+
 **Revisit if.** Merge/split operations turn out to be materially harder to implement correctly
 than assumed — that would mean identity is less revisable in practice than this ADR claims, and
 the up-front cost of a discriminator column would have been worth paying.

@@ -49,7 +49,8 @@ settled in an ADR and no longer open questions.
 | Korean support | low | cheap | Same as above. | Defer |
 | Traditional Chinese alongside Simplified | low | cheap ↓ | Reclassified as orthographic variation, not a Chinese quirk (Dutch spelling reforms are the same phenomenon). Simplified→traditional is many-to-one, so it is a lexeme merge — tractable now that identity is a surrogate id. | Defer |
 | Per-language word-identity rules | medium | cheap ↓ | **Decided** (ADR-0002): the identity rule is owned by the language provider, not the schema. Adding Dutch lemma identity needs no migration. | Defer |
-| Split heteronyms (长 cháng vs zhǎng) into distinct lexemes | medium | cheap | Lexeme split driven by token pronunciations already recorded at ingest, plus one nullable discriminator column. | Defer |
+| Split heteronyms (长 cháng vs zhǎng) into distinct lexemes | medium | cheap | Lexeme split driven by token pronunciations already recorded at ingest, plus one nullable discriminator column. Handles differing readings only. | Defer |
+| Separate homographs that share a reading (花 huā flower / to spend) | medium | **open problem** | Recorded pronunciation carries no signal here, so the mechanism planned for heteronyms does not apply. Needs a sense discriminator supplied by the learner or a model. Confirmed unsolved in Sapling by its author. **Not a deferred decision — an unsolved one.** Surrogate lexeme ids keep every option open, which is the whole reason ADR-0002 declined to add a pronunciation-shaped discriminator early. | Keep options open; do not design for it yet |
 | Better segmenter than the current one | high | cheap | Derived data. `analyzer` + `analyzer_version` are recorded per document, so swapping is a recompute. Starting at pkuseg rather than jieba because segmentation quality is a known annoyance from LingQ, not a hypothetical one. **See the open question on `Intl.Segmenter` below — the choice of segmenter may not be a Python question at all.** | Defer (swap freely) |
 | Vocabulary-overlay segmentation (known words win over the dictionary) | high | cheap | Derived. Layer the learner's own known terms over the segmenter's output by greedy longest match, so a word being studied is never split. Borrowed from Sapling. Complements manual correction and is self-improving: correcting once fixes every later occurrence everywhere. | **Consider for slice 1** |
 | TTS segmentation disagreeing with reader segmentation | medium | cheap | jieba is a **global** singleton and the Kokoro front-end (misaki) follows it, so a reader segmenting with pkuseg and a TTS path segmenting with jieba will disagree within one sentence. `sentencegen/tts.py` already solves this generically by nudging jieba toward a target segmentation, gated on the words concatenating back to the sentence exactly. The reader's segmentation is therefore an *input* to TTS, not an independent choice. | Defer (solution known) |
@@ -145,8 +146,14 @@ no licence file so nothing may be copied verbatim without asking):
   answers "same reading?", and their pair identifies a card — with tones never folded, since
   tone is the whole difference between the two 长s. A reading-*less* entry deliberately collides
   with every spelling of itself, because a bare 长 is a claim about spelling with nothing in it to
-  distinguish. Reached independently of ADR-0002 and arriving at the same place; useful as the
-  known destination for our deferred heteronym split.
+  distinguish.
+
+  **This is not a solved problem, per the author directly.** It resolves *heteronyms* — different
+  spelling-same reading — and cannot touch homographs that share a reading: 花 huā is *flower* and
+  *to spend*, 会 huì is *can* and *meeting*. `cardKey` returns one string for both, so they
+  collapse into one entry. Separating those needs a **sense** discriminator, which means the
+  learner's judgment or a model's gloss, neither cheap nor reliable. Treat this as an open
+  problem, not a destination.
 - **Subtitle-following rules**, each a bug we would otherwise have shipped: a gap stays on the
   last line that *started* (cues do not tile a recording, and blinking off between every pair
   would flicker through a conversation); `start` is inclusive; a sentence with no timings is
@@ -166,6 +173,15 @@ Mandarin has stress but no tone), `ZHG2P(version="1.1")` with the matching 171-s
 symbol), and reconciling jieba's segmentation so fused compounds are not rushed.
 
 ## Open
+
+**How much homography does a reader actually have to resolve?** A flashcard scheduler suffers
+badly from collapsing 花-flower with 花-to-spend: one schedule for two things learned separately.
+A reader may not — "how many words do I know" tolerates sense-collapsing far better. The likely
+answer is one lexeme per surface form, a gloss listing several senses, and manual splitting as an
+escape hatch the learner triggers when a specific word bothers them. That may be correct rather
+than a compromise, and it is cheap to test by reading. **Note the circularity that makes the
+general problem hard**: segmentation depends on knowing which words exist, identity depends on
+the reading, and the reading depends on segmentation.
 
 **Should segmentation happen in the browser rather than on the server?** `Intl.Segmenter` removes
 the premise that Python is forced — segmentation, the reason the backend exists, may not need a
