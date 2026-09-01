@@ -201,6 +201,27 @@ misaki's `ZHG2P` for Kokoro, chosen precisely because espeak's Mandarin carries 
 tone. None of this touches same-reading homographs, where audio is identical and therefore
 carries no signal at all — which remains the open half.
 
+**On same-reading homographs, three things narrow the problem without solving it.** First,
+segmentation *dissolves* many instances rather than resolving them: if the analyzer emits 花钱 as
+one token there is no ambiguous 花 left, so better multi-character coverage shrinks the problem by
+making the compound the unit. Second, **POS tagging is a context-dependent signal we already
+record** — 花-flower is a noun and 花-spend a verb, 会-meeting a noun and 会-can an auxiliary — and
+ADR-0002 already requires `pos` + `pos_tagset` at ingest, so the signal is being stored before we
+knew we wanted it for this. It fails where both senses share a POS (打 as a verb means a dozen
+things). Third, an LLM given the sentence disambiguates better than any WSD system that needs a
+sense inventory, and needs none itself because it just writes the gloss; this is the enrichment
+tier already in the register, better justified than when it was added.
+
+Full WSD's bottleneck is not the model but the **sense inventory** — Chinese sense resources have
+patchy coverage and disagree — which is why the inventory-free options above are the practical
+ones.
+
+**The likely resolution is sense *ranking*, not sense *splitting*.** What a reader wants on
+tapping 花 is the right sense shown first, not two 花 entries in their word list. That is
+presentation over derived data: no schema, no discriminator, no migration, and it degrades
+gracefully, whereas a wrong split corrupts the word list. A flashcard scheduler would need the
+split; a reader probably does not.
+
 **Should segmentation happen in the browser rather than on the server?** `Intl.Segmenter` removes
 the premise that Python is forced — segmentation, the reason the backend exists, may not need a
 backend. That would make offline reading much easier — though offline is
