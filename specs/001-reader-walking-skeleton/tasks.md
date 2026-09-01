@@ -46,17 +46,17 @@ these.
 
 ### Tests first (Principle II)
 
-- [ ] T007 [P] Write failing tests for code-point offsets in `tests/domain/offsets.test.ts`, including Extension-B hanzi and emoji, asserting round-trip fidelity and that no offset is a UTF-16 code unit
-- [ ] T008 [P] Write failing test in `tests/architecture/domain-purity.test.ts` asserting no file under `src/lib/domain/` imports Svelte, SvelteKit, or `src/lib/storage/`
-- [ ] T009 [P] Write failing test in `tests/storage/migration.test.ts` asserting the schema contains `provenance`, `user_id`, `device_id`, `device_seq`, `document_id`, `from_offset`, `to_offset` and `observed_pronunciation`, and that every hedge column is `NOT NULL` or carries an explicit default — a column that can be silently left empty is not a hedge
+- [X] T007 [P] Write failing tests for code-point offsets in `tests/domain/offsets.test.ts`, including Extension-B hanzi and emoji, asserting round-trip fidelity and that no offset is a UTF-16 code unit
+- [X] T008 [P] Write failing test in `tests/architecture/domain-purity.test.ts` asserting no file under `src/lib/domain/` imports Svelte, SvelteKit, or `src/lib/storage/`
+- [X] T009 [P] Write failing test in `tests/storage/migration.test.ts` asserting the schema contains `provenance`, `user_id`, `device_id`, `device_seq`, `document_id`, `from_offset`, `to_offset` and `observed_pronunciation`, and that the always-present hedges — `provenance`, `user_id`, `device_id`, `device_seq` — are `NOT NULL` or carry an explicit default. The occurrence hedges stay nullable by design: slice 0 often has no occurrence to record, and a column that is *sometimes* empty for a stated reason is different from one that is *always* empty because nothing writes it
 
 ### Implementation
 
-- [ ] T010 Implement `src/lib/domain/offsets.ts` as the sole place strings are measured or sliced by position, in Unicode code points
-- [ ] T011 Define domain types in `src/lib/domain/types.ts` — `Lexeme`, `Token`, `WordState`, `HistoryEntry`, `Occurrence` — per data-model.md
-- [ ] T012 Write `src/lib/storage/migrations/001-initial.sql` creating `lexeme`, `document`, `token`, `word_state`, `status_event`, `device` and `diagnostic` per data-model.md, with every hedge column present and declared `NOT NULL` or defaulted — `provenance` `NOT NULL` without a default, so an insert that omits it fails rather than storing an empty hedge
-- [ ] T013 Implement `src/lib/storage/db.ts`: open SQLite-WASM against OPFS, apply numbered migrations in order, record applied versions
-- [ ] T014 Implement device identity and the monotonic counter in `src/lib/storage/db.ts` — generate `device.id` once on first run, allocate `device_seq` on demand
+- [X] T010 Implement `src/lib/domain/offsets.ts` as the sole place strings are measured or sliced by position, in Unicode code points
+- [X] T011 Define domain types in `src/lib/domain/types.ts` — `Lexeme`, `Token`, `WordState`, `HistoryEntry`, `Occurrence` — per data-model.md
+- [X] T012 Write `src/lib/storage/migrations/001-initial.sql` creating `lexeme`, `document`, `token`, `word_state`, `status_event`, `device` and `diagnostic` per data-model.md, with every hedge column present and declared `NOT NULL` or defaulted — `provenance` `NOT NULL` without a default, so an insert that omits it fails rather than storing an empty hedge
+- [X] T013 Implement `src/lib/storage/db.ts`: open SQLite-WASM against OPFS, apply numbered migrations in order, record applied versions
+- [X] T014 Implement device identity and the monotonic counter in `src/lib/storage/db.ts` — generate `device.id` once on first run, allocate `device_seq` on demand
 
 **Checkpoint**: T007, T008 and T009 pass. The database opens, migrates, and survives a page reload.
 

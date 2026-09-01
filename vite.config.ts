@@ -5,7 +5,8 @@ import { sveltekit } from '@sveltejs/kit/vite';
 // GitHub Pages serves a project site from https://<user>.github.io/<repo>/, so every asset
 // URL needs that prefix. It is empty for local development and for a user/organisation site.
 // Set BASE_PATH in the deploy workflow rather than hard-coding a repository name here.
-const base = process.env.BASE_PATH ?? '';
+// Typed as SvelteKit types it: empty, or a leading-slash path such as '/language-reader'.
+const base = (process.env.BASE_PATH ?? '') as '' | `/${string}`;
 
 export default defineConfig({
 	plugins: [

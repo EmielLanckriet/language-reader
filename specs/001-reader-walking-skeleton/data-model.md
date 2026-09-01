@@ -127,7 +127,9 @@ Each is a test obligation, and the first three are test-first under Principle II
    `start < end`. Round-tripping through the offset module reproduces the input.
 4. **Append-only.** No code path updates or deletes a `status_event` row.
 5. **Hedges present *and populated*.** A migration test asserts that `provenance`, `user_id`,
-   `device_id`, `device_seq` and the occurrence columns exist and are `NOT NULL` or defaulted; a
+   `device_id`, `device_seq` and the occurrence columns all exist, and that the first four are
+   `NOT NULL` or defaulted. The occurrence columns remain nullable deliberately — there is not
+   always an occurrence to record — which is a different thing from a column nothing ever fills. A
    second test asserts that a row written through `assertState` carries a non-null `provenance` and
    `user_id` on both `word_state` and `status_event`. Presence alone is not the invariant — a
    column that exists and is never written is a hedge in name only, and slice 1 would inherit a
