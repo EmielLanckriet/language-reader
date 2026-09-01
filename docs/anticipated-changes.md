@@ -182,6 +182,40 @@ Mandarin has stress but no tone), `ZHG2P(version="1.1")` with the matching 171-s
 (the tokenizer silently *drops* unknown symbols, so a v1.0 front-end deletes every Chinese
 symbol), and reconciling jieba's segmentation so fused compounds are not rushed.
 
+## Decided: The Analyzer Is A User Choice, Per Document
+
+Three modes, all implementations of the existing language-provider seam, each recorded as its own
+`analyzer` name so switching is a recompute like any other analyzer change:
+
+1. **Local segmenter only** — offline, instant, free. The fallback and the bulk-text default.
+2. **LLM only** — joint segmentation, reading and gloss in one pass over the sentence. Best
+   quality, no pipeline loss, but costly and online.
+3. **Hybrid** — segment locally, then send only flagged spans to the LLM.
+
+**Mode is chosen per document, not globally.** A subtitle file wants mode 2; a novel wants mode 1.
+That is where the cost difference actually falls.
+
+**What mode 3 does and does not fix.** It resolves the reading or sense of a correctly segmented
+word. It **cannot fix wrong boundaries**: if the local pass splits 花钱 into 花 + 钱, the compound
+is gone before anything is flagged, so nothing asks about it. Mode 3 therefore inherits the
+pipeline loss for segmentation while escaping it for sense — a real gap from mode 2, not a small
+one.
+
+**Flag disagreement, not only known homographs.** Sending spans that contain a known 多音字
+catches readings; sending spans where two cheap analyzers *disagree* — the segmenter against a
+dictionary longest-match — catches boundary errors too, which is most of what mode 3 would
+otherwise miss. Both detectors are local, offline and cheap: the polyphone set is a few hundred
+characters and the other is a lookup.
+
+**Interface consequence for slice 1.** A local segmenter is pure, instant and infallible; an LLM
+analyzer is async, batched, costly and can fail part-way. The language-provider seam MUST
+accommodate both, or the three modes will not fit behind one interface. Cheap to design in, and a
+retrofit is code rather than data — but it needs deciding when the seam is first written, not
+after.
+
+No schema consequence: mode is the analyzer's identity, which `analyzer` + `analyzer_version`
+already records, and the user's choice is configuration rather than earned data.
+
 ## Decided: Analysis Is Import-Time, Reading Is Render-Time
 
 A document is analysed once, when imported: segmented, romanized and glossed by whichever
