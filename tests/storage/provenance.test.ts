@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Repository } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
+import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { queryRows, type Database } from '../../src/lib/storage/db';
 import { freshDatabase } from './support';
@@ -21,8 +22,9 @@ describe('provenance and owner on a real write', () => {
 		db = await freshDatabase();
 		repository = new Repository(db);
 		const document = await pasteSource.ingest('看书');
-		const tokens = await characterSplitter.analyze(document.rawContent);
-		const documentId = repository.saveDocument(document, tokens, characterSplitter);
+		const analyzed = await characterSplitter.analyze(document.rawContent);
+		const tokens = resolveTokens(document.rawContent, analyzed, characterSplitter);
+		const documentId = repository.saveDocument(document, tokens, stampOf(characterSplitter));
 		lexemeId = repository.getDocument(documentId).tokens.find((t) => t.isWord)!.lexemeId!;
 	});
 

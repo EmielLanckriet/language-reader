@@ -5,7 +5,7 @@
 	import { codePointsOf } from '$lib/domain/offsets';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
-	import { recordDiagnostic, describeError } from '$lib/diagnostics/log';
+	import { describeError } from '$lib/diagnostics/log';
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
 
@@ -33,9 +33,9 @@
 		problem = null;
 		try {
 			const { repository } = await session();
-			const loaded = repository.getDocument(id);
+			const loaded = await repository.getDocument(id);
 			document = loaded;
-			states = repository.getStates(lexemesIn(loaded));
+			states = await repository.getStates(lexemesIn(loaded));
 		} catch (error) {
 			problem = error;
 			await record(error);
@@ -59,12 +59,12 @@
 			// The occurrence is recorded alongside the judgment: which document, and where in it.
 			// Unused in this slice, and irrecoverable if not written at the time — same-reading
 			// homographs are told apart by context and by nothing else.
-			repository.assertState(token.lexemeId, state, {
+			await repository.assertState(token.lexemeId, state, {
 				documentId: document.id,
 				fromOffset: token.start,
 				toOffset: token.end
 			});
-			states = repository.getStates(lexemesIn(document));
+			states = await repository.getStates(lexemesIn(document));
 		} catch (error) {
 			problem = error;
 			await record(error);
@@ -74,8 +74,8 @@
 	/** Failures go to the on-device record as well as to the screen (FR-021). */
 	async function record(error: unknown) {
 		try {
-			const { db } = await session();
-			recordDiagnostic(db, 'storage', describeError(error));
+			const { repository } = await session();
+			await repository.recordDiagnostic('storage', describeError(error));
 		} catch {
 			// The database is the thing that failed. Nothing further to try.
 		}

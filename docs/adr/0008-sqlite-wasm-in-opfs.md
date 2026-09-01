@@ -67,3 +67,42 @@ defers a decision that gets more expensive rather than less.
 it. Slice 0's data is disposable, so falling back to IndexedDB at that point costs the storage
 adapter and nothing above it — which is itself a reason the domain boundary is enforced by test
 rather than trusted.
+
+## Addendum — 2026-09-01, confirmed during implementation
+
+**"OPFS is best driven from a worker" is not a preference. It is a hard requirement, and it was
+briefly ignored.**
+
+The implementation first tried the SAH-pool VFS (`installOpfsSAHPoolVfs`) on the main thread, on the
+reasoning that it avoids the COOP/COEP headers a static host cannot set. That reasoning is correct
+as far as it goes — the plain OPFS VFS needs `SharedArrayBuffer` and therefore cross-origin
+isolation; SAH-pool does not. But SAH-pool needs
+`FileSystemFileHandle.createSyncAccessHandle()`, and that method is `[Exposed=DedicatedWorker]`.
+
+Measured in Chrome 150: every other OPFS API is present on the main thread and
+`navigator.storage.getDirectory()` succeeds; `createSyncAccessHandle` is absent. sqlite-wasm
+reports it as "Missing required OPFS APIs" and the application silently fell back to an in-memory
+database — an app that worked perfectly until the tab was closed, failing FR-015 and SC-005 without
+anything visibly breaking.
+
+This ADR's own "Harder" section predicted the requirement. The implementation contradicted it and
+the tests did not notice, because they construct their own in-memory database and never exercise
+the path the application actually takes. It was caught by running the built app in a headless
+browser before the phone check rather than during it.
+
+**Resolution.** SQLite runs in a dedicated worker (`src/lib/storage/worker.ts`), reached through a
+typed message protocol. The `Repository` itself moved *into* the worker and stayed synchronous,
+which is why the storage tests were unaffected: they exercise the same class directly. Only the
+crossing is asynchronous, in `src/lib/storage/client.ts`.
+
+Two consequences worth carrying forward:
+
+1. **The domain core paid for itself here.** `offsets`, `tiling`, `state` and `history` do not know
+   where anything is stored, so a change of this size stopped at the storage adapter and its
+   callers. That is Principle V.4 doing the job it was adopted for.
+2. **The worker holds the exclusive lease on the database files.** Anything in a later slice that
+   wants its own worker — an ONNX segmenter, a model loader — cannot reach the database from it and
+   must go through this one.
+
+Verified in Chrome: a document survives a full reload, a mark on one occurrence of 看 appears on
+the other, and marks made before a reload are still there after it.

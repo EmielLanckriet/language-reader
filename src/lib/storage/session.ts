@@ -1,29 +1,22 @@
 /**
- * The application's one database connection.
+ * The application's one connection to its data.
  *
- * Opened lazily and at most once. Every screen asks for the same session rather than opening its
- * own, because the SAH-pool VFS takes an exclusive lease on its files: a second connection would
- * not merely be wasteful, it would fail.
+ * Started lazily and at most once. Every screen asks for the same session rather than starting its
+ * own worker, because the SAH-pool VFS takes an exclusive lease on its files: a second connection
+ * would not merely be wasteful, it would fail.
  */
 
-import {
-	openDatabase,
-	requestPersistentStorage,
-	type Database,
-	type Durability,
-	type Persistence
-} from './db';
-import { Repository } from './repository';
-import { recordDiagnostic } from '../diagnostics/log';
+import { requestPersistentStorage, type Durability, type Persistence } from './db';
+import { RepositoryClient } from './client';
 
 export interface Session {
-	repository: Repository;
-	/** The raw handle, for the diagnostics view. Nothing else should reach for it. */
-	db: Database;
+	repository: RepositoryClient;
 	/** Where the data actually went. `memory` means it will not survive a reload. */
 	durability: Durability;
 	/** Whether the browser promised not to evict it. */
 	persistence: Persistence;
+	/** Why OPFS was not used, when it was not. */
+	fallbackReason?: string;
 }
 
 let opening: Promise<Session> | undefined;
@@ -34,28 +27,27 @@ export function session(): Promise<Session> {
 }
 
 async function start(): Promise<Session> {
-	const { db, durability, fallbackReason } = await openDatabase();
+	const repository = new RepositoryClient();
 
-	// Asked for once, at startup, before anything is written. The outcome is recorded rather than
-	// acted on: there is nothing useful to do about a refusal except tell the reader.
-	const persistence = await requestPersistentStorage();
+	// `StorageManager.persist()` is `[Exposed=Window]`, so this has to happen out here rather than
+	// alongside the database — the worker can ask whether persistence was *granted* but cannot ask
+	// for it. Requested once, at startup, before anything is written.
+	const [opened, persistence] = await Promise.all([repository.opened, requestPersistentStorage()]);
 
-	if (durability === 'memory') {
-		recordDiagnostic(
-			db,
-			'storage',
-			'OPFS was unavailable, so the database was opened in memory. Nothing saved will survive ' +
-				`a reload. The reason it was unavailable: ${fallbackReason ?? 'not reported'}`
-		);
-	}
 	if (persistence !== 'granted') {
-		recordDiagnostic(
-			db,
+		// Recorded rather than acted on: there is nothing useful to do about a refusal except tell
+		// the reader. Chrome grants this readily once a site is installed to the home screen.
+		await repository.recordDiagnostic(
 			'persistence',
 			`The browser did not grant persistent storage (${persistence}). ` +
 				`Saved reading may be evicted if the device runs short of space.`
 		);
 	}
 
-	return { repository: new Repository(db), db, durability, persistence };
+	return {
+		repository,
+		durability: opened.durability,
+		persistence,
+		...(opened.fallbackReason ? { fallbackReason: opened.fallbackReason } : {})
+	};
 }

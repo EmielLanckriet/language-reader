@@ -5,7 +5,7 @@
  * See specs/001-reader-walking-skeleton/contracts/repository.md.
  */
 
-import type { Analyzer, AnalyzedToken } from '../analyzer/types';
+import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type {
 	DocumentId,
@@ -16,7 +16,6 @@ import type {
 	WordState
 } from '../domain/types';
 import { checkTiling } from '../domain/tiling';
-import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { projectStates } from '../domain/state';
 import {
@@ -77,8 +76,8 @@ export class Repository {
 	 */
 	saveDocument(
 		document: IngestedDocument,
-		tokens: AnalyzedToken[],
-		analyzer: Analyzer
+		tokens: ResolvedToken[],
+		analyzer: AnalyzerStamp
 	): DocumentId {
 		const problems = checkTiling(tokens, document.rawContent);
 		if (problems.length > 0) {
@@ -106,18 +105,11 @@ export class Repository {
 			);
 			const documentId = lastInsertId(this.db);
 
-			// Converted once rather than per token: slicing by code point walks the whole string,
-			// and a 5,000-character document has 5,000 tokens.
-			const characters = codePointsOf(document.rawContent);
-
 			for (const token of tokens) {
-				const lexemeId = token.isWord
-					? this.findOrCreateLexeme(
-							document.language,
-							characters.slice(token.start, token.end).join(''),
-							analyzer
-						)
-					: null;
+				const lexemeId =
+					token.isWord && token.lexemeKey !== undefined
+						? this.findOrCreateLexeme(document.language, token.lexemeKey)
+						: null;
 
 				run(
 					this.db,
@@ -319,15 +311,13 @@ export class Repository {
 	}
 
 	/**
-	 * Find the lexeme this surface form belongs to, creating it if this is its first appearance.
+	 * Find the lexeme this key belongs to, creating it if this is its first appearance.
 	 *
-	 * The key comes from the language provider, never from this module's opinion (FR-009). The
-	 * repository's only contribution is the surrogate id — which is precisely what makes the rule
-	 * revisable: when it changes, accumulated marks stay attached to their ids (ADR-0002).
+	 * The key was decided by the language provider, never by this module (FR-009). The repository's
+	 * only contribution is the surrogate id — which is precisely what makes the rule revisable:
+	 * when it changes, accumulated marks stay attached to their ids (ADR-0002).
 	 */
-	findOrCreateLexeme(language: string, surface: string, analyzer: Analyzer): LexemeId {
-		const key = analyzer.lexemeKey(surface);
-
+	findOrCreateLexeme(language: string, key: string): LexemeId {
 		const existing = queryRows(
 			this.db,
 			'SELECT id FROM lexeme WHERE language = ? AND surface = ?',

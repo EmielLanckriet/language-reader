@@ -130,9 +130,13 @@ export interface OpenDatabase {
 /**
  * Open the reader's database.
  *
- * Uses the SAH-pool VFS rather than the plain OPFS one: it runs on the main thread and needs no
- * COOP/COEP response headers, which matters because the intended host is static and cannot set
- * them. If OPFS is unavailable the database is opened in memory so the app still runs — but the
+ * **Only ever called from the worker.** The SAH-pool VFS needs
+ * `FileSystemFileHandle.createSyncAccessHandle()`, which is `[Exposed=DedicatedWorker]` and simply
+ * absent on the main thread — call this there and it falls back to memory every time. It is used
+ * rather than the plain OPFS VFS because it needs no COOP/COEP response headers, which matters
+ * because the intended host is static and cannot set them.
+ *
+ * If OPFS is genuinely unavailable the database is opened in memory so the app still runs — but the
  * caller is told, because data that disappears on reload must not look like data that persisted.
  */
 export async function openDatabase(): Promise<OpenDatabase> {

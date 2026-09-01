@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 import { Repository, StorageFailure } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
+import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { codePointsOf } from '../../src/lib/domain/offsets';
 import { freshDatabase } from './support';
@@ -39,8 +40,9 @@ describe('storing and reading documents', () => {
 
 	async function save(text: string) {
 		const document = await pasteSource.ingest(text);
-		const tokens = await characterSplitter.analyze(document.rawContent);
-		return repository.saveDocument(document, tokens, characterSplitter);
+		const analyzed = await characterSplitter.analyze(document.rawContent);
+		const tokens = resolveTokens(document.rawContent, analyzed, characterSplitter);
+		return repository.saveDocument(document, tokens, stampOf(characterSplitter));
 	}
 
 	it('returns the source content exactly as submitted (FR-002)', async () => {
@@ -58,9 +60,10 @@ describe('storing and reading documents', () => {
 				try {
 					const scoped = new Repository(scratch);
 					const document = await pasteSource.ingest(text);
-					const tokens = await characterSplitter.analyze(document.rawContent);
+					const analyzed = await characterSplitter.analyze(document.rawContent);
+					const tokens = resolveTokens(document.rawContent, analyzed, characterSplitter);
 					const stored = scoped.getDocument(
-						scoped.saveDocument(document, tokens, characterSplitter)
+						scoped.saveDocument(document, tokens, stampOf(characterSplitter))
 					);
 
 					const characters = codePointsOf(stored.rawContent);
@@ -122,8 +125,9 @@ describe('storing and reading documents', () => {
 
 	it('refuses tokens that do not tile the document (FR-005)', async () => {
 		const document = await pasteSource.ingest('我看书');
-		const broken = [{ start: 0, end: 1, isWord: true }]; // stops two characters short
-		expect(() => repository.saveDocument(document, broken, characterSplitter)).toThrow(
+		// Stops two characters short of the end.
+		const broken = [{ start: 0, end: 1, isWord: true, lexemeKey: '我' }];
+		expect(() => repository.saveDocument(document, broken, stampOf(characterSplitter))).toThrow(
 			StorageFailure
 		);
 	});

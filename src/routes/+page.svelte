@@ -3,9 +3,10 @@
 	import { session } from '$lib/storage/session';
 	import { pasteSource } from '$lib/content/paste';
 	import { characterSplitter } from '$lib/analyzer/character';
+	import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 	import { RejectedInput } from '$lib/content/types';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
-	import { recordDiagnostic, describeError } from '$lib/diagnostics/log';
+	import { describeError } from '$lib/diagnostics/log';
 	import { MAXIMUM_CHARACTERS } from '$lib/content/paste';
 	import { codePointLength } from '$lib/domain/offsets';
 	import type { DocumentSummary } from '$lib/storage/repository';
@@ -28,7 +29,7 @@
 	async function load() {
 		try {
 			const { repository, durability, persistence } = await session();
-			documents = repository.listDocuments();
+			documents = await repository.listDocuments();
 			if (durability === 'memory') {
 				warning =
 					'This browser would not give the app a place to store data, so anything you save ' +
@@ -52,10 +53,11 @@
 		try {
 			const { repository } = await session();
 			const document = await pasteSource.ingest(pasted);
-			const tokens = await characterSplitter.analyze(document.rawContent);
-			repository.saveDocument(document, tokens, characterSplitter);
+			const analyzed = await characterSplitter.analyze(document.rawContent);
+			const tokens = resolveTokens(document.rawContent, analyzed, characterSplitter);
+			await repository.saveDocument(document, tokens, stampOf(characterSplitter));
 			pasted = '';
-			documents = repository.listDocuments();
+			documents = await repository.listDocuments();
 		} catch (error) {
 			// A refused paste and a broken database are different problems and read differently
 			// (FR-018, FR-022). Collapsing them into "something went wrong" is what this avoids,
@@ -70,8 +72,8 @@
 	/** Failures go to the on-device record as well as to the screen (FR-021). */
 	async function record(kind: 'storage' | 'unexpected', error: unknown) {
 		try {
-			const { db } = await session();
-			recordDiagnostic(db, kind, describeError(error));
+			const { repository } = await session();
+			await repository.recordDiagnostic(kind, describeError(error));
 		} catch {
 			// The database is the thing that failed. Nothing further to try.
 		}

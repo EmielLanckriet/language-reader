@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
-	import { readDiagnostics, clearDiagnostics, type Diagnostic } from '$lib/diagnostics/log';
+	import type { Diagnostic } from '$lib/diagnostics/log';
 
 	/**
 	 * FR-021: the reader must be able to retrieve and read the failure record **without developer
@@ -19,7 +19,7 @@
 
 	async function load() {
 		const s = await session();
-		entries = readDiagnostics(s.db);
+		entries = await s.repository.readDiagnostics();
 		durability = s.durability;
 		persistence = s.persistence;
 		loading = false;
@@ -27,8 +27,8 @@
 
 	async function clear() {
 		const s = await session();
-		clearDiagnostics(s.db);
-		entries = readDiagnostics(s.db);
+		await s.repository.clearDiagnostics();
+		entries = await s.repository.readDiagnostics();
 	}
 </script>
 

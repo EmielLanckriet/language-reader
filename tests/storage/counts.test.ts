@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Repository } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
+import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { queryRows, type Database } from '../../src/lib/storage/db';
 import { freshDatabase } from './support';
@@ -30,8 +31,9 @@ describe('marking many words', () => {
 		// CJK Unified Ideographs rather than typed out, because what matters is the count.
 		const text = Array.from({ length: 100 }, (_, i) => String.fromCodePoint(0x4e00 + i)).join('');
 		const document = await pasteSource.ingest(text);
-		const tokens = await characterSplitter.analyze(document.rawContent);
-		const documentId = repository.saveDocument(document, tokens, characterSplitter);
+		const analyzed = await characterSplitter.analyze(document.rawContent);
+		const tokens = resolveTokens(document.rawContent, analyzed, characterSplitter);
+		const documentId = repository.saveDocument(document, tokens, stampOf(characterSplitter));
 
 		wordLexemes = repository
 			.getDocument(documentId)

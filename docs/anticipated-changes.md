@@ -480,7 +480,7 @@ understood as **the thing that protects earned data from eviction**. Until it sh
 storage pressure may delete the reader's marks, and nothing will have visibly failed. This raises
 installability's priority in slice 1 rather than changing its cost.
 
-**Persisting to OPFS requires a Worker. This is unresolved at the end of slice 0.**
+**Persisting to OPFS requires a Worker.** *(Found and resolved during slice 0 — see the addendum to [ADR-0008](adr/0008-sqlite-wasm-in-opfs.md).)*
 
 The plan assumed the SAH-pool VFS (`installOpfsSAHPoolVfs`) could run on the main thread, needing
 no COOP/COEP headers a static host cannot set. Half of that is right: it does not need the headers,
@@ -492,13 +492,16 @@ in Chrome: every other OPFS API is present, `navigator.storage.getDirectory()` s
 `createSyncAccessHandle` is absent. sqlite-wasm reports this as "Missing required OPFS APIs" and
 the application falls back to an in-memory database.
 
-So as it stands **nothing persists**, which fails FR-015 and SC-005 and makes the Principle I phone
-check a demonstration of a broken app. This was found by running the built app in headless Chrome
-rather than on the phone, which is the only reason it was found before the phone check rather than
-during it.
+For a while **nothing persisted**, which failed FR-015 and SC-005 and would have made the Principle
+I phone check a demonstration of a broken app. It was found by running the built app in headless
+Chrome, which is the only reason it was found before the phone check rather than during it. ADR-0008
+had already said OPFS is best driven from a worker; the implementation contradicted its own ADR, and
+the tests did not notice because they build their own database and never take the path the
+application takes.
 
-The fix is to run SQLite in a dedicated Worker — sqlite-wasm ships `sqlite3-worker1.mjs` and a
-promiser for exactly this. The consequence is that the repository's methods become asynchronous.
+The fix, now in place, is to run SQLite in a dedicated Worker. The `Repository` moved *into* the
+worker and stayed synchronous — which is why the storage tests were untouched — with only the
+crossing asynchronous. The consequence is that the client's methods are asynchronous.
 The domain core is untouched, which is Principle V.4 paying for itself: `offsets`, `tiling`,
 `state` and `history` have no idea where anything is stored, so the change stops at the storage
 adapter and its callers.
