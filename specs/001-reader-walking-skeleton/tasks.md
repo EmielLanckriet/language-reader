@@ -98,20 +98,20 @@ appearance survived. Open a second document containing a marked word; it already
 
 ### Tests first
 
-- [ ] T024 [P] [US2] Write failing tests in `tests/domain/state.test.ts` for the state set and the projection — that current state is a function of history alone, using `fast-check`'s model-based testing over generated assertion sequences
-- [ ] T025 [P] [US2] Write failing test in `tests/domain/history.test.ts` asserting that folding entries in `(device_id, device_seq)` order reproduces `word_state` exactly for every lexeme (FR-011)
-- [ ] T026 [P] [US2] Write failing test in `tests/storage/provenance.test.ts` asserting that after one `assertState` call, the resulting `word_state` row **and** its `status_event` row both carry a non-null `provenance` and `user_id` (FR-012, FR-013)
-- [ ] T027 [P] [US2] Write failing test in `tests/storage/counts.test.ts` asserting that 100 assertions across distinct words yield exactly 100 `word_state` rows and exactly 100 `status_event` rows, and that re-asserting the same word adds a history entry without adding a state row (SC-004, FR-006b)
+- [X] T024 [P] [US2] Write failing tests in `tests/domain/state.test.ts` for the state set and the projection — that current state is a function of history alone, using `fast-check`'s model-based testing over generated assertion sequences
+- [X] T025 [P] [US2] Write failing test in `tests/domain/history.test.ts` asserting that folding entries in `(device_id, device_seq)` order reproduces `word_state` exactly for every lexeme (FR-011)
+- [X] T026 [P] [US2] Write failing test in `tests/storage/provenance.test.ts` asserting that after one `assertState` call, the resulting `word_state` row **and** its `status_event` row both carry a non-null `provenance` and `user_id` (FR-012, FR-013)
+- [X] T027 [P] [US2] Write failing test in `tests/storage/counts.test.ts` asserting that 100 assertions across distinct words yield exactly 100 `word_state` rows and exactly 100 `status_event` rows, and that re-asserting the same word adds a history entry without adding a state row (SC-004, FR-006b)
 
 ### Implementation
 
-- [ ] T028 [P] [US2] Implement `src/lib/domain/state.ts` — the extensible state set as data, and slice 0's trivial projection (latest assertion wins) per FR-006a and FR-010b
-- [ ] T029 [US2] Implement `src/lib/domain/history.ts` — append-only entry construction recording *what was asserted*, never what the state became (FR-010a)
-- [ ] T030 [US2] Implement `assertState` in `src/lib/storage/repository.ts` — append `status_event` first, allocating `device_seq` and writing `provenance` (`manual` in slice 0, per data-model.md) and `user_id`, then update `word_state` carrying the same two values; never the reverse (FR-012, FR-013)
-- [ ] T031 [US2] Implement `getStates`, `readHistory` and `rebuildProjection` in `src/lib/storage/repository.ts` per contracts/repository.md; `rebuildProjection` must be exercised by T025, not merely written
+- [X] T028 [P] [US2] Implement `src/lib/domain/state.ts` — the extensible state set as data, and slice 0's trivial projection (latest assertion wins) per FR-006a and FR-010b
+- [X] T029 [US2] Implement `src/lib/domain/history.ts` — append-only entry construction recording *what was asserted*, never what the state became (FR-010a)
+- [X] T030 [US2] Implement `assertState` in `src/lib/storage/repository.ts` — append `status_event` first, allocating `device_seq` and writing `provenance` (`manual` in slice 0, per data-model.md) and `user_id`, then update `word_state` carrying the same two values; never the reverse (FR-012, FR-013)
+- [X] T031 [US2] Implement `getStates`, `readHistory` and `rebuildProjection` in `src/lib/storage/repository.ts` per contracts/repository.md; `rebuildProjection` must be exercised by T025, not merely written
 - [X] T032 [US2] Implement find-or-create of lexemes in `src/lib/storage/repository.ts`, applying the language provider's identity rule rather than the repository's own (FR-009). **Landed early, in T021**: `token`'s `CHECK ((is_word = 1) = (lexeme_id IS NOT NULL))` means a document cannot be saved without resolving its word tokens to lexemes, so this is a prerequisite of US1 rather than of US2. The rule is exposed as `Analyzer.lexemeKey`, which the contract's obligation 5 requires but its interface sketch omits
-- [ ] T033 [US2] Build the state menu in `src/lib/ui/StateMenu.svelte` — opens on tap, lists available states from configuration, every target at least 44x44 CSS pixels (FR-017)
-- [ ] T034 [US2] Wire tapping and visual state distinction into `src/routes/read/[id]/+page.svelte`; untouched words must be visually distinct from any chosen state (FR-006b)
+- [X] T033 [US2] Build the state menu in `src/lib/ui/StateMenu.svelte` — opens on tap, lists available states from configuration, every target at least 44x44 CSS pixels (FR-017)
+- [X] T034 [US2] Wire tapping and visual state distinction into `src/routes/read/[id]/+page.svelte`; untouched words must be visually distinct from any chosen state (FR-006b)
 
 **Checkpoint**: US1 and US2 both work. The full paste–read–mark loop is complete locally.
 

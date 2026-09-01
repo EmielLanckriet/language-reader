@@ -7,10 +7,27 @@
 
 import type { Analyzer, AnalyzedToken } from '../analyzer/types';
 import type { IngestedDocument } from '../content/types';
-import type { DocumentId, LexemeId, Token } from '../domain/types';
+import type {
+	DocumentId,
+	HistoryEntry,
+	LexemeId,
+	Occurrence,
+	Token,
+	WordState
+} from '../domain/types';
 import { checkTiling } from '../domain/tiling';
 import { codePointsOf } from '../domain/offsets';
-import { type Database, lastInsertId, queryRows, run, transact } from './db';
+import { assertion, inHistoryOrder } from '../domain/history';
+import { projectStates } from '../domain/state';
+import {
+	type Database,
+	deviceIdOf,
+	lastInsertId,
+	nextDeviceSeq,
+	queryRows,
+	run,
+	transact
+} from './db';
 
 /** Enough to list a document without loading it. */
 export interface DocumentSummary {
@@ -155,6 +172,150 @@ export class Repository {
 			createdAt: String(row.created_at),
 			tokens
 		};
+	}
+
+	/**
+	 * Record a judgment the reader made about a word.
+	 *
+	 * Appends to the history *first*, then updates the projection — never the reverse (contract
+	 * obligation 2). The history is the source of truth and `word_state` is a cache of a fold over
+	 * it, so an interruption must be able to lose the cache and not the evidence. Both happen in
+	 * one transaction, along with the device counter they depend on: allocating a sequence number
+	 * outside it would leave a gap indistinguishable from a lost entry.
+	 */
+	assertState(lexemeId: LexemeId, asserted: string, occurrence?: Occurrence): void {
+		transact(this.db, () => {
+			const deviceId = deviceIdOf(this.db);
+			const entry = assertion({
+				lexemeId,
+				asserted,
+				deviceId,
+				deviceSeq: nextDeviceSeq(this.db, deviceId),
+				assertedAt: new Date().toISOString(),
+				occurrence
+			});
+
+			this.appendEvent(entry);
+			this.writeProjectedState(projectStates([entry]).get(lexemeId)!);
+		});
+	}
+
+	/** The current state of each of these words, omitting any the reader never judged (FR-006b). */
+	getStates(lexemeIds: LexemeId[]): Map<LexemeId, WordState> {
+		if (lexemeIds.length === 0) return new Map();
+
+		const placeholders = lexemeIds.map(() => '?').join(', ');
+		const rows = queryRows(
+			this.db,
+			`SELECT lexeme_id, state, provenance, user_id
+         FROM word_state WHERE lexeme_id IN (${placeholders})`,
+			lexemeIds
+		);
+
+		return new Map(
+			rows.map((row) => [
+				Number(row.lexeme_id),
+				{
+					lexemeId: Number(row.lexeme_id),
+					state: String(row.state),
+					provenance: String(row.provenance),
+					userId: Number(row.user_id)
+				}
+			])
+		);
+	}
+
+	/**
+	 * The whole history, in replay order.
+	 *
+	 * The contract sketches this as an `AsyncIterable`, for a history too large to hold at once.
+	 * It is an array here: sqlite-wasm's API is synchronous, slice 0's history is bounded by how
+	 * fast a person can tap, and an array is the readable shape (Principle VII). Streaming it is
+	 * an internal change if a real collection ever needs one.
+	 */
+	readHistory(): HistoryEntry[] {
+		const rows = queryRows(
+			this.db,
+			`SELECT lexeme_id, asserted, asserted_at, device_id, device_seq,
+              document_id, from_offset, to_offset, observed_pronunciation, provenance, user_id
+         FROM status_event`
+		);
+
+		return inHistoryOrder(
+			rows.map((row) =>
+				assertion({
+					lexemeId: Number(row.lexeme_id),
+					asserted: String(row.asserted),
+					assertedAt: String(row.asserted_at),
+					deviceId: String(row.device_id),
+					deviceSeq: Number(row.device_seq),
+					provenance: String(row.provenance),
+					userId: Number(row.user_id),
+					occurrence:
+						row.document_id === null
+							? undefined
+							: {
+									documentId: Number(row.document_id),
+									fromOffset: Number(row.from_offset),
+									toOffset: Number(row.to_offset),
+									...(row.observed_pronunciation === null
+										? {}
+										: { observedPronunciation: String(row.observed_pronunciation) })
+								}
+				})
+			)
+		);
+	}
+
+	/**
+	 * Recompute every state from the history.
+	 *
+	 * This is the executable proof that `word_state` is derived rather than authoritative
+	 * (contract obligation 3). Running it must change nothing; a test asserts exactly that. A
+	 * projection nobody rebuilds is a claim, not a property.
+	 */
+	rebuildProjection(): void {
+		const states = projectStates(this.readHistory());
+		transact(this.db, () => {
+			run(this.db, 'DELETE FROM word_state');
+			for (const state of states.values()) this.writeProjectedState(state);
+		});
+	}
+
+	private appendEvent(entry: HistoryEntry): void {
+		run(
+			this.db,
+			`INSERT INTO status_event
+         (lexeme_id, asserted, asserted_at, device_id, device_seq,
+          document_id, from_offset, to_offset, observed_pronunciation, provenance, user_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[
+				entry.lexemeId,
+				entry.asserted,
+				entry.assertedAt,
+				entry.deviceId,
+				entry.deviceSeq,
+				entry.occurrence?.documentId ?? null,
+				entry.occurrence?.fromOffset ?? null,
+				entry.occurrence?.toOffset ?? null,
+				entry.occurrence?.observedPronunciation ?? null,
+				entry.provenance,
+				entry.userId
+			]
+		);
+	}
+
+	private writeProjectedState(state: WordState): void {
+		run(
+			this.db,
+			`INSERT INTO word_state (lexeme_id, state, provenance, user_id)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (lexeme_id) DO UPDATE
+         SET state = excluded.state,
+             provenance = excluded.provenance,
+             user_id = excluded.user_id`,
+			[state.lexemeId, state.state, state.provenance, state.userId]
+		);
 	}
 
 	/**

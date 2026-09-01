@@ -3,11 +3,15 @@
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { codePointsOf } from '$lib/domain/offsets';
+	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import type { StoredDocument } from '$lib/storage/repository';
+	import type { LexemeId, Token, WordState } from '$lib/domain/types';
 
 	let document = $state<StoredDocument | null>(null);
+	let states = $state<Map<LexemeId, WordState>>(new Map());
 	let loading = $state(true);
 	let problem = $state<string | null>(null);
+	let chosen = $state<Token | null>(null);
 
 	/**
 	 * The document's characters, converted once.
@@ -27,7 +31,9 @@
 		problem = null;
 		try {
 			const { repository } = await session();
-			document = repository.getDocument(id);
+			const loaded = repository.getDocument(id);
+			document = loaded;
+			states = repository.getStates(lexemesIn(loaded));
 		} catch (error) {
 			problem = error instanceof Error ? error.message : String(error);
 		} finally {
@@ -35,8 +41,41 @@
 		}
 	}
 
-	function textOf(token: { start: number; end: number }): string {
+	function lexemesIn(loaded: StoredDocument): LexemeId[] {
+		return loaded.tokens
+			.map((token) => token.lexemeId)
+			.filter((id): id is LexemeId => id !== undefined);
+	}
+
+	async function choose(state: string) {
+		const token = chosen;
+		if (token?.lexemeId === undefined || !document) return;
+		chosen = null;
+		try {
+			const { repository } = await session();
+			// The occurrence is recorded alongside the judgment: which document, and where in it.
+			// Unused in this slice, and irrecoverable if not written at the time — same-reading
+			// homographs are told apart by context and by nothing else.
+			repository.assertState(token.lexemeId, state, {
+				documentId: document.id,
+				fromOffset: token.start,
+				toOffset: token.end
+			});
+			states = repository.getStates(lexemesIn(document));
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			problem = `That mark could not be saved. ${detail}`;
+		}
+	}
+
+	function textOf(token: Token): string {
 		return characters.slice(token.start, token.end).join('');
+	}
+
+	/** The state name, or null where the reader has never judged this word (FR-006b). */
+	function stateOf(token: Token): string | null {
+		if (token.lexemeId === undefined) return null;
+		return states.get(token.lexemeId)?.state ?? null;
 	}
 </script>
 
@@ -48,13 +87,23 @@
 	<p class="notice problem" role="alert">{problem}</p>
 {:else if document}
 	<h1>{document.title}</h1>
-	<p class="subtitle">
-		Segmented by {document.analyzer} v{document.analyzerVersion}
-	</p>
+	<p class="subtitle">Segmented by {document.analyzer} v{document.analyzerVersion}</p>
 
+	<!-- No whitespace between tokens: this is Chinese, and the browser would render any gap the
+	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->
 	<div class="reading" lang={document.language}>
-		{#each document.tokens as token (token.start)}<span class="token" class:word={token.isWord}
-				>{textOf(token)}</span
-			>{/each}
+		{#each document.tokens as token (token.start)}{#if token.isWord}<button
+					class="token state-{stateOf(token) ?? 'none'}"
+					onclick={() => (chosen = token)}>{textOf(token)}</button
+				>{:else}<span class="token">{textOf(token)}</span>{/if}{/each}
 	</div>
+
+	{#if chosen}
+		<StateMenu
+			word={textOf(chosen)}
+			current={stateOf(chosen)}
+			onchoose={choose}
+			onclose={() => (chosen = null)}
+		/>
+	{/if}
 {/if}
