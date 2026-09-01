@@ -225,9 +225,35 @@ disagreement is itself the flag. This is the fix to a gap previously recorded as
    a second opinion is free.
 3. **The reader's own known words** — the vocabulary overlay, which improves as they read.
 
-A fourth, **jieba via Pyodide**, is available if measurement justifies the download. Confirmed:
-jieba is pure Python and works; **pkuseg does not** — it publishes platform wheels with compiled
-extensions and would need an emscripten build plus its model files.
+A fourth is better than Pyodide and should be preferred: **a frequency-scored maximum-probability
+path over a Chinese word dictionary, implemented in JavaScript**. This is what jieba actually is —
+build a graph of every dictionary match, then find the highest-probability path through it using
+word frequencies. The valuable asset is the frequency dictionary (a few megabytes of data), not
+the code, and the graph-and-scoring dynamic program is well understood. It costs no model, no GPU,
+no WASM runtime, and works offline and instantly.
+
+It is also the **diverse** opinion the ensemble is missing: `Intl.Segmenter` and longest-match are
+both dictionary-driven and fail together, whereas a probabilistic max-path is a genuinely
+different algorithm. Reimplementing all of jieba, HMM for unknown words included, is real work;
+the scoring path is not, and is where most of the quality lives.
+
+**jieba via Pyodide** remains available if that proves insufficient. Confirmed: jieba is pure
+Python and works; **pkuseg does not** — it publishes platform wheels with compiled extensions and
+would need an emscripten build plus its model files.
+
+**A small in-browser LLM is the wrong tool here, and is not merely expensive.** Choosing between
+two candidate segmentations is a scoring problem, which word frequencies answer directly. The task
+that resists frequencies is *sense* disambiguation — 花 flower against 花 to spend, where both
+readings are identical and both common — and that is exactly where a 0.5B–1B model is confidently
+wrong, on the only cases anyone would ask it about. A wrong gloss that is trusted is worse than no
+gloss. WebLLM (WebGPU), wllama (llama.cpp in WebAssembly) and Transformers.js all exist and are
+preserved as options; realistic costs are hundreds of megabytes to a gigabyte of download, patchy
+mobile WebGPU support, and phone-tab memory limits. Not recommended now.
+
+**The local model worth using is the one already owned**: Qwen3-4B on the laptop, in a different
+quality class from anything that fits in a phone browser, free per call and needing no network.
+An import step running there and handing the phone an analysed file is ADR-0007's preserved
+option 3, and this is the strongest argument for it so far.
 
 **Diversity matters more than count.** `Intl.Segmenter` and CC-CEDICT longest-match are both
 dictionary-driven and will fail together on the same novel compounds, so their agreement is weaker
