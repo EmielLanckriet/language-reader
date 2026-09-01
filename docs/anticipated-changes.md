@@ -51,6 +51,7 @@ settled in an ADR and no longer open questions.
 | Per-language word-identity rules | medium | cheap ↓ | **Decided** (ADR-0002): the identity rule is owned by the language provider, not the schema. Adding Dutch lemma identity needs no migration. | Defer |
 | Split heteronyms (长 cháng vs zhǎng) into distinct lexemes | medium | cheap | Lexeme split driven by token pronunciations already recorded at ingest, plus one nullable discriminator column. Handles differing readings only. | Defer |
 | Separate homographs that share a reading (花 huā flower / to spend) | medium | **open problem** | Recorded pronunciation carries no signal here, so the mechanism planned for heteronyms does not apply. Needs a sense discriminator supplied by the learner or a model. Confirmed unsolved in Sapling by its author. **Not a deferred decision — an unsolved one.** Surrogate lexeme ids keep every option open, which is the whole reason ADR-0002 declined to add a pronunciation-shaped discriminator early. | Keep options open; do not design for it yet |
+| Recording which occurrence a status judgment was about | high | **expensive** (earned) | Not designing for the open problem above — *retaining the evidence any solution to it would need*. Pronunciation carries no signal for same-reading homographs, but the **sentence being read does**: 花 in 一朵花 and in 花钱 are told apart by context and nothing else. Store `document_id`, `from_offset`, `to_offset` and `observed_pronunciation` on `status_event`, all nullable, anchored on character offsets so they survive re-segmentation. Without it, a judgment is "marked 花 known at time T" with no context, and any later sense split — by learner or by model — has nothing to adjudicate on. This is ADR-0003's preserve-the-inputs corollary applied to judgments rather than to text. **LIVE HEDGE.** | **Built in slice 1** |
 | Better segmenter than the current one | high | cheap | Derived data. `analyzer` + `analyzer_version` are recorded per document, so swapping is a recompute. Starting at pkuseg rather than jieba because segmentation quality is a known annoyance from LingQ, not a hypothetical one. **See the open question on `Intl.Segmenter` below — the choice of segmenter may not be a Python question at all.** | Defer (swap freely) |
 | Vocabulary-overlay segmentation (known words win over the dictionary) | high | cheap | Derived. Layer the learner's own known terms over the segmenter's output by greedy longest match, so a word being studied is never split. Borrowed from Sapling. Complements manual correction and is self-improving: correcting once fixes every later occurrence everywhere. | **Consider for slice 1** |
 | TTS segmentation disagreeing with reader segmentation | medium | cheap | jieba is a **global** singleton and the Kokoro front-end (misaki) follows it, so a reader segmenting with pkuseg and a TTS path segmenting with jieba will disagree within one sentence. `sentencegen/tts.py` already solves this generically by nudging jieba toward a target segmentation, gated on the words concatenating back to the sentence exactly. The reader's segmentation is therefore an *input* to TTS, not an independent choice. | Defer (solution known) |
@@ -148,12 +149,20 @@ no licence file so nothing may be copied verbatim without asking):
   with every spelling of itself, because a bare 长 is a claim about spelling with nothing in it to
   distinguish.
 
-  **This is not a solved problem, per the author directly.** It resolves *heteronyms* — different
-  spelling-same reading — and cannot touch homographs that share a reading: 花 huā is *flower* and
+  **This is not a solved problem, per the author directly.** It resolves *heteronyms* — same
+  spelling, different reading — and cannot touch homographs that share a reading: 花 huā is *flower* and
   *to spend*, 会 huì is *can* and *meeting*. `cardKey` returns one string for both, so they
   collapse into one entry. Separating those needs a **sense** discriminator, which means the
   learner's judgment or a model's gloss, neither cheap nor reliable. Treat this as an open
   problem, not a destination.
+
+  A second failure sits alongside it, worth knowing before adopting the vocabulary overlay:
+  even where a reading *would* disambiguate, the pipeline cannot use it. Identifying which 长 an
+  occurrence is needs its reading; the reading in context needs the segmentation; segmenting well
+  wants to favour known words; and known words are keyed by spelling **plus** reading, which does
+  not exist yet. Their `annotate.ts` keys status by `cardKey`, but the overlay in `tokenize.ts`
+  can only match on spelling. Any ordering of that pipeline gets one step wrong, so the overlay
+  is inherently reading-blind — an acceptable cost, but not a fixable one.
 - **Subtitle-following rules**, each a bug we would otherwise have shipped: a gap stays on the
   last line that *started* (cues do not tile a recording, and blinking off between every pair
   would flicker through a conversation); `start` is inclusive; a sentence with no timings is
