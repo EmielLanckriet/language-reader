@@ -44,7 +44,9 @@ implementations exist, and that failure is the point.
 | `tests/domain/tiling.test.ts` | Tokens tile every document exactly — **invariants only, never expected segmentations** | FR-005, invariant 1 |
 | `tests/domain/offsets.test.ts` | Code-point offsets survive astral-plane characters | FR-014, invariant 3 |
 | `tests/architecture/domain-purity.test.ts` | No file under `src/lib/domain/` imports Svelte or storage | Principle V.4 |
-| `tests/storage/migration.test.ts` | The hedge columns exist | invariant 5 |
+| `tests/storage/migration.test.ts` | The hedge columns exist and cannot be left empty | invariant 5 |
+| `tests/storage/provenance.test.ts` | A written state carries `provenance` and `user_id` on both tables | FR-012, FR-013, invariant 5 |
+| `tests/storage/counts.test.ts` | 100 marks produce exactly 100 states and 100 history entries | SC-004 |
 
 Two of these deserve their reasoning restated, because both look wrong at a glance:
 

@@ -36,7 +36,7 @@ the language provider; the constraint here is a convenience the provider current
 | `analyzer_version` | TEXT | **Hedge.** With `analyzer`, identifies what produced the tokens and makes re-derivation deliberate. |
 | `title` | TEXT | Derived from the opening characters; not earned. |
 | `created_at` | TEXT | Device time, ISO-8601. |
-| `user_id` | INTEGER | **Hedge.** Defaults to the single local reader (FR-013). |
+| `user_id` | INTEGER NOT NULL DEFAULT 1 | **Hedge.** Defaults to the single local reader (FR-013). |
 
 ### `token` — one occurrence, derived
 
@@ -59,8 +59,8 @@ lives here, which is what permits single contiguous spans in this slice — disc
 |---|---|---|
 | `lexeme_id` | INTEGER PK FK | One row per judged lexeme. |
 | `state` | TEXT | Free text, not an enum (FR-006a). Nothing depends on there being four. |
-| `provenance` | TEXT | **Hedge.** `manual` here; distinguishes marks earned in-app from imports (FR-012). |
-| `user_id` | INTEGER | **Hedge.** |
+| `provenance` | TEXT NOT NULL | **Hedge.** `manual` here; distinguishes marks earned in-app from imports (FR-012). Written explicitly on every insert — `NOT NULL` without a default, so omitting it fails loudly rather than storing a lie. |
+| `user_id` | INTEGER NOT NULL DEFAULT 1 | **Hedge.** |
 
 **A row exists only where a judgment was made** (FR-006b). Absence means never judged, which is
 distinct from any state the reader can choose. Words merely displayed cost nothing.
@@ -83,7 +83,8 @@ changes nothing.
 | `from_offset` | INTEGER NULL | **Hedge.** |
 | `to_offset` | INTEGER NULL | **Hedge.** |
 | `observed_pronunciation` | TEXT NULL | **Hedge.** Null in this slice; no pronunciation exists yet. |
-| `user_id` | INTEGER | **Hedge.** |
+| `provenance` | TEXT NOT NULL | **Hedge.** How this judgment was acquired (FR-012). Recorded per entry, not only on the projection, so the history stays self-contained. |
+| `user_id` | INTEGER NOT NULL DEFAULT 1 | **Hedge.** |
 
 Never updated, never deleted. The last four hedges retain *what the reader was looking at* — the
 evidence any future sense discriminator would need, since same-reading homographs are told apart by
@@ -125,9 +126,13 @@ Each is a test obligation, and the first three are test-first under Principle II
 3. **Offsets** (FR-014). Every `start`/`end` is a valid code-point offset into `raw_content`, and
    `start < end`. Round-tripping through the offset module reproduces the input.
 4. **Append-only.** No code path updates or deletes a `status_event` row.
-5. **Hedges present.** A migration test asserts that `provenance`, `user_id`, `device_id`,
-   `device_seq` and the occurrence columns exist. They are invisible in this slice, which makes
-   them exactly what a later refactor would remove as dead weight.
+5. **Hedges present *and populated*.** A migration test asserts that `provenance`, `user_id`,
+   `device_id`, `device_seq` and the occurrence columns exist and are `NOT NULL` or defaulted; a
+   second test asserts that a row written through `assertState` carries a non-null `provenance` and
+   `user_id` on both `word_state` and `status_event`. Presence alone is not the invariant — a
+   column that exists and is never written is a hedge in name only, and slice 1 would inherit a
+   write path that silently skips it. They are invisible in this slice, which makes them exactly
+   what a later refactor would remove as dead weight.
 
 ## The projection
 

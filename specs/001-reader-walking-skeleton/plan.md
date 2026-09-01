@@ -44,7 +44,7 @@ there is no server.
 Tapping a token and choosing a state shows the change within 200 ms (SC-003).
 
 **Constraints**: No server, and nothing requiring a payment method (ADR-0007). Documents capped at
-approximately 5,000 characters (FR-020). All reader data stays on the device. Offsets are Unicode
+5,000 Unicode code points (FR-020). All reader data stays on the device. Offsets are Unicode
 code points, never UTF-16 code units.
 
 **Scale/Scope**: One reader, one device, tens of documents, low thousands of tokens per document.

@@ -50,7 +50,8 @@ notion of a second user.
   the device. **Revised under the no-server decision**: there are no server logs, so the
   device-side record carries the whole burden. No third-party error reporting service.
 - Q: What is the largest document slice 0 has to accept and display? → A: Roughly 5,000
-  characters, refused above that with a clear message. No pagination in slice 0; the "full
+  characters, refused above that with a clear message. Fixed at exactly 5,000 code points in
+  FR-020, so the boundary is testable. No pagination in slice 0; the "full
   chapter" case moves to slice 1. Accepted on the basis that raising it later is cheap.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -227,8 +228,20 @@ cross-device requires an export file or real sync, both scheduled later.
 - **FR-016**: The application MUST be deployed to its host and usable on an Android phone. All
   reader data MUST be stored on the device; no reader data may be sent anywhere.
 - **FR-017**: The interface MUST be legible and operable at phone width without horizontal
-  scrolling, and tap targets MUST be large enough to hit reliably.
+  scrolling. Every tappable element MUST present a target of at least 44x44 CSS pixels. The number
+  is the common mobile-platform guideline; what matters is that the requirement is checkable, since
+  a token grid is exactly where targets get small enough to mis-tap.
 - **FR-018**: Rejected input MUST produce an explanation of what was wrong, not a silent failure.
+- **FR-019**: *Intentionally retired.* It required an access credential for the deployed
+  application. The no-server decision (ADR-0007) removed the thing there was to authenticate to,
+  so the requirement was withdrawn rather than renumbered — renumbering would silently change what
+  every earlier reference meant. The gap is deliberate.
+- **FR-020**: Documents longer than **5,000 Unicode code points** MUST be refused on submission,
+  with a message stating both the limit and the submitted size. The limit is exact rather than
+  approximate so that the boundary is testable, and it is counted in code points for the same
+  reason FR-014 is. Slice 0 renders a document in full and does not paginate. Raising this limit
+  later is a presentation change over derived data — page boundaries are computed from the
+  character offsets FR-014 already requires — and touches no stored data.
 - **FR-021**: Failures MUST be recorded on the device in a form the reader can retrieve and read
   without developer tools — a diagnostics view or a log the export includes. With no server there
   are no server logs, and Android offers no convenient console.
@@ -237,11 +250,6 @@ cross-device requires an export file or real sync, both scheduled later.
   an unexpected error. A blank screen or a bare "something went wrong" does not satisfy this. Rationale: developer tools are not readily available on
   Android, and Principle I makes the phone the place failures are first met, so an error the
   reader cannot read costs a round trip to another device.
-- **FR-020**: Documents larger than approximately 5,000 characters MUST be refused on submission,
-  with a message stating both the limit and the submitted size. Slice 0 renders a document in full
-  and does not paginate. Raising this limit later is a presentation change over derived data —
-  page boundaries are computed from the character offsets FR-014 already requires — and touches no
-  stored data.
 
 ### Requirements Deliberately Included Before They Are Used
 
