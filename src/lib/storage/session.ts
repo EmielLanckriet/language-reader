@@ -34,7 +34,7 @@ export function session(): Promise<Session> {
 }
 
 async function start(): Promise<Session> {
-	const { db, durability } = await openDatabase();
+	const { db, durability, fallbackReason } = await openDatabase();
 
 	// Asked for once, at startup, before anything is written. The outcome is recorded rather than
 	// acted on: there is nothing useful to do about a refusal except tell the reader.
@@ -44,7 +44,8 @@ async function start(): Promise<Session> {
 		recordDiagnostic(
 			db,
 			'storage',
-			'OPFS was unavailable, so the database was opened in memory. Nothing saved will survive a reload.'
+			'OPFS was unavailable, so the database was opened in memory. Nothing saved will survive ' +
+				`a reload. The reason it was unavailable: ${fallbackReason ?? 'not reported'}`
 		);
 	}
 	if (persistence !== 'granted') {

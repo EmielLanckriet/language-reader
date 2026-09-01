@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { loadSqlite, applyMigrations, queryRows, type Database } from '../../src/lib/storage/db';
+import {
+	loadSqlite,
+	applyMigrations,
+	openDatabase,
+	queryRows,
+	type Database
+} from '../../src/lib/storage/db';
 
 // Invariant 5 of data-model.md. Almost every column checked here supports no capability a reader
 // can see in this slice, which is exactly why the check exists: an invisible column is what a
@@ -128,5 +134,24 @@ describe('the initial migration', () => {
 		const state = columns(db, 'word_state');
 		expect(state.get('lexeme_id')?.pk).toBe(1);
 		expect(state.get('surface')).toBeUndefined();
+	});
+});
+
+// This suite migrated a database it created itself, which is a different claim from "the database
+// the application actually opens has a schema". It did not, for a while: openDatabase returned a
+// connection without migrating it, every test here still passed, and the app failed in a browser
+// with "no such table: document". The gap was that nothing tested the real entry point.
+describe('the database the application opens', () => {
+	it('comes back already migrated, not empty', async () => {
+		const { db } = await openDatabase();
+		try {
+			// In Node there is no OPFS, so this is the in-memory fallback — which is exactly the
+			// path that matters here, because what is under test is that opening migrates at all.
+			expect(() => db.exec('SELECT 1 FROM document')).not.toThrow();
+			expect(() => db.exec('SELECT 1 FROM status_event')).not.toThrow();
+			expect(() => db.exec('SELECT 1 FROM word_state')).not.toThrow();
+		} finally {
+			db.close();
+		}
 	});
 });

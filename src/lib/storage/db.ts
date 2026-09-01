@@ -123,6 +123,8 @@ export type Durability = 'opfs' | 'memory';
 export interface OpenDatabase {
 	db: Database;
 	durability: Durability;
+	/** Why OPFS was not used, when it was not. Absent when storage is durable. */
+	fallbackReason?: string;
 }
 
 /**
@@ -136,12 +138,25 @@ export interface OpenDatabase {
 export async function openDatabase(): Promise<OpenDatabase> {
 	const sqlite = await loadSqlite();
 
+	let opened: OpenDatabase;
 	try {
 		const pool: SAHPoolUtil = await sqlite.installOpfsSAHPoolVfs({});
-		return { db: new pool.OpfsSAHPoolDb(DATABASE_FILE), durability: 'opfs' };
-	} catch {
-		return { db: new sqlite.oo1.DB(':memory:', 'c'), durability: 'memory' };
+		opened = { db: new pool.OpfsSAHPoolDb(DATABASE_FILE), durability: 'opfs' };
+	} catch (error) {
+		// Why it failed is the whole value of this branch. Falling back silently would leave the
+		// reader with an app that works perfectly until they close the tab, and no way to find out
+		// why (FR-021). The reason is carried out so the caller can record it.
+		opened = {
+			db: new sqlite.oo1.DB(':memory:', 'c'),
+			durability: 'memory',
+			fallbackReason: error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+		};
 	}
+
+	// Migrating here rather than leaving it to the caller: every caller needs it, and a database
+	// handed out before its schema exists fails later, somewhere else, with "no such table".
+	applyMigrations(opened.db);
+	return opened;
 }
 
 /** Whether the browser promised not to evict the reader's data. */
