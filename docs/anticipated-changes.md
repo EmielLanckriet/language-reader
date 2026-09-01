@@ -266,6 +266,23 @@ fine-tuning a small encoder. Real work, and of a different kind from shipping a 
 segmenter, with `Intl.Segmenter` demoted to fallback — simplifying the ensemble rather than
 extending it.
 
+*What a tagger does and does not do:*
+
+- **Recovers wrongly-split compounds** (自行车 read as 自行 + 车) — yes, and this is its strength.
+  Dictionary methods fail on unknown words and context-dependent boundaries; a tagger is trained
+  on exactly those.
+- **Discontiguous words** (帮忙 as 帮了他一个忙, Dutch *opbellen*) — **no, structurally.** CWS
+  taggers emit per-character begin/middle/end/single tags, a scheme that assumes contiguity by
+  construction: no tag sequence can say that position 1 and position 6 are one word. Discontiguous
+  words are outside the task definition, so model quality is irrelevant. Catching them needs
+  dependency parsing (LTP, HanLP), a purpose-built detector, or an LLM. This is already the
+  deferred multi-span case; nothing changes.
+- **Inherits one corpus's segmentation standard.** PKU, MSR and CTB disagree on cases like 中国人
+  deliberately. A trained model does not resolve word-hood's ambiguity — it picks a side and stops
+  signalling that a choice was made. This is why the vocabulary overlay and manual correction
+  still matter with a good tagger: they are how the reader's opinion overrides the corpus's. It
+  also means the **choice of training corpus is a product decision**, not just a quality one.
+
 **A small in-browser LLM remains the wrong tool.** The task that resists frequencies is *sense*
 disambiguation — 花 flower against 花 to spend, where both
 readings are identical and both common — and that is exactly where a 0.5B–1B model is confidently
