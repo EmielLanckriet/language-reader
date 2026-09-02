@@ -162,9 +162,19 @@ in the spec's own words.
 - [X] T046 On the phone, offline: mark words, close, reopen, confirm the marks are there; and paste and save new text (P6, P7 — FR-004, FR-006, SC-005)
 - [X] T047 On the phone: open the installed application and the same URL in Chrome, and confirm the one in front works — measured at about three seconds to hand the lease back, recorded in the register with its cause while the other says it cannot save — and that it says so within 5 seconds of opening, and in place of the library rather than over an empty one (P9 — FR-012, FR-013, FR-014, SC-004)
 - [X] T048 On the phone: confirm the device-information view states that marks are provisional and documents are not (P10 — FR-018)
-- [ ] T049 On the phone: deploy a new version while the application is open, confirm nothing changes until asked, then accept and confirm every document and mark survives (P11, P12 — FR-009, FR-010, FR-011, SC-003)
+- [X] T049 On the phone: deploy a new version while the application is open, confirm nothing changes until asked, then accept and confirm every document and mark survives (P11, P12 — FR-009, FR-010, FR-011, SC-003). Confirmed on the device: library and marked words unaffected. The phone froze just as the dialog appeared, so the notice itself went unread — which exposed a gap FR-010's rationale depended on and the spec had not noticed, now closed by T052
 - [X] T050 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including whether `pauseVfs`/`unpauseVfs` behaved as documented across a real backgrounding, which is the one part of this slice resting on documentation rather than measurement
 - [X] T051 Close slice 0's outstanding T043 while the phone is in hand: paste more than 5,000 characters and confirm the refusal message is legible on a phone screen
+
+---
+
+## Phase 8: What The Phone Check Asked For
+
+**Purpose**: Two gaps the device found that the specification had not. Both are small, both are
+about FR-010 and FR-021 actually paying off rather than about new capability.
+
+- [X] T052 Report the running build, and when it was first seen, in `src/routes/diagnostics/+page.svelte` via `src/lib/ui/version.ts` (FR-010). The reader chose an explicit update control *because* knowing when a version landed is worth a tap — and then a frozen phone ate the notice, with nothing anywhere able to say which version was running. Kept out of the database on purpose: this view has to work when storage is refused, which is exactly when someone opens it
+- [X] T053 Link to the diagnostics view from the library in `src/routes/+page.svelte` (FR-021). Until now the only link was inside an error notice, so it was reachable exactly when something had already gone wrong, and in the installed application — with no address bar — not reachable deliberately at all. Getting there meant opening a browser, which takes the storage lease off the installed copy and causes the very contention the page exists to explain
 
 **Checkpoint**: SC-008 satisfied. The slice is complete.
 

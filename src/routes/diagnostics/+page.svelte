@@ -3,6 +3,7 @@
 	import { session } from '$lib/storage/session';
 	import { explain, type Availability } from '$lib/storage/availability';
 	import type { Diagnostic } from '$lib/diagnostics/describe';
+	import { runningVersion, describeVersion } from '$lib/ui/version';
 
 	/**
 	 * FR-021: the reader must be able to retrieve and read the failure record **without developer
@@ -13,6 +14,10 @@
 	let availability = $state<Availability>({ kind: 'acquiring', remembering: false });
 	let persistence = $state('');
 	let loading = $state(true);
+
+	// Read outside the storage effect on purpose: the version has to be reportable even when the
+	// database cannot be opened, which is exactly when someone opens this page.
+	const running = runningVersion();
 
 	$effect(() => {
 		let stop = () => {};
@@ -58,6 +63,17 @@
 <h2 class="section">Right now</h2>
 
 <dl class="facts">
+	<dt>Version</dt>
+	<dd>
+		<!--
+			FR-010 asks the reader to decide when to move to a new version, on the stated grounds
+			that knowing when one landed is worth a tap. That only pays off if it is still knowable
+			afterwards — a notice missed is a notice gone. Recorded when a new build is first seen.
+		-->
+		{describeVersion(running)}{running.since
+			? `, running here since ${running.since.toLocaleString()}`
+			: ''}
+	</dd>
 	<dt>Storage</dt>
 	<dd>{storage}</dd>
 	<dt>Eviction</dt>

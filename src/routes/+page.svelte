@@ -159,3 +159,14 @@
 		{/each}
 	</ul>
 {/if}
+
+<!--
+	FR-021 says the reader must be able to reach the failure record without developer tools. Until
+	now the only link to it was inside an error notice, so it was reachable exactly when something
+	had already gone wrong — and in the installed application, with no address bar, not reachable
+	deliberately at all. Getting there meant opening the browser, which takes the storage lease away
+	from the installed copy and causes the very contention the page exists to explain.
+-->
+<footer class="tools">
+	<a class="link" href={resolve('/diagnostics')}>Storage and diagnostics</a>
+</footer>

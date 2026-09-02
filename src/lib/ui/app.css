@@ -282,3 +282,16 @@ button.token.state-ignored {
 	display: flex;
 	gap: 0.5rem;
 }
+
+/* A way out of the library that is not an error message. See +page.svelte for why it is needed. */
+.tools {
+	margin: 2rem 0 1rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--rule);
+	font-size: 0.85rem;
+}
+
+/* Why a disabled control is disabled, sitting next to it rather than waiting to be pressed. */
+.why {
+	margin: 0.4rem 0 0;
+}
