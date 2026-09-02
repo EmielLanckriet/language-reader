@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
+	import { explain, type Availability } from '$lib/storage/availability';
 	import type { Diagnostic } from '$lib/diagnostics/describe';
 
 	/**
@@ -9,21 +10,36 @@
 	 * information exists — so this page is the whole of it.
 	 */
 	let entries = $state<Diagnostic[]>([]);
-	let durability = $state('');
+	let availability = $state<Availability>({ kind: 'acquiring', remembering: false });
 	let persistence = $state('');
 	let loading = $state(true);
 
 	$effect(() => {
-		void load();
+		let stop = () => {};
+		void (async () => {
+			const s = await session();
+			stop = s.repository.watch((state) => (availability = state));
+			persistence = s.persistence;
+			entries = await s.repository.readDiagnostics();
+			loading = false;
+		})();
+		return () => stop();
 	});
 
-	async function load() {
-		const s = await session();
-		entries = await s.repository.readDiagnostics();
-		durability = s.durability;
-		persistence = s.persistence;
-		loading = false;
-	}
+	const storage = $derived.by(() => {
+		switch (availability.kind) {
+			case 'holding':
+				return 'On this device, in the browser’s private file system. Changes are being saved.';
+			case 'acquiring':
+				return 'Reconnecting to your library. This happens each time you come back to the app.';
+			case 'paused':
+				return 'Released, because this window is in the background. It comes back when you do.';
+			case 'refused': {
+				const why = explain(availability.cause);
+				return `${why.headline} ${why.action}${why.detail ? ` (${why.detail})` : ''}`;
+			}
+		}
+	});
 
 	async function clear() {
 		const s = await session();
@@ -43,17 +59,23 @@
 
 <dl class="facts">
 	<dt>Storage</dt>
-	<dd>
-		{durability === 'opfs'
-			? 'On this device, in the browser’s private file system.'
-			: 'In memory only. Nothing saved here will be kept — another copy of this app is ' +
-				'probably holding the storage. Close the others and reload.'}
-	</dd>
+	<dd>{storage}</dd>
 	<dt>Eviction</dt>
 	<dd>
 		{persistence === 'granted'
 			? 'The browser has promised not to evict it.'
 			: 'The browser has not promised to keep it. It may be deleted if the device runs short of space.'}
+	</dd>
+	<dt>What is safe, and what is not</dt>
+	<dd>
+		<!--
+			FR-018. A permanent line rather than a notice shown once: a first-run notice is dismissed
+			reflexively and is then absent exactly when someone wants to check. Nothing interrupts
+			the reader with this anywhere else.
+		-->
+		Text you save is kept and is never thrown away. Words you mark are <strong>provisional</strong>
+		— this version splits Chinese one character at a time, and when real word-splitting arrives the words
+		themselves change, so marks attached to single characters may not carry across.
 	</dd>
 </dl>
 

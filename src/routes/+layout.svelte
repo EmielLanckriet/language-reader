@@ -2,6 +2,8 @@
 	import { browser } from '$app/environment';
 	import '$lib/ui/app.css';
 	import InstallOffer from '$lib/ui/InstallOffer.svelte';
+	import UpdateOffer from '$lib/ui/UpdateOffer.svelte';
+	import ReadOnlyNotice from '$lib/ui/ReadOnlyNotice.svelte';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 
 	let { children } = $props();
@@ -41,7 +43,8 @@
 -->
 <div class="notices">
 	<InstallOffer />
-	<!-- UpdateOffer and ReadOnlyNotice mount here as their stories land. -->
+	<UpdateOffer />
+	<ReadOnlyNotice />
 </div>
 
 <main>

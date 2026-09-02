@@ -5,7 +5,7 @@
  * surprise that only appears on the phone.
  */
 
-import type { Durability } from './db';
+import type { Availability } from './availability';
 
 /** Methods the worker will run on the repository, named rather than sent as functions. */
 export type Call =
@@ -23,15 +23,15 @@ export type Call =
 export type Request = { id: number } & Call;
 
 /**
- * What the worker learned when it opened the database. Sent once, unprompted, when it is ready —
- * so the first screen does not have to ask before it can say whether storage is durable.
+ * Messages that are not calls: things the page knows and the worker cannot see for itself.
+ *
+ * Visibility is the important one. The worker holds the storage lease only while the page is the
+ * one being looked at, and `document.visibilityState` is `[Exposed=Window]` — so the page has to
+ * tell it.
  */
-export interface Ready {
-	kind: 'ready';
-	durability: Durability;
-	/** Why OPFS was not used, when it was not. Absent when storage is durable. */
-	fallbackReason?: string;
-}
+export type Control = { kind: 'visibility'; visible: boolean } | { kind: 'retry' };
+
+export type ToWorker = Request | Control;
 
 /**
  * Errors are flattened to a name and a message.
@@ -46,6 +46,11 @@ export interface Failure {
 }
 
 export type Response =
-	| Ready
+	/**
+	 * Pushed whenever it changes, never asked for. The interface has to be able to say "this window
+	 * cannot save" the moment it becomes true, and a screen that had to poll for it would show a
+	 * stale answer for exactly as long as it mattered.
+	 */
+	| { kind: 'availability'; state: Availability }
 	| { kind: 'result'; id: number; value: unknown }
 	| { kind: 'failure'; id: number; error: Failure };

@@ -109,26 +109,26 @@ cannot save, refuses a mark and a document, and recovers when the other is close
 
 > Written before the implementation and expected to fail. That failure is the point.
 
-- [ ] T021 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for every transition in data-model.md, asserting each of the five invariants by name: writes accepted in exactly one state; no event named for a timer, which is FR-015a stated as a property rather than a promise; a remembered change carried out at most once and only on success; `refused` reachable back to `acquiring` by all three events; and every `refused` carrying a cause
-- [ ] T022 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for `explain(cause)`, asserting that `another-copy` and `unavailable` produce **different** actions for the reader, and that `unknown` states its uncertainty and carries the recorded detail (FR-013)
+- [X] T021 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for every transition in data-model.md, asserting each of the five invariants by name: writes accepted in exactly one state; no event named for a timer, which is FR-015a stated as a property rather than a promise; a remembered change carried out at most once and only on success; `refused` reachable back to `acquiring` by all three events; and every `refused` carrying a cause
+- [X] T022 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for `explain(cause)`, asserting that `another-copy` and `unavailable` produce **different** actions for the reader, and that `unknown` states its uncertainty and carries the recorded detail (FR-013)
 
 ### Implementation
 
-- [ ] T023 [US3] Implement `src/lib/storage/availability.ts` per contracts/storage-availability.md — `Availability`, `Cause`, `Event`, `Effect`, `next`, `acceptsWrites`, `explain`. Imports nothing
-- [ ] T024 [US3] Make `src/lib/storage/db.ts` open-and-close repeatable: expose closing the connection separately from tearing down the VFS, and return the pool utility so the caller can pause and unpause it
-- [ ] T025 [US3] Implement `src/lib/storage/lease.ts` in the worker: `acquire()` takes the Web Lock with `{ ifAvailable: true }`, then installs or unpauses the VFS and opens the database; `release()` closes the database **then** calls `pauseVfs()` — in that order, because the library throws if handles are open
-- [ ] T026 [US3] Classify failures in `src/lib/storage/lease.ts` into the three causes per contracts/storage-availability.md: a refused lock is `another-copy`, an acquired lock over a throwing VFS is `unavailable` with the thrown message, and anything else is `unknown` with what was recorded
-- [ ] T027 [US3] Extend `src/lib/storage/protocol.ts` with `visibility`, `retry` and `availability` messages
-- [ ] T028 [US3] Drive the state machine from `src/lib/storage/worker.ts`: hold the current `Availability`, apply `next()` on each event, perform `acquire` and `release` effects, and push every change to the page
-- [ ] T028a [US3] Queue **reads** in `src/lib/storage/worker.ts` while the state is `acquiring` or `paused`, releasing them once `holding` is reached. Only writes are refused. Without this, every return to the foreground resolves reads against a database that is not open yet, and the reader sees an empty library — which is indistinguishable from having lost everything
-- [ ] T029 [US3] Gate every write in `src/lib/storage/worker.ts` on `acceptsWrites`: when false, raise `reader-attempted-change`, await the attempt, then either perform the call or reject it — so the caller never receives a success that will not be kept (FR-012, FR-015, FR-016)
-- [ ] T029a [US3] Make a write that fails for any other reason — storage exhausted while marking offline is the spec's named case — surface as a refusal naming its cause, in `src/lib/storage/worker.ts` and `src/lib/storage/client.ts`. The lease state machine covers being unable to *reach* storage; it does not cover storage refusing a write once reached, and FR-016 forbids reporting either as saved
-- [ ] T030 [US3] Forward visibility from `src/lib/storage/session.ts`: send `visibility` on `document.visibilitychange` and once at startup, and expose the pushed `availability` to the interface
-- [ ] T031 [US3] Surface availability through `src/lib/storage/client.ts` as reactive state, and reject write methods with a typed refusal rather than a generic error
-- [ ] T031a [US3] Render a resuming state rather than an empty one while availability is `acquiring`, in `src/routes/+page.svelte` and `src/routes/read/[id]/+page.svelte`. This is **not** a rare path: tying the lease to visibility means every return to the foreground passes through it, so it is the state the reader will meet most often after `holding`
-- [ ] T032 [US3] Create `src/lib/ui/ReadOnlyNotice.svelte` rendering `explain(cause)` — headline, action, and the recorded detail when present — with a retry control that sends `retry` (FR-013, FR-015). Render it in the notice region of `src/routes/+layout.svelte`
-- [ ] T033 [US3] Show the read-only cause in `src/routes/diagnostics/+page.svelte` under "Right now", replacing slice 0's fixed sentence that always blamed another copy
-- [ ] T034 [US3] Verify quickstart checks 10, 11 and 12 locally with two visible windows, and confirm that switching between them moves the lease
+- [X] T023 [US3] Implement `src/lib/storage/availability.ts` per contracts/storage-availability.md — `Availability`, `Cause`, `Event`, `Effect`, `next`, `acceptsWrites`, `explain`. Imports nothing
+- [X] T024 [US3] Make `src/lib/storage/db.ts` open-and-close repeatable: expose closing the connection separately from tearing down the VFS, and return the pool utility so the caller can pause and unpause it
+- [X] T025 [US3] Implement `src/lib/storage/lease.ts` in the worker: `acquire()` takes the Web Lock with `{ ifAvailable: true }`, then installs or unpauses the VFS and opens the database; `release()` closes the database **then** calls `pauseVfs()` — in that order, because the library throws if handles are open. **`unpauseVfs()` is not reliable under contention**, found by measurement: uncontended it works perfectly, but when another copy still holds the files it resolves *without* re-registering the VFS and leaves the pool unusable — and `installOpfsSAHPoolVfs` caches per module instance, so it cannot be reinstalled. Recovery is a fresh worker, in `client.ts`
+- [X] T026 [US3] Classify failures in `src/lib/storage/lease.ts` into the three causes per contracts/storage-availability.md: a refused lock is `another-copy`, an acquired lock over a throwing VFS is `unavailable` with the thrown message, and anything else is `unknown` with what was recorded
+- [X] T027 [US3] Extend `src/lib/storage/protocol.ts` with `visibility`, `retry` and `availability` messages
+- [X] T028 [US3] Drive the state machine from `src/lib/storage/worker.ts`: hold the current `Availability`, apply `next()` on each event, perform `acquire` and `release` effects, and push every change to the page
+- [X] T028a [US3] Queue **reads** in `src/lib/storage/worker.ts` while the state is `acquiring` or `paused`, releasing them once `holding` is reached. Only writes are refused. Without this, every return to the foreground resolves reads against a database that is not open yet, and the reader sees an empty library — which is indistinguishable from having lost everything
+- [X] T029 [US3] Gate every write in `src/lib/storage/worker.ts` on `acceptsWrites`: when false, raise `reader-attempted-change`, await the attempt, then either perform the call or reject it — so the caller never receives a success that will not be kept (FR-012, FR-015, FR-016)
+- [X] T029a [US3] Make a write that fails for any other reason — storage exhausted while marking offline is the spec's named case — surface as a refusal naming its cause, in `src/lib/storage/worker.ts` and `src/lib/storage/client.ts`. The lease state machine covers being unable to *reach* storage; it does not cover storage refusing a write once reached, and FR-016 forbids reporting either as saved
+- [X] T030 [US3] Forward visibility from `src/lib/storage/session.ts`: send `visibility` on `document.visibilitychange` and once at startup, and expose the pushed `availability` to the interface
+- [X] T031 [US3] Surface availability through `src/lib/storage/client.ts` as reactive state, and reject write methods with a typed refusal rather than a generic error
+- [X] T031a [US3] Render a resuming state rather than an empty one while availability is `acquiring`, in `src/routes/+page.svelte` and `src/routes/read/[id]/+page.svelte`. This is **not** a rare path: tying the lease to visibility means every return to the foreground passes through it, so it is the state the reader will meet most often after `holding`
+- [X] T032 [US3] Create `src/lib/ui/ReadOnlyNotice.svelte` rendering `explain(cause)` — headline, action, and the recorded detail when present — with a retry control that sends `retry` (FR-013, FR-015). Render it in the notice region of `src/routes/+layout.svelte`
+- [X] T033 [US3] Show the read-only cause in `src/routes/diagnostics/+page.svelte` under "Right now", replacing slice 0's fixed sentence that always blamed another copy
+- [X] T034 [US3] Verify quickstart checks 10, 11 and 12 locally with two visible windows, and confirm that switching between them moves the lease
 
 **Checkpoint**: A copy without the lease accepts nothing and explains itself; the visible copy always works.
 
@@ -140,12 +140,12 @@ cannot save, refuses a mark and a document, and recovers when the other is close
 includes them before they are used; FR-017 and FR-018 because they are about honesty rather than
 about any one capability.
 
-- [ ] T035 Add a `skip-waiting` message handler to `src/service-worker.ts` calling `skipWaiting()` (FR-010)
-- [ ] T036 Create `src/lib/ui/UpdateOffer.svelte`: watch the registration for `waiting` and for `updatefound`, offer the move, post `skip-waiting` when accepted, and reload on `controllerchange`. Render it in the notice region (FR-009, FR-010)
+- [X] T035 Add a `skip-waiting` message handler to `src/service-worker.ts` calling `skipWaiting()` (FR-010)
+- [X] T036 Create `src/lib/ui/UpdateOffer.svelte`: watch the registration for `waiting` and for `updatefound`, offer the move, post `skip-waiting` when accepted, and reload on `controllerchange`. Render it in the notice region (FR-009, FR-010)
 - [ ] T037 Verify FR-011 by counting documents, marks and history entries before and after accepting a version change, per quickstart checks 8 and 9 (SC-003)
-- [ ] T038 Make the disabled save control explain itself in `src/routes/+page.svelte` — say that there is nothing to save yet, rather than leaving a dead control (FR-017, resolving the question inherited from slice 0)
-- [ ] T039 Add a permanent line to `src/routes/diagnostics/+page.svelte` stating that word marks made now are provisional and may not survive real segmentation, and that documents are not provisional and are never discarded. No first-run notice, and no interruption anywhere else (FR-018)
-- [ ] T040 [P] Update `README.md` with what the application now is: installable, offline, and single-writer
+- [X] T038 Make the disabled save control explain itself in `src/routes/+page.svelte` — say that there is nothing to save yet, rather than leaving a dead control (FR-017, resolving the question inherited from slice 0)
+- [X] T039 Add a permanent line to `src/routes/diagnostics/+page.svelte` stating that word marks made now are provisional and may not survive real segmentation, and that documents are not provisional and are never discarded. No first-run notice, and no interruption anywhere else (FR-018)
+- [X] T040 [P] Update `README.md` with what the application now is: installable, offline, and single-writer
 
 ---
 

@@ -7,10 +7,24 @@ Inspired by LingQ and Language Reactor, built to run on a phone.
 system, in a SQLite database. Nothing is sent anywhere, there is nothing to log in to, and there is
 no subscription that can lapse (see [ADR-0007](docs/adr/0007-no-server-browser-first.md)).
 
-This is **slice 0**: the thinnest end-to-end path through every layer. It splits text one character
-per token, which is not real segmentation and is not meant to be — the placeholder exists to prove
-the seam it sits behind. See
-[the specification](specs/001-reader-walking-skeleton/spec.md) for what is deliberately missing.
+This is **slice 1**. Slice 0 proved the architecture end to end; slice 1 makes it a thing you can
+actually use every day:
+
+- **It installs.** Add it to your home screen and it opens in its own window, with no browser
+  around it.
+- **It works offline.** The whole application is kept on the device, so it starts and reads with no
+  network at all — including after restarting the phone. This is a constitutional requirement
+  rather than a nicety.
+- **It will not lose your work.** Storage is exclusive to one copy at a time, and the copy you are
+  looking at is the one that has it. A copy that cannot reach storage accepts nothing and says so,
+  rather than accepting changes it will quietly discard.
+
+It still splits text one character per token, which is not real segmentation and is not meant to be
+— the placeholder exists to prove the seam it sits behind, and real segmentation is slice 2. So
+**text you save is kept permanently; words you mark are provisional** until segmentation is
+settled, and the app says so in its own device-information view. See
+[the slice 1 specification](specs/002-installable-offline-reader/spec.md) for what is deliberately
+missing.
 
 ## Getting started
 

@@ -17,30 +17,46 @@
 	let saving = $state(false);
 	let problem = $state<unknown>(null);
 	let warning = $state<string | null>(null);
-	let losingData = $state<string | null>(null);
 
 	// Counted in characters, matching the limit the content source enforces (FR-020). Shown live
 	// so the reader can see they are over the limit before pressing anything.
 	const length = $derived(codePointLength(pasted));
 
+	// Re-read whenever this copy gets the storage back, not only on mount.
+	//
+	// Without this, a copy that had the lease taken while it was in the background shows whatever
+	// was true when it last looked — so switching between two windows leaves the older one quietly
+	// out of date, and a document saved in the other one is simply missing. Reading again on
+	// `holding` costs one query and removes a whole class of "where did it go?".
 	$effect(() => {
-		void load();
+		let seen: string | undefined;
+		let stop = () => {};
+		void session().then(({ repository }) => {
+			stop = repository.watch((state) => {
+				if (state.kind !== 'holding' || seen === 'holding') {
+					seen = state.kind;
+					return;
+				}
+				seen = state.kind;
+				void load();
+			});
+		});
+		return () => stop();
 	});
 
 	async function load() {
 		try {
-			const { repository, durability, persistence } = await session();
+			const { repository, persistence } = await session();
+
+			// This waits for the storage lease rather than resolving empty without it. Every return
+			// to the foreground passes through acquiring, and a library that briefly showed nothing
+			// on each of them would be indistinguishable from having lost everything.
 			documents = await repository.listDocuments();
-			if (durability === 'memory') {
-				// By far the most common cause on a phone is a second copy of the app: the OPFS
-				// lease is exclusive, so a browser tab and the installed app cannot both hold it,
-				// and the loser degrades to memory. Saying only "storage unavailable" is true and
-				// useless — the reader needs to know there is something they can do about it.
-				losingData =
-					'Nothing you save here will be kept. Another copy of this app is probably open — ' +
-					'the installed app and a browser tab cannot share storage. Close the others, ' +
-					'then reload this page.';
-			} else if (persistence !== 'granted') {
+
+			// Whether this copy can save at all is ReadOnlyNotice's business, in the layout, so it
+			// is said once wherever the reader happens to be. What is left here is the quieter
+			// point that storage is durable but evictable.
+			if (persistence !== 'granted') {
 				warning =
 					'The browser has not promised to keep your saved reading. It may be deleted if ' +
 					'the device runs short of space.';
@@ -89,9 +105,7 @@
 <h1>Reader</h1>
 <p class="subtitle">Paste Chinese text, then tap words as you read.</p>
 
-{#if losingData}
-	<p class="notice problem" role="alert">{losingData}</p>
-{:else if warning}
+{#if warning}
 	<p class="notice warning">{warning}</p>
 {/if}
 
@@ -109,9 +123,25 @@
 	<ErrorNotice error={problem} />
 {/if}
 
+<!--
+	FR-017, and the open question slice 0 left behind. The control is disabled while there is
+	nothing to save, which makes the rejection message it would otherwise show unreachable — so
+	slice 0 had a requirement about explaining refused input that no reader could ever see.
+
+	Resolved as: preventing the error is fine, leaving the reader to guess is not. The control says
+	why it cannot be used, next to itself, instead of waiting to be pressed so it can complain.
+-->
 <button onclick={save} disabled={saving || pasted.trim() === ''}>
 	{saving ? 'Saving…' : 'Save'}
 </button>
+{#if !saving && pasted.trim() === ''}
+	<p class="subtitle why">Paste some text above and this becomes available.</p>
+{:else if length > MAXIMUM_CHARACTERS}
+	<p class="subtitle why">
+		That is {(length - MAXIMUM_CHARACTERS).toLocaleString()} characters over the limit. Saving will refuse
+		it until you shorten it.
+	</p>
+{/if}
 
 {#if loading}
 	<p class="loading">Opening your library…</p>

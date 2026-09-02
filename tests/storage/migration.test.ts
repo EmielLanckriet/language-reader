@@ -138,15 +138,28 @@ describe('the initial migration', () => {
 });
 
 // This suite migrated a database it created itself, which is a different claim from "the database
-// the application actually opens has a schema". It did not, for a while: openDatabase returned a
+// the application actually opens has a schema". It did not, for a while: opening returned a
 // connection without migrating it, every test here still passed, and the app failed in a browser
 // with "no such table: document". The gap was that nothing tested the real entry point.
+//
+// Slice 1 changed the shape of that entry point but not this obligation. `openDatabase` now takes a
+// pool it is handed rather than installing one, because the lease is acquired and released as the
+// reader moves between copies. There is no OPFS in Node, so the pool is stubbed — but the function
+// under test is still the one the application calls, and what is asserted is still that opening
+// migrates.
 describe('the database the application opens', () => {
 	it('comes back already migrated, not empty', async () => {
-		const { db } = await openDatabase();
+		const sqlite3 = await loadSqlite();
+		const pool = {
+			OpfsSAHPoolDb: class {
+				constructor() {
+					return new sqlite3.oo1.DB(':memory:', 'c');
+				}
+			}
+		} as unknown as Parameters<typeof openDatabase>[0];
+
+		const db = openDatabase(pool);
 		try {
-			// In Node there is no OPFS, so this is the in-memory fallback — which is exactly the
-			// path that matters here, because what is under test is that opening migrates at all.
 			expect(() => db.exec('SELECT 1 FROM document')).not.toThrow();
 			expect(() => db.exec('SELECT 1 FROM status_event')).not.toThrow();
 			expect(() => db.exec('SELECT 1 FROM word_state')).not.toThrow();

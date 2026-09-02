@@ -122,50 +122,48 @@ function alreadyApplied(db: Database, version: number): boolean {
 	return queryRows(db, 'SELECT 1 FROM schema_migration WHERE version = ?', [version]).length > 0;
 }
 
-/** Where the reader's data ended up, so the interface can say so honestly when it is not OPFS. */
-export type Durability = 'opfs' | 'memory';
-
-export interface OpenDatabase {
-	db: Database;
-	durability: Durability;
-	/** Why OPFS was not used, when it was not. Absent when storage is durable. */
-	fallbackReason?: string;
+/**
+ * Take the OPFS pool, or reacquire it after it was paused.
+ *
+ * The SAH-pool VFS locks every file it will use when it registers — deliberately, and the library
+ * says why: registration is not automatic precisely because one page holding the VFS would stop
+ * another page in the same origin from using it. That exclusivity is the whole reason the lease
+ * exists.
+ *
+ * `installOpfsSAHPoolVfs` returns the *same* promise for a given name however often it is called,
+ * so reacquiring after a pause is `unpauseVfs()` rather than a second installation.
+ *
+ * Throws if the pool cannot be taken. There is deliberately **no in-memory fallback**: slice 0 had
+ * one, and an application that quietly writes somewhere it will never read from is worse than one
+ * that says it cannot write (FR-012).
+ */
+export async function openPool(): Promise<SAHPoolUtil> {
+	const sqlite = await loadSqlite();
+	const pool: SAHPoolUtil = await sqlite.installOpfsSAHPoolVfs({});
+	if (pool.isPaused()) await pool.unpauseVfs();
+	return pool;
 }
 
-/**
- * Open the reader's database.
- *
- * **Only ever called from the worker.** The SAH-pool VFS needs
- * `FileSystemFileHandle.createSyncAccessHandle()`, which is `[Exposed=DedicatedWorker]` and simply
- * absent on the main thread — call this there and it falls back to memory every time. It is used
- * rather than the plain OPFS VFS because it needs no COOP/COEP response headers, which matters
- * because the intended host is static and cannot set them.
- *
- * If OPFS is genuinely unavailable the database is opened in memory so the app still runs — but the
- * caller is told, because data that disappears on reload must not look like data that persisted.
- */
-export async function openDatabase(): Promise<OpenDatabase> {
-	const sqlite = await loadSqlite();
-
-	let opened: OpenDatabase;
-	try {
-		const pool: SAHPoolUtil = await sqlite.installOpfsSAHPoolVfs({});
-		opened = { db: new pool.OpfsSAHPoolDb(DATABASE_FILE), durability: 'opfs' };
-	} catch (error) {
-		// Why it failed is the whole value of this branch. Falling back silently would leave the
-		// reader with an app that works perfectly until they close the tab, and no way to find out
-		// why (FR-021). The reason is carried out so the caller can record it.
-		opened = {
-			db: new sqlite.oo1.DB(':memory:', 'c'),
-			durability: 'memory',
-			fallbackReason: error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-		};
-	}
+/** Open the reader's database on a pool that is already held, and bring its schema up to date. */
+export function openDatabase(pool: SAHPoolUtil): Database {
+	const db = new pool.OpfsSAHPoolDb(DATABASE_FILE);
 
 	// Migrating here rather than leaving it to the caller: every caller needs it, and a database
 	// handed out before its schema exists fails later, somewhere else, with "no such table".
-	applyMigrations(opened.db);
-	return opened;
+	applyMigrations(db);
+	return db;
+}
+
+/**
+ * Give the lease back, so another copy — or the next page of this one — can take it.
+ *
+ * The order is not a preference. `pauseVfs()` throws if SQLite still has an open handle on the
+ * VFS, and the library warns that doing it anyway would be undefined behaviour, so the database is
+ * closed first and the pause only attempted afterwards.
+ */
+export async function closeDatabase(db: Database, pool: SAHPoolUtil): Promise<void> {
+	db.close();
+	await pool.pauseVfs();
 }
 
 /**

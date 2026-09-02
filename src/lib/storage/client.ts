@@ -13,37 +13,67 @@ import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
 import type { Diagnostic, DiagnosticKind } from '../diagnostics/log';
-import type { Durability } from './db';
-import type { Call, Failure, Ready, Request, Response } from './protocol';
-
-export interface Opened {
-	durability: Durability;
-	fallbackReason?: string;
-}
+import { explain, type Availability, type Explanation } from './availability';
+import type { Call, Failure, Request, Response, ToWorker } from './protocol';
 
 export class RepositoryClient {
-	private readonly worker: Worker;
+	private worker!: Worker;
 	private readonly pending = new Map<
 		number,
 		{ resolve: (value: unknown) => void; reject: (error: unknown) => void }
 	>();
 	private nextId = 1;
+	private readonly watchers = new Set<(state: Availability) => void>();
 
-	/** Resolves when the worker has opened the database and said how it went. */
-	readonly opened: Promise<Opened>;
+	/**
+	 * Whether this copy can save, as last reported by the worker.
+	 *
+	 * Pushed rather than polled, so the interface can say "this window cannot save" the moment it
+	 * becomes true. It starts as `acquiring` because that is what the worker starts as, and because
+	 * an interface that assumed `holding` before hearing otherwise would show a library it has not
+	 * read yet.
+	 */
+	availability: Availability = { kind: 'acquiring', remembering: false };
+
+	/**
+	 * Whether the worker has already been replaced during the current run of bad luck.
+	 *
+	 * Reset every time the lease is actually held, so each new episode gets one free recovery and
+	 * no episode can loop.
+	 */
+	private replacedOnce = false;
 
 	constructor() {
-		this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+		this.begin();
+	}
 
-		let announce: (value: Opened) => void;
-		this.opened = new Promise<Opened>((resolve) => {
-			announce = resolve;
-		});
+	/**
+	 * Start a worker, or start a fresh one.
+	 *
+	 * Replacing the worker is the only reliable way back from a failed handover, and the reason is
+	 * a limitation rather than a preference. When one copy tries to reacquire the storage while
+	 * another still holds the files, `unpauseVfs()` resolves without re-registering the VFS and
+	 * leaves the pool unusable — and it cannot be reinstalled, because
+	 * `installOpfsSAHPoolVfs` returns the same promise for the same pool name for the life of the
+	 * module instance. A new worker is a new module instance, which is a new pool.
+	 *
+	 * Measured rather than assumed: pausing and unpausing works perfectly when nothing else is
+	 * competing, and poisons the pool when something is.
+	 */
+	private begin(): void {
+		this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 
 		this.worker.onmessage = (event: MessageEvent<Response>) => {
 			const message = event.data;
-			if (message.kind === 'ready') {
-				announce(readyToOpened(message));
+			if (message.kind === 'availability') {
+				this.availability = message.state;
+				for (const watch of this.watchers) watch(message.state);
+
+				if (message.state.kind === 'holding') this.replacedOnce = false;
+				// One automatic recovery per episode. This is not the background polling FR-015a
+				// forbids: it happens once, in response to an attempt the reader's own action or
+				// their return to the app started, and then stops until they do something else.
+				else if (message.state.kind === 'refused' && !this.replacedOnce) this.replace();
 				return;
 			}
 
@@ -58,10 +88,52 @@ export class RepositoryClient {
 		// A worker that dies takes every outstanding call with it. Failing them explicitly is the
 		// difference between an error the reader can read and a screen that waits forever.
 		this.worker.onerror = (event) => {
-			const error = new StorageFailure(`The storage worker stopped: ${event.message}`);
-			for (const [, waiting] of this.pending) waiting.reject(error);
-			this.pending.clear();
+			this.abandonPending(new StorageFailure(`The storage worker stopped: ${event.message}`));
 		};
+	}
+
+	private replace(): void {
+		this.replacedOnce = true;
+		this.worker.terminate();
+		this.abandonPending(new StorageFailure('Reconnecting to your library.'));
+		this.begin();
+	}
+
+	/**
+	 * A worker that has gone takes every outstanding call with it. Failing them explicitly is the
+	 * difference between an error the reader can read and a screen that waits forever.
+	 */
+	private abandonPending(error: Error): void {
+		for (const [, waiting] of this.pending) waiting.reject(error);
+		this.pending.clear();
+	}
+
+	/** Called whenever the answer to "can this copy save?" changes. Returns an unsubscribe. */
+	watch(observer: (state: Availability) => void): () => void {
+		this.watchers.add(observer);
+		observer(this.availability);
+		return () => this.watchers.delete(observer);
+	}
+
+	/** What to tell the reader, when there is something to tell them. FR-013. */
+	get refusal(): Explanation | undefined {
+		return this.availability.kind === 'refused' ? explain(this.availability.cause) : undefined;
+	}
+
+	/** The page telling the worker whether anyone is looking at this copy. Drives the lease. */
+	setVisible(visible: boolean): void {
+		this.worker.postMessage({ kind: 'visibility', visible } satisfies ToWorker);
+	}
+
+	/**
+	 * The on-demand control from FR-015: try storage again, now, because the reader asked.
+	 *
+	 * A fresh worker rather than a message, when the current one has already given up. Asking a
+	 * poisoned pool to try again has no effect, which would make the control a lie.
+	 */
+	retry(): void {
+		if (this.availability.kind === 'refused') this.replace();
+		else this.worker.postMessage({ kind: 'retry' } satisfies ToWorker);
 	}
 
 	private call<T>(call: Call): Promise<T> {
@@ -116,13 +188,6 @@ export class RepositoryClient {
 	recordDiagnostic(kind: DiagnosticKind, detail: string): Promise<void> {
 		return this.call({ method: 'recordDiagnostic', args: [kind, detail] });
 	}
-}
-
-function readyToOpened(message: Ready): Opened {
-	return {
-		durability: message.durability,
-		...(message.fallbackReason ? { fallbackReason: message.fallbackReason } : {})
-	};
 }
 
 /**
