@@ -26,7 +26,14 @@ export default defineConfig({
 
 			// Prerendering is off for the same reason. Left explicit rather than defaulted, so that
 			// a later attempt to prerender a route fails loudly instead of shipping an empty page.
-			prerender: { entries: [] }
+			prerender: { entries: [] },
+
+			// Registered by hand in src/lib/ui/registerServiceWorker.ts rather than automatically.
+			// FR-010 says the reader is told when a new version is ready and moves to it by an
+			// explicit action, and that needs the ServiceWorkerRegistration object — specifically
+			// its `waiting` worker, which is the one to activate. SvelteKit's automatic
+			// registration does not hand it back.
+			serviceWorker: { register: false }
 		})
 	],
 	test: {

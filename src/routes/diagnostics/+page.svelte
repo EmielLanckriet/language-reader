@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
-	import type { Diagnostic } from '$lib/diagnostics/log';
+	import type { Diagnostic } from '$lib/diagnostics/describe';
 
 	/**
 	 * FR-021: the reader must be able to retrieve and read the failure record **without developer

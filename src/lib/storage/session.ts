@@ -6,7 +6,8 @@
  * would not merely be wasteful, it would fail.
  */
 
-import { requestPersistentStorage, type Durability, type Persistence } from './db';
+import { requestPersistentStorage, type Persistence } from './persistence';
+import type { Durability } from './db';
 import { RepositoryClient } from './client';
 
 export interface Session {
@@ -32,6 +33,10 @@ async function start(): Promise<Session> {
 	// `StorageManager.persist()` is `[Exposed=Window]`, so this has to happen out here rather than
 	// alongside the database — the worker can ask whether persistence was *granted* but cannot ask
 	// for it. Requested once, at startup, before anything is written.
+	//
+	// It comes from persistence.ts rather than db.ts, and `Durability` above is a *type* import.
+	// Both matter: a value import from db.ts would pull SQLite onto the main thread, where nothing
+	// runs it. Type imports are erased and cost nothing.
 	const [opened, persistence] = await Promise.all([repository.opened, requestPersistentStorage()]);
 
 	// Deliberately *not* recorded as a diagnostic. Whether persistence was granted is a steady

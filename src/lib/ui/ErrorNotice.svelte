@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { RejectedInput } from '$lib/content/types';
-	import { StorageFailure } from '$lib/storage/repository';
+	import { StorageFailure } from '$lib/storage/failures';
 
 	/**
 	 * Showing a failure with enough detail to act on (FR-022).

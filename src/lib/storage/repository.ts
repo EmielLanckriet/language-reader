@@ -57,12 +57,8 @@ export interface StoredDocument {
 }
 
 /** Raised when storage itself fails, as distinct from input being refused (FR-022). */
-export class StorageFailure extends Error {
-	constructor(message: string, options?: { cause?: unknown }) {
-		super(message, options);
-		this.name = 'StorageFailure';
-	}
-}
+export { StorageFailure } from './failures';
+import { StorageFailure } from './failures';
 
 export class Repository {
 	constructor(private readonly db: Database) {}

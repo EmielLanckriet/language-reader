@@ -6,7 +6,7 @@
 	import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 	import { RejectedInput } from '$lib/content/types';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
-	import { describeError } from '$lib/diagnostics/log';
+	import { describeError } from '$lib/diagnostics/describe';
 	import { MAXIMUM_CHARACTERS } from '$lib/content/paste';
 	import { codePointLength } from '$lib/domain/offsets';
 	import type { DocumentSummary } from '$lib/storage/repository';

@@ -44,8 +44,8 @@ Service workers need a secure context. `localhost` counts, so preview is enough.
 | 1 | No absolute manifest URLs | `cat build/manifest.webmanifest` | No member value begins with `/` |
 | 2 | The manifest is reachable | open `/language-reader/manifest.webmanifest` | 200, valid JSON |
 | 3 | The application qualifies for installation | DevTools → Application → Manifest | No "installability" errors listed |
-| 4 | Everything is precached | DevTools → Application → Cache Storage | 28 entries, including `sqlite3.wasm` |
-| 5 | The duplicate is gone | `find build -name 'sqlite3*.wasm'` | **One** file, under `workers/assets/` |
+| 4 | Everything is precached | DevTools → Application → Cache Storage | One entry per build artifact, including `sqlite3.wasm` |
+| 5 | The duplicate is gone | `npm run build` (runs `check-bundle`) | Passes; build is ~1.5 MB across 26 files, not 2.6 MB across 28 |
 | 6 | Offline works | DevTools → Network → Offline, then reload | Library renders; a saved document opens |
 | 7 | A deep link works offline | Offline, hard-load `/language-reader/read/1` | Renders, from the cached shell |
 | 8 | Version change does not interrupt | Rebuild, reload once | Old version still running; an offer appears |

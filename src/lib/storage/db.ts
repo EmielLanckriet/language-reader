@@ -3,6 +3,11 @@
  *
  * The only module besides repository.ts permitted to know that SQLite exists (Principle V.4,
  * enforced by tests/architecture/domain-purity.test.ts).
+ *
+ * **Reachable only from the storage worker.** Importing this from the main thread pulls the whole
+ * SQLite WebAssembly bundle into a graph that never runs it; `scripts/check-bundle.mjs` fails the
+ * build when that happens. `requestPersistentStorage` used to live here and is the reason the rule
+ * needed writing down — it is now in persistence.ts, which imports nothing.
  */
 
 import sqlite3InitModule, {
@@ -161,29 +166,6 @@ export async function openDatabase(): Promise<OpenDatabase> {
 	// handed out before its schema exists fails later, somewhere else, with "no such table".
 	applyMigrations(opened.db);
 	return opened;
-}
-
-/** Whether the browser promised not to evict the reader's data. */
-export type Persistence = 'granted' | 'denied' | 'unavailable';
-
-/**
- * Ask the browser not to evict this origin's storage.
- *
- * Without this, OPFS data is "best effort": a browser under storage pressure may delete it, and
- * the reader would open the app to an empty library that looks exactly like data loss, because it
- * is. Chrome grants it readily once a site is installed to the home screen — which is why
- * installability stops being optional the moment slice 1's data is worth keeping.
- *
- * Returns rather than throws. A refusal is information to show the reader, not a failure to start.
- */
-export async function requestPersistentStorage(): Promise<Persistence> {
-	if (typeof navigator === 'undefined' || !navigator.storage?.persist) return 'unavailable';
-	try {
-		if (await navigator.storage.persisted()) return 'granted';
-		return (await navigator.storage.persist()) ? 'granted' : 'denied';
-	} catch {
-		return 'unavailable';
-	}
 }
 
 /**

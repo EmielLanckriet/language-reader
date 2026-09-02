@@ -7,7 +7,7 @@
  */
 
 import { RejectedInput } from '../content/types';
-import { StorageFailure } from './repository';
+import { StorageFailure } from './failures';
 import type { DocumentSummary, StoredDocument } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';

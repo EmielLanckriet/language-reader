@@ -31,11 +31,11 @@ No backend directory, because there is no server (ADR-0007).
 **Purpose**: Remove the duplicate SQLite before anything starts caching it, and take manual control
 of service worker registration. Nothing here is visible to a reader.
 
-- [ ] T001 Write `scripts/check-bundle.mjs` asserting that `build/` contains exactly one `sqlite3*.wasm` and exactly one `sqlite3-opfs-async-proxy*.js`, failing with both paths listed when it does not; wire it into the `postbuild` script in `package.json` beside `spa-fallback.mjs`. **Expected to fail on the current build** — that failure is the task's proof it works
-- [ ] T002 Create `src/lib/storage/persistence.ts` containing `requestPersistentStorage` and the `Persistence` type moved out of `src/lib/storage/db.ts`, importing nothing from `@sqlite.org/sqlite-wasm`
-- [ ] T003 Remove `requestPersistentStorage` and `Persistence` from `src/lib/storage/db.ts`, and point `src/lib/storage/session.ts`, `src/lib/storage/client.ts` and `src/lib/storage/protocol.ts` at `persistence.ts` for it — leaving `db.ts` reachable only from `worker.ts`
-- [ ] T004 Run `BASE_PATH=/language-reader npm run build` and confirm T001 now passes and total build size drops from ~2.6 MB to ~1.5 MB
-- [ ] T005 [P] Set `serviceWorker: { register: false }` in the `sveltekit()` options in `vite.config.ts`, with a comment saying why: FR-010 needs the registration object
+- [X] T001 Write `scripts/check-bundle.mjs` asserting that `build/` contains exactly one `sqlite3*.wasm` and exactly one `sqlite3-opfs-async-proxy*.js`, failing with both paths listed when it does not; wire it into the `postbuild` script in `package.json` beside `spa-fallback.mjs`. **Expected to fail on the current build** — that failure is the task's proof it works
+- [X] T002 Create `src/lib/storage/persistence.ts` containing `requestPersistentStorage` and the `Persistence` type moved out of `src/lib/storage/db.ts`, importing nothing from `@sqlite.org/sqlite-wasm`
+- [X] T003 Remove `requestPersistentStorage` and `Persistence` from `src/lib/storage/db.ts`, and point `src/lib/storage/session.ts` at `persistence.ts` for it — leaving `db.ts` reachable only from `worker.ts`. **The task named one culprit and there were four.** `client.ts` and `protocol.ts` already used `import type` and were erased; the real remaining paths were `client.ts`'s value import of `StorageFailure` from `repository.ts`, `ErrorNotice.svelte`'s import of the same, and both page routes importing `describeError` from `diagnostics/log.ts`. Resolved by extracting `src/lib/storage/failures.ts` and `src/lib/diagnostics/describe.ts`, each importing nothing
+- [X] T004 Run `BASE_PATH=/language-reader npm run build` and confirm T001 now passes and total build size drops from ~2.6 MB to ~1.5 MB
+- [X] T005 [P] Set `serviceWorker: { register: false }` in the `sveltekit()` options in `vite.config.ts`, with a comment saying why: FR-010 needs the registration object
 
 **Checkpoint**: The build ships one copy of SQLite, and a regression would fail the build rather than pass unnoticed.
 

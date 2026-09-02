@@ -5,7 +5,7 @@
 	import { codePointsOf } from '$lib/domain/offsets';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
-	import { describeError } from '$lib/diagnostics/log';
+	import { describeError } from '$lib/diagnostics/describe';
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
 

@@ -9,15 +9,13 @@
 
 import { queryRows, run, type Database } from '../storage/db';
 
-/** Broad categories, so a reader can say *what kind* of thing broke without reading a stack. */
-export type DiagnosticKind = 'storage' | 'analysis' | 'input' | 'persistence' | 'unexpected';
+// The types and `describeError` live in describe.ts, which imports nothing. Anything on the main
+// thread must take them from there: importing them from here would reach db.ts and drag SQLite
+// along. Re-exported so worker-side callers still read naturally.
+export type { Diagnostic, DiagnosticKind } from './describe';
+export { describeError } from './describe';
 
-export interface Diagnostic {
-	id: number;
-	at: string;
-	kind: DiagnosticKind | string;
-	detail: string;
-}
+import type { Diagnostic, DiagnosticKind } from './describe';
 
 /**
  * Write a failure down.
@@ -36,16 +34,6 @@ export function recordDiagnostic(db: Database, kind: DiagnosticKind, detail: str
 	} catch (error) {
 		console.error('[diagnostics] could not record', kind, detail, error);
 	}
-}
-
-/** Turn whatever was thrown into something worth storing. */
-export function describeError(error: unknown): string {
-	if (error instanceof Error) {
-		return error.stack
-			? `${error.name}: ${error.message}\n${error.stack}`
-			: `${error.name}: ${error.message}`;
-	}
-	return String(error);
 }
 
 /** Most recent first, because that is the one being investigated. */
