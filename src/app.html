@@ -4,6 +4,22 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+
+		<!--
+			The manifest is what turns "Add to Home screen" from a bookmark into an installation.
+			Its own member URLs are relative so that one static file is correct both here and under
+			the project subpath it is deployed to; this href cannot be, so it uses the base path
+			SvelteKit substitutes. It has to be absolute because 404.html is this same shell served
+			at arbitrary depths, where a relative href would resolve against the wrong directory.
+		-->
+		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
+		<link rel="icon" href="%sveltekit.assets%/icon.svg" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icon-192.png" />
+
+		<!-- Colours the system bar in the installed window, so it does not sit in browser grey. -->
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fdfdfb" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16181a" />
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

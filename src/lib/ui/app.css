@@ -232,3 +232,53 @@ button.token.state-ignored {
 	padding: 0.5rem 0;
 	min-height: 44px;
 }
+
+/*
+ * Notices: what the application says about itself.
+ *
+ * Two variants only. `.notice` is for something the reader may act on and may equally ignore —
+ * an offer to install, a version that is ready. `.notice.warning` is for something that changes
+ * what the application will do, which at present means it cannot save.
+ *
+ * Two rather than the usual four or five because there are only two things worth distinguishing
+ * here: whether ignoring this has a cost. A palette of severities would be inventing distinctions
+ * the application cannot currently make.
+ */
+.notice {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.5rem 0.75rem;
+	padding: 0.6rem 0.85rem;
+	margin: 0 0 0.75rem;
+	border: 1px solid var(--rule);
+	border-radius: 8px;
+	background: var(--paper);
+	font-size: 0.9rem;
+	line-height: 1.4;
+}
+
+.notice p {
+	margin: 0;
+}
+
+.notice .detail {
+	flex-basis: 100%;
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
+.notice.warning {
+	border-color: var(--danger);
+}
+
+.notice.warning strong {
+	color: var(--danger);
+}
+
+/* Notice actions sit at the end of the line, and wrap under it on a narrow phone. */
+.notice .actions {
+	margin-left: auto;
+	display: flex;
+	gap: 0.5rem;
+}

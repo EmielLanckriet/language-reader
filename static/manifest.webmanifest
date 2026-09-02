@@ -1,0 +1,17 @@
+{
+	"name": "Language Reader",
+	"short_name": "Reader",
+	"description": "Read Chinese on your phone, offline, and keep what you have learned.",
+	"lang": "en",
+	"start_url": "./",
+	"scope": "./",
+	"display": "standalone",
+	"orientation": "portrait",
+	"background_color": "#fdfdfb",
+	"theme_color": "#fdfdfb",
+	"icons": [
+		{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{ "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+	]
+}

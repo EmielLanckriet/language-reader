@@ -48,8 +48,8 @@ without it, three stories each restructure the same layout file.
 
 **⚠️ CRITICAL**: No user story work begins until this phase completes.
 
-- [ ] T006 Add a notice region to `src/routes/+layout.svelte` — a single slot above the routed page where install, update and read-only notices render in that order, with nothing rendered when there is nothing to say
-- [ ] T007 [P] Add notice styling to `src/lib/ui/app.css` — one informational variant and one warning variant, reusing the existing `--rule`, `--muted` and `--danger` tokens rather than introducing new ones
+- [X] T006 Add a notice region to `src/routes/+layout.svelte` — a single slot above the routed page where install, update and read-only notices render in that order, with nothing rendered when there is nothing to say
+- [X] T007 [P] Add notice styling to `src/lib/ui/app.css` — one informational variant and one warning variant, reusing the existing `--rule`, `--muted` and `--danger` tokens rather than introducing new ones
 
 **Checkpoint**: The layout has a place for a notice and shows none.
 
@@ -85,13 +85,13 @@ and reopen. Needs neither the manifest nor the lease work.
 
 ### Implementation
 
-- [ ] T014 [P] [US2] Generate `static/icon-192.png`, `static/icon-512.png` and `static/icon-maskable-512.png` from `src/lib/assets/favicon.svg`, giving the maskable variant the safe-zone padding Android's launcher crop requires. Name the tool used and justify it per Principle V, or produce the files by hand and record that instead — an undeclared image dependency is still a dependency
-- [ ] T015 [US2] Write `static/manifest.webmanifest` per contracts/web-app-manifest.md — `start_url` and `scope` both `"./"`, icon `src` values with no leading slash, `display: standalone`
-- [ ] T016 [US2] Write `tests/build/manifest.test.ts` asserting that no member URL in `static/manifest.webmanifest` begins with `/`, and that both a 192px and a 512px icon are declared. This is the one manifest failure invisible locally, because the base path is empty in development
-- [ ] T017 [US2] Add `<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />` and a `theme-color` meta to `src/app.html`
-- [ ] T018 [US2] Create `src/lib/ui/InstallOffer.svelte`: capture `beforeinstallprompt`, prevent its default, hold the event, render an offer while it is held, call `prompt()` when tapped, and clear on `appinstalled` or when `matchMedia('(display-mode: standalone)')` matches (FR-003a)
-- [ ] T019 [US2] Render `InstallOffer` in the notice region of `src/routes/+layout.svelte`
-- [ ] T020 [US2] Verify quickstart checks 1, 2 and 3 locally against a `BASE_PATH=/language-reader` build — relative members, manifest reachable, and DevTools reporting no installability errors
+- [X] T014 [P] [US2] Generate `static/icon-192.png`, `static/icon-512.png` and `static/icon-maskable-512.png` from `src/lib/assets/favicon.svg`, giving the maskable variant the safe-zone padding Android's launcher crop requires. Name the tool used and justify it per Principle V, or produce the files by hand and record that instead — an undeclared image dependency is still a dependency
+- [X] T015 [US2] Write `static/manifest.webmanifest` per contracts/web-app-manifest.md — `start_url` and `scope` both `"./"`, icon `src` values with no leading slash, `display: standalone`
+- [X] T016 [US2] Write `tests/build/manifest.test.ts` asserting that no member URL in `static/manifest.webmanifest` begins with `/`, and that both a 192px and a 512px icon are declared. This is the one manifest failure invisible locally, because the base path is empty in development
+- [X] T017 [US2] Add `<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />` and a `theme-color` meta to `src/app.html`
+- [X] T018 [US2] Create `src/lib/ui/InstallOffer.svelte`: capture `beforeinstallprompt`, prevent its default, hold the event, render an offer while it is held, call `prompt()` when tapped, and clear on `appinstalled` or when `matchMedia('(display-mode: standalone)')` matches (FR-003a)
+- [X] T019 [US2] Render `InstallOffer` in the notice region of `src/routes/+layout.svelte`
+- [ ] T020 [US2] Verify quickstart checks 1, 2 and 3 locally against a `BASE_PATH=/language-reader` build — relative members, manifest reachable, and DevTools reporting no installability errors. **Partly done: 1 and 2 pass** (`tests/build/manifest.test.ts`, and the built shell links `/language-reader/manifest.webmanifest`). Check 3 is blocked until US1 ships a service worker with a fetch handler, without which no browser reports the application as installable — the dependency noted below, met in practice
 
 **Checkpoint**: DevTools reports the application as installable, and the offer appears. Per FR-003b, an absence here is a defect rather than a browser preference.
 
