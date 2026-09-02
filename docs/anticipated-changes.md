@@ -585,3 +585,43 @@ interpolate `BASE_PATH`, so relative is the only correct answer rather than mere
 Note also that persistent storage was granted *without* a real install, so installability and
 eviction protection are less tightly coupled than the entry above assumed. Installing is still
 worth doing; the claim that it is what unlocks persistence should be treated as unproven.
+
+## What Slice 1 Planning Settled — 2026-09-02
+
+The entries above were written before the options were evaluated. Two of them now have answers, and
+one new item appears. The earlier text is left as written, because what was believed at the time is
+part of the record.
+
+**The exclusive lease: all three options were evaluated, and a fourth was chosen.** ADR-0010 has the
+reasoning. Briefly: Web Locks alone cannot satisfy the requirement that saved content stay readable,
+because a copy without the lease cannot open the database *at all* — so it produces an honest notice
+over an empty library. `SharedWorker` is what the problem is shaped like and is now available on
+Android, but its Intent to Ship warns that instances "might terminate unexpectedly, for example,
+when a Chrome app is moved to the background and then foregrounded", which is the entire life of a
+phone reading app. Read-only mode is kept, but as the *rare* outcome rather than the routine one:
+a copy holds the lease only while it is visible, so the copy in front of the reader works. Web Locks
+survives in a reduced role — naming which of the two causes applies, never enforcing anything.
+
+**`SharedWorker` on Android is recorded as available, not rejected.** It shipped in Chrome 148,
+April 2026. If several copies ever need to operate at once — the register already anticipates
+exclusion becoming sharing — it is the shape to reach for, and by then it will have settled. This is
+the same category as ADR-0007's preserved options: taking it later is additive.
+
+**Nothing in this project asserts anything about build size, and it cost 1.08 MB.** Measuring the
+build to decide a caching strategy revealed that `sqlite3.wasm`, the OPFS proxy, and the worker1
+glue were all being shipped **twice** — once to the worker that uses them and once to the main
+thread, which does not. The cause was a single import: `session.ts` needed
+`requestPersistentStorage`, which is a wrapper over `navigator.storage.persist()`, and took it from
+`db.ts`, which imports the SQLite bundle at the top level. It had been shipping since slice 0 and
+nothing noticed, because nothing looks.
+
+Slice 1 fixes the instance, because precaching turns a one-off download into a recurring one. The
+general problem is deferred: **a build-size assertion in CI**, cheap to add and plausible to want
+once dictionary data arrives in slice 2. Rated likely and cheap to retrofit, so per Principle V it
+is recorded here and not built now.
+
+**One anticipated change was *reduced* by planning.** The register expected the manifest and the
+lease to be "fixed together and their fix measured together" on the theory that a WebAPK is harder
+to duplicate than a shortcut. That theory is untested and is no longer load-bearing: the lease
+answer works whether or not installing reduces the number of copies. Worth knowing, because it means
+a disappointing result on installability does not put the data-safety work back at risk.
