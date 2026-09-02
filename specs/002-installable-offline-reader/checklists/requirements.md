@@ -72,11 +72,31 @@ spec to settle:
   control is disabled for empty input, making its rejection message unreachable. Resolved as:
   preventing the error is fine, leaving the reader to guess is not.
 
+## Re-validated After Clarification — 2026-09-02
+
+16/16 → 16/16 passing. No item changed state, and no new implementation detail entered the
+mandatory sections — checked explicitly, because four of the five answers were about *mechanism*
+and the pull towards naming one was strong.
+
+Five clarifications integrated, adding FR-003a, FR-003b, FR-015a and rewriting FR-010, FR-013,
+FR-015 and FR-018. Two are worth noting beyond their own answers:
+
+- **The version-update answer is staged, not final.** An explicit control now because deployments
+  are frequent and knowing when one landed is diagnostic; automatic adoption later. Recorded under
+  Anticipated Changes so it is a scheduled change rather than a decision that quietly ossifies.
+- **The install offer doubles as a test.** A device only reports the application as installable
+  once it genuinely qualifies, so FR-003b turns the offer's absence into a defect rather than a
+  browser preference. This is exactly the check slice 0 lacked: nothing qualified, and nothing said
+  so — which is why the icon opened a browser and no one knew until it was tapped.
+
+One earlier outstanding item is now closed: how a copy recovers from read-only was resolved as
+checking on the reader's next attempt plus an on-demand control, with FR-015a explicitly forbidding
+background polling.
+
 **Outstanding — worth probing during planning:**
 
 - **Whether the application is small enough to keep on the device in full.** Recorded as an
   assumption. It is the one that could force a different shape if it turns out to be false, and it
   is measurable before any code is written.
-- **How a copy learns that storage has become reachable again (FR-015).** The spec requires the
-  reader be able to retry; whether that is a button, automatic, or both is a design question with a
-  real difference in feel.
+- ~~How a copy learns that storage has become reachable again (FR-015).~~ **Resolved** by
+  clarification: on the reader's next attempt, plus an on-demand control, and never by polling.

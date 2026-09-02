@@ -30,6 +30,44 @@ splitting words, and verified kernels (slice 3); Anki export (slice 4); import f
 subtitles, YouTube or web pages; an export file; a second device or any synchronisation; accounts
 or login.
 
+## Clarifications
+
+### Session 2026-09-02
+
+- Q: When a newer version has been deployed, how should the reader move onto it? → A: **An explicit
+  control** — the reader is told a new version is ready and taps to take it; nothing changes until
+  they do. Chosen *for now* rather than on the merits: while the application is under active
+  development and deployed often, seeing exactly when a version lands is diagnostic information.
+  The intended end state is automatic on next fresh start with a quiet note afterwards, and the
+  switch should happen once the tool is genuinely in daily use. Recorded under Anticipated Changes
+  so it is a scheduled change rather than a forgotten one.
+
+- Q: How does the reader discover that the application can be installed at all? → A: **The
+  application invites it** — a control appears when the browser signals the application is
+  installable, and disappears once it is installed. Noted alongside: the browser only signals
+  installability when the application genuinely qualifies, so the presence of that control is a
+  live check that installation is correctly set up. Slice 0's failure was precisely that nothing
+  qualified and nothing said so.
+
+- Q: When a copy is read-only because it cannot reach storage, how does it get back to normal? →
+  A: **Both** — it checks whenever the reader attempts a change, and offers a control they can use
+  at any time. If the check succeeds, the change the reader was making is carried out; they do not
+  have to do it twice. This does not conflict with nothing being held in hope: the check happens
+  within the action, and a change is either performed immediately or refused immediately.
+
+- Q: Should the read-only message distinguish "another copy holds the storage" from "storage is
+  genuinely unavailable"? → A: **Yes, when the cause is knowable**, because the two call for
+  opposite responses — close the other window, versus something is wrong with this device or
+  browser. Where the cause cannot be told apart, say so honestly and show the recorded detail
+  rather than guessing; sending the reader to hunt for a window that is not open is worse than
+  admitting uncertainty.
+
+- Q: Where should the reader be told that word marks made now are provisional? → A: **A permanent
+  line in the existing device-information view**, with no interruption anywhere. The claim needs to
+  be written down where it can be checked, not pushed at someone. A first-run notice was considered
+  and rejected: it would be dismissed reflexively and then be gone precisely when someone wanted to
+  know.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Read on the metro (Priority: P1)
@@ -78,6 +116,11 @@ address bar.
    own window with no browser interface visible.
 3. **Given** the installed application, **When** it opens, **Then** it lands on the reader's
    library rather than on an error or an empty page.
+4. **Given** the application running in a browser on a device that supports installing it,
+   **When** the reader looks at it, **Then** it offers to install itself — the reader does not
+   have to know that a browser menu contains the option.
+5. **Given** the application already installed, **When** the reader opens it, **Then** it no
+   longer offers to install.
 
 ---
 
@@ -104,6 +147,9 @@ it.
    **Then** it is still readable — the application is read-only, not broken.
 4. **Given** the reader closes the other copy, **When** they ask this one to try again, **Then** it
    reaches storage and resumes accepting changes.
+5. **Given** the reader closes the other copy, **When** they simply mark a word without asking for
+   anything, **Then** the mark is recorded — the attempt itself is what restores the application,
+   and the reader is not made to perform the action twice.
 
 ---
 
@@ -121,6 +167,9 @@ it.
   storage; that one is read-only and says so.
 - **Both copies are closed and one is reopened.** It reaches storage normally. Being read-only is a
   condition of the moment, never a state the application gets stuck in.
+- **The cause of a read-only state cannot be determined.** The message says so and shows what was
+  actually recorded, rather than naming the likelier cause and sending the reader to close a window
+  that is not open.
 - **A partially cached application.** If the application cannot be made whole on the device, it
   says so rather than starting and failing in an unpredictable place later.
 
@@ -137,6 +186,14 @@ it.
   failure of this requirement, not a deployment detail.
 - **FR-003**: The installed application MUST be identifiable on the home screen by a name and an
   image chosen for it, not by a generic placeholder.
+- **FR-003a**: The application MUST offer installation from within itself, whenever the device
+  reports that it can be installed, and MUST stop offering once it has been. Relying on the
+  reader finding the option in a browser menu does not satisfy FR-001, because a reader who does
+  not know the option exists will not look for it.
+- **FR-003b**: Because a device only reports the application as installable once it genuinely
+  qualifies, the absence of that offer on a device that should support it MUST be treated as a
+  defect in this slice rather than a preference of the browser. This is the check slice 0 lacked:
+  nothing qualified, and nothing said so.
 
 #### Working offline
 
@@ -156,7 +213,10 @@ it.
 - **FR-009**: A newly deployed version MUST NOT replace the running application during a session.
   The version in use when the reader started remains in use until they next start it.
 - **FR-010**: When a newer version is available, the reader MUST be told, and MUST be able to move
-  to it at a moment of their choosing.
+  to it by an explicit action. The application MUST NOT change version unless the reader asks it
+  to. *(A staged decision — see Clarifications. The intended end state is automatic adoption on the
+  next fresh start; an explicit control is chosen while deployments are frequent and knowing
+  exactly when one landed is worth a tap.)*
 - **FR-011**: Moving to a new version MUST preserve every document, mark and history entry.
 
 #### Refusing to lose work
@@ -164,12 +224,19 @@ it.
 - **FR-012**: When the application cannot reach durable storage, it MUST NOT accept any change from
   the reader. No document is saved, no mark is recorded, and nothing is held in the hope that
   storage becomes available.
-- **FR-013**: In that state the application MUST state plainly that it cannot save, the most likely
-  reason, and what the reader can do about it.
+- **FR-013**: In that state the application MUST state plainly that it cannot save, and what the
+  reader can do about it. Where it can tell **another copy holding the storage** apart from
+  **storage being unavailable on this device**, it MUST say which, because the two call for
+  opposite actions. Where it cannot tell them apart it MUST say that, and show the underlying
+  reason it recorded, rather than asserting whichever is more common.
 - **FR-014**: In that state, content already saved MUST remain readable. The application becomes
   read-only, not unusable.
-- **FR-015**: The application MUST offer a way to try again, and on success MUST resume accepting
-  changes without the reader restarting it.
+- **FR-015**: The application MUST attempt to reach storage again whenever the reader tries to make
+  a change, and MUST also offer a control that attempts it on demand. On success it MUST resume
+  accepting changes without the reader restarting it, and MUST carry out the change they were
+  making rather than requiring them to repeat it.
+- **FR-015a**: The application MUST NOT attempt to reach storage repeatedly in the background while
+  the reader is reading. Recovery is driven by the reader doing something, not by a timer.
 - **FR-016**: The application MUST NOT indicate that a change has been saved unless it has been
   durably recorded. This is the requirement the whole story exists to serve, and it holds
   everywhere, not only when a second copy is open.
@@ -184,9 +251,11 @@ it.
 
 #### Being honest about the data
 
-- **FR-018**: The reader MUST be told, once and discoverably rather than repeatedly, that word
-  marks made now are provisional and may not survive the arrival of real segmentation. Documents
-  themselves are not provisional and are never discarded.
+- **FR-018**: The view that already reports what is true of the reader's storage MUST also state
+  permanently that word marks made now are provisional and may not survive the arrival of real
+  segmentation, and that documents are not provisional and are never discarded. It MUST NOT
+  interrupt the reader anywhere else. A notice shown once is dismissed reflexively and then absent
+  when someone actually wants to know; a permanent line is checkable.
 
 ### Requirements Deliberately Included Before They Are Used
 
@@ -241,8 +310,12 @@ about *this slice's* output.
   slice requires only that a copy which cannot save refuses to pretend otherwise. A later slice may
   let several copies operate at once; that would relax this behaviour without contradicting it,
   because "never accept a change that will not be kept" remains true either way.
-- **Update semantics may need to become quieter or louder** once there is evidence of how often
-  deployments actually happen during reading.
+- **Version changes become automatic once the tool is in daily use.** FR-010 requires an explicit
+  action for now, which is right while deployments are frequent and knowing precisely when a
+  version landed is useful. Once that stops being interesting, the change is to adopt a new version
+  on the next fresh start and say so afterwards — a smaller notice, not a larger one. Deliberately
+  deferred rather than built now, because the cost of being wrong is one tap and the information
+  needed to decide arrives only from real use.
 
 ## Assumptions
 
