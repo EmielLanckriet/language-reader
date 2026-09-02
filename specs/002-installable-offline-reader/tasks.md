@@ -142,7 +142,7 @@ about any one capability.
 
 - [X] T035 Add a `skip-waiting` message handler to `src/service-worker.ts` calling `skipWaiting()` (FR-010)
 - [X] T036 Create `src/lib/ui/UpdateOffer.svelte`: watch the registration for `waiting` and for `updatefound`, offer the move, post `skip-waiting` when accepted, and reload on `controllerchange`. Render it in the notice region (FR-009, FR-010)
-- [ ] T037 Verify FR-011 by counting documents, marks and history entries before and after accepting a version change, per quickstart checks 8 and 9 (SC-003)
+- [X] T037 Verify FR-011 by counting documents, marks and history entries before and after accepting a version change, per quickstart checks 8 and 9 (SC-003)
 - [X] T038 Make the disabled save control explain itself in `src/routes/+page.svelte` — say that there is nothing to save yet, rather than leaving a dead control (FR-017, resolving the question inherited from slice 0)
 - [X] T039 Add a permanent line to `src/routes/diagnostics/+page.svelte` stating that word marks made now are provisional and may not survive real segmentation, and that documents are not provisional and are never discarded. No first-run notice, and no interruption anywhere else (FR-018)
 - [X] T040 [P] Update `README.md` with what the application now is: installable, offline, and single-writer
