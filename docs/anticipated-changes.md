@@ -564,3 +564,24 @@ the actual failures under hundreds of copies of the same sentence — while the 
 read as present-tense alarms, so a stale one looked like a live problem. Diagnostics record events;
 current state belongs in a panel that is read live. Worth remembering when reading sessions start
 generating volume.
+
+**"Add to Home screen" without a manifest makes a bookmark, not an app.** Found when the installed
+icon still opened inside the browser, chrome and all. Slice 0 ships no web app manifest, so Android
+Chrome had nothing to install: it created a shortcut. With a manifest declaring `display:
+standalone` plus 192px and 512px icons, Chrome builds a WebAPK and the app launches in its own
+window with no browser UI.
+
+This is slice 0 behaving as specified — installability is in its out-of-scope list — but it is
+probably **also what caused the exclusive-lease collision above**. A shortcut opens into the normal
+tab set, so the "installed" copy and an ordinary browsing tab are the same kind of thing and easily
+coexist. A standalone WebAPK is much harder to duplicate by accident. The two problems should be
+fixed together and their fix measured together.
+
+One implementation note for whoever writes it: `start_url` and `scope` must be **relative**, not
+`/`. The site is served from a project subpath (`/language-reader/`), and an absolute `start_url`
+would launch the installed app at the domain root and 404. The manifest is a static file and cannot
+interpolate `BASE_PATH`, so relative is the only correct answer rather than merely the tidy one.
+
+Note also that persistent storage was granted *without* a real install, so installability and
+eviction protection are less tightly coupled than the entry above assumed. Installing is still
+worth doing; the claim that it is what unlocks persistence should be treated as unproven.
