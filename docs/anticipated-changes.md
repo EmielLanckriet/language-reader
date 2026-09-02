@@ -625,3 +625,39 @@ lease to be "fixed together and their fix measured together" on the theory that 
 to duplicate than a shortcut. That theory is untested and is no longer load-bearing: the lease
 answer works whether or not installing reduces the number of copies. Worth knowing, because it means
 a disappointing result on installability does not put the data-safety work back at risk.
+
+## What The Slice 1 Phone Check Revealed — 2026-09-02
+
+Run on the real device after deploying, per Principle I. Everything the slice claimed held, which
+is itself worth recording: unlike slice 0, nothing here was discovered by the phone that the desktop
+had missed. Three things are worth carrying forward anyway.
+
+**A manifest produces a real installation, not a home-screen shortcut — confirmed.** The register
+predicted this and it is now observed: installing put the reader among the device's *applications*
+rather than saving a link to the home screen, and it no longer opens a browser tab. That is a WebAPK,
+which is what `display: standalone` plus the two required icon sizes buys. The earlier entry can be
+treated as settled rather than theorised.
+
+**The handover costs about three seconds on real hardware, and that number has a cause.** Opening
+the reader in a browser while the installed application was running took the lease away; returning
+to the installed application took roughly three seconds before the library reappeared. The reader
+called it "not really a problem", and it is not — but it is not the fast path either. Almost all of
+it is the poisoned-pool recovery: `unpauseVfs()` cannot reacquire files another copy still holds, it
+leaves the VFS unregistered, and the only way back is a fresh worker, which means loading 1.1 MB of
+WebAssembly again from cache before anything can be read.
+
+Rated **likely to matter later; cheap to retrofit**. It is invisible in the ordinary
+one-copy-at-a-time case, which is how the tool will normally be used, so it is recorded rather than
+fixed. Two things would reduce it if it ever becomes annoying: waiting slightly longer before
+declaring the pool poisoned, so the plain unpause has more chance to succeed; or keeping a warm
+worker. Neither is worth building on a three-second delay in a rare situation.
+
+**Pause and unpause behaved across a real Android backgrounding.** This was the one part of slice 1
+resting on documentation rather than measurement, and it was flagged as such in plan.md and
+ADR-0010. Restarting the phone, reading offline, and switching between the installed application and
+a browser copy all worked, so the mechanism is now observed rather than assumed on the platform that
+matters. The failure mode that *does* exist is contention, not backgrounding, and it is handled.
+
+**Slice 0's last open item is closed.** Pasting more than five thousand characters produces a
+refusal the reader described as clear, on a phone screen. That requirement had been testable since
+the size limit was made exact, and had never been read by a human until now.

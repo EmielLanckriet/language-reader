@@ -155,16 +155,16 @@ about any one capability.
 in the spec's own words.
 
 - [X] T041 Merge to `main` and confirm the deploy workflow succeeds with `npm run check`, `npm run lint`, `npm test` and `check-bundle` all passing
-- [ ] T042 On the phone: the application offers to install itself, without going through a browser menu, and complete the installation in under two minutes without consulting instructions (P1 — FR-003a, FR-003b, SC-006)
-- [ ] T043 On the phone: the installed icon shows a real name and image, with no white bounding box (P2 — FR-003)
-- [ ] T044 On the phone: tapping the icon opens the application with no address bar and no tab strip, on the library rather than a missing page (P3, P4 — FR-001, FR-002, SC-002)
-- [ ] T045 On the phone: **restart the device**, enable aeroplane mode, open the application, and read a saved document within 30 seconds (P5, P8 — FR-004, SC-001). Run this one first; it is the constitutional requirement, it is what slice 0 got wrong, and it is the slowest to discover late
-- [ ] T046 On the phone, offline: mark words, close, reopen, confirm the marks are there; and paste and save new text (P6, P7 — FR-004, FR-006, SC-005)
-- [ ] T047 On the phone: open the installed application and the same URL in Chrome, and confirm the one in front works while the other says it cannot save — and that it says so within 5 seconds of opening, and in place of the library rather than over an empty one (P9 — FR-012, FR-013, FR-014, SC-004)
-- [ ] T048 On the phone: confirm the device-information view states that marks are provisional and documents are not (P10 — FR-018)
+- [X] T042 On the phone: the application offers to install itself, without going through a browser menu, and complete the installation in under two minutes without consulting instructions (P1 — FR-003a, FR-003b, SC-006)
+- [X] T043 On the phone: the installed icon shows a real name and image, with no white bounding box (P2 — FR-003). Confirmed, and it installed as an *application* rather than a home-screen shortcut — a WebAPK, which is what the register predicted a manifest would produce
+- [X] T044 On the phone: tapping the icon opens the application with no address bar and no tab strip, on the library rather than a missing page (P3, P4 — FR-001, FR-002, SC-002)
+- [X] T045 On the phone: **restart the device**, enable aeroplane mode, open the application, and read a saved document within 30 seconds (P5, P8 — FR-004, SC-001). Run this one first; it is the constitutional requirement, it is what slice 0 got wrong, and it is the slowest to discover late
+- [X] T046 On the phone, offline: mark words, close, reopen, confirm the marks are there; and paste and save new text (P6, P7 — FR-004, FR-006, SC-005)
+- [X] T047 On the phone: open the installed application and the same URL in Chrome, and confirm the one in front works — measured at about three seconds to hand the lease back, recorded in the register with its cause while the other says it cannot save — and that it says so within 5 seconds of opening, and in place of the library rather than over an empty one (P9 — FR-012, FR-013, FR-014, SC-004)
+- [X] T048 On the phone: confirm the device-information view states that marks are provisional and documents are not (P10 — FR-018)
 - [ ] T049 On the phone: deploy a new version while the application is open, confirm nothing changes until asked, then accept and confirm every document and mark survives (P11, P12 — FR-009, FR-010, FR-011, SC-003)
-- [ ] T050 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including whether `pauseVfs`/`unpauseVfs` behaved as documented across a real backgrounding, which is the one part of this slice resting on documentation rather than measurement
-- [ ] T051 Close slice 0's outstanding T043 while the phone is in hand: paste more than 5,000 characters and confirm the refusal message is legible on a phone screen
+- [X] T050 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including whether `pauseVfs`/`unpauseVfs` behaved as documented across a real backgrounding, which is the one part of this slice resting on documentation rather than measurement
+- [X] T051 Close slice 0's outstanding T043 while the phone is in hand: paste more than 5,000 characters and confirm the refusal message is legible on a phone screen
 
 **Checkpoint**: SC-008 satisfied. The slice is complete.
 
