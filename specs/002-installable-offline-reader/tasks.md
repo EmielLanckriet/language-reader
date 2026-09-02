@@ -154,7 +154,7 @@ about any one capability.
 **Purpose**: The gate. Nothing in this slice is complete until the phone says so, and SC-008 says so
 in the spec's own words.
 
-- [ ] T041 Merge to `main` and confirm the deploy workflow succeeds with `npm run check`, `npm run lint`, `npm test` and `check-bundle` all passing
+- [X] T041 Merge to `main` and confirm the deploy workflow succeeds with `npm run check`, `npm run lint`, `npm test` and `check-bundle` all passing
 - [ ] T042 On the phone: the application offers to install itself, without going through a browser menu, and complete the installation in under two minutes without consulting instructions (P1 — FR-003a, FR-003b, SC-006)
 - [ ] T043 On the phone: the installed icon shows a real name and image, with no white bounding box (P2 — FR-003)
 - [ ] T044 On the phone: tapping the icon opens the application with no address bar and no tab strip, on the library rather than a missing page (P3, P4 — FR-001, FR-002, SC-002)
