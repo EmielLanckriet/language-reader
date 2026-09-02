@@ -1,8 +1,24 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import '$lib/ui/app.css';
 	import InstallOffer from '$lib/ui/InstallOffer.svelte';
+	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 
 	let { children } = $props();
+
+	$effect(() => {
+		if (!browser) return;
+
+		// Tells app.html's fallback that the application arrived after all. Both halves matter: the
+		// flag stops the notice appearing later, and removing the element handles a start slower
+		// than app.html's timer, where the notice is already visible and is now wrong.
+		(window as unknown as { __booted?: boolean }).__booted = true;
+		document.getElementById('not-downloaded')?.remove();
+
+		// Registered here rather than in app.html so it happens once the application is running,
+		// and so the registration is available to the parts of the interface that need it.
+		void serviceWorker();
+	});
 </script>
 
 <svelte:head>
