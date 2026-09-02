@@ -133,9 +133,9 @@ storage tells them so and refuses to accept changes, rather than accepting chang
 slice when it is not. Listed last because it protects value rather than creating it — but slice 0
 shipped without it and the consequence was a copy that looked perfect and silently threw work away.
 
-**Independent Test**: Open the application in two places. Confirm the second says it is read-only,
-that it will not accept a mark or a document, and that previously saved reading is still legible in
-it.
+**Independent Test**: Open the application in two places. Confirm that the one the reader is
+looking at reads and accepts changes normally, and that the other says it cannot save, refuses a
+mark and a document, and says so in place of the library rather than showing an empty one.
 
 **Acceptance Scenarios**:
 
@@ -143,8 +143,9 @@ it.
    copy, **Then** the second copy states plainly that it cannot save anything and why.
 2. **Given** a copy that cannot reach storage, **When** the reader tries to mark a word or save a
    document, **Then** the change is refused rather than accepted and discarded.
-3. **Given** a copy that cannot reach storage, **When** the reader opens a saved document,
-   **Then** it is still readable — the application is read-only, not broken.
+3. **Given** a copy that cannot reach storage, **When** the reader looks at it, **Then** it says
+   plainly that it cannot reach their library and why — it does not present an empty library as
+   though nothing had ever been saved.
 4. **Given** the reader closes the other copy, **When** they ask this one to try again, **Then** it
    reaches storage and resumes accepting changes.
 5. **Given** the reader closes the other copy, **When** they simply mark a word without asking for
@@ -163,8 +164,12 @@ it.
   accepting the mark and losing it.
 - **The device is restarted, then opened with no network.** Works — availability offline survives a
   restart, and is not a property of the running session.
-- **The application is installed *and* also open in a browser tab.** One of them cannot reach
-  storage; that one is read-only and says so.
+- **The application is installed *and* also open in a browser tab.** Whichever one the reader is
+  looking at reaches storage and works normally. The other cannot, and says so rather than showing
+  a library it cannot read. Switching between them moves which is which.
+- **Both copies are in front of the reader at once**, which a phone makes unlikely and a larger
+  screen does not. Only one reaches storage. The other refuses changes and says why, and cannot
+  show saved content — this is the case FR-014 admits it cannot furnish.
 - **Both copies are closed and one is reopened.** It reaches storage normally. Being read-only is a
   condition of the moment, never a state the application gets stuck in.
 - **The cause of a read-only state cannot be determined.** The message says so and shows what was
@@ -229,8 +234,16 @@ it.
   **storage being unavailable on this device**, it MUST say which, because the two call for
   opposite actions. Where it cannot tell them apart it MUST say that, and show the underlying
   reason it recorded, rather than asserting whichever is more common.
-- **FR-014**: In that state, content already saved MUST remain readable. The application becomes
-  read-only, not unusable.
+- **FR-014**: The reader MUST be able to read saved content in the copy they are actually using.
+  A copy that cannot reach durable storage cannot show saved content either — there is nowhere for
+  it to read from — so this requirement is met by making sure the copy in front of the reader is
+  the one that reaches storage, and not by furnishing a copy that does not. Accordingly, a copy
+  that cannot reach storage MUST say so in place of the library. Showing an empty library would be
+  indistinguishable from having lost everything, which is the fear this slice exists to end.
+  *(Amended 2026-09-02 during planning. As first written this said saved content MUST remain
+  readable in the read-only state, which the machinery that stores the reader's data cannot
+  deliver: a copy without access has no access for reading either. The answer is to make that
+  state rare rather than to make it comfortable.)*
 - **FR-015**: The application MUST attempt to reach storage again whenever the reader tries to make
   a change, and MUST also offer a control that attempts it on demand. On success it MUST resume
   accepting changes without the reader restarting it, and MUST carry out the change they were
@@ -299,23 +312,44 @@ Per Constitution Principle V and ADR-0001, structural decisions trace to
 `docs/anticipated-changes.md`, which is authoritative. What follows is what is expected to change
 about *this slice's* output.
 
+Principle V requires each entry to be rated on two axes — how plausible the change is, and what
+retrofitting it later would cost. The ratings are given inline below, because a register without
+them is a narrative rather than a decision aid, and because the rating is what determines whether a
+seam is built now, deferred, hedged, or ignored.
+
 - **Real segmentation arrives in slice 2** and re-derives every token from retained source content.
   This is a recompute, not a migration — but it creates new words, so marks attached to today's
   single-character words do not carry across. FR-018 exists so this is not a surprise.
+  **Certain; cheap.** It is a recompute from retained input, which Principle V says costs a code
+  change rather than a migration. Cheap *only* while the source content is kept, which FR-014's
+  neighbour requirements guarantee.
 - **An export file arrives soon after.** With no server it is the only backup and the only route to
   a second device. Nothing in this slice should make the stored shape harder to serialise.
+  **Likely and soon; cheap.** Serialising a relational store is mechanical, and this slice adds no
+  table to it. The cost would rise only if something here began storing state that could not be
+  written out — which is why nothing in this slice persists anything.
 - **A second device arrives with export or synchronisation**, at which point the device identity
   and per-device counter recorded since slice 0 stop being hedges and start being load-bearing.
+  **Unlikely soon; expensive if unhedged.** This is the textbook hedge case, and it was hedged in
+  slice 0 — the identity and counter columns already exist and are already written. Retrofitting
+  them afterwards would mean assigning identity to rows that accumulated without one, which is a
+  migration of earned data. Nothing further is owed here.
 - **The way one copy yields storage to another may become sharing rather than exclusion.** This
   slice requires only that a copy which cannot save refuses to pretend otherwise. A later slice may
   let several copies operate at once; that would relax this behaviour without contradicting it,
   because "never accept a change that will not be kept" remains true either way.
+  **Unlikely on a phone; cheap.** It would replace how the lease is obtained, and nothing above
+  that boundary would notice, because every caller already handles being refused. Deferred rather
+  than hedged: there is no data shape to protect.
 - **Version changes become automatic once the tool is in daily use.** FR-010 requires an explicit
   action for now, which is right while deployments are frequent and knowing precisely when a
   version landed is useful. Once that stops being interesting, the change is to adopt a new version
   on the next fresh start and say so afterwards — a smaller notice, not a larger one. Deliberately
   deferred rather than built now, because the cost of being wrong is one tap and the information
   needed to decide arrives only from real use.
+  **Certain; cheap.** Deleting a control and changing when a reload happens. The rating is the
+  whole justification for deferring it — an expensive change this certain would have to be built
+  now.
 
 ## Assumptions
 

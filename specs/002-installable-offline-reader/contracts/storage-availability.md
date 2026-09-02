@@ -74,6 +74,9 @@ The lock exists to name the cause, and treating it as the guarantee would be a f
 | page → worker | `{ type: 'retry' }` | The on-demand control (FR-015) |
 | worker → page | `{ type: 'availability', state: Availability }` | Pushed on every change, so the interface never asks |
 
+**Reads are queued, never refused.** A read arriving while the state is `acquiring` or `paused`
+waits for `holding` and is then served. Only writes consult `acceptsWrites`.
+
 Every existing write call gains one refusal path: when `acceptsWrites` is false, the worker raises
 `reader-attempted-change`, waits for the resulting attempt, and then either performs the call or
 rejects it. The caller therefore never receives a success it will not keep — which is FR-016, and

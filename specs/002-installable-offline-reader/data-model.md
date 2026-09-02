@@ -45,7 +45,7 @@ be, with no browser, no worker, and no timing.
 
 | State | Meaning | Accepts writes? | Reader sees |
 |---|---|---|---|
-| `acquiring` | An attempt to take the lease is in flight | No | Nothing; it is brief |
+| `acquiring` | An attempt to take the lease is in flight | No | That it is resuming; reads wait rather than resolving empty |
 | `holding` | The lease is held and the database is open | **Yes** | Normal application |
 | `paused` | Released deliberately, because this copy is hidden | No | Nothing; no one is looking |
 | `refused` | An attempt was made and failed | No | The read-only notice (FR-013) |
@@ -120,6 +120,18 @@ Written as rules, which is how the tests read:
    application gets stuck in".
 5. **A cause is always present on `refused`.** There is no unlabelled read-only state, because a
    notice that cannot say why is the silent failure this slice exists to remove.
+
+### Reads are queued, not refused
+
+Only **writes** are gated on `acceptsWrites`. A read issued while the state is `acquiring` or
+`paused` waits until `holding` is reached and is then served.
+
+This is easy to get wrong in the direction that looks harmless. Tying the lease to visibility means
+`acquiring` is entered on **every return to the foreground** — it is not a rare path but the second
+most common state there is. A read that resolved empty during it would show the reader an empty
+library every time they came back to the application, which is indistinguishable from having lost
+everything. Refusing reads would be no better. Waiting is the only answer that is both honest and
+calm.
 
 ### The one ordering hazard
 

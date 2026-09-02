@@ -100,3 +100,35 @@ background polling.
   is measurable before any code is written.
 - ~~How a copy learns that storage has become reachable again (FR-015).~~ **Resolved** by
   clarification: on the reader's next attempt, plus an on-demand control, and never by polling.
+
+## Re-validated After Analysis — 2026-09-02
+
+16/16 → 16/16. No item changed state, but one came closer to failing than the count suggests and
+the reason is worth recording.
+
+**"All functional requirements have clear acceptance criteria" passed on a requirement that could
+not be met.** FR-014 required that saved content stay readable in the read-only state. It was
+clear, testable, and unambiguous — and impossible, because the machinery that stores the reader's
+data gives a copy without access no access for reading either. The checklist asks whether a
+requirement is *well formed*, not whether it is *achievable*, and nothing in this list would ever
+have caught it. It was caught in analysis, by comparing the spec against the design chosen to
+implement it.
+
+FR-014 is now amended to state what the design actually guarantees: the copy in front of the reader
+is the one that reaches storage, and a copy that cannot reach it says so **in place of** the
+library rather than showing an empty one. The amendment is marked inline in the spec, and the
+original wording is quoted there, because a requirement that changed after a design decision should
+show that it did.
+
+Two consequences elsewhere:
+
+- **US3's scenario 3, its independent test, and one edge case** were rewritten to match, and a new
+  edge case added for two simultaneously visible copies — the case FR-014 now admits it cannot
+  furnish.
+- **The Anticipated Changes entries are now rated on plausibility and retrofit cost**, which
+  Constitution Principle V requires of every specification and which this one had omitted entirely.
+  The ratings are not decoration: the version-update entry is deferred *because* it rates cheap,
+  and an equally certain but expensive change would have had to be built now.
+
+**Nothing outstanding.** The assumption about application size, listed as outstanding after
+clarification, was closed by measurement during planning: 2.6 MB across 28 files.

@@ -70,6 +70,7 @@ and reopen. Needs neither the manifest nor the lease work.
 - [ ] T010 [US1] Add the `fetch` handler to `src/service-worker.ts`: ignore non-`GET`; serve from the cache when present; on a miss fall back to the network; for a navigation request that misses, serve the cached shell at `${base}/index.html` so deep links resolve offline
 - [ ] T011 [US1] Create `src/lib/ui/registerServiceWorker.ts` registering the worker with `{ type: 'module' }` and returning the `ServiceWorkerRegistration`, and call it from `src/routes/+layout.svelte` behind a `browser` guard
 - [ ] T012 [US1] Handle a first-ever visit with no network in `src/app.html`: inline markup and a small inline script that replaces it once the application boots, so the one thing always present on a cold visit can explain that nothing has been fetched yet (FR-008)
+- [ ] T013a [US1] Verify that offline capability costs the reader nothing beyond one visit: clear site data, load the application once, go offline, reload. It must work with no button pressed and nothing downloaded deliberately (FR-005, SC-007). The plausible failure is a reader who closes the tab before caching finishes, so also check what happens when the first visit is cut short
 - [ ] T013 [US1] Verify quickstart checks 4, 6 and 7 locally — 28 cached entries including the WebAssembly binary, offline reload renders the library, and an offline hard load of `/language-reader/read/1` renders from the shell
 
 **Checkpoint**: The application works with the network disabled, including deep links. This alone is the largest gap between slice 0 and a usable tool.
@@ -84,7 +85,7 @@ and reopen. Needs neither the manifest nor the lease work.
 
 ### Implementation
 
-- [ ] T014 [P] [US2] Generate `static/icon-192.png`, `static/icon-512.png` and `static/icon-maskable-512.png` from `src/lib/assets/favicon.svg`, giving the maskable variant the safe-zone padding Android's launcher crop requires
+- [ ] T014 [P] [US2] Generate `static/icon-192.png`, `static/icon-512.png` and `static/icon-maskable-512.png` from `src/lib/assets/favicon.svg`, giving the maskable variant the safe-zone padding Android's launcher crop requires. Name the tool used and justify it per Principle V, or produce the files by hand and record that instead — an undeclared image dependency is still a dependency
 - [ ] T015 [US2] Write `static/manifest.webmanifest` per contracts/web-app-manifest.md — `start_url` and `scope` both `"./"`, icon `src` values with no leading slash, `display: standalone`
 - [ ] T016 [US2] Write `tests/build/manifest.test.ts` asserting that no member URL in `static/manifest.webmanifest` begins with `/`, and that both a 192px and a 512px icon are declared. This is the one manifest failure invisible locally, because the base path is empty in development
 - [ ] T017 [US2] Add `<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />` and a `theme-color` meta to `src/app.html`
@@ -108,7 +109,7 @@ cannot save, refuses a mark and a document, and recovers when the other is close
 
 > Written before the implementation and expected to fail. That failure is the point.
 
-- [ ] T021 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for every transition in data-model.md, asserting each of the five invariants by name: writes accepted in exactly one state; no event named for a timer; a remembered change carried out at most once and only on success; `refused` reachable back to `acquiring` by all three events; and every `refused` carrying a cause
+- [ ] T021 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for every transition in data-model.md, asserting each of the five invariants by name: writes accepted in exactly one state; no event named for a timer, which is FR-015a stated as a property rather than a promise; a remembered change carried out at most once and only on success; `refused` reachable back to `acquiring` by all three events; and every `refused` carrying a cause
 - [ ] T022 [P] [US3] Write failing tests in `tests/storage/availability.test.ts` for `explain(cause)`, asserting that `another-copy` and `unavailable` produce **different** actions for the reader, and that `unknown` states its uncertainty and carries the recorded detail (FR-013)
 
 ### Implementation
@@ -119,9 +120,12 @@ cannot save, refuses a mark and a document, and recovers when the other is close
 - [ ] T026 [US3] Classify failures in `src/lib/storage/lease.ts` into the three causes per contracts/storage-availability.md: a refused lock is `another-copy`, an acquired lock over a throwing VFS is `unavailable` with the thrown message, and anything else is `unknown` with what was recorded
 - [ ] T027 [US3] Extend `src/lib/storage/protocol.ts` with `visibility`, `retry` and `availability` messages
 - [ ] T028 [US3] Drive the state machine from `src/lib/storage/worker.ts`: hold the current `Availability`, apply `next()` on each event, perform `acquire` and `release` effects, and push every change to the page
+- [ ] T028a [US3] Queue **reads** in `src/lib/storage/worker.ts` while the state is `acquiring` or `paused`, releasing them once `holding` is reached. Only writes are refused. Without this, every return to the foreground resolves reads against a database that is not open yet, and the reader sees an empty library — which is indistinguishable from having lost everything
 - [ ] T029 [US3] Gate every write in `src/lib/storage/worker.ts` on `acceptsWrites`: when false, raise `reader-attempted-change`, await the attempt, then either perform the call or reject it — so the caller never receives a success that will not be kept (FR-012, FR-015, FR-016)
+- [ ] T029a [US3] Make a write that fails for any other reason — storage exhausted while marking offline is the spec's named case — surface as a refusal naming its cause, in `src/lib/storage/worker.ts` and `src/lib/storage/client.ts`. The lease state machine covers being unable to *reach* storage; it does not cover storage refusing a write once reached, and FR-016 forbids reporting either as saved
 - [ ] T030 [US3] Forward visibility from `src/lib/storage/session.ts`: send `visibility` on `document.visibilitychange` and once at startup, and expose the pushed `availability` to the interface
 - [ ] T031 [US3] Surface availability through `src/lib/storage/client.ts` as reactive state, and reject write methods with a typed refusal rather than a generic error
+- [ ] T031a [US3] Render a resuming state rather than an empty one while availability is `acquiring`, in `src/routes/+page.svelte` and `src/routes/read/[id]/+page.svelte`. This is **not** a rare path: tying the lease to visibility means every return to the foreground passes through it, so it is the state the reader will meet most often after `holding`
 - [ ] T032 [US3] Create `src/lib/ui/ReadOnlyNotice.svelte` rendering `explain(cause)` — headline, action, and the recorded detail when present — with a retry control that sends `retry` (FR-013, FR-015). Render it in the notice region of `src/routes/+layout.svelte`
 - [ ] T033 [US3] Show the read-only cause in `src/routes/diagnostics/+page.svelte` under "Right now", replacing slice 0's fixed sentence that always blamed another copy
 - [ ] T034 [US3] Verify quickstart checks 10, 11 and 12 locally with two visible windows, and confirm that switching between them moves the lease
@@ -151,12 +155,12 @@ about any one capability.
 in the spec's own words.
 
 - [ ] T041 Merge to `main` and confirm the deploy workflow succeeds with `npm run check`, `npm run lint`, `npm test` and `check-bundle` all passing
-- [ ] T042 On the phone: the application offers to install itself, without going through a browser menu (P1 — FR-003a, FR-003b)
+- [ ] T042 On the phone: the application offers to install itself, without going through a browser menu, and complete the installation in under two minutes without consulting instructions (P1 — FR-003a, FR-003b, SC-006)
 - [ ] T043 On the phone: the installed icon shows a real name and image, with no white bounding box (P2 — FR-003)
 - [ ] T044 On the phone: tapping the icon opens the application with no address bar and no tab strip, on the library rather than a missing page (P3, P4 — FR-001, FR-002, SC-002)
 - [ ] T045 On the phone: **restart the device**, enable aeroplane mode, open the application, and read a saved document within 30 seconds (P5, P8 — FR-004, SC-001). Run this one first; it is the constitutional requirement, it is what slice 0 got wrong, and it is the slowest to discover late
 - [ ] T046 On the phone, offline: mark words, close, reopen, confirm the marks are there; and paste and save new text (P6, P7 — FR-004, FR-006, SC-005)
-- [ ] T047 On the phone: open the installed application and the same URL in Chrome, and confirm the one in front works while the other says it cannot save (P9 — FR-012, FR-014)
+- [ ] T047 On the phone: open the installed application and the same URL in Chrome, and confirm the one in front works while the other says it cannot save — and that it says so within 5 seconds of opening, and in place of the library rather than over an empty one (P9 — FR-012, FR-013, FR-014, SC-004)
 - [ ] T048 On the phone: confirm the device-information view states that marks are provisional and documents are not (P10 — FR-018)
 - [ ] T049 On the phone: deploy a new version while the application is open, confirm nothing changes until asked, then accept and confirm every document and mark survives (P11, P12 — FR-009, FR-010, FR-011, SC-003)
 - [ ] T050 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including whether `pauseVfs`/`unpauseVfs` behaved as documented across a real backgrounding, which is the one part of this slice resting on documentation rather than measurement

@@ -144,6 +144,7 @@ src/
 │   │   ├── protocol.ts               CHANGED  visibility, retry, availability messages
 │   │   └── session.ts                CHANGED  imports persistence; forwards visibility
 │   └── ui/
+│       ├── registerServiceWorker.ts  NEW      manual registration, for FR-010
 │       ├── InstallOffer.svelte       NEW      FR-003a
 │       ├── UpdateOffer.svelte        NEW      FR-010
 │       └── ReadOnlyNotice.svelte     NEW      FR-013, FR-015
@@ -159,6 +160,7 @@ static/
 tests/
 ├── storage/availability.test.ts      NEW      the state machine, written first
 └── build/manifest.test.ts            NEW      no member URL begins with "/"
+scripts/check-bundle.mjs              NEW      one sqlite3.wasm in build/, or fail
 vite.config.ts                        CHANGED  kit.serviceWorker.register = false
 docs/adr/0009-offline-shell-and-installability.md   NEW
 docs/adr/0010-storage-lease-held-by-visible-copy.md NEW
@@ -193,6 +195,15 @@ to fall back to exclusion-only and amend FR-014 if `pauseVfs`/`unpauseVfs` misbe
 No Constitution Check violation requires justification. The two Principle V judgement calls are
 recorded above rather than here, because neither is a violation — one is an extraction and the
 other is a concrete module, not an abstraction.
+
+**One spec amendment came out of analysis rather than planning.** FR-014 originally required that
+saved content stay readable in the read-only state. The storage engine cannot deliver that — a copy
+without access has none for reading either — so the requirement was amended to state what this
+design actually guarantees: the copy in front of the reader is the one that reaches storage, and a
+copy that cannot reach it says so *in place of* the library rather than showing an empty one. The
+trade was explicit when the approach was chosen; the spec had simply not caught up. Recorded here
+because a plan that quietly implements something weaker than its spec is the failure mode this
+project's whole process exists to prevent.
 
 One risk is worth naming without a table around it: **the visible-copy lease is the only part of
 this plan whose behaviour on a real Android device is not established by measurement.**
