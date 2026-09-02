@@ -10,7 +10,7 @@ One cache, named for the build: `cache-${version}` from `$service-worker`.
 | Phase | Behaviour |
 |---|---|
 | `install` | `cache.addAll([...build, ...files])`. If any file fails, installation fails — the worker does not activate, and a half-cached application never becomes the live one. This is FR-007. |
-| `activate` | Delete every cache whose name is not the current one, then claim clients. |
+| `activate` | Delete every cache whose name is not the current one, then `clients.claim()`. |
 | `fetch` | Cache first. On a miss, go to the network. For a **navigation** request that misses, serve the cached shell (`${base}/index.html`), which is what makes deep links work offline. |
 
 Only `GET` is handled. Anything else is passed straight through, because this application makes no
@@ -42,9 +42,13 @@ navigator.serviceWorker.addEventListener('controllerchange', ...)  // it took ov
 
 ## The invariant that matters
 
-**The worker never activates over a running page except when asked.** No `skipWaiting()` in the
-`install` handler, no `clients.claim()` that would replace an existing controller mid-session.
+**The worker never activates over a running page except when asked.** There is no
+`skipWaiting()` in the `install` handler.
 
-This is FR-009, and it is satisfied by *not writing* the two lines that most service worker
-examples include. Recorded here because their absence is otherwise indistinguishable from an
-oversight, and a future reader would be right to think something was missing.
+This is FR-009, and it is satisfied by *not writing* the one line that most service worker examples
+include. Recorded here because its absence is otherwise indistinguishable from an oversight, and a
+future reader would be right to think something was missing.
+
+`clients.claim()` in `activate` is a different matter and is kept. Activation only happens when
+there is no controller to displace — a first install — or when the reader has accepted a new
+version. In neither case does it replace a running version behind the reader's back.
