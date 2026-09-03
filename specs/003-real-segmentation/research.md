@@ -793,12 +793,24 @@ measurement rather than reasoning:
 | streamed `cache.put` of the 14 MB runtime | 142 ms, read back byte-exact | fine |
 | contention with the service worker reading the same cache while it is written | put into `language-reader-model-v1` with the worker controlling: 551 ms | fine |
 | the download loop itself | all three files replicated verbatim in the same browser: 15.7 s total, 102,904,192 bytes stored | fine |
+| the per-chunk progress callback | the 98 MB model with a DOM write on every chunk: 3.1 s, 2,063 chunks | fine |
 
-So the primitives work and the loop works; what hangs is the application's own wiring around them.
-The leading hypothesis, **untested**, is the per-chunk progress callback writing Svelte state
-thousands of times while a headless tab's renderer is throttled. It is recorded as a hypothesis
-precisely because the last one that looked this obvious — batching would fix SC-004 — was measured
-and was wrong (R18).
+So the primitives work, the loop works, and the progress callback works. **Every hypothesis
+attempted has been disproved, including one arrived at by elimination** — the progress callback was
+the only difference between the application's loop and the replication that succeeded, and it turned
+out not to matter either. That means the elimination was wrong somewhere: some difference between
+the two remains unidentified.
+
+What is *not* yet accounted for is the state observed on the first attempt — `ort-runtime.js` alone
+in the model cache, the button reading "Download" rather than "Downloading", and no error on screen.
+Those three cannot all be true of any path through `downloadModel` and `getModel` that has been
+traced, which suggests the next place to look is what happens *after* `downloadModel` resolves
+(`refreshModelState`, then `reload`, which creates the inference session), rather than inside the
+download. The scenario waits for the analyzer stamp, so a hang there would time out identically
+while the download had in fact succeeded.
+
+No hypothesis is recorded as leading, because two have now been stated confidently and both were
+wrong — this one and the batching hypothesis in R18. The eliminations above are the useful part.
 
 **Not called a shipped regression, and not called fine either.** The same download succeeded on the
 reader's phone the same day and in an earlier laptop run, so it is more likely a headless artefact
