@@ -228,6 +228,11 @@ identically everywhere.
 - [ ] T074 On the phone: download the model over wi-fi, confirm 你是哪国人 reads 你 · 是 · 哪 · 国 · 人, and confirm it still works after aeroplane mode and a restart
 - [ ] T075 Record what the model changed, and whether the runtime-not-cached-offline gap named in ADR-0015 bites in practice
 
+## Phase 10: What The Host Did To Our Own Files
+
+- [X] T076 Fix the download against a host that compresses (research.md R14): trust `Content-Length` only when the response is not content-encoded, keep only the content type on the stored copy rather than headers describing a transfer that has already been undone, and stream into the cache instead of buffering 98 MB — with `tests/analyzer/model-store.test.ts` describing the host's measured behaviour rather than the test server's
+- [X] T077 Re-run the end-to-end browser pass against a server that gzips the way GitHub Pages does. T073 passed against one that did not, which is why the failure reached the phone: the check was weaker than the thing it was checking
+
 **Checkpoint**: segmentation resolves the cases only context can resolve, and the reader who does not
 want the download loses nothing.
 

@@ -450,6 +450,72 @@ Decision and its consequences in
 thing until the runtime went into the build and deliberately out of the install. Counting the build
 would report a cost nobody pays.
 
+## R14. The host compresses our files, and `Content-Length` then describes the transfer (2026-09-03)
+
+The download failed on the phone, every time, with
+
+> The segmenter downloaded incompletely (24218 of 9075 bytes).
+
+Received *larger* than declared, which is not what truncation looks like. Measured against the
+deployed site:
+
+| URL | bytes `fetch` returns | `content-length` | `content-encoding` |
+| --- | --- | --- | --- |
+| `/ort/ort-runtime.js` | 24,218 | 9,075 | `gzip` |
+| `/ort/ort-runtime.wasm` | 13,961,845 | 3,639,843 | `gzip` |
+| HuggingFace `model_quantized.onnx` | 102,904,192 | 102,904,192 | *(none)* |
+
+GitHub Pages gzips `.js` and `.wasm`; `fetch` decompresses transparently and leaves the header
+describing the compressed transfer. Comparing the decoded body against it is not a completeness
+check, it is a guaranteed mismatch — so the first of the three files failed and the model was never
+reached. Pressing the button again could not have helped.
+
+**Why the laptop pass missed it.** The verification server did not compress. That is the same shape
+as the `.mjs` MIME failure recorded above: the test server was kinder than the host. It now gzips
+the same extensions Pages does, and the check that matters is a unit test
+(`tests/analyzer/model-store.test.ts`) describing the host's measured behaviour rather than another
+browser pass.
+
+**A second fault, hidden behind the first.** The stored copy was written with the response's own
+headers, which put `content-encoding: gzip` on bytes that had already been decompressed, together
+with a `Content-Length` for the compressed transfer. The service worker serves that copy offline.
+Even a download that passed the length check would have cached a runtime that lies about itself.
+Only `content-type` is kept now — the one header still true of what is stored, and the one the MIME
+failure above proved load-bearing.
+
+**Where the check survives.** The model is served uncompressed, so its declared length really does
+describe its body, and that is the file where truncation matters: a short model loads and produces
+confident nonsense. For a compressed response the guarantee is the stream itself — a body cut short
+by a dropped connection errors it, and an errored stream fails the `cache.put` rather than storing
+half a file.
+
+**Verified against a compressing server (T077).** Build served with `BASE_PATH=/language-reader`
+and gzip on the same extensions Pages compresses, cold Chrome profile:
+
+| | probe |
+| --- | --- |
+| before, dictionary `1-d94bc1a4` | 你 \| 是 \| 哪 \| 国人 \| ？ \| 朋友 \| 很 \| 好 \| 。 |
+| after, model `bert-ws-zh · 1-8550a78c-q8` | 你 \| 是 \| 哪 \| 国 \| 人 \| ？ \| 朋友 \| 很 \| 好 \| 。 |
+
+Progress read `23 MB of 111 MB` then `83 MB of 111 MB` — received never above the total, which is
+the property the reported failure violated. No console errors.
+
+Two harness faults, recorded because both produced a failure that looked like the application's:
+the build was made without `BASE_PATH`, so every asset 404'd; and an old Chrome already held the
+debug port, so the new one fell back to `[::1]` while `localhost` resolved to the stale browser and
+its 21-hour-old profile. A third is now fixed in the harness itself — `Runtime.evaluate` without
+`userGesture: true` reports a successful `.click()` whose handler never runs, and the scenario sat
+for five minutes on a button it believed it had pressed. The download in this run was therefore
+started by an explicit gesture over CDP rather than by the scenario's own click.
+
+**Buffering replaced by streaming, while here.** The module's own opening comment claimed the model
+was "streamed straight to disk without ever holding 98 MB in a JavaScript array"; the code below it
+accumulated every chunk and copied the lot again through a `Blob` — roughly 200 MB at peak, on a
+phone, to store 98 MB. Unmeasured, and not the reported failure, but a plausible second way for a
+download to die near the end. It now passes through a counting `TransformStream` into `cache.put`
+and holds one chunk at a time.
+
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this

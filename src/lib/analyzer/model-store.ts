@@ -58,6 +58,47 @@ export async function storedModel(): Promise<ArrayBuffer | undefined> {
 }
 
 /**
+ * How many bytes the body should turn out to be, or undefined when nothing here can say.
+ *
+ * `Content-Length` describes the *transfer*, not the body. Where the host compressed the response,
+ * `fetch` hands back the decompressed bytes while the header still counts the compressed ones, and
+ * comparing the two is not a completeness check — it is a guaranteed mismatch. Measured on the
+ * deployed site: ort-runtime.js arrives as 24,218 bytes under `content-length: 9075`, and the
+ * earlier version of this function rejected it as "incomplete" on every single attempt.
+ *
+ * The check is kept where it still means something, which is where it matters most: HuggingFace
+ * serves the 98 MB model uncompressed, so its declared length really is the body's length, and a
+ * truncated model would load and produce confident nonsense. For a compressed response the
+ * guarantee comes from the stream instead — a body cut short by a dropped connection errors it,
+ * and an errored stream fails the `cache.put` below rather than storing half a file.
+ *
+ * The local verification server did not compress, which is why a laptop pass could never have
+ * found this and tests/analyzer/model-store.test.ts now describes the host's actual behaviour.
+ */
+function expectedBodyBytes(response: Response): number | undefined {
+	if (response.headers.get('content-encoding')) return undefined;
+	const declared = Number(response.headers.get('content-length'));
+	return Number.isFinite(declared) && declared > 0 ? declared : undefined;
+}
+
+/**
+ * The headers to keep on the stored copy: the content type, and deliberately nothing else.
+ *
+ * Passing the response's own headers through was a second bug hiding behind the first. It copies
+ * `content-encoding: gzip` onto bytes that have already been decompressed, and a `content-length`
+ * describing the compressed transfer — so the service worker would later serve a runtime that
+ * claims to be gzip and is not. The content type is the one header that is still true of what we
+ * are storing, and it is the one that matters: a `.js` served as octet-stream is unloadable as a
+ * module, which this project has already been bitten by once.
+ */
+function storedHeaders(response: Response): Headers {
+	const headers = new Headers();
+	const type = response.headers.get('content-type');
+	if (type) headers.set('content-type', type);
+	return headers;
+}
+
+/**
  * Download everything the segmenter needs, reporting progress, and store it.
  *
  * The runtime is fetched alongside the weights rather than lazily on first use. Lazily was the
@@ -66,8 +107,14 @@ export async function storedModel(): Promise<ArrayBuffer | undefined> {
  * with the dictionary. Fetched together, they are either both there or neither is, which is also
  * what `modelIsStored` reports.
  *
- * Nothing is written to the cache until its whole response has arrived. A truncated model would
- * load and produce confident nonsense, which is worse than no model at all.
+ * Streamed into the cache rather than buffered and then written. Buffering meant holding the whole
+ * 98 MB model in a chunk array and copying it again through a Blob — some 200 MB at peak, on a
+ * phone, which is a plausible way to fail a download that has otherwise succeeded. Nothing here
+ * holds more than one chunk at a time.
+ *
+ * The cost of streaming is that a short file is stored before it can be measured, so it is deleted
+ * again on the spot. Between the two, `modelIsStored` never sees it: the throw happens before the
+ * next file is fetched, and it asks for all three.
  */
 export async function downloadModel(onProgress?: (p: DownloadProgress) => void): Promise<void> {
 	const cache = await caches.open(MODEL_CACHE);
@@ -85,31 +132,30 @@ export async function downloadModel(onProgress?: (p: DownloadProgress) => void):
 			throw new Error(`Could not download the segmenter (${response.status}).`);
 		}
 
-		const declared = Number(response.headers.get('content-length')) || undefined;
-		// The total grows as each file declares its size. Honest rather than precise: it is better
-		// to say "42 MB of 88 MB" once that is knowable than to invent a total up front.
-		if (declared !== undefined) knownTotal = (knownTotal ?? receivedBytes) + declared;
+		const expected = expectedBodyBytes(response);
+		// The total grows as each file declares a size that can be believed. Honest rather than
+		// precise: it is better to say "42 MB of 88 MB" once that is knowable than to invent a
+		// total up front, and better to say "42 MB so far" than to quote one that is wrong.
+		if (expected !== undefined) knownTotal = (knownTotal ?? receivedBytes) + expected;
 
-		const reader = response.body.getReader();
-		const chunks: BlobPart[] = [];
-		for (;;) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			// Copied into its own buffer: a stream chunk may be a view over a shared buffer that
-			// the reader is free to reuse, and Blob wants ownership of what it is given.
-			chunks.push(new Uint8Array(value).slice().buffer as ArrayBuffer);
-			receivedBytes += value.byteLength;
-			onProgress?.({ receivedBytes, totalBytes: knownTotal });
+		let bodyBytes = 0;
+		const counted = response.body.pipeThrough(
+			new TransformStream<Uint8Array, Uint8Array>({
+				transform(chunk, controller) {
+					bodyBytes += chunk.byteLength;
+					receivedBytes += chunk.byteLength;
+					onProgress?.({ receivedBytes, totalBytes: knownTotal });
+					controller.enqueue(chunk);
+				}
+			})
+		);
+
+		await cache.put(url, new Response(counted, { headers: storedHeaders(response) }));
+
+		if (expected !== undefined && bodyBytes !== expected) {
+			await cache.delete(url);
+			throw new Error(`The segmenter downloaded incompletely (${bodyBytes} of ${expected} bytes).`);
 		}
-
-		const bytes = await new Blob(chunks).arrayBuffer();
-		if (declared !== undefined && bytes.byteLength !== declared) {
-			throw new Error(
-				`The segmenter downloaded incompletely (${bytes.byteLength} of ${declared} bytes).`
-			);
-		}
-
-		await cache.put(url, new Response(bytes, { headers: response.headers }));
 	}
 }
 
