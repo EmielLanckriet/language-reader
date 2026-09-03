@@ -308,3 +308,12 @@ button.token.state-ignored {
 .why {
 	margin: 0.4rem 0 0;
 }
+
+/* The device segmentation probe on the diagnostics view. Word-spaced like the reader itself, so
+   what it shows is read the same way as what it is describing. */
+.probe {
+	display: inline-block;
+	font-size: 1.15rem;
+	line-height: 1.9;
+	word-break: break-word;
+}

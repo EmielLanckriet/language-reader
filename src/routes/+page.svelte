@@ -100,6 +100,10 @@
 			// The database is the thing that failed. Nothing further to try.
 		}
 	}
+
+	/** See the control above. Short enough to read at a glance on a phone. */
+	const SAMPLE_TEXT =
+		'朋友很好。我在中国学习中文。他骑自行车去上班。三个人在那里等着。玛丽亚是我的朋友。圆周率大约是3.14。';
 </script>
 
 <h1>Reader</h1>
@@ -108,6 +112,17 @@
 {#if warning}
 	<p class="notice warning">{warning}</p>
 {/if}
+
+<!--
+	A sample to hand, so checking the reader on a phone does not start with typing Chinese into a
+	touch keyboard. It fills the box rather than saving directly: the reader still decides what
+	enters their library, and nothing writes earned data on their behalf.
+
+	The text is chosen to exercise the cases that actually distinguish segmenters — a plain
+	two-character word, a compound that dictionary methods split, a name, a measure-word run, and a
+	decimal — so a glance at the result says whether word splitting is working on this device.
+-->
+<button class="secondary" onclick={() => (pasted = SAMPLE_TEXT)}>Load sample text</button>
 
 <textarea
 	bind:value={pasted}

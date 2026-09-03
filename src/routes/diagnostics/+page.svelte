@@ -5,6 +5,7 @@
 	import type { Diagnostic } from '$lib/diagnostics/describe';
 	import { runningVersion, describeVersion } from '$lib/ui/version';
 	import { activeAnalyzer } from '$lib/analyzer/active';
+	import { sliceByCodePoints } from '$lib/domain/offsets';
 
 	/**
 	 * FR-021: the reader must be able to retrieve and read the failure record **without developer
@@ -25,6 +26,27 @@
 	 * that happens without being seen.
 	 */
 	let stale = $state<number | null>(null);
+
+	/**
+	 * How this device actually splits a short, fixed sentence.
+	 *
+	 * The version above is a fingerprint — it says *that* two devices differ, never *how*. This
+	 * says how, in the one form nobody has to interpret: the words themselves. It exists because
+	 * word splitting is done by the browser's own text engine, and there is no guarantee the engine
+	 * on a phone carries the same Chinese dictionary as the one on a laptop. If this line comes back
+	 * as single characters, the engine on this device is not splitting Chinese into words at all,
+	 * and that is a fact about the device rather than a fault in the reader.
+	 */
+	const PROBE_SENTENCE = '朋友很好，我在中国学习中文。';
+	let probe = $state<string>('');
+
+	$effect(() => {
+		void activeAnalyzer.analyze(PROBE_SENTENCE).then((tokens) => {
+			probe = tokens
+				.map((token) => sliceByCodePoints(PROBE_SENTENCE, token.start, token.end))
+				.join(' | ');
+		});
+	});
 
 	// Read outside the storage effect on purpose: the version has to be reportable even when the
 	// database cannot be opened, which is exactly when someone opens this page.
@@ -89,6 +111,16 @@
 	</dd>
 	<dt>Storage</dt>
 	<dd>{storage}</dd>
+	<dt>Word splitting on this device</dt>
+	<dd>
+		<code class="probe">{probe || '…'}</code>
+		<br />
+		<small>
+			“朋友” and “中国” should each be one piece. If every character is separate, this device’s text
+			engine has no Chinese word dictionary — which the reader cannot fix from here, but which is
+			worth knowing.
+		</small>
+	</dd>
 	<dt>Word splitting</dt>
 	<dd>
 		<!--
