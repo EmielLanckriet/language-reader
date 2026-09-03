@@ -9,6 +9,21 @@ import { sveltekit } from '@sveltejs/kit/vite';
 const base = (process.env.BASE_PATH ?? '') as '' | `/${string}`;
 
 export default defineConfig({
+	resolve: {
+		// Keep onnxruntime-web's WebAssembly out of the bundle (ADR-0015).
+		//
+		// Without this condition the package resolves to its *bundled* build, and Vite emits the
+		// 26.5 MB jsep variant as a hashed asset -- which then lands in the precache, more than
+		// doubling every install for a runtime that is useless without a model fetched on demand.
+		// Caught by the install budget rather than by inspection: the assumption that a dynamic
+		// import would keep it out was simply wrong.
+		//
+		// With it, the runtime loads its WebAssembly from `ort.env.wasm.wasmPaths` at run time,
+		// which is the copy scripts/copy-ort-runtime.mjs puts in build/ort/ and the precache
+		// deliberately skips.
+		conditions: ['onnxruntime-web-use-extern-wasm']
+	},
+
 	plugins: [
 		sveltekit({
 			compilerOptions: {

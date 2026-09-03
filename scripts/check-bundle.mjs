@@ -10,7 +10,7 @@
 // every version change.
 //
 // Runs in postbuild, beside spa-fallback.mjs, so a regression fails the build rather than shipping.
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const BUILD = 'build';
@@ -39,49 +39,51 @@ function everyFile(directory) {
 	return found;
 }
 
-// The install budget (FR-033/FR-034, ADR-0012).
+// The install budget (FR-033/FR-034, ADR-0012, ADR-0015).
 //
-// Slice 1 shipped 34 files and 1,472,106 bytes, and that was the reference the budget was first
-// stated against. Slice 2 exceeds it deliberately, and FR-034 requires the reason to be written
-// down rather than the ceiling quietly raised.
+// **Measured against the precache list, not the build directory.** Those were the same thing until
+// slice 2 put the ONNX runtime in the build and deliberately out of the install: 3.15 MB gzipped
+// that is useless without a 98 MB model fetched on demand, so precaching it would more than double
+// every install for a capability the reader may never turn on. What an install costs is what the
+// service worker fetches before first use, which is exactly the precache list -- so that is what
+// this measures. Counting the build directory would now report a cost nobody pays.
 //
-// **The justification.** Splitting Chinese into words needs a dictionary. `Intl.Segmenter` reads
-// one out of the browser's own ICU and costs nothing, and on the reader's Android phone it is not
-// there: the browser ships without the CJK dictionary data, returns one token per character,
-// reports no error, and offers no way to ask (research.md R11). Measured on the device, not
-// inferred. The zero-cost option therefore does not exist on the only device the constitution
-// treats as the oracle, so the application carries its own word list.
+// Slice 1 shipped 34 files and 1,472,106 bytes, the reference the budget was first stated against.
+// Slice 2 exceeds it deliberately, and FR-034 requires the reason written down rather than the
+// ceiling quietly raised.
 //
-// **What it costs, measured.** 120,176 CC-CEDICT headwords: 1.002 MB on disk, **0.432 MB gzipped
-// over the wire**, which is what the reader actually downloads once and then has offline forever.
-// Whole application: 2.412 MB on disk, about 1.46 MB over the wire against roughly 1.03 MB before.
-// Headwords only -- the definitions are four times the size and segmentation does not need them,
-// so they stay a slice-3 cost if slice 3 still wants them.
+// **The justification.** Splitting Chinese into words needs a dictionary, and the browser's own
+// (`Intl.Segmenter`) is absent on the reader's Android phone: it returns one token per character,
+// reports no error, and offers no way to ask (research.md R11). Measured on the device. So the
+// application carries CC-CEDICT's headwords -- 120,176 entries, 1.002 MB on disk, 0.432 MB gzipped
+// over the wire -- and the definitions, four times that, are not shipped because segmentation does
+// not read them.
 //
-// The ceiling therefore moves to the sanctioned figure below rather than being removed. What it
-// still catches is the thing it was built for: a second dictionary, or the full CC-CEDICT with
-// glosses, arriving without a decision.
+// What this ceiling still catches is the thing it was built for: a second dictionary, the full
+// CC-CEDICT with glosses, or the model itself arriving in the install without a decision.
 const SANCTIONED_INSTALL = { files: 37, bytes: 2529253 };
 
-// Ten per cent, unchanged in spirit. Wide enough that ordinary code growth never trips it, and far
-// narrower than anything this check exists to catch -- jieba's frequency dictionary alone would add
-// another 1.6 MB gzipped.
+// Ten per cent, unchanged in spirit: wide enough that ordinary code growth never trips it, far
+// narrower than anything worth catching.
 const GROWTH_ALLOWED = 0.1;
 
 const files = everyFile(BUILD);
 const problems = [];
 
-const totalBytes = files.reduce((sum, path) => sum + statSync(path).size, 0);
+// What the install actually fetches, read from the manifest the previous postbuild step wrote.
+const precached = JSON.parse(readFileSync(join(BUILD, 'precache.json'), 'utf-8'));
+const installedFiles = precached.map((path) => join(BUILD, path));
+const totalBytes = installedFiles.reduce((sum, path) => sum + statSync(path).size, 0);
 const ceiling = Math.round(SANCTIONED_INSTALL.bytes * (1 + GROWTH_ALLOWED));
 
 if (totalBytes > ceiling) {
-	const largest = files
+	const largest = installedFiles
 		.map((path) => ({ path, size: statSync(path).size }))
 		.sort((a, b) => b.size - a.size)
 		.slice(0, 3);
 
 	problems.push(
-		`check-bundle: the install is ${megabytes(totalBytes)} MB across ${files.length} files,` +
+		`check-bundle: the install is ${megabytes(totalBytes)} MB across ${installedFiles.length} files,` +
 			` over the ${megabytes(ceiling)} MB ceiling.\n` +
 			`    The sanctioned install is ${megabytes(SANCTIONED_INSTALL.bytes)} MB in ${SANCTIONED_INSTALL.files} files.\n` +
 			`    Largest files now:\n` +
@@ -115,7 +117,9 @@ if (problems.length > 0) {
 }
 
 console.log(`check-bundle: one copy of each SQLite artifact in ${BUILD}/`);
+const buildBytes = files.reduce((sum, path) => sum + statSync(path).size, 0);
 console.log(
-	`check-bundle: install is ${megabytes(totalBytes)} MB across ${files.length} files` +
-		` (sanctioned: ${megabytes(SANCTIONED_INSTALL.bytes)} MB).`
+	`check-bundle: install is ${megabytes(totalBytes)} MB across ${installedFiles.length} precached ` +
+		`files (sanctioned: ${megabytes(SANCTIONED_INSTALL.bytes)} MB); ` +
+		`${megabytes(buildBytes)} MB sits in the build, the difference fetched on demand.`
 );

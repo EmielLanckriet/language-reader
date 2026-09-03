@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 import { Repository, StorageFailure } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
-import { activeAnalyzer } from '../../src/lib/analyzer/active';
+import { fallbackAnalyzer } from '../../src/lib/analyzer/active';
 import { diskAnalyzer } from '../analyzer/support';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
@@ -155,15 +155,17 @@ describe('storing and reading documents', () => {
 
 	it('exercises the analyzer that actually ships', () => {
 		// Without this, the tests below could drift into proving something about an analyzer the
-		// reader never uses.
-		expect(diskAnalyzer.name).toBe(activeAnalyzer.name);
-		expect(diskAnalyzer.version).toBe(activeAnalyzer.version);
+		// reader never uses. Compared against the fallback rather than the resolved analyzer,
+		// because which one is active depends on whether a 98 MB model is on the device — and in a
+		// unit test it never is.
+		expect(diskAnalyzer.name).toBe(fallbackAnalyzer.name);
+		expect(diskAnalyzer.version).toBe(fallbackAnalyzer.version);
 	});
 
 	it('stamps documents with the active analyzer and its fingerprint (FR-010)', async () => {
 		const stored = repository.getDocument(await saveWithActiveAnalyzer('我在中国学习中文。'));
-		expect(stored.analyzer).toBe(activeAnalyzer.name);
-		expect(stored.analyzerVersion).toBe(activeAnalyzer.version);
+		expect(stored.analyzer).toBe(fallbackAnalyzer.name);
+		expect(stored.analyzerVersion).toBe(fallbackAnalyzer.version);
 		// A hand-written version would be a lie for a host-provided segmenter (ADR-0011), so the
 		// stamp must not be the placeholder's constant.
 		expect(stored.analyzerVersion).not.toBe('1');

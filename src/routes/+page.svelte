@@ -75,9 +75,12 @@
 		try {
 			const { repository } = await session();
 			const document = await pasteSource.ingest(pasted);
-			const analyzed = await activeAnalyzer.analyze(document.rawContent);
-			const tokens = resolveTokens(document.rawContent, analyzed, activeAnalyzer);
-			await repository.saveDocument(document, tokens, stampOf(activeAnalyzer));
+			// Resolved per save rather than held: the reader may have finished downloading the
+			// contextual segmenter since the page loaded.
+			const analyzer = await activeAnalyzer();
+			const analyzed = await analyzer.analyze(document.rawContent);
+			const tokens = resolveTokens(document.rawContent, analyzed, analyzer);
+			await repository.saveDocument(document, tokens, stampOf(analyzer));
 			pasted = '';
 			documents = await repository.listDocuments();
 		} catch (error) {

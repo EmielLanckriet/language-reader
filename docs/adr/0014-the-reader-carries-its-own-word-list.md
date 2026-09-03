@@ -52,9 +52,15 @@ not what the reader reads with.
   together — but a reader whose words silently depend on which browser they opened is worse than
   one whose words are the same everywhere, and the fallback would have to ship the word list
   anyway, so the branch buys nothing but two behaviours to reason about.
-- **Ship CC-CEDICT complete, with definitions.** Rejected for now: 3.97 MB gzipped against 0.432 MB
-  for headwords alone, and segmentation does not read definitions. If slice 3 wants glosses it can
-  pay for them then — and it may not, since the developer already uses Pleco for lookups.
+- **Ship CC-CEDICT complete, with definitions.** Rejected *for this slice only*: 3.97 MB gzipped
+  against 0.432 MB for headwords alone, and segmentation does not read definitions. Slice 3 wants
+  glosses **in the reader** and will pay for them then. Deferring costs nothing beyond fetching the
+  same source again, since the headwords are derived from it by a committed script.
+
+  (An earlier draft of this ADR said slice 3 might not want definitions at all because the developer
+  uses Pleco. That misread a remark: the suggestion was that the reader might *hand a word to* Pleco
+  as a convenience, not that lookups should live there. Corrected 2026-09-03, and the idea has been
+  dropped at the developer's request.)
 - **Ship jieba's frequency dictionary and score a maximum-probability path.** Better segmentation —
   it resolves ambiguities longest-match cannot, and the register says so — but 1.62 MB gzipped
   against 0.432 MB, and its advantage over longest match on *this reader's* material has not been

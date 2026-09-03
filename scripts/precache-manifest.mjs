@@ -24,6 +24,12 @@ const MANIFEST = 'precache.json';
 // belongs in a cache keyed to one version.
 const EXCLUDED = new Set(['service-worker.js', MANIFEST]);
 
+// The ONNX runtime is in the build but not in the install (ADR-0015). It is 3.15 MB gzipped and
+// useless without the 98 MB model it runs, which is fetched on demand -- so precaching it would
+// more than double every install for a capability the reader may never turn on. It is cached at
+// run time, on first use, from our own origin.
+const EXCLUDED_PREFIXES = ['/ort/'];
+
 function everyFile(directory) {
 	const found = [];
 	for (const entry of readdirSync(directory)) {
@@ -37,6 +43,7 @@ function everyFile(directory) {
 const paths = everyFile(BUILD)
 	.map((path) => path.slice(BUILD.length)) // "/index.html", leading slash kept
 	.filter((path) => !EXCLUDED.has(path.slice(1)))
+	.filter((path) => !EXCLUDED_PREFIXES.some((prefix) => path.startsWith(prefix)))
 	.sort();
 
 writeFileSync(join(BUILD, MANIFEST), JSON.stringify(paths, null, '\t') + '\n');

@@ -14,7 +14,7 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
-		"postbuild": "node ./scripts/spa-fallback.mjs && node ./scripts/precache-manifest.mjs && node ./scripts/check-bundle.mjs"
+		"postbuild": "node ./scripts/spa-fallback.mjs && node ./scripts/copy-ort-runtime.mjs && node ./scripts/precache-manifest.mjs && node ./scripts/check-bundle.mjs"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -37,6 +37,7 @@
 		"vitest": "^4.1.8"
 	},
 	"dependencies": {
-		"@sqlite.org/sqlite-wasm": "^3.53.0-build1"
+		"@sqlite.org/sqlite-wasm": "^3.53.0-build1",
+		"onnxruntime-web": "^1.29.0"
 	}
 }

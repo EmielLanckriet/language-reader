@@ -44,7 +44,7 @@
 			const { repository } = await session();
 			await sweepStaleDocuments(
 				repository,
-				activeAnalyzer,
+				await activeAnalyzer(),
 				() => document.visibilityState === 'visible',
 				(documentId, error) =>
 					void repository.recordDiagnostic(

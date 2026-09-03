@@ -6,6 +6,12 @@
 	import { runningVersion, describeVersion } from '$lib/ui/version';
 	import { activeAnalyzer } from '$lib/analyzer/active';
 	import { sliceByCodePoints } from '$lib/domain/offsets';
+	import {
+		modelIsStored,
+		downloadModel,
+		discardModel,
+		type DownloadProgress
+	} from '$lib/analyzer/model-store';
 
 	/**
 	 * FR-021: the reader must be able to retrieve and read the failure record **without developer
@@ -37,15 +43,71 @@
 	 * as single characters, the engine on this device is not splitting Chinese into words at all,
 	 * and that is a fact about the device rather than a fault in the reader.
 	 */
-	const PROBE_SENTENCE = '朋友很好，我在中国学习中文。';
+	// Chosen to *discriminate*, which the previous sentence did not: both analyzers agreed on it, so
+	// the line could not show which one was running. 你是哪国人 is the case the dictionary cannot
+	// get right — it reads 哪 · 国人, because 国人 is a word, just not this word.
+	const PROBE_SENTENCE = '你是哪国人？朋友很好。';
 	let probe = $state<string>('');
+	let analyzerName = $state('');
+	let analyzerVersion = $state('');
+
+	/**
+	 * The contextual segmenter: about 100 MB, downloaded once, kept on the device (ADR-0015).
+	 *
+	 * Offered rather than fetched. It is more than fifty times the whole application, and the
+	 * dictionary already reads well enough that nobody should be made to wait for this before they
+	 * can read at all. Shown here, beside what this device actually does with words, because that
+	 * is where a reader who has just seen a word split wrongly will be looking.
+	 */
+	let modelPresent = $state<boolean | null>(null);
+	let downloading = $state(false);
+	let progress = $state<DownloadProgress | null>(null);
+	let modelProblem = $state<string>('');
+
+	async function refreshModelState() {
+		modelPresent = await modelIsStored();
+	}
+
+	async function getModel() {
+		downloading = true;
+		modelProblem = '';
+		progress = null;
+		try {
+			await downloadModel((p) => (progress = p));
+			await refreshModelState();
+			// Every document is now stamped by the previous analyzer, so all of them are stale. The
+			// catch-up sweep re-derives them, and anything opened first is re-derived on opening.
+			await reload();
+		} catch (error) {
+			modelProblem = error instanceof Error ? error.message : String(error);
+		} finally {
+			downloading = false;
+			progress = null;
+		}
+	}
+
+	async function removeModel() {
+		await discardModel();
+		await refreshModelState();
+		await reload();
+	}
+
+	async function reload() {
+		const analyzer = await activeAnalyzer();
+		analyzerName = analyzer.name;
+		analyzerVersion = analyzer.version;
+		probe = (await analyzer.analyze(PROBE_SENTENCE))
+			.map((token) => sliceByCodePoints(PROBE_SENTENCE, token.start, token.end))
+			.join(' | ');
+	}
+
+	function megabytes(bytes: number): string {
+		return (bytes / 1048576).toFixed(0);
+	}
 
 	$effect(() => {
-		void activeAnalyzer.analyze(PROBE_SENTENCE).then((tokens) => {
-			probe = tokens
-				.map((token) => sliceByCodePoints(PROBE_SENTENCE, token.start, token.end))
-				.join(' | ');
-		});
+		void reload();
+		void refreshModelState();
 	});
 
 	// Read outside the storage effect on purpose: the version has to be reportable even when the
@@ -59,8 +121,8 @@
 			stop = s.repository.watch((state) => (availability = state));
 			persistence = s.persistence;
 			entries = await s.repository.readDiagnostics();
-			stale = (await s.repository.staleDocumentIds(activeAnalyzer.name, activeAnalyzer.version))
-				.length;
+			const analyzer = await activeAnalyzer();
+			stale = (await s.repository.staleDocumentIds(analyzer.name, analyzer.version)).length;
 			loading = false;
 		})();
 		return () => stop();
@@ -116,10 +178,49 @@
 		<code class="probe">{probe || '…'}</code>
 		<br />
 		<small>
-			“朋友” and “中国” should each be one piece. If every character is separate, this device’s text
-			engine has no Chinese word dictionary — which the reader cannot fix from here, but which is
-			worth knowing.
+			“朋友” should be one piece, and “哪国人” should read 哪 · 国 · 人 rather than 哪 · 国人. The
+			first tells you words are being found at all; the second tells you whether the sentence is
+			being read for context, which only the downloadable segmenter does.
 		</small>
+	</dd>
+	<dt>Better word splitting</dt>
+	<dd>
+		{#if modelPresent === null}
+			…
+		{:else if modelPresent}
+			Downloaded and in use. It reads whole sentences, so it gets words right that a dictionary
+			cannot — “你是哪国人” as 你 · 是 · 哪 · 国 · 人 rather than 哪 · 国人.
+			<br />
+			<button class="secondary" onclick={removeModel} disabled={downloading}>
+				Remove it and go back to the dictionary
+			</button>
+		{:else}
+			<!--
+				The honest pitch and the honest price, together. A dictionary cannot resolve a
+				boundary that depends on context, and measurement rather than intuition says so:
+				“你是哪国人” comes out as 哪 · 国人 under dictionary matching and under frequency
+				weighting alike, because 国人 really is a word — just not this word.
+			-->
+			Words are split with a dictionary, which cannot tell 国人 from 国 · 人 when only the sentence around
+			them decides. A downloadable segmenter reads whole sentences and gets those right. It is
+			<strong>about 100 MB</strong> — the segmenter and the code that runs it, fetched together so
+			neither is missing when you are offline — downloaded once, kept on this device, and working
+			offline afterwards. Reading works without it.
+			<br />
+			<button class="secondary" onclick={getModel} disabled={downloading}>
+				{downloading ? 'Downloading…' : 'Download the sentence-reading segmenter (~100 MB)'}
+			</button>
+			{#if progress}
+				<br />
+				<small>
+					{megabytes(progress.receivedBytes)} MB
+					{progress.totalBytes ? `of ${megabytes(progress.totalBytes)} MB` : 'so far'}
+				</small>
+			{/if}
+		{/if}
+		{#if modelProblem}
+			<br /><small class="problem">{modelProblem}</small>
+		{/if}
 	</dd>
 	<dt>Word splitting</dt>
 	<dd>
@@ -129,7 +230,7 @@
 			phone splits words the same way the laptop does, and a difference is a fact worth
 			recording rather than a fault.
 		-->
-		{activeAnalyzer.name} · {activeAnalyzer.version}
+		{analyzerName || '…'} · {analyzerVersion}
 		{#if stale === null}{:else if stale === 0}
 			— every document has been split with this version.
 		{:else}

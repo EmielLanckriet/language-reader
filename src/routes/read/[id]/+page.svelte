@@ -62,11 +62,12 @@
 		repository: Awaited<ReturnType<typeof session>>['repository'],
 		loaded: StoredDocument
 	): Promise<StoredDocument> {
-		if (!isStale(loaded, activeAnalyzer)) return loaded;
+		const analyzer = await activeAnalyzer();
+		if (!isStale(loaded, analyzer)) return loaded;
 
 		resegmenting = true;
 		try {
-			const stored = await rederiveDocument(repository, loaded, activeAnalyzer);
+			const stored = await rederiveDocument(repository, loaded, analyzer);
 			if (stored) {
 				return await repository.getDocument(loaded.id);
 			}
@@ -79,7 +80,7 @@
 			// and nothing was stored. The words are therefore readable and not markable, which is
 			// the honest outcome: a copy that cannot write a token cannot write a judgment either,
 			// and slice 1 already tells the reader why through the read-only notice.
-			const tokens = await tokensFor(loaded, activeAnalyzer);
+			const tokens = await tokensFor(loaded, analyzer);
 			return {
 				...loaded,
 				tokens: tokens.map(({ start, end, isWord }) => ({ start, end, isWord }))

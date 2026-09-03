@@ -207,6 +207,32 @@ identically everywhere.
 
 ---
 
+## Phase 9: The Dictionary's Ceiling
+
+**Purpose**: the phone found a second class of error the dictionary cannot fix — 你是那国人 read as
+那 · 国人 — and measurement showed the cheap remedy does not fix it either. A contextual model does.
+
+- [X] T061 Establish which rung actually fixes it, rather than assuming: run the frequency-weighted candidate against greedy matching on the failing cases and record that frequency scoring leaves 国人 unchanged (research.md R13)
+- [X] T062 Measure every available model rather than trusting the register's 10–30 MB estimate — including that no tiny published Chinese segmentation model exists, that int8 quantisation costs albert-tiny the compound 自行车, and that CKIP's Traditional-trained models handle Simplified correctly (research.md R13)
+- [X] T063 Decide and record in [ADR-0015](../../docs/adr/0015-a-contextual-model-fetched-on-demand.md), with the rejected alternatives and their measured costs
+- [X] T064 [P] Commit the model's vocabulary via `scripts/build-bert-vocab.mjs`, asserting its size and special-token ids — a vocabulary of a different size is a different model, and mismatched ids produce confident nonsense rather than an error
+- [X] T065 Write the tag decoder in `src/lib/analyzer/tagger.ts` with an injected tagging function, and prove in `tests/analyzer/tagger.test.ts` that no answer a model can give breaks tiling, coverage, offsets or unit boundaries — including `I` on a first character, which a quantised model really does emit
+- [X] T066 [P] Write the character tokenizer in `src/lib/analyzer/bert-tokenizer.ts` and test in `tests/analyzer/bert-tokenizer.test.ts` that every character yields exactly one id, unknown characters included: dropping one would shift every later tag onto the wrong character
+- [X] T067 Fetch and keep the model in `src/lib/analyzer/model-store.ts`, reporting progress and refusing to store a short read rather than leaving a truncated model that would load and produce nonsense
+- [X] T068 Run the model in `src/lib/analyzer/bert-tagger.ts`, loading `onnxruntime-web` lazily and addressing its WebAssembly by explicit URL
+- [X] T069 Keep the runtime in the build and out of the install: `scripts/copy-ort-runtime.mjs`, a precache exclusion, and the `onnxruntime-web-use-extern-wasm` resolve condition in `vite.config.ts` — without which Vite precaches the 26.5 MB jsep variant
+- [X] T070 Redefine the install budget as precached bytes rather than build bytes in `scripts/check-bundle.mjs`, since the two stopped being the same thing
+- [X] T071 Resolve the analyzer per call in `src/lib/analyzer/active.ts`, so the answer changes the moment a download finishes, and update every call site
+- [X] T072 Offer the model on `src/routes/diagnostics/+page.svelte` with its price stated, beside the line showing what this device does with words
+- [X] T073 Verify end to end in a browser that the model downloads, stores, activates and segments — the one path no unit test can reach
+- [ ] T074 On the phone: download the model over wi-fi, confirm 你是哪国人 reads 你 · 是 · 哪 · 国 · 人, and confirm it still works after aeroplane mode and a restart
+- [ ] T075 Record what the model changed, and whether the runtime-not-cached-offline gap named in ADR-0015 bites in practice
+
+**Checkpoint**: segmentation resolves the cases only context can resolve, and the reader who does not
+want the download loses nothing.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase dependencies

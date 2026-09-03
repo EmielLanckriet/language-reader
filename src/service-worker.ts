@@ -21,6 +21,7 @@
  */
 
 import { base, version } from '$service-worker';
+import { MODEL_CACHE, RUNTIME_PREFIX } from '$lib/analyzer/model-cache';
 
 // `self` is a ServiceWorkerGlobalScope here; TypeScript needs telling, since the ambient `self` in
 // a DOM-typed project is a Window.
@@ -91,6 +92,20 @@ worker.addEventListener('fetch', (event) => {
 });
 
 async function respond(request: Request): Promise<Response> {
+	// The segmenter's runtime lives in its own cache, not the precache (ADR-0015). It is downloaded
+	// with the model and must be served offline for the same reason the model is: a reader who has
+	// paid for both should not be handed dictionary segmentation because the network is gone.
+	//
+	// Checked before the precache and never falling through to it, because these paths are only
+	// ever in the model cache. If they are absent, the model is absent too, and the application is
+	// already reading with the dictionary.
+	const url = new URL(request.url);
+	if (url.pathname.startsWith(`${base}${RUNTIME_PREFIX}`)) {
+		const modelCache = await caches.open(MODEL_CACHE);
+		const stored = await modelCache.match(request);
+		if (stored) return stored;
+	}
+
 	const cache = await caches.open(CACHE);
 
 	// Cache first. Everything in the precache is content-hashed by the build, so a cached entry is

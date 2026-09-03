@@ -381,6 +381,75 @@ real but survived that because the profile had a warm service worker cache from 
 Replaced with a static server that mounts the build under `/language-reader/` exactly as the host
 does — which is what slice 1's quickstart already said to do, for exactly this class of reason.
 
+## R13. The dictionary's ceiling, and what is above it (2026-09-03)
+
+Reported from the phone: 你是那国人 came back as 你 · 是 · 那 · **国人**. Greedy longest match finds
+国人 in CC-CEDICT at that position and takes it, stranding 那. The dictionary is right that 国人 is
+a word and wrong that it is this word, and only the surrounding sentence decides.
+
+**The cheap rung was measured before it was rejected.** The register held that frequency scoring is
+"not the resolver" for context-dependent spans; that was tested rather than trusted:
+
+```
+你是哪国人        greedy: 你|是|哪|国人      frequency: 你|是|哪|国人     ← unchanged
+三个人在那里等着   greedy: 三|个人|在|那里    frequency: 三个|人|在|那里    ← improved
+结婚的和尚未…      greedy: …|和尚|未|…       frequency: …|和|尚未|…       ← fixed
+```
+
+So 1.6 MB of frequency data would fix 和尚, improve 三个人, and leave the reported case exactly as
+wrong. The register was right about the principle and wrong about which cases follow from it.
+
+**A contextual tagger fixes all three**, measured on the seven sentences this slice has argued
+about. `bert-base-chinese-ws` int8 got all seven right; the dictionary gets four.
+
+**Sizes, measured — and the register's estimate was wrong.** It expected a "tiny Chinese BERT,
+4 layers, 256 hidden, roughly 10–30 MB". No published Chinese segmentation model is that shape.
+
+| | Download | Correct of 7 | Note |
+|---|---|---|---|
+| Dictionary alone | 0.43 MB | 4 | wrong: 国人, 三个人, 和尚 |
+| `albert-tiny-chinese-ws` int8 | 7.4 MB | 4 | fixes 国人, **breaks** 自行车 |
+| `albert-tiny-chinese-ws` fp32 | 14.1 MB | 5 | fixes 国人, keeps 自行车 |
+| `bert-tiny-chinese-ws` | 11–44 MB | 3 | breaks 结婚, invents 国学习 |
+| **`bert-base-chinese-ws` int8** | **98 MB** \* | **7** | shipped, on demand |
+| ONNX runtime (any) | 3.15 MB | — | in the build, not the install |
+
+\* **Corrected after checking the host.** These download figures were first taken from gzipped
+sizes measured locally. The model's host serves `.onnx` uncompressed — asked with
+`Accept-Encoding: gzip` it returns 102,904,192 bytes and no `Content-Encoding` — so the model costs
+about 98 MB rather than 74, and the whole capability about 100 MB rather than 79. Verified in a
+browser: the combined download reported 111 MB against an uncompressed local runtime, which is the
+same figure. The decision was made against the lower number; it survives the correction on quality
+grounds, and the price is now the measured one.
+
+Two findings inside that table are worth keeping. **Quantisation is not free**: int8 cost
+albert-tiny the compound 自行车 that its fp32 form gets right, so the smaller file is no better than
+the dictionary while costing seventeen times more. And **CKIP's models are trained on Traditional
+Chinese**, which was flagged as a risk to verify; it did not materialise — all of them handle
+Simplified correctly, because the underlying `bert-base-chinese` vocabulary covers both.
+
+Decision and its consequences in
+[ADR-0015](../../docs/adr/0015-a-contextual-model-fetched-on-demand.md).
+
+**Two assumptions the build caught, recorded because both were wrong in writing.**
+
+1. *"A dynamic import keeps the runtime out of the install."* It does not. Vite resolved
+   `onnxruntime-web` to its bundled build and emitted the 26.5 MB **jsep** variant as a hashed
+   asset, straight into the precache — an install twelve times larger than intended. Caught by the
+   budget gate, not by inspection. Fixed with the documented `onnxruntime-web-use-extern-wasm`
+   resolve condition plus the `./wasm` entry point.
+2. *"Serving the runtime from our own origin is enough."* The runtime's loader is a `.mjs` file, and
+   browsers enforce strict MIME checking on module scripts: served as `application/octet-stream` it
+   is simply unloadable. Seen in local verification, where the model downloaded, stored, and
+   switched the analyzer — stamp `bert-ws-zh · 1-8550a78c-q8` — and then the runtime would not
+   load. The harness was at fault, but a host with the same MIME table would have failed
+   identically in production, so the files are now named `.js`/`.wasm` and addressed by explicit
+   URL rather than by directory prefix.
+
+**Install cost is now defined as precached bytes rather than build bytes.** They were the same
+thing until the runtime went into the build and deliberately out of the install. Counting the build
+would report a cost nobody pays.
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this
