@@ -39,29 +39,40 @@ function everyFile(directory) {
 	return found;
 }
 
-// The install budget (slice 2, FR-033/FR-034, ADR-0012).
+// The install budget (FR-033/FR-034, ADR-0012).
 //
-// Measured on 2026-09-02, from the last build of slice 1 exactly as it shipped. This is the figure
-// the spec's budget is stated *relative to*: not an absolute size anyone chose, but what the
-// application actually weighed once it was installable and offline.
-const SLICE_1_INSTALL = { files: 34, bytes: 1472106 };
+// Slice 1 shipped 34 files and 1,472,106 bytes, and that was the reference the budget was first
+// stated against. Slice 2 exceeds it deliberately, and FR-034 requires the reason to be written
+// down rather than the ceiling quietly raised.
+//
+// **The justification.** Splitting Chinese into words needs a dictionary. `Intl.Segmenter` reads
+// one out of the browser's own ICU and costs nothing, and on the reader's Android phone it is not
+// there: the browser ships without the CJK dictionary data, returns one token per character,
+// reports no error, and offers no way to ask (research.md R11). Measured on the device, not
+// inferred. The zero-cost option therefore does not exist on the only device the constitution
+// treats as the oracle, so the application carries its own word list.
+//
+// **What it costs, measured.** 120,176 CC-CEDICT headwords: 1.002 MB on disk, **0.432 MB gzipped
+// over the wire**, which is what the reader actually downloads once and then has offline forever.
+// Whole application: 2.412 MB on disk, about 1.46 MB over the wire against roughly 1.03 MB before.
+// Headwords only -- the definitions are four times the size and segmentation does not need them,
+// so they stay a slice-3 cost if slice 3 still wants them.
+//
+// The ceiling therefore moves to the sanctioned figure below rather than being removed. What it
+// still catches is the thing it was built for: a second dictionary, or the full CC-CEDICT with
+// glosses, arriving without a decision.
+const SANCTIONED_INSTALL = { files: 37, bytes: 2529253 };
 
-// Ten per cent. The number is not arbitrary: it is wide enough that ordinary code growth never
-// trips it, and far narrower than the smallest thing this check exists to catch. Every candidate
-// segmenter that is not the browser's own needs reference data -- CC-CEDICT is 3.97 MB gzipped,
-// jieba's frequency dictionary 5.07 MB raw -- so a dictionary reaching the bundle shows up as
-// +140% or worse, not +11%. The gap between "a few more kilobytes of JavaScript" and "a dictionary
-// got in" is two orders of magnitude, and any threshold in between would do.
-//
-// This matters because the service worker precaches the whole build. A data file that leaks in is
-// not a lazy cost paid by whoever needs it; it is downloaded by every install, for ever.
+// Ten per cent, unchanged in spirit. Wide enough that ordinary code growth never trips it, and far
+// narrower than anything this check exists to catch -- jieba's frequency dictionary alone would add
+// another 1.6 MB gzipped.
 const GROWTH_ALLOWED = 0.1;
 
 const files = everyFile(BUILD);
 const problems = [];
 
 const totalBytes = files.reduce((sum, path) => sum + statSync(path).size, 0);
-const ceiling = Math.round(SLICE_1_INSTALL.bytes * (1 + GROWTH_ALLOWED));
+const ceiling = Math.round(SANCTIONED_INSTALL.bytes * (1 + GROWTH_ALLOWED));
 
 if (totalBytes > ceiling) {
 	const largest = files
@@ -72,7 +83,7 @@ if (totalBytes > ceiling) {
 	problems.push(
 		`check-bundle: the install is ${megabytes(totalBytes)} MB across ${files.length} files,` +
 			` over the ${megabytes(ceiling)} MB ceiling.\n` +
-			`    Slice 1 shipped ${megabytes(SLICE_1_INSTALL.bytes)} MB in ${SLICE_1_INSTALL.files} files.\n` +
+			`    The sanctioned install is ${megabytes(SANCTIONED_INSTALL.bytes)} MB in ${SANCTIONED_INSTALL.files} files.\n` +
 			`    Largest files now:\n` +
 			largest
 				.map(({ path, size }) => `      ${megabytes(size)} MB  ${relative(BUILD, path)}`)
@@ -106,5 +117,5 @@ if (problems.length > 0) {
 console.log(`check-bundle: one copy of each SQLite artifact in ${BUILD}/`);
 console.log(
 	`check-bundle: install is ${megabytes(totalBytes)} MB across ${files.length} files` +
-		` (slice 1 shipped ${megabytes(SLICE_1_INSTALL.bytes)} MB).`
+		` (sanctioned: ${megabytes(SANCTIONED_INSTALL.bytes)} MB).`
 );

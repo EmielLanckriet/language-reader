@@ -16,26 +16,8 @@
 import type { Analyzer, AnalyzedToken } from './types';
 import { codePointIndexMap, codePointLength } from '../domain/offsets';
 import { splitIntoUnits } from './units';
+import { CHINESE_UNIT_DELIMITERS } from './delimiters';
 import { PROBE, fingerprintOf } from './fingerprint';
-
-/**
- * Chinese sentence-final punctuation and line breaks, and nothing else (ADR-0013).
- *
- * Each of these can never appear inside a Chinese word, which is the whole admission rule. The
- * ASCII full stop is deliberately absent: in Chinese text it belongs to 3.14, to U.S., and to
- * example.com rather than to the end of a sentence, and admitting it would split a decimal in half.
- * That exclusion is a fact about Chinese and must not be copied to a language that ends sentences
- * with it.
- */
-export const CHINESE_UNIT_DELIMITERS: ReadonlySet<string> = new Set([
-	'\n',
-	'\r',
-	'。',
-	'！',
-	'？',
-	'…',
-	'；'
-]);
 
 function segmenter(): Intl.Segmenter {
 	return new Intl.Segmenter('zh', { granularity: 'word' });

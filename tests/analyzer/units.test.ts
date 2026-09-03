@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { splitIntoUnits } from '../../src/lib/analyzer/units';
-import { CHINESE_UNIT_DELIMITERS } from '../../src/lib/analyzer/chinese';
+import { CHINESE_UNIT_DELIMITERS } from '../../src/lib/analyzer/delimiters';
 
 // A word never spans a subtitle line or a sentence end, so allowing one is always an error
 // (FR-002, ADR-0013). Units are how that is prevented.

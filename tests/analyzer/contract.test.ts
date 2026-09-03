@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import type { Analyzer } from '../../src/lib/analyzer/types';
 import { characterSplitter } from '../../src/lib/analyzer/character';
 import { chineseSegmenter } from '../../src/lib/analyzer/chinese';
+import { diskAnalyzer } from './support';
 import { checkTiling } from '../../src/lib/domain/tiling';
 import { codePointLength, sliceByCodePoints, codePointsOf } from '../../src/lib/domain/offsets';
 
@@ -19,7 +20,10 @@ import { codePointLength, sliceByCodePoints, codePointsOf } from '../../src/lib/
 // about correctness in the meantime. This is Constitution Principle II, and it is the rule most
 // likely to be broken by a test that looks entirely reasonable.
 
-const ANALYZERS: Analyzer[] = [characterSplitter, chineseSegmenter];
+// Three implementations of one seam. A contract with a single implementation proves nothing, and
+// these must hold for the deliberately weak placeholder, the platform segmenter, and the dictionary
+// the reader actually reads with.
+const ANALYZERS: Analyzer[] = [characterSplitter, chineseSegmenter, diskAnalyzer];
 
 const ALPHABET = [
 	'我',

@@ -185,6 +185,28 @@ absent conclusion means the slice is not finished (FR-029).
 
 ---
 
+## Phase 8: What The Phone Check Asked For
+
+**Purpose**: the phone found something no laptop measurement could, and it invalidated the slice's
+central choice rather than adding a detail. Recorded as tasks rather than folded in silently.
+
+- [X] T050 Report what this device does with its own text engine on `src/routes/diagnostics/+page.svelte`, so a difference between devices is a reading rather than a mystery
+- [X] T051 [P] Carry a sample text on `src/routes/+page.svelte`, so checking the reader on a phone does not begin with typing Chinese on a touch keyboard
+- [X] T052 Offer an update only when the waiting build differs from the running one, in `src/lib/ui/UpdateOffer.svelte` and `src/service-worker.ts` — a worker in `waiting` is not proof of a new version, and a notice that has once been meaningless is ignored when it matters (slice 1's FR-010)
+- [X] T053 Establish, rather than infer, that the platform segmenter fails on the device: reproduce the fingerprint calculation outside the application, validate it against the known laptop value, and show that the phone's value is exactly the hash of character-per-character output (research.md R11)
+- [X] T054 Generate the reader's own word list from CC-CEDICT headwords in `scripts/build-wordlist.mjs`, with the licence carried in the file and a content hash written to `src/lib/analyzer/wordlist-version.ts`
+- [X] T055 Add the dictionary analyzer in `src/lib/analyzer/dictionary.ts`, sharing the unit delimiters now extracted to `src/lib/analyzer/delimiters.ts`
+- [X] T056 Load the word list in `src/lib/analyzer/wordlist.ts`, precached for offline, refusing loudly rather than falling back to something that looks like segmentation and is not
+- [X] T057 Point `src/lib/analyzer/active.ts` at the dictionary analyzer, keeping `chinese.ts` as what the comparison measures against
+- [X] T058 [P] Hold the dictionary analyzer to the same contract as every other analyzer in `tests/analyzer/contract.test.ts`, and add its own properties in `tests/analyzer/dictionary.test.ts` — that any listed word standing alone comes back whole, and that no multi-character word it emits is absent from the list
+- [X] T059 Move the install budget to the sanctioned figure in `scripts/check-bundle.mjs` with the written justification FR-034 requires, and record the decision in ADR-0014
+- [X] T060 Verify in a browser over HTTP that words are words, the shell is installable, and reading works with the server stopped — serving the build under its base path rather than through `vite preview`, which mounts assets at the root and hides the difference behind a warm cache
+
+**Checkpoint**: the reader splits Chinese into words on the device it is read on, and does so
+identically everywhere.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase dependencies

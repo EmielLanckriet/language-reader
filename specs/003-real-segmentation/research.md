@@ -338,6 +338,49 @@ device it is the worst possible one. Whatever ships next has to carry its dictio
 this the case ADR-0012 named in advance: *"Revisit if a candidate wins that needs its data shipped
 regardless."*
 
+## R12. What the reader's own word list does (2026-09-03)
+
+Decided in [ADR-0014](../../docs/adr/0014-the-reader-carries-its-own-word-list.md): CC-CEDICT
+headwords, greedy longest match, shipped with the application.
+
+**Cost, measured.** 120,176 headwords: 1.002 MB on disk, **0.432 MB gzipped over the wire**. Whole
+application 2.412 MB on disk, about **1.46 MB over the wire** against roughly 1.03 MB before. The
+definitions are 3.97 MB gzipped and segmentation never reads them, so they are not shipped.
+
+**Output, through the real code path in a browser over HTTP:**
+
+```
+朋友很好，我在中国学习中文。 -> 朋友 | 很 | 好 | ·，· | 我 | 在 | 中国 | 学习 | 中文 | ·。·
+他骑自行车去上班。            -> 他 | 骑 | 自行车 | 去 | 上班 | ·。·
+玛丽亚是我的朋友。            -> 玛丽亚 | 是 | 我 | 的 | 朋友 | ·。·
+圆周率大约是3.14。            -> 圆周率 | 大约 | 是 | ·3.14。·
+结婚的和尚未结婚的人。        -> 结婚 | 的 | 和尚 | 未 | 结婚 | 的 | 人 | ·。·
+```
+
+**Fixed, against the platform segmenter:** 朋友 (the case the reader reported), 自行车 whole rather
+than 自行 + 车, 玛丽亚 whole rather than 玛丽 + 亚, and 我 / 在 as two words rather than 我在 merged
+into a non-word.
+
+**Not fixed, and one regression.** 三个人 still reads as 三 / 个人 — the same error, by a different
+route. And 结婚的和尚未结婚的人 now falls into the 和尚 trap, which `Intl.Segmenter` got right:
+greedy longest match is context-free, so it cannot weigh 和尚 against 和 + 尚未. Against the phone's
+previous behaviour this is not a regression — every character was separate — but against desktop
+`Intl.Segmenter` it is, and frequency weighting is the known fix at 1.62 MB gzipped. That is a
+measurement for the harness, not an argument.
+
+**Non-Han runs are grouped**, so `3.14` is one unmarkable token rather than four. It changes nothing
+about the word list — none of it is markable — and it stops the reader reassembling numbers by eye.
+
+**Verified in a browser, not only in tests:** real words over HTTP, the service worker controlling
+the page, 35 files precached, and reading with the server stopped — which is what proves the word
+list is genuinely on the device rather than a fetch away.
+
+**One correction to R10.** That pass was run through `vite preview`, which mounts assets at `/`
+while serving pages under the base path, so every asset 404s on a cold profile. R10's results were
+real but survived that because the profile had a warm service worker cache from an earlier run.
+Replaced with a static server that mounts the build under `/language-reader/` exactly as the host
+does — which is what slice 1's quickstart already said to do, for exactly this class of reason.
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this

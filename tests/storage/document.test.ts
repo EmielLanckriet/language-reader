@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import { Repository, StorageFailure } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
 import { activeAnalyzer } from '../../src/lib/analyzer/active';
+import { diskAnalyzer } from '../analyzer/support';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { codePointsOf } from '../../src/lib/domain/offsets';
@@ -143,12 +144,21 @@ describe('storing and reading documents', () => {
 	// several about its characters. That is a claim about identity, not about segmentation, so it
 	// can be asserted exactly without encoding any analyzer's opinion of where words are.
 
+	// The shipped analyzer fetches its word list over HTTP, which no unit test can serve. This is
+	// the same implementation over the same committed data, loaded from disk instead.
 	async function saveWithActiveAnalyzer(text: string) {
 		const document = await pasteSource.ingest(text);
-		const analyzed = await activeAnalyzer.analyze(document.rawContent);
-		const tokens = resolveTokens(document.rawContent, analyzed, activeAnalyzer);
-		return repository.saveDocument(document, tokens, stampOf(activeAnalyzer));
+		const analyzed = await diskAnalyzer.analyze(document.rawContent);
+		const tokens = resolveTokens(document.rawContent, analyzed, diskAnalyzer);
+		return repository.saveDocument(document, tokens, stampOf(diskAnalyzer));
 	}
+
+	it('exercises the analyzer that actually ships', () => {
+		// Without this, the tests below could drift into proving something about an analyzer the
+		// reader never uses.
+		expect(diskAnalyzer.name).toBe(activeAnalyzer.name);
+		expect(diskAnalyzer.version).toBe(activeAnalyzer.version);
+	});
 
 	it('stamps documents with the active analyzer and its fingerprint (FR-010)', async () => {
 		const stored = repository.getDocument(await saveWithActiveAnalyzer('我在中国学习中文。'));
