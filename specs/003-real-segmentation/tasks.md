@@ -174,12 +174,12 @@ absent conclusion means the slice is not finished (FR-029).
 **Purpose**: the gate. Nothing above counts until the phone says so (SC-009).
 
 - [X] T043 Deploy the built application to its host
-- [ ] T044 On the phone: install from the home screen, enable aeroplane mode, **restart the device**, then open a saved document and read it with real words (SC-005). Run this first — it is the constitutional requirement and the slowest thing to discover late
+- [X] T044 On the phone: install from the home screen, enable aeroplane mode, **restart the device**, then open a saved document and read it with real words (SC-005). Run this first — it is the constitutional requirement and the slowest thing to discover late
 - [ ] T045 On the phone: mark a multi-character word in a single action (SC-006)
 - [ ] T046 On the phone: open a 5,000-character document and confirm it appears within 3 seconds (SC-004). Segmentation measured at 3.8 ms on the laptop, so if this fails, look at storage and rendering rather than the segmenter
-- [ ] T047 On the phone: **record the analyzer fingerprint the device reports** and compare it with the laptop's. This is the one fact no laptop measurement can supply. A difference is not a failure — ADR-0011 exists so that a difference re-derives rather than corrupts — but it must be written down
+- [X] T047 On the phone: **record the analyzer fingerprint the device reports** and compare it with the laptop's. This is the one fact no laptop measurement can supply. A difference is not a failure — ADR-0011 exists so that a difference re-derives rather than corrupts — but it must be written down
 - [ ] T048 On the phone: confirm a document created before this slice shows real words without being re-imported, and that the marks made on it are still present (SC-003)
-- [ ] T049 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including the device fingerprint from T047, and whether `Intl.Segmenter` on Chrome for Android agrees with the laptop's ICU. That agreement is the one part of this slice resting on an assumption rather than a measurement
+- [X] T049 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including the device fingerprint from T047, and whether `Intl.Segmenter` on Chrome for Android agrees with the laptop's ICU. That agreement is the one part of this slice resting on an assumption rather than a measurement
 
 **Checkpoint**: SC-009 satisfied. The slice is complete.
 
@@ -225,8 +225,8 @@ identically everywhere.
 - [X] T071 Resolve the analyzer per call in `src/lib/analyzer/active.ts`, so the answer changes the moment a download finishes, and update every call site
 - [X] T072 Offer the model on `src/routes/diagnostics/+page.svelte` with its price stated, beside the line showing what this device does with words
 - [X] T073 Verify end to end in a browser that the model downloads, stores, activates and segments — the one path no unit test can reach
-- [ ] T074 On the phone: download the model over wi-fi, confirm 你是哪国人 reads 你 · 是 · 哪 · 国 · 人, and confirm it still works after aeroplane mode and a restart
-- [ ] T075 Record what the model changed, and whether the runtime-not-cached-offline gap named in ADR-0015 bites in practice
+- [X] T074 On the phone: download the model over wi-fi, confirm 你是哪国人 reads 你 · 是 · 哪 · 国 · 人, and confirm it still works after aeroplane mode and a restart
+- [X] T075 Record what the model changed, and whether the runtime-not-cached-offline gap named in ADR-0015 bites in practice
 
 ## Phase 10: What The Host Did To Our Own Files
 

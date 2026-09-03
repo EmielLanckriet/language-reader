@@ -558,11 +558,16 @@ Confirmed on the device:
 - the model downloads over wi-fi and the analyzer switches to it
 - segmentation is correct, including the case that failed under every dictionary candidate
 
-**Not yet confirmed, and left open rather than assumed:** that it still works after aeroplane mode
-and a restart. That is the second half of T074 and the whole of T075 — whether the
-runtime-not-cached-offline gap named in ADR-0015 bites in practice. The download now fetches the
-runtime together with the weights and the service worker serves `/ort/` out of the model cache, so
-it *should* hold; nobody has watched it hold. Not recorded as verified until someone has.
+**Then confirmed on the device, same day:** it still works in aeroplane mode, and still works with
+no network after restarting the phone. That answers T075 — **the runtime-not-cached-offline gap
+named in ADR-0015 does not bite in practice.** Fetching the runtime together with the weights and
+serving `/ort/` out of the model cache is sufficient; a reader who pays for the model keeps it
+offline, which is what ADR-0015 promised and had not been observed until now.
+
+This also closes T044, which asked the same question of the application without the model: install
+from the home screen, aeroplane mode, restart, open a saved document. The model makes that case
+strictly harder — 98 MB of weights and a 14 MB runtime have to come out of the cache before a word
+can be split — and it held.
 
 Worth noting what the fix in R15 means for this reader specifically: their phone downloaded the
 model on a build that already excludes the model cache from the activation sweep, so the next
@@ -675,6 +680,13 @@ a headword, so 哪 · 国 · 人 would merge straight back into 哪 · 国人. A
 to closed classes (numeral or demonstrative plus measure word), which is a design decision with its
 own list to maintain, and it belongs to whoever picks up the reader's marking experience — not to
 this slice, which has shipped. Left as an open question rather than done quietly.
+
+**Put to the reader and deferred, 2026-09-03.** Shown the measured cost above, the reader's answer
+was that they are happy with how the model splits and that fixing the over-splitting should wait
+until it annoys them in use. Recorded in `docs/anticipated-changes.md` under what slice 2 revealed,
+with that trigger stated. This is the right call on the evidence available: the cost was measured
+against a marking rule its own author wrote, and the reader reading their own material is a better
+judge of whether 一 · 个 is actually irritating than a 140-word score on generated text is.
 
 ## Open questions carried into design
 

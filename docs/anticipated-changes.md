@@ -296,6 +296,15 @@ fine-tuning a small encoder. Real work, and of a different kind from shipping a 
 segmenter, with `Intl.Segmenter` demoted to fallback — simplifying the ensemble rather than
 extending it.
 
+> **What happened — 2026-09-03.** Half right. A contextual tagger did become the primary segmenter
+> in slice 2 (`bert-ws-zh`, ADR-0015), and it did simplify rather than extend: there is no ensemble,
+> and no disagreement resolver was ever built. But `Intl.Segmenter` was not demoted to fallback — it
+> was **removed from the running application entirely**, because on the reader's own Android Chrome
+> it returns one token per character (`specs/003-real-segmentation/research.md` R11). The fallback is
+> a CC-CEDICT word list, which is what a device without the 100 MB model reads with. This paragraph
+> is left standing, with its correction, because the reasoning above was sound and the one thing it
+> got wrong is instructive: it assumed the built-in segmenter was a floor to fall back to.
+
 *What a tagger does and does not do:*
 
 - **Recovers wrongly-split compounds** (自行车 read as 自行 + 车) — yes, and this is its strength.
@@ -694,3 +703,51 @@ matters. The failure mode that *does* exist is contention, not backgrounding, an
 **Slice 0's last open item is closed.** Pasting more than five thousand characters produces a
 refusal the reader described as clear, on a phone screen. That requirement had been testable since
 the size limit was made exact, and had never been read by a human until now.
+
+## What Slice 2 Revealed — 2026-09-03
+
+**The built-in segmenter was never an option on the target device.** `Intl.Segmenter('zh')` returns
+one token per character on the reader's Android Chrome, because that build ships without ICU's CJK
+dictionary data. Proved arithmetically rather than guessed: the phone's behaviour fingerprint is
+exactly the hash of character-per-character segmentation, where Node and desktop Chrome agree on a
+different value (research.md R11). Slice 2 was planned around shipping `Intl.Segmenter` at zero
+bytes; that plan was dead on arrival and only the phone could have said so.
+
+**The fingerprint earned itself.** ADR-0011 made the analyzer version a hash of observed behaviour
+rather than a number someone chose, on the argument that a host library's behaviour is not ours to
+version. Had the version been a constant, the phone and the laptop would have stamped documents
+identically while segmenting them completely differently, and nothing would have re-derived. The
+decision looked fussy when it was made and was load-bearing within a day.
+
+**A ~100 MB model on a phone is acceptable when it is asked for.** Downloaded once over wi-fi, kept
+in the Cache API, and working in aeroplane mode and after a restart (research.md R16). Rated
+**high value; expensive to retrofit** before slice 2 and it turned out cheap to *add*, because the
+seam already existed: the model is another named analyzer with a version, and every document
+re-derived itself through the existing sweep.
+
+**Two comments that asserted properties nothing checked.** `MODEL_CACHE` said "this survives
+deploys" while the service worker's activation sweep deleted it, so accepting an update would have
+silently cost the reader the 98 MB again (R15). `model-store.ts` said the model "streamed straight
+to disk without ever holding 98 MB in a JavaScript array" while the code below buffered every chunk
+and copied the lot through a `Blob` (R14). Both were written by the author of the code they
+described. Rated: **prose is not a test**, and on this project the pattern is now to put a claim
+like that behind a named function with a property test rather than in a paragraph.
+
+**The verification server was kinder than the host.** GitHub Pages gzips our own `.js` and `.wasm`;
+`fetch` decompresses them and leaves `Content-Length` describing the compressed transfer. A
+completeness check comparing the two failed on every real attempt and passed locally, because the
+local server did not compress (R14). The harness now lives in `scripts/verify-in-browser/` and
+refuses to run against a server that does not compress, a build without `BASE_PATH`, or a debug
+port it cannot prove it owns.
+
+### Deferred with the reader's consent: the model over-splits common words
+
+| Change | Value | Cost | Notes | Action |
+|---|---|---|---|---|
+| Merge the model's over-splits of closed-class phrases (一个, 这个, 每天, 半个, 一句, 这件) | medium | cheap | Derived data — a post-pass over the analyzer's output, no migration. `bert-base-chinese-ws` follows a convention that treats a numeral or demonstrative plus its measure word as two words: measured across 894 disagreeing cells it splits 一个 (26×), 这个 (26×) and 不是 (24×) where all three other candidates keep them whole, 182 cells against 48 the other way (research.md R17). Free in install terms — `/wordlist-zh.txt` is already precached for the fallback analyzer. **A general dictionary merge must not be used**: 国人 is a headword, so 哪 · 国 · 人 would merge straight back into the exact error the model was bought to fix. It has to be a restricted closed-class rule, with a list to maintain. | **Deferred by the reader, 2026-09-03**, in these words: happy with how the model splits, fix it "if I get annoyed at it". The trigger is annoyance in real reading, not a score. Note that slice 3's manual merge/split (the "User segmentation corrections" row above) would let the reader fix these by hand anyway, which may be the whole answer |
+
+The measured cost is real but its headline number is untrustworthy in a specific way: the
+hand-marking rule that produced it was written by the same person who generated the passages, and
+it says a numeral plus its measure word is one word — precisely the convention the model does not
+share. The reader reading their own material is a better judge of whether 一 · 个 is irritating than
+a 140-word score on generated text.
