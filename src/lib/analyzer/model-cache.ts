@@ -19,3 +19,19 @@ export const RUNTIME_PATHS = ['/ort/ort-runtime.js', '/ort/ort-runtime.wasm'] as
 
 /** Everything under here is served from {@link MODEL_CACHE} rather than from the precache. */
 export const RUNTIME_PREFIX = '/ort/';
+
+/**
+ * Which of the caches on the device a newly activated build should throw away.
+ *
+ * Here rather than inline in the service worker because the sweep there was one line — delete
+ * every cache that is not the current precache — and that line deleted the model cache too. The
+ * comment above `MODEL_CACHE` claimed it survives deploys; it did not. Nobody would have reported
+ * it as a bug either: accepting an update would simply have charged the reader another 98 MB and
+ * dropped them back to dictionary segmentation, with nothing on screen to say why.
+ *
+ * The precache is named for its build, so every other `language-reader-<build>` really is rubbish
+ * and should go. Exactly two names are load-bearing, and this is the one place that knows both.
+ */
+export function cachesToDiscard(present: readonly string[], keepPrecache: string): string[] {
+	return present.filter((name) => name !== keepPrecache && name !== MODEL_CACHE);
+}

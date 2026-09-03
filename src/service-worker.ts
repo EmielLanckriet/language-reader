@@ -21,7 +21,7 @@
  */
 
 import { base, version } from '$service-worker';
-import { MODEL_CACHE, RUNTIME_PREFIX } from '$lib/analyzer/model-cache';
+import { MODEL_CACHE, RUNTIME_PREFIX, cachesToDiscard } from '$lib/analyzer/model-cache';
 
 // `self` is a ServiceWorkerGlobalScope here; TypeScript needs telling, since the ambient `self` in
 // a DOM-typed project is a Window.
@@ -69,8 +69,11 @@ worker.addEventListener('install', (event) => {
 worker.addEventListener('activate', (event) => {
 	event.waitUntil(
 		(async () => {
-			for (const name of await caches.keys()) {
-				if (name !== CACHE) await caches.delete(name);
+			// Not "everything that is not the current precache": that included the model cache,
+			// so accepting an update threw away a 98 MB download the reader had asked for and
+			// waited on. `cachesToDiscard` is the one place that knows which names matter.
+			for (const name of cachesToDiscard(await caches.keys(), CACHE)) {
+				await caches.delete(name);
 			}
 			// Safe, and different in kind from `skipWaiting()`. Activation happens either on a
 			// first install, when there is no running version to displace, or after the reader has

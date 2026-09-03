@@ -232,6 +232,7 @@ identically everywhere.
 
 - [X] T076 Fix the download against a host that compresses (research.md R14): trust `Content-Length` only when the response is not content-encoded, keep only the content type on the stored copy rather than headers describing a transfer that has already been undone, and stream into the cache instead of buffering 98 MB — with `tests/analyzer/model-store.test.ts` describing the host's measured behaviour rather than the test server's
 - [X] T077 Re-run the end-to-end browser pass against a server that gzips the way GitHub Pages does. T073 passed against one that did not, which is why the failure reached the phone: the check was weaker than the thing it was checking
+- [X] T078 Stop the activation sweep from deleting the model cache, and put the two load-bearing cache names behind one tested function in `src/lib/analyzer/model-cache.ts` — accepting an update was throwing away a 98 MB download the reader had waited for (research.md R15)
 
 **Checkpoint**: segmentation resolves the cases only context can resolve, and the reader who does not
 want the download loses nothing.

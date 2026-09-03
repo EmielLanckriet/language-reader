@@ -516,6 +516,37 @@ download to die near the end. It now passes through a counting `TransformStream`
 and holds one chunk at a time.
 
 
+## R15. Accepting an update deleted the model (2026-09-03)
+
+Found while checking what a deploy does to a device that has already paid for the model. The
+service worker's activation sweep was
+
+```js
+for (const name of await caches.keys()) {
+	if (name !== CACHE) await caches.delete(name);
+}
+```
+
+`CACHE` is named for the build, so every older precache is rubbish and should go. But
+`language-reader-model-v1` is not named for a build — deliberately, and the comment above it says
+"this survives deploys, unlike the precache". It did not. The sweep deleted it on every
+activation, so accepting an update threw away a 98 MB download the reader had asked for and waited
+on, and dropped them back to dictionary segmentation with nothing on screen to say why.
+
+Never observed, because there had been no deploy since the model shipped. It would have been
+observed the very next one, and it is the kind of fault that does not look like a fault: the model
+is simply gone.
+
+**Two names are load-bearing, and now one function knows both** — `cachesToDiscard` in
+`model-cache.ts`, beside the constants, tested as a property over arbitrary cache names rather than
+over a list anyone thought of. The sweep is the interesting case for properties precisely because
+its input is "whatever happens to be on the device".
+
+**Worth generalising.** Both faults in this pass are the same mistake: a comment asserting a
+property that nothing checked. `MODEL_CACHE` said it survived deploys; `model-store.ts` said it
+streamed to disk without holding 98 MB in an array. Both were false, both were written by the
+person who wrote the code they described.
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this
