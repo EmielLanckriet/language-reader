@@ -283,6 +283,61 @@ does not activate until it is taken. Re-derivation is proven at the unit level a
 SQLite database, and T048 is the check that exercises it through OPFS and the worker on a document
 that has actually been sitting on the phone.
 
+## R11. The phone answered the question, and the answer is no (2026-09-03)
+
+**`Intl.Segmenter` does not segment Chinese into words on the target device.**
+
+Observed on the reader's Android phone, from the installed application, after taking the update:
+
+| | Fingerprint | Probe: 朋友很好，我在中国学习中文。 |
+|---|---|---|
+| Node 24.20.0, laptop | `75323e0d` | 朋友 / 很好 / 我在 / 中国 / 学习 / 中文 |
+| Chrome 150, laptop | `75323e0d` | as above |
+| **Chrome, Android** | **`7db96c05`** | **every character separate** |
+
+**Cause.** ICU's word breaking for languages without spaces is dictionary-driven, and those
+dictionaries — Chinese/Japanese, Thai, Khmer, Lao, Burmese — are roughly 2.9 MB of separable data
+that a build can omit. A browser built without them still exposes `Intl.Segmenter`, still accepts
+`granularity: 'word'`, and still returns an answer; the answer is character breaks. There is no
+capability flag, and the API deliberately does not expose ICU's custom-dictionary support, so
+nothing can be supplied to repair it from JavaScript.
+
+**This is not a defect in the analyzer, the offsets, or re-derivation.** All of those did exactly
+what they were built to do. The application faithfully reported what the platform told it.
+
+**What it costs.** The entire basis for choosing `Intl.Segmenter` was that it is correct enough and
+costs zero bytes (R1, R5). It is not correct on the device the constitution says is the oracle, so
+the zero-cost option does not exist and the trade-off in R5 has to be made again with that column
+removed.
+
+**What it vindicates.** ADR-0011. A hand-written `version: "1"` would have stamped both devices
+identically, and a library segmented two different ways would have accumulated silently with no
+way to tell the halves apart. Instead the difference announced itself as a changed fingerprint the
+first time the phone was looked at, and the documents on the phone are internally consistent — they
+are stamped `7db96c05` and they really were segmented by whatever produces `7db96c05`.
+
+**Proof, rather than inference.** The reader's first reading of this was that the analyzer simply
+had not been deployed, which is the right thing to suspect and is checkable. The app's fingerprint
+calculation was reproduced outside the app and validated against the known laptop value
+(`75323e0d`) to show the reproduction was faithful; then the question was asked in reverse — what
+hash results if the segmenter returns every character separately?
+
+```
+control — this machine:        75323e0d   (matches the app: reproduction is faithful)
+hypothesis — per-character:    7db96c05
+phone reported:                7db96c05
+```
+
+Identical. Two things follow and neither depends on judgement. The new code *did* reach the phone,
+because fingerprints do not exist in the previous build — it displayed `v1` — so no old build could
+produce that value, or any hash at all. And the analyzer ran and was handed single characters: the
+probe is 50 characters, desktop Chrome returns 35 words from it, the phone returned 50 tokens.
+
+**Consequence for SC-002.** The shipped analyzer is not the best candidate measured; on the target
+device it is the worst possible one. Whatever ships next has to carry its dictionary, which makes
+this the case ADR-0012 named in advance: *"Revisit if a candidate wins that needs its data shipped
+regardless."*
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this

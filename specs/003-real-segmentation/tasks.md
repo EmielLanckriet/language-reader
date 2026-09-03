@@ -173,7 +173,7 @@ absent conclusion means the slice is not finished (FR-029).
 
 **Purpose**: the gate. Nothing above counts until the phone says so (SC-009).
 
-- [ ] T043 Deploy the built application to its host
+- [X] T043 Deploy the built application to its host
 - [ ] T044 On the phone: install from the home screen, enable aeroplane mode, **restart the device**, then open a saved document and read it with real words (SC-005). Run this first — it is the constitutional requirement and the slowest thing to discover late
 - [ ] T045 On the phone: mark a multi-character word in a single action (SC-006)
 - [ ] T046 On the phone: open a 5,000-character document and confirm it appears within 3 seconds (SC-004). Segmentation measured at 3.8 ms on the laptop, so if this fails, look at storage and rendering rather than the segmenter

@@ -123,6 +123,17 @@ async function respond(request: Request): Promise<Response> {
 }
 
 worker.addEventListener('message', (event) => {
+	// Which build this worker is. Asked by the page before it offers an update, because a worker
+	// waiting in the wings is not by itself proof there is anything new to move to: on a fresh
+	// start with a network, the browser can fetch the new page and the new scripts directly, so
+	// the reader is already running the new build while the old worker is still nominally in
+	// charge and the new one queues behind it. Offering an update to the version already running
+	// is worse than saying nothing, because it teaches the reader the notice means nothing.
+	if (event.data?.type === 'which-version') {
+		event.ports[0]?.postMessage(version);
+		return;
+	}
+
 	// The one message this worker accepts, and only when the reader has asked for the new version
 	// (FR-010). Nothing here decides to activate on its own.
 	if (event.data?.type === 'skip-waiting') worker.skipWaiting();
