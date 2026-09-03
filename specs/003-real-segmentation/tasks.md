@@ -175,10 +175,10 @@ absent conclusion means the slice is not finished (FR-029).
 
 - [X] T043 Deploy the built application to its host
 - [X] T044 On the phone: install from the home screen, enable aeroplane mode, **restart the device**, then open a saved document and read it with real words (SC-005). Run this first — it is the constitutional requirement and the slowest thing to discover late
-- [ ] T045 On the phone: mark a multi-character word in a single action (SC-006)
-- [ ] T046 On the phone: open a 5,000-character document and confirm it appears within 3 seconds (SC-004). Segmentation measured at 3.8 ms on the laptop, so if this fails, look at storage and rendering rather than the segmenter
+- [X] T045 On the phone: mark a multi-character word in a single action (SC-006)
+- [!] T046 **FAILED on the phone, 2026-09-03.** A 4,999-character document takes over 30 seconds and, in the reader's words, "doesn't even really work" — against SC-004's 3 seconds. Measured cause (research.md R18): the model costs ~4 s per 1,000 characters, some 1,050× the fallback dictionary, and the cost is linear in characters so batching cannot recover it. Threads are unavailable because GitHub Pages cannot send the COOP/COEP headers `SharedArrayBuffer` requires. Four options are priced in R18; none is chosen, because each changes either the data model or what the reader sees. **Slice 2 does not meet SC-004.**
 - [X] T047 On the phone: **record the analyzer fingerprint the device reports** and compare it with the laptop's. This is the one fact no laptop measurement can supply. A difference is not a failure — ADR-0011 exists so that a difference re-derives rather than corrupts — but it must be written down
-- [ ] T048 On the phone: confirm a document created before this slice shows real words without being re-imported, and that the marks made on it are still present (SC-003)
+- [X] T048 On the phone: confirm a document created before this slice shows real words without being re-imported, and that the marks made on it are still present (SC-003)
 - [X] T049 Record what the phone check revealed in `docs/anticipated-changes.md`, whether or not it revealed anything — including the device fingerprint from T047, and whether `Intl.Segmenter` on Chrome for Android agrees with the laptop's ICU. That agreement is the one part of this slice resting on an assumption rather than a measurement
 
 **Checkpoint**: SC-009 satisfied. The slice is complete.

@@ -688,6 +688,74 @@ with that trigger stated. This is the right call on the evidence available: the 
 against a marking rule its own author wrote, and the reader reading their own material is a better
 judge of whether 一 · 个 is actually irritating than a 140-word score on generated text is.
 
+## R18. SC-004 fails with the model: 5,000 characters is not a 3-second document (2026-09-03)
+
+Reported from the phone: a 4,999-character text "takes more than 30s and doesn't even really work".
+SC-004 asks for the document to appear within 3 seconds. **This is a failure, not a slow path**, and
+it was introduced by adopting the model.
+
+**Nobody re-measured after the analyzer changed.** R4's 3.8 ms per 5,000 characters was measured on
+`Intl.Segmenter`, and the budget was never rechecked when the shipped analyzer became first a
+dictionary and then a 98 MB model. Measured now, same 4,999-character document, laptop Node:
+
+| analyzer | total | per 1,000 characters | against SC-004's budget |
+| --- | --- | --- | --- |
+| `cedict-longest-match` (the fallback) | 26 ms | 5 ms | 115× inside it |
+| `bert-ws-zh` (shipped) | **27,331 ms** | 5,467 ms | **9× outside it** |
+
+A thousand-fold difference, on a laptop. The phone is slower still, which is why the reader saw
+over 30 seconds.
+
+**The first hypothesis was wrong and is recorded as wrong.** The document splits into 258 units, the
+longest 64 code points, so `tagger.ts`'s 500-character chunking never engages and the model is
+invoked 258 times on ~19-character inputs. That looked like per-call overhead, which batching would
+fix cheaply. Measured, it is not:
+
+| characters per call | ms per 1,000 characters |
+| --- | --- |
+| 10 | 6,098 |
+| 20 | 4,641 |
+| 40 | 4,078 |
+| 100 | 3,876 |
+| 250 | 4,183 |
+| 500 | 4,347 |
+
+The cost is essentially **linear in characters**, around 4 s per 1,000. Batching tiny units into
+100–500-character runs is worth roughly 1.5×, against the ~7× needed on this laptop and more on a
+phone. Batching alone cannot fix this, and would have been a plausible-looking waste of a day.
+
+### Why the usual levers are shut
+
+- **Threads.** `bert-tagger.ts` sets `numThreads = 1`. The runtime copied into the build is the
+  threaded WebAssembly build, but multi-threading needs `SharedArrayBuffer`, which needs
+  cross-origin isolation, which needs COOP/COEP response headers. **GitHub Pages cannot set
+  headers.** This lever does not exist on the host this project deploys to (Principle I: the phone
+  is where it has to run).
+- **A smaller model.** `albert-tiny` was measured at 5 of 7 probe sentences (R13), and int8
+  quantisation of it broke 自行车. Faster, and worse at the job the model was bought for.
+
+### What is actually available, unpriced and undecided
+
+1. **Import with the fallback, upgrade in the background.** Segment on import with the dictionary
+   (26 ms — the document appears immediately), let the existing staleness machinery re-derive it
+   with the model afterwards. The mechanism is already built and was just proved to work: T048
+   confirmed a pre-slice-2 document re-segmented and kept its marks. Smallest change of the four.
+   Its cost is that the reader reads dictionary segmentation first and the words change under them.
+2. **Segment only what is on screen, extend on scroll.** Fixes the perceived time properly rather
+   than deferring the same total work, but partial token persistence is a new idea in the data model
+   and would need care about what "this document is segmented" means.
+3. **Move inference off the main thread.** Needed for 1 and 2 to feel right either way — 27 s of
+   `session.run` on the main thread is what "doesn't even really work" describes. Does not reduce
+   total work.
+4. **Only use the model on short documents.** A subtitle line is 20 characters; the reader's stated
+   primary use is listening with subtitles. A rule that the model handles short content and the
+   dictionary handles bulk prose would meet SC-004 without new machinery, and would be honest about
+   which content the 100 MB was bought for. Cheapest, and the crudest.
+
+**Not chosen here.** All four have consequences for the data model or for what the reader sees, and
+the decision is the reader's to weigh. Recorded so that whoever picks it up starts from the
+measurement rather than from the batching hypothesis that looked obvious and was wrong.
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this
