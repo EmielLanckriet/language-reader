@@ -25,6 +25,10 @@ const MUST_BE_UNIQUE = [
 	}
 ];
 
+function megabytes(bytes) {
+	return (bytes / 1048576).toFixed(3);
+}
+
 function everyFile(directory) {
 	const found = [];
 	for (const entry of readdirSync(directory)) {
@@ -35,8 +39,46 @@ function everyFile(directory) {
 	return found;
 }
 
+// The install budget (slice 2, FR-033/FR-034, ADR-0012).
+//
+// Measured on 2026-09-02, from the last build of slice 1 exactly as it shipped. This is the figure
+// the spec's budget is stated *relative to*: not an absolute size anyone chose, but what the
+// application actually weighed once it was installable and offline.
+const SLICE_1_INSTALL = { files: 34, bytes: 1472106 };
+
+// Ten per cent. The number is not arbitrary: it is wide enough that ordinary code growth never
+// trips it, and far narrower than the smallest thing this check exists to catch. Every candidate
+// segmenter that is not the browser's own needs reference data -- CC-CEDICT is 3.97 MB gzipped,
+// jieba's frequency dictionary 5.07 MB raw -- so a dictionary reaching the bundle shows up as
+// +140% or worse, not +11%. The gap between "a few more kilobytes of JavaScript" and "a dictionary
+// got in" is two orders of magnitude, and any threshold in between would do.
+//
+// This matters because the service worker precaches the whole build. A data file that leaks in is
+// not a lazy cost paid by whoever needs it; it is downloaded by every install, for ever.
+const GROWTH_ALLOWED = 0.1;
+
 const files = everyFile(BUILD);
 const problems = [];
+
+const totalBytes = files.reduce((sum, path) => sum + statSync(path).size, 0);
+const ceiling = Math.round(SLICE_1_INSTALL.bytes * (1 + GROWTH_ALLOWED));
+
+if (totalBytes > ceiling) {
+	const largest = files
+		.map((path) => ({ path, size: statSync(path).size }))
+		.sort((a, b) => b.size - a.size)
+		.slice(0, 3);
+
+	problems.push(
+		`check-bundle: the install is ${megabytes(totalBytes)} MB across ${files.length} files,` +
+			` over the ${megabytes(ceiling)} MB ceiling.\n` +
+			`    Slice 1 shipped ${megabytes(SLICE_1_INSTALL.bytes)} MB in ${SLICE_1_INSTALL.files} files.\n` +
+			`    Largest files now:\n` +
+			largest
+				.map(({ path, size }) => `      ${megabytes(size)} MB  ${relative(BUILD, path)}`)
+				.join('\n')
+	);
+}
 
 for (const { what, matches } of MUST_BE_UNIQUE) {
 	const hits = files.filter((path) => matches(path.split('/').pop()));
@@ -54,9 +96,15 @@ if (problems.length > 0) {
 	console.error(problems.join('\n\n'));
 	console.error(
 		'\nA second copy usually means something on the main thread imported from' +
-			' src/lib/storage/db.ts. Only the storage worker may.'
+			' src/lib/storage/db.ts. Only the storage worker may. An install over budget usually means' +
+			' a segmentation candidate\u2019s dictionary reached the bundle: those belong in' +
+			' scripts/compare-segmenters/, which never ships (ADR-0012).'
 	);
 	process.exit(1);
 }
 
 console.log(`check-bundle: one copy of each SQLite artifact in ${BUILD}/`);
+console.log(
+	`check-bundle: install is ${megabytes(totalBytes)} MB across ${files.length} files` +
+		` (slice 1 shipped ${megabytes(SLICE_1_INSTALL.bytes)} MB).`
+);
