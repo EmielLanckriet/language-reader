@@ -5,6 +5,10 @@
 	import UpdateOffer from '$lib/ui/UpdateOffer.svelte';
 	import ReadOnlyNotice from '$lib/ui/ReadOnlyNotice.svelte';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
+	import { session } from '$lib/storage/session';
+	import { sweepStaleDocuments } from '$lib/storage/sweep';
+	import { activeAnalyzer } from '$lib/analyzer/active';
+	import { describeError } from '$lib/diagnostics/describe';
 
 	let { children } = $props();
 
@@ -20,7 +24,49 @@
 		// Registered here rather than in app.html so it happens once the application is running,
 		// and so the registration is available to the parts of the interface that need it.
 		void serviceWorker();
+
+		// Catch up the documents the reader has not opened (FR-016). Started once, from the layout,
+		// because it is about the library rather than about any screen — and starting it per screen
+		// would mean several sweeps competing for the same storage.
+		//
+		// Deliberately late and deliberately quiet. It waits for the first idle moment so it never
+		// competes with the work of actually opening the application, and it stops the moment the
+		// page stops being visible, because that is when this copy gives up the storage lease
+		// (FR-018, FR-019).
+		void startCatchUp();
 	});
+
+	async function startCatchUp() {
+		await whenIdle();
+		if (!browser || document.visibilityState !== 'visible') return;
+
+		try {
+			const { repository } = await session();
+			await sweepStaleDocuments(
+				repository,
+				activeAnalyzer,
+				() => document.visibilityState === 'visible',
+				(documentId, error) =>
+					void repository.recordDiagnostic(
+						'analysis',
+						`Could not re-segment document ${documentId}: ${describeError(error)}`
+					)
+			);
+		} catch {
+			// Nothing here is worth telling the reader about. The sweep is the application catching
+			// up with itself; if it cannot, every document still re-derives the moment it is opened.
+		}
+	}
+
+	/** The first moment nothing more urgent is happening. */
+	function whenIdle(): Promise<void> {
+		return new Promise((resolve) => {
+			const idle = (window as unknown as { requestIdleCallback?: (cb: () => void) => void })
+				.requestIdleCallback;
+			if (idle) idle(() => resolve());
+			else setTimeout(resolve, 2000);
+		});
+	}
 </script>
 
 <svelte:head>

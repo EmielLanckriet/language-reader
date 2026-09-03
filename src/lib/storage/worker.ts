@@ -30,6 +30,11 @@ import type { Request, Response, ToWorker } from './protocol';
  * The two calls that create data the reader earned, and the only ones that go through FR-015's
  * "try again, then carry out what they were doing" path. Everything else waits its turn instead.
  */
+// Deliberately NOT including 'replaceTokens'. Re-derivation is the application catching up with
+// itself, not the reader making a change: there is nothing to remember and retry on their behalf,
+// and raising the read-only notice for background work would tell them something is wrong when
+// nothing is. Without the lease it simply fails, the sweep moves on, and the document stays stale
+// until a copy that can write picks it up (FR-019, FR-027).
 const READER_CHANGES = new Set(['saveDocument', 'assertState']);
 
 let state: Availability = { kind: 'paused' };
@@ -211,6 +216,14 @@ function run(request: Request): unknown {
 			return repository.getStates(request.args[0]);
 		case 'readHistory':
 			return repository.readHistory();
+		case 'replaceTokens':
+			return repository.replaceTokens(
+				request.args[0],
+				request.args[1] as ResolvedToken[],
+				request.args[2] as AnalyzerStamp
+			);
+		case 'staleDocumentIds':
+			return repository.staleDocumentIds(request.args[0], request.args[1]);
 		case 'rebuildProjection':
 			return repository.rebuildProjection();
 		case 'readDiagnostics':

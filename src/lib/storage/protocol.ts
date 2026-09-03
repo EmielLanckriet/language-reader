@@ -15,6 +15,8 @@ export type Call =
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'readHistory'; args: [] }
+	| { method: 'replaceTokens'; args: [number, unknown, unknown] }
+	| { method: 'staleDocumentIds'; args: [string, string] }
 	| { method: 'rebuildProjection'; args: [] }
 	| { method: 'readDiagnostics'; args: [number?] }
 	| { method: 'clearDiagnostics'; args: [] }

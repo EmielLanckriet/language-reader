@@ -118,6 +118,82 @@ export class Repository {
 		});
 	}
 
+	/**
+	 * Replace a document's tokens with those of a different analyzer, and restamp it.
+	 *
+	 * This is the whole of re-derivation as far as storage is concerned, and it is deliberately one
+	 * operation rather than three. Deleting tokens, inserting the new ones and updating the stamp
+	 * must succeed or fail together: a document holding one analyzer's tokens under another
+	 * analyzer's name is a lie no later reader could detect, and it is exactly what an interrupted
+	 * three-step update would leave behind (FR-020).
+	 *
+	 * Reads nothing the reader earned and writes nothing they earned. `raw_content` is untouched;
+	 * so are `status_event` and `word_state`. Lexemes are created for words that did not exist
+	 * before and **none are deleted**, because marks point at them (FR-025).
+	 *
+	 * The tiling check runs before anything is written, for the same reason it does in
+	 * `saveDocument`: tokens that do not tile would store text the reader could never see all of.
+	 */
+	replaceTokens(documentId: DocumentId, tokens: ResolvedToken[], analyzer: AnalyzerStamp): void {
+		const rows = queryRows(this.db, 'SELECT raw_content, language FROM document WHERE id = ?', [
+			documentId
+		]);
+		if (rows.length === 0) throw new StorageFailure(`No document with id ${documentId}.`);
+
+		const rawContent = String(rows[0].raw_content);
+		const language = String(rows[0].language);
+
+		const problems = checkTiling(tokens, rawContent);
+		if (problems.length > 0) {
+			throw new StorageFailure(
+				`${analyzer.name} v${analyzer.version} produced tokens that do not tile the document: ` +
+					problems.join('; ')
+			);
+		}
+
+		transact(this.db, () => {
+			run(this.db, 'DELETE FROM token WHERE document_id = ?', [documentId]);
+
+			for (const token of tokens) {
+				const lexemeId =
+					token.isWord && token.lexemeKey !== undefined
+						? this.findOrCreateLexeme(language, token.lexemeKey)
+						: null;
+
+				run(
+					this.db,
+					'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
+					[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
+				);
+			}
+
+			run(this.db, 'UPDATE document SET analyzer = ?, analyzer_version = ? WHERE id = ?', [
+				analyzer.name,
+				analyzer.version,
+				documentId
+			]);
+		});
+	}
+
+	/**
+	 * The documents whose tokens did not come from the analyzer now in use.
+	 *
+	 * Staleness is derived by comparing stamps rather than stored as a flag. A flag would be a
+	 * second source of truth about the same fact, and the two could disagree — after an interrupted
+	 * write, or after a browser update changed the segmenter's fingerprint underneath us. There is
+	 * nothing here to fall out of step, and an interruption simply leaves the document stale, which
+	 * is a safe resting state (FR-021).
+	 */
+	staleDocumentIds(analyzerName: string, analyzerVersion: string): DocumentId[] {
+		return queryRows(
+			this.db,
+			`SELECT id FROM document
+        WHERE analyzer IS NOT ? OR analyzer_version IS NOT ?
+        ORDER BY id`,
+			[analyzerName, analyzerVersion]
+		).map((row) => Number(row.id));
+	}
+
 	listDocuments(): DocumentSummary[] {
 		return queryRows(
 			this.db,

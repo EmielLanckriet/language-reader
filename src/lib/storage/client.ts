@@ -160,6 +160,21 @@ export class RepositoryClient {
 		return this.call({ method: 'saveDocument', args: [document, tokens, analyzer] });
 	}
 
+	/**
+	 * Re-derivation's only write. Not a reader change: see the worker's READER_CHANGES.
+	 */
+	replaceTokens(
+		documentId: number,
+		tokens: ResolvedToken[],
+		analyzer: AnalyzerStamp
+	): Promise<void> {
+		return this.call({ method: 'replaceTokens', args: [documentId, tokens, analyzer] });
+	}
+
+	staleDocumentIds(analyzerName: string, analyzerVersion: string): Promise<number[]> {
+		return this.call({ method: 'staleDocumentIds', args: [analyzerName, analyzerVersion] });
+	}
+
 	assertState(lexemeId: LexemeId, asserted: string, occurrence?: Occurrence): Promise<void> {
 		return this.call({ method: 'assertState', args: [lexemeId, asserted, occurrence] });
 	}

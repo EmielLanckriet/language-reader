@@ -4,6 +4,7 @@
 	import { explain, type Availability } from '$lib/storage/availability';
 	import type { Diagnostic } from '$lib/diagnostics/describe';
 	import { runningVersion, describeVersion } from '$lib/ui/version';
+	import { activeAnalyzer } from '$lib/analyzer/active';
 
 	/**
 	 * FR-021: the reader must be able to retrieve and read the failure record **without developer
@@ -14,6 +15,16 @@
 	let availability = $state<Availability>({ kind: 'acquiring', remembering: false });
 	let persistence = $state('');
 	let loading = $state(true);
+
+	/**
+	 * How much of the library is still on a superseded analyzer (FR-022).
+	 *
+	 * The catch-up sweep is deliberately silent — it is the application tidying up after itself,
+	 * not something to interrupt anyone about. Silent is not the same as invisible, though, so the
+	 * one number that says whether it is working belongs here, where slice 1 put everything else
+	 * that happens without being seen.
+	 */
+	let stale = $state<number | null>(null);
 
 	// Read outside the storage effect on purpose: the version has to be reportable even when the
 	// database cannot be opened, which is exactly when someone opens this page.
@@ -26,6 +37,8 @@
 			stop = s.repository.watch((state) => (availability = state));
 			persistence = s.persistence;
 			entries = await s.repository.readDiagnostics();
+			stale = (await s.repository.staleDocumentIds(activeAnalyzer.name, activeAnalyzer.version))
+				.length;
 			loading = false;
 		})();
 		return () => stop();
@@ -76,6 +89,23 @@
 	</dd>
 	<dt>Storage</dt>
 	<dd>{storage}</dd>
+	<dt>Word splitting</dt>
+	<dd>
+		<!--
+			The version is a fingerprint of how this device's own text engine behaves, not a number
+			anyone chose (ADR-0011). It is shown because it is the only way to tell whether this
+			phone splits words the same way the laptop does, and a difference is a fact worth
+			recording rather than a fault.
+		-->
+		{activeAnalyzer.name} · {activeAnalyzer.version}
+		{#if stale === null}{:else if stale === 0}
+			— every document has been split with this version.
+		{:else}
+			— {stale}
+			{stale === 1 ? 'document is' : 'documents are'} still on an older version. They are being brought
+			up to date in the background, and any you open are done first.
+		{/if}
+	</dd>
 	<dt>Eviction</dt>
 	<dd>
 		{persistence === 'granted'
@@ -89,9 +119,12 @@
 			reflexively and is then absent exactly when someone wants to check. Nothing interrupts
 			the reader with this anywhere else.
 		-->
-		Text you save is kept and is never thrown away. Words you mark are <strong>provisional</strong>
-		— this version splits Chinese one character at a time, and when real word-splitting arrives the words
-		themselves change, so marks attached to single characters may not carry across.
+		Text you save is kept and is never thrown away, and the words you mark are kept with it. When word-splitting
+		changes — because this app improves it, or because the browser updates its own text engine — your
+		documents are split again from the text that was saved, and
+		<strong>no mark is lost, altered, or moved</strong>. Marks you made earlier, when this app split
+		Chinese one character at a time, are still there: they are marks on those characters, and they
+		stay exactly that rather than being reinterpreted.
 	</dd>
 </dl>
 
