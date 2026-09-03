@@ -8,12 +8,17 @@
 	import { describeError } from '$lib/diagnostics/describe';
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
+	import { activeAnalyzer } from '$lib/analyzer/active';
+	import { isStale, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
 	let chosen = $state<Token | null>(null);
+
+	/** True while a stale document is being brought up to date, which the reader waits for. */
+	let resegmenting = $state(false);
 
 	/**
 	 * The document's characters, converted once.
@@ -34,13 +39,53 @@
 		try {
 			const { repository } = await session();
 			const loaded = await repository.getDocument(id);
-			document = loaded;
-			states = await repository.getStates(lexemesIn(loaded));
+			document = await bringUpToDate(repository, loaded);
+			states = await repository.getStates(lexemesIn(document));
 		} catch (error) {
 			problem = error;
 			await record(error);
 		} finally {
 			loading = false;
+		}
+	}
+
+	/**
+	 * Re-derive a document opened under a superseded analyzer, before it is shown (FR-015).
+	 *
+	 * The reader never sees placeholder tokens in something they opened. Note the fallback: a copy
+	 * that does not hold storage still segments the text and displays real words, it just cannot
+	 * write them down. Refusing to show the document, or showing it with character-per-token
+	 * segmentation, would both be worse than showing correct words and leaving the stamp stale for
+	 * a copy that can write to fix (FR-019).
+	 */
+	async function bringUpToDate(
+		repository: Awaited<ReturnType<typeof session>>['repository'],
+		loaded: StoredDocument
+	): Promise<StoredDocument> {
+		if (!isStale(loaded, activeAnalyzer)) return loaded;
+
+		resegmenting = true;
+		try {
+			const stored = await rederiveDocument(repository, loaded, activeAnalyzer);
+			if (stored) {
+				return await repository.getDocument(loaded.id);
+			}
+			return loaded;
+		} catch {
+			// Could not persist — almost always because another copy holds storage. Show the right
+			// words anyway; the document stays stale and the sweep will catch it later.
+			//
+			// These tokens carry no `lexemeId`, because a lexeme is assigned when tokens are stored
+			// and nothing was stored. The words are therefore readable and not markable, which is
+			// the honest outcome: a copy that cannot write a token cannot write a judgment either,
+			// and slice 1 already tells the reader why through the read-only notice.
+			const tokens = await tokensFor(loaded, activeAnalyzer);
+			return {
+				...loaded,
+				tokens: tokens.map(({ start, end, isWord }) => ({ start, end, isWord }))
+			};
+		} finally {
+			resegmenting = false;
 		}
 	}
 
@@ -95,12 +140,15 @@
 <a class="back" href={resolve('/')}>← Library</a>
 
 {#if loading}
-	<p class="loading">Opening…</p>
+	<p class="loading">{resegmenting ? 'Finding the words…' : 'Opening…'}</p>
 {:else if problem}
 	<ErrorNotice error={problem} onretry={() => load(Number(page.params.id))} />
 {:else if document}
 	<h1>{document.title}</h1>
-	<p class="subtitle">Segmented by {document.analyzer} v{document.analyzerVersion}</p>
+	<!-- The version is a fingerprint of the analyzer's own behaviour, not a number anyone chose
+	     (ADR-0011), so it reads as opaque and is meant to. It is shown because it is the only way
+	     to tell whether this device's ICU segments like the one the comparison was run on. -->
+	<p class="subtitle">Segmented by {document.analyzer} · {document.analyzerVersion}</p>
 
 	<!-- No whitespace between tokens: this is Chinese, and the browser would render any gap the
 	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->

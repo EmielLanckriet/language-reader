@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 import { Repository, StorageFailure } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
+import { activeAnalyzer } from '../../src/lib/analyzer/active';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { codePointsOf } from '../../src/lib/domain/offsets';
@@ -134,5 +135,67 @@ describe('storing and reading documents', () => {
 
 	it('reports a missing document rather than returning nothing', () => {
 		expect(() => repository.getDocument(9999)).toThrow(StorageFailure);
+	});
+
+	// --- Importing under the real analyzer (slice 2, US1) --------------------------------------
+	//
+	// What US1 promises is that marking a word records one judgment about that word, rather than
+	// several about its characters. That is a claim about identity, not about segmentation, so it
+	// can be asserted exactly without encoding any analyzer's opinion of where words are.
+
+	async function saveWithActiveAnalyzer(text: string) {
+		const document = await pasteSource.ingest(text);
+		const analyzed = await activeAnalyzer.analyze(document.rawContent);
+		const tokens = resolveTokens(document.rawContent, analyzed, activeAnalyzer);
+		return repository.saveDocument(document, tokens, stampOf(activeAnalyzer));
+	}
+
+	it('stamps documents with the active analyzer and its fingerprint (FR-010)', async () => {
+		const stored = repository.getDocument(await saveWithActiveAnalyzer('我在中国学习中文。'));
+		expect(stored.analyzer).toBe(activeAnalyzer.name);
+		expect(stored.analyzerVersion).toBe(activeAnalyzer.version);
+		// A hand-written version would be a lie for a host-provided segmenter (ADR-0011), so the
+		// stamp must not be the placeholder's constant.
+		expect(stored.analyzerVersion).not.toBe('1');
+	});
+
+	it('binds every occurrence of the same word to one lexeme', async () => {
+		// 中文 appears twice. Whatever the analyzer decides a word is, two occurrences of the same
+		// surface must share an identity, or a mark made on one would not apply to the other.
+		const stored = repository.getDocument(await saveWithActiveAnalyzer('中文很难。我学中文。'));
+		const characters = codePointsOf(stored.rawContent);
+		const identities = new Map<string, Set<number>>();
+
+		for (const token of stored.tokens) {
+			if (token.lexemeId === undefined) continue;
+			const surface = characters.slice(token.start, token.end).join('');
+			if (!identities.has(surface)) identities.set(surface, new Set());
+			identities.get(surface)!.add(token.lexemeId);
+		}
+
+		for (const [surface, ids] of identities) {
+			expect(ids.size, `"${surface}" resolved to more than one lexeme`).toBe(1);
+		}
+	});
+
+	it('records one judgment for a word, not one per character', async () => {
+		const id = await saveWithActiveAnalyzer('我在中国学习中文。');
+		const stored = repository.getDocument(id);
+
+		// Pick the longest word the analyzer found, whatever it turned out to be. Naming an
+		// expected word here would encode one ICU build's judgment (Principle II).
+		const longest = stored.tokens
+			.filter((token) => token.lexemeId !== undefined)
+			.sort((a, b) => b.end - b.start - (a.end - a.start))[0];
+		expect(longest.end - longest.start).toBeGreaterThan(1);
+
+		repository.assertState(longest.lexemeId!, 'known');
+
+		const history = repository.readHistory();
+		expect(history).toHaveLength(1);
+		expect(history[0].lexemeId).toBe(longest.lexemeId);
+
+		const states = repository.getStates([longest.lexemeId!]);
+		expect(states.get(longest.lexemeId!)?.state).toBe('known');
 	});
 });

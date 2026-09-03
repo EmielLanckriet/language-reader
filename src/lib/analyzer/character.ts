@@ -29,8 +29,19 @@ function isHanzi(character: string): boolean {
 
 export const characterSplitter: Analyzer = {
 	name: 'character-splitter',
+
+	// Still a hand-written constant, and correctly so. ADR-0011 requires a derived version only
+	// where the *host* owns the behaviour; this splitter's behaviour is entirely in this file, so it
+	// can honestly declare its own version.
 	version: '1',
+
 	language: 'zh',
+
+	// One token per character, so no token can span anything: the splitter satisfies the unit rule
+	// vacuously. The set is stated rather than left empty because the contract asks every provider
+	// to declare one, and because 'this analyzer needs no delimiters' is a claim worth being able to
+	// read (ADR-0013).
+	unitDelimiters: new Set(),
 
 	analyze(text: string): Promise<AnalyzedToken[]> {
 		const tokens = codePointsOf(text).map((character, index) => ({

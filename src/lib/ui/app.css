@@ -193,11 +193,24 @@ textarea {
 }
 
 /* Word tokens get a real tap target without breaking the line box, via padding rather than
-   min-height, which would turn the paragraph into a staircase. */
+   min-height, which would turn the paragraph into a staircase.
+
+   The gap between words is load-bearing, not decoration (slice 2, FR-012). Under the placeholder
+   analyzer every character was its own token, so where one word ended was never in question. With
+   real words it is: 自行车 segmented as 自行 + 车 is a wrong split, and an unmarked word carries a
+   transparent bottom border, so without a gap two adjacent words are indistinguishable from one.
+   A wrong split the reader cannot see is a wrong mark they cannot avoid making.
+
+   A gap rather than a visible border, deliberately. The bottom-border channel already carries word
+   state, and a fifth treatment there would make the absence of a judgment look like a kind of
+   judgment — precisely what the rule further down is careful not to do. Spacing is a separate
+   channel, and it is what reading tools in this category use. It does depart from natural Chinese
+   typography, which sets no spaces between words; for a tool whose purpose is learning where the
+   words are, that is the point rather than a cost. */
 button.token {
 	cursor: pointer;
 	padding: 0.15em 0.05em;
-	margin: 0;
+	margin: 0 0.14em 0 0;
 	border-bottom: 3px solid transparent;
 }
 

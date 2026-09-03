@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { codePointLength, sliceByCodePoints, codePointsOf } from '../../src/lib/domain/offsets';
+import {
+	codePointLength,
+	sliceByCodePoints,
+	codePointsOf,
+	codePointIndexMap
+} from '../../src/lib/domain/offsets';
 
 // Every offset this application stores is a Unicode code point offset into a document's retained
 // raw content (FR-014). The obvious way to measure a string in JavaScript gives something else —
@@ -104,6 +109,80 @@ describe('code-point offsets', () => {
 					rebuilt += sliceByCodePoints(text, bounds[i], bounds[i + 1]);
 				}
 				expect(rebuilt).toBe(text);
+			})
+		);
+	});
+
+	// --- Converting a platform library's offsets (slice 2, research.md R2) --------------------
+	//
+	// `Intl.Segmenter` reports token positions as UTF-16 code unit indices. Everything stored here
+	// is code points. The conversion between them is the single most dangerous line in slice 2:
+	// on text made only of BMP characters the two are identical, so a missing conversion passes
+	// every ordinary test and then mis-anchors offsets the first time a name outside the BMP
+	// appears — including offsets already recorded against marks, which are earned data.
+	//
+	// Measured, on 𠮷野家很好: the platform reports token indices 0, 2, 4 for a string of five
+	// characters.
+
+	it('agrees with the identity map when no astral characters are present', () => {
+		fc.assert(
+			fc.property(
+				fc
+					.array(fc.constantFrom(...ALPHABET.filter((c) => c.length === 1)), { maxLength: 60 })
+					.map((cs) => cs.join('')),
+				(text) => {
+					const map = codePointIndexMap(text);
+					for (let i = 0; i <= text.length; i++) expect(map[i]).toBe(i);
+				}
+			)
+		);
+	});
+
+	it('diverges from the identity map exactly where astral characters appear', () => {
+		const text = `${EXT_B}野家`;
+		expect(text.length).toBe(4); // UTF-16 code units
+		expect(codePointLength(text)).toBe(3); // characters
+
+		const map = codePointIndexMap(text);
+		expect(map[0]).toBe(0); // 𠀀 starts at both 0
+		expect(map[2]).toBe(1); // 野 is code unit 2, character 1
+		expect(map[3]).toBe(2); // 家 is code unit 3, character 2
+		expect(map[4]).toBe(3); // one past the end, so an exclusive end offset converts
+	});
+
+	it('maps every character start to its own index, for any text', () => {
+		fc.assert(
+			fc.property(anyText, (text) => {
+				const map = codePointIndexMap(text);
+				let unit = 0;
+				codePointsOf(text).forEach((character, index) => {
+					expect(map[unit]).toBe(index);
+					unit += character.length;
+				});
+				// The map must also cover one past the end, because token ends are exclusive.
+				expect(map[text.length]).toBe(codePointLength(text));
+			})
+		);
+	});
+
+	it('converts a platform tokenisation into offsets that slice back to the same text', () => {
+		fc.assert(
+			fc.property(anyText, (text) => {
+				const map = codePointIndexMap(text);
+				// Stand in for a segmenter: split at every character boundary, reporting UTF-16
+				// indices exactly as Intl.Segmenter does.
+				const reported: { index: number; segment: string }[] = [];
+				let unit = 0;
+				for (const character of codePointsOf(text)) {
+					reported.push({ index: unit, segment: character });
+					unit += character.length;
+				}
+
+				for (let i = 0; i < reported.length; i++) {
+					const start = map[reported[i].index];
+					const end = i + 1 < reported.length ? map[reported[i + 1].index] : codePointLength(text);
+					expect(sliceByCodePoints(text, start, end)).toBe(reported[i].segment);
+				}
 			})
 		);
 	});

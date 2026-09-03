@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { pasteSource } from '$lib/content/paste';
-	import { characterSplitter } from '$lib/analyzer/character';
+	import { activeAnalyzer } from '$lib/analyzer/active';
 	import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 	import { RejectedInput } from '$lib/content/types';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
@@ -75,9 +75,9 @@
 		try {
 			const { repository } = await session();
 			const document = await pasteSource.ingest(pasted);
-			const analyzed = await characterSplitter.analyze(document.rawContent);
-			const tokens = resolveTokens(document.rawContent, analyzed, characterSplitter);
-			await repository.saveDocument(document, tokens, stampOf(characterSplitter));
+			const analyzed = await activeAnalyzer.analyze(document.rawContent);
+			const tokens = resolveTokens(document.rawContent, analyzed, activeAnalyzer);
+			await repository.saveDocument(document, tokens, stampOf(activeAnalyzer));
 			pasted = '';
 			documents = await repository.listDocuments();
 		} catch (error) {

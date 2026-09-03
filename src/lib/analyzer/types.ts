@@ -32,6 +32,23 @@ export interface Analyzer {
 	readonly language: string;
 
 	/**
+	 * Characters this language can never have inside a word (slice 2, ADR-0013).
+	 *
+	 * Text is split on these before analysis, so no token can span one. The admission rule is
+	 * language-neutral and strict: include a character only if it *cannot* occur inside a word in
+	 * this language. Where that is unclear, leave it out — the risk is asymmetric. A missed boundary
+	 * only widens the stretch of context the segmenter sees and is harmless; a false boundary can
+	 * split a real word.
+	 *
+	 * The set lives here, on the provider, because what can appear inside a word is a fact about a
+	 * language rather than about segmentation. Chinese excludes the ASCII full stop, which there
+	 * sits inside numbers, abbreviations and URLs. Dutch will depend on it as the sentence
+	 * terminator, where telling it from an abbreviation is a genuinely hard problem — one that
+	 * arrives with Dutch, and that a shared set would have hidden until then.
+	 */
+	readonly unitDelimiters: ReadonlySet<string>;
+
+	/**
 	 * Split text into tokens that tile it exactly.
 	 *
 	 * Asynchronous even though slice 0's implementation is instant and pure. This is the one piece
