@@ -547,6 +547,135 @@ property that nothing checked. `MODEL_CACHE` said it survived deploys; `model-st
 streamed to disk without holding 98 MB in an array. Both were false, both were written by the
 person who wrote the code they described.
 
+## R16. The phone, with the model (2026-09-03) — T074 partly answered
+
+Reported by the reader after build `1788440323882`: the download completes and the segmentation is
+right. That closes the question the whole slice was about — the device that returned one token per
+character in R11 now reads whole words, on the same hardware, with no change to the browser.
+
+Confirmed on the device:
+
+- the model downloads over wi-fi and the analyzer switches to it
+- segmentation is correct, including the case that failed under every dictionary candidate
+
+**Not yet confirmed, and left open rather than assumed:** that it still works after aeroplane mode
+and a restart. That is the second half of T074 and the whole of T075 — whether the
+runtime-not-cached-offline gap named in ADR-0015 bites in practice. The download now fetches the
+runtime together with the weights and the service worker serves `/ort/` out of the model cache, so
+it *should* hold; nobody has watched it hold. Not recorded as verified until someone has.
+
+Worth noting what the fix in R15 means for this reader specifically: their phone downloaded the
+model on a build that already excludes the model cache from the activation sweep, so the next
+update will not cost them the 98 MB again. Had the order been reversed they would have paid twice
+and had no way to know why.
+
+## R17. The recorded comparison (T037-T039, 2026-09-03)
+
+Four candidates over five passages, 3,011 internal character positions, reported in
+`scripts/compare-segmenters/report.md`. `bert-ws` was added to the harness for this — until then it
+compared three candidates that had all been rejected, and could not have answered the question the
+slice asked.
+
+**Provenance, first, because it limits everything below.** The passages are **not the reader's own
+material**. The reader declined to collect any and asked for passages to be written instead, so
+they were generated to match the kinds of material in the recorded product direction: two
+subtitle-like (dialogue, a video transcript), two long prose, one mixed interview. The hand-marking
+in T038 has the same author. Marking one's own text against one's own notion of word-hood is weak
+evidence, and `scripts/compare-segmenters/passages/README.md` says so at length. FR-026 asked for
+the reader's material for exactly this reason. **If real material ever arrives, delete these and
+re-run.**
+
+### Pairwise disagreement
+
+| pair | short spoken lines | long prose |
+| --- | --- | --- |
+| bert-ws vs cedict | 10.01% | 8.55% |
+| bert-ws vs frequency | 10.29% | 9.25% |
+| bert-ws vs intl-segmenter | 13.72% | 12.40% |
+| cedict vs frequency | 8.78% | 7.10% |
+| cedict vs intl-segmenter | 11.39% | 10.43% |
+| frequency vs intl-segmenter | 10.84% | 8.85% |
+
+The shipped analyzer is the *most* divergent of the four, and slightly more so on short spoken
+lines than on prose — which is the material the reader expects to use most.
+
+### What the divergence is
+
+Across the 894 disagreeing cells, `bert-ws` is systematically the finest reading: 1,726 tokens
+where `intl-segmenter` produces 1,264. In **182** cells it splits a span all three others keep
+whole; in **48**, the reverse. The spans it alone splits are among the most common words in the
+language:
+
+```
+一个 → 一 · 个 (26x)   这个 → 这 · 个 (26x)   不是 → 不 · 是 (24x)
+每次 → 每 · 次          每天 → 每 · 天         下次 → 下 · 次
+就是 → 就 · 是          为了 → 为 · 了         听不懂 → 听 · 不 · 懂
+```
+
+This is a training-convention difference, not a defect: `bert-base-chinese-ws` follows a standard
+that treats a numeral or demonstrative plus its measure word as two words. It is nonetheless a real
+cost here, because on this project word-hood is the reader's (ADR-0002) and a reader cannot tap
+一个 if the analyzer never offers it.
+
+### T038: 492 code points hand-marked
+
+`scripts/compare-segmenters/hand-marked/04-language-learning-essay.marked.txt` — 18 units, 140
+multi-character words, with the marking rule stated and **11 contested decisions listed explicitly**
+so they can be argued with.
+
+| candidate | marked word = one token | same, excluding the 11 contested classes | word's boundaries never crossed | tokens crossing a real boundary |
+| --- | --- | --- | --- | --- |
+| **bert-ws (shipped)** | 84.3% | **97.3%** | **99.3%** | **1** (`预料到`) |
+| cedict | 88.6% | 91.1% | 95.0% | 7 |
+| frequency | 95.0% | 93.8% | 97.9% | 3 |
+| intl-segmenter | 87.1% | 89.3% | 91.4% | 12 |
+
+**On the literal measure T038 asked for, the shipped analyzer scores worst of the four.** That
+number is reported first and not buried, because it is the number the task asked for. It is also
+the number most contaminated by the marking rule: the rule says a numeral plus its measure word is
+one word, which is precisely the convention `bert-ws` does not share, so the rule guaranteed this
+result before any text was segmented.
+
+Excluding those classes reverses the ranking. And the fourth column is the one that matters for
+**earned data**: a token spanning two real words is a mark recorded against something that is not a
+word, and marks are the data this application cannot regenerate (Principle V). There `bert-ws` is
+clear of the field — one crossing, itself a contested call — against `intl-segmenter`'s twelve,
+which include `不是`, `知道`, `多少` and `看出来`.
+
+The two failure modes are not equivalent. `bert-ws` over-splits at boundaries that are really
+there; the dictionary methods invent boundaries that are not. `cedict` reads 我不知道 as
+`不知 · 道` and 纸上分开 as `纸 · 上分 · 开`. Over-splitting costs the reader a tap; a false grouping
+costs them a wrong entry in a word list they are trusting.
+
+### T039: the conclusion
+
+**The shipped analyzer is not materially worse than the alternatives held in reserve, and on the
+measure that protects earned data it is materially better.** It is kept.
+
+That is a narrower claim than "it is the best", and three things count against it, recorded rather
+than argued away:
+
+1. **It was chosen on seven probe sentences** (R13), all of which happened to test the same
+   property — context-dependent boundaries, where it wins outright. Three thousand characters of
+   connected text show a systematic cost those seven could not: the finer convention, on
+   high-frequency vocabulary. The decision survives the wider evidence; it was not *made* on it.
+2. **It costs ~100 MB against 0.43 MB for the dictionary**, which is already in the install as the
+   fallback. Nothing in this comparison justifies 100 MB on quality grounds alone — a 97.3% versus
+   93.8% single-token rate on 140 words is not a 230-fold difference. What justifies it is R11: on
+   the reader's own device `Intl.Segmenter` returns one token per character, and the dictionary
+   cannot read 哪国人 (R12/R13). The model is bought for the cases the dictionary cannot reach,
+   and the comparison confirms it does not pay for them with false groupings.
+3. **The evidence is generated, not the reader's.** See the provenance note above.
+
+**An improvement that is free, and not taken here.** Merging adjacent `bert-ws` tokens whose
+concatenation is a headword in the already-shipped word list would recover 一个, 这个, 每天, 半个,
+一句, 这件 at zero install cost — `/wordlist-zh.txt` is precached today for the fallback analyzer.
+But a *general* dictionary merge would re-create the exact bug the model was bought to fix: 国人 is
+a headword, so 哪 · 国 · 人 would merge straight back into 哪 · 国人. Any merge has to be restricted
+to closed classes (numeral or demonstrative plus measure word), which is a design decision with its
+own list to maintain, and it belongs to whoever picks up the reader's marking experience — not to
+this slice, which has shipped. Left as an open question rather than done quietly.
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this

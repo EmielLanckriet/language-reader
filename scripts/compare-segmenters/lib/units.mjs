@@ -6,7 +6,7 @@
 //
 // Every candidate in this harness — not only intl-segmenter — is run one unit at a time, using the
 // same Chinese delimiter set the shipped analyzer uses (CHINESE_UNIT_DELIMITERS below, copied from
-// `src/lib/analyzer/chinese.ts`). This is a deliberate choice, not an oversight: which characters
+// `src/lib/analyzer/delimiters.ts`). This is a deliberate choice, not an oversight: which characters
 // can appear inside a Chinese word is a fact about Chinese, not about which candidate is guessing
 // the boundaries, so holding it fixed across candidates keeps the comparison about word
 // segmentation rather than about incidental differences in how each candidate handles line breaks
@@ -17,7 +17,7 @@ import { codePointsOf } from './offsets.mjs';
 /**
  * Chinese sentence-final punctuation and line breaks, and nothing else (ADR-0013).
  *
- * Copied from `src/lib/analyzer/chinese.ts`. The ASCII full stop is deliberately excluded: in
+ * Copied from `src/lib/analyzer/delimiters.ts`. The ASCII full stop is deliberately excluded: in
  * Chinese text it belongs to 3.14, to U.S., and to example.com rather than to a sentence end.
  */
 export const CHINESE_UNIT_DELIMITERS = new Set(['\n', '\r', '。', '！', '？', '…', '；']);

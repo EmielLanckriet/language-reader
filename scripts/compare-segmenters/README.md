@@ -21,9 +21,11 @@ node scripts/compare-segmenters/run.mjs
 
 Requires passages in `passages/` (see `passages/README.md` — the directory starts empty and the
 harness refuses to run, with an explanatory message, until passages are added) and network access
-the first time each dictionary-based candidate runs (to fetch its reference data). Fetched data is
-cached under `data/`, which `.gitignore` excludes — **a dictionary must never be committed**. Delete
-`data/` to force a re-fetch.
+the first time each data-dependent candidate runs (to fetch its reference data — a dictionary for
+`cedict-longest-match` and `frequency-path`, a model and vocabulary for `bert-ws`). Fetched data is
+cached under `data/`, which `.gitignore` excludes — **a dictionary or model must never be
+committed**. Delete `data/` to force a re-fetch. `bert-ws`'s model is ~98 MB, so expect its first run
+to take noticeably longer than the others; the harness reports download progress while it fetches.
 
 The report is written to `report.md` in this directory (overwritten each run) and printed to stdout.
 
@@ -31,21 +33,34 @@ The report is written to `report.md` in this directory (overwritten each run) an
 
 | Candidate | What it does | Data fetched | Measured size (research.md R5) |
 |---|---|---|---|
-| `intl-segmenter` | `Intl.Segmenter('zh', {granularity:'word'})` — the analyzer the application ships | none | 0 bytes |
+| `intl-segmenter` | `Intl.Segmenter('zh', {granularity:'word'})` — rejected: returned every character separate on the reader's own Android Chrome (research.md R11) | none | 0 bytes |
 | `cedict-longest-match` | greedy longest match against CC-CEDICT headwords (traditional and simplified) | CC-CEDICT (MDBG export) | 3.97 MB gzipped |
 | `frequency-path` | maximum-probability path over jieba's word-frequency dictionary — the same DAG-plus-dynamic-program jieba runs before its HMM layer | jieba's `dict.txt` | 5.07 MB raw |
+| `bert-ws` | `bert-ws-zh` — the analyzer the application ships (ADR-0015): a contextual token-classification model (quantised ONNX), decoded into B/I word-boundary tags | Xenova/bert-base-chinese-ws (quantised model + vocabulary) | ~100 MB fetched on demand at first use, not part of the install (ADR-0015) |
 
-**On `intl-segmenter` specifically**: it is a reimplementation of `src/lib/analyzer/chinese.ts`, not
-a call into it. This harness is plain `.mjs`; the shipped analyzer is TypeScript with an
-extensionless import, so it cannot be imported here without either building it first (which would
-blur the "never bundled, never depends on `src/`" boundary this directory exists to hold) or
-duplicating it. Duplication was chosen, and it is a named risk, not a solved one: **nothing enforces
-that `candidates/intl-segmenter.mjs`, `lib/units.mjs` and `lib/offsets.mjs` stay in step with
-`src/lib/analyzer/chinese.ts`, `src/lib/analyzer/units.ts` and `src/lib/domain/offsets.ts`.** If the
-shipped analyzer changes and this candidate is not updated to match, this candidate silently stops
-measuring what the application does, and any conclusion drawn about "the shipped analyzer" would
-actually be about something else. Whoever next changes `chinese.ts` should re-check this candidate by
-hand; there is no test that would catch drift between the two.
+**On `intl-segmenter` and `bert-ws` both**: each is a reimplementation of the corresponding shipped
+(or once-shipped) TypeScript, not a call into it — `intl-segmenter` mirrors
+`src/lib/analyzer/chinese.ts` as it read while it was still shipped, and `bert-ws` mirrors
+`src/lib/analyzer/bert-tokenizer.ts`, `src/lib/analyzer/tagger.ts` and
+`src/lib/analyzer/bert-tagger.ts`. This harness is plain `.mjs`; that TypeScript uses extensionless
+imports, so it cannot be imported here without either building it first (which would blur the "never
+bundled, never depends on `src/`" boundary this directory exists to hold) or duplicating it.
+Duplication was chosen for both, and it is a named risk, not a solved one: **nothing enforces that
+these candidates and `lib/units.mjs`/`lib/offsets.mjs` stay in step with the application's own
+analyzer code.** If the shipped analyzer changes and its candidate here is not updated to match, that
+candidate silently stops measuring what the application does, and any conclusion drawn about "the
+shipped analyzer" would actually be about something else. Whoever next changes the shipped analyzer
+code should re-check the matching candidate by hand; there is no test that would catch drift between
+the two.
+
+**On `bert-ws` specifically**: unlike the other three candidates, `segmentUnit` is `async` — running
+the model is inherently asynchronous — and `run.mjs` awaits every candidate's result to accommodate
+it. Its data is ~100 MB (a ~98 MB quantised model plus a 21,128-entry vocabulary), fetched from
+Hugging Face at first use and cached under `data/` like every other candidate's dictionary — never
+committed. The vocabulary is fetched from its original upstream source rather than read from the
+application's committed `static/bert-vocab-zh.txt`, which is a build artefact this harness does not
+generate; depending on it would make this harness break, or silently drift, for a non-obvious reason
+if that file were regenerated or removed.
 
 **On `frequency-path`**: it deliberately does **not** implement jieba's HMM-based new-word discovery
 — that is a genuinely different technique layered on top of the frequency path, not a detail of it,
@@ -98,11 +113,11 @@ section for reference that is not a substitute for the split.
 
 Every candidate is run one segmentation unit at a time, using the **same** Chinese delimiter set
 (line breaks and CJK sentence-final punctuation, excluding the ASCII full stop — ADR-0013), copied
-from `src/lib/analyzer/chinese.ts`. This is deliberate: which characters can appear inside a Chinese
-word is a fact about Chinese, not a property of any one candidate's algorithm. Holding it fixed
-across all three keeps the comparison about how each candidate segments words within a unit, rather
-than about incidental differences in how each one would handle line breaks and sentence punctuation
-if left to invent its own rule.
+from `src/lib/analyzer/chinese.ts`/`src/lib/analyzer/delimiters.ts`. This is deliberate: which
+characters can appear inside a Chinese word is a fact about Chinese, not a property of any one
+candidate's algorithm. Holding it fixed across all four keeps the comparison about how each
+candidate segments words within a unit, rather than about incidental differences in how each one
+would handle line breaks and sentence punctuation if left to invent its own rule.
 
 ## What this harness does not do
 

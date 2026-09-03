@@ -1,0 +1,4525 @@
+# Segmenter comparison report
+
+Generated 2026-09-03T13:44:48.389Z.
+
+Candidates compared: Intl.Segmenter (rejected — per-character on the reader’s device, R11); CC-CEDICT, greedy longest match; Frequency-scored maximum-probability path (jieba-style); bert-ws-zh (shipped, contextual segmentation model).
+
+**Method note**: every candidate is run one segmentation unit at a time, bounded by line breaks and Chinese sentence-final punctuation, using the delimiter set copied from `src/lib/analyzer/chinese.ts`. A short spoken-language line is a physical line of a passage file at or under 20 code points; anything longer is long prose (FR-028). See README.md for the exact metric definition.
+
+## Short spoken-language lines
+
+112 segmentation unit(s) measured, drawn from 3 passage file(s).
+
+**Disagreement between each pair, as a proportion of character positions:**
+
+- bert-ws vs cedict-longest-match: 10.01% (73 of 729 character positions disagree)
+- bert-ws vs frequency-path: 10.29% (75 of 729 character positions disagree)
+- bert-ws vs intl-segmenter: 13.72% (100 of 729 character positions disagree)
+- cedict-longest-match vs frequency-path: 8.78% (64 of 729 character positions disagree)
+- cedict-longest-match vs intl-segmenter: 11.39% (83 of 729 character positions disagree)
+- frequency-path vs intl-segmenter: 10.84% (79 of 729 character positions disagree)
+
+**Disagreeing spans, with every candidate's reading:**
+
+- `01-drama-dialogue.txt` — unit "路上堵得厉害吗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 路上
+    - CC-CEDICT, greedy longest match: 路上
+    - Frequency-scored maximum-probability path (jieba-style): 路上
+    - bert-ws-zh (shipped, contextual segmentation model): 路 | 上
+- `01-drama-dialogue.txt` — unit "还行 就是过桥的时候慢了点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 过 | 桥
+    - CC-CEDICT, greedy longest match: 过 | 桥
+    - Frequency-scored maximum-probability path (jieba-style): 过桥
+    - bert-ws-zh (shipped, contextual segmentation model): 过 | 桥
+- `01-drama-dialogue.txt` — unit "还行 就是过桥的时候慢了点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 慢了
+    - CC-CEDICT, greedy longest match: 慢 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 慢 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 慢 | 了
+- `01-drama-dialogue.txt` — unit "问你什么时候回家吃饭":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么时候
+    - CC-CEDICT, greedy longest match: 什么时候
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 时候
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 时候
+- `01-drama-dialogue.txt` — unit "项目下周一要交":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下 | 周一
+    - CC-CEDICT, greedy longest match: 下周 | 一
+    - Frequency-scored maximum-probability path (jieba-style): 下周一
+    - bert-ws-zh (shipped, contextual segmentation model): 下 | 周一
+- `01-drama-dialogue.txt` — unit "你上次也是这么说的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上次
+    - CC-CEDICT, greedy longest match: 上次
+    - Frequency-scored maximum-probability path (jieba-style): 上次
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 次
+- `01-drama-dialogue.txt` — unit "你上次也是这么说的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也是
+    - CC-CEDICT, greedy longest match: 也 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 是
+- `01-drama-dialogue.txt` — unit "你上次也是这么说的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说的
+    - CC-CEDICT, greedy longest match: 说 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 说 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 的
+- `01-drama-dialogue.txt` — unit "这次真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这次
+    - CC-CEDICT, greedy longest match: 这 | 次
+    - Frequency-scored maximum-probability path (jieba-style): 这次
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 次
+- `01-drama-dialogue.txt` — unit "这次真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 一样
+    - CC-CEDICT, greedy longest match: 不一样
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 一样
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 一样
+- `01-drama-dialogue.txt` — unit "每次都真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每次
+    - CC-CEDICT, greedy longest match: 每次
+    - Frequency-scored maximum-probability path (jieba-style): 每次
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 次
+- `01-drama-dialogue.txt` — unit "每次都真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 一样
+    - CC-CEDICT, greedy longest match: 不一样
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 一样
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 一样
+- `01-drama-dialogue.txt` — unit "我知道 对不起":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我知道
+    - CC-CEDICT, greedy longest match: 我 | 知道
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 知道
+- `01-drama-dialogue.txt` — unit "她不是生气 她就是想见你":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `01-drama-dialogue.txt` — unit "她不是生气 她就是想见你":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 见
+    - CC-CEDICT, greedy longest match: 想见
+    - Frequency-scored maximum-probability path (jieba-style): 想见
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 见
+- `01-drama-dialogue.txt` — unit "现在太晚了 她该睡了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太晚
+    - CC-CEDICT, greedy longest match: 太 | 晚
+    - Frequency-scored maximum-probability path (jieba-style): 太晚
+    - bert-ws-zh (shipped, contextual segmentation model): 太晚
+- `01-drama-dialogue.txt` — unit "现在太晚了 她该睡了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 睡了
+    - CC-CEDICT, greedy longest match: 睡 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 睡 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 睡 | 了
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从来 | 不
+    - CC-CEDICT, greedy longest match: 从来不
+    - Frequency-scored maximum-probability path (jieba-style): 从来不
+    - bert-ws-zh (shipped, contextual segmentation model): 从来 | 不
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 早睡
+    - CC-CEDICT, greedy longest match: 早 | 睡
+    - Frequency-scored maximum-probability path (jieba-style): 早睡
+    - bert-ws-zh (shipped, contextual segmentation model): 早睡
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `01-drama-dialogue.txt` — unit "等一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 等 | 一下
+    - CC-CEDICT, greedy longest match: 等一下
+    - Frequency-scored maximum-probability path (jieba-style): 等 | 一下
+    - bert-ws-zh (shipped, contextual segmentation model): 等一下
+- `01-drama-dialogue.txt` — unit "怎么了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 怎么 | 了
+    - CC-CEDICT, greedy longest match: 怎么了
+    - Frequency-scored maximum-probability path (jieba-style): 怎么 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 怎么 | 了
+- `01-drama-dialogue.txt` — unit "你先把外套脱了 手洗一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先把
+    - CC-CEDICT, greedy longest match: 先 | 把
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 把
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 把
+- `01-drama-dialogue.txt` — unit "你先把外套脱了 手洗一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 脱了
+    - CC-CEDICT, greedy longest match: 脱 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 脱 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 脱 | 了
+- `01-drama-dialogue.txt` — unit "你先把外套脱了 手洗一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 手洗
+    - CC-CEDICT, greedy longest match: 手洗
+    - Frequency-scored maximum-probability path (jieba-style): 手 | 洗
+    - bert-ws-zh (shipped, contextual segmentation model): 手 | 洗
+- `01-drama-dialogue.txt` — unit "锅里还有汤 我给你盛一碗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 还有
+    - CC-CEDICT, greedy longest match: 还有
+    - Frequency-scored maximum-probability path (jieba-style): 还有
+    - bert-ws-zh (shipped, contextual segmentation model): 还 | 有
+- `01-drama-dialogue.txt` — unit "锅里还有汤 我给你盛一碗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一碗
+    - CC-CEDICT, greedy longest match: 一 | 碗
+    - Frequency-scored maximum-probability path (jieba-style): 一碗
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 碗
+- `01-drama-dialogue.txt` — unit "不麻烦 本来也是给你留的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也是
+    - CC-CEDICT, greedy longest match: 也 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 是
+- `01-drama-dialogue.txt` — unit "那我先喝汤":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先喝 | 汤
+    - CC-CEDICT, greedy longest match: 先 | 喝 | 汤
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 喝汤
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 喝 | 汤
+- `01-drama-dialogue.txt` — unit "先喝汤":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先喝 | 汤
+    - CC-CEDICT, greedy longest match: 先 | 喝 | 汤
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 喝汤
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 喝 | 汤
+- `01-drama-dialogue.txt` — unit "你今天怎么这么好说话":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 好 | 说话
+    - CC-CEDICT, greedy longest match: 好说 | 话
+    - Frequency-scored maximum-probability path (jieba-style): 好 | 说话
+    - bert-ws-zh (shipped, contextual segmentation model): 好 | 说话
+- `01-drama-dialogue.txt` — unit "等你喝完":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 喝完
+    - CC-CEDICT, greedy longest match: 喝 | 完
+    - Frequency-scored maximum-probability path (jieba-style): 喝完
+    - bert-ws-zh (shipped, contextual segmentation model): 喝完
+- `01-drama-dialogue.txt` — unit "那肯定不是好事":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `01-drama-dialogue.txt` — unit "也不是坏事":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也不是
+    - CC-CEDICT, greedy longest match: 也 | 不是
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 不 | 是
+- `01-drama-dialogue.txt` — unit "公司让我去上海 待两年":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我去
+    - CC-CEDICT, greedy longest match: 我去
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 去
+- `01-drama-dialogue.txt` — unit "公司让我去上海 待两年":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `01-drama-dialogue.txt` — unit "什么时候定的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么时候
+    - CC-CEDICT, greedy longest match: 什么时候
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 时候
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 时候
+- `01-drama-dialogue.txt` — unit "上个月就问过我 我一直没答应":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上个 | 月
+    - CC-CEDICT, greedy longest match: 上个月
+    - Frequency-scored maximum-probability path (jieba-style): 上个月
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 个 | 月
+- `01-drama-dialogue.txt` — unit "上个月就问过我 我一直没答应":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 问过
+    - CC-CEDICT, greedy longest match: 问 | 过
+    - Frequency-scored maximum-probability path (jieba-style): 问 | 过
+    - bert-ws-zh (shipped, contextual segmentation model): 问 | 过
+- `01-drama-dialogue.txt` — unit "我想自己先想清楚":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我想
+    - CC-CEDICT, greedy longest match: 我 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 想
+- `01-drama-dialogue.txt` — unit "我想自己先想清楚":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 清楚
+    - CC-CEDICT, greedy longest match: 想 | 清楚
+    - Frequency-scored maximum-probability path (jieba-style): 想 | 清楚
+    - bert-ws-zh (shipped, contextual segmentation model): 想清楚
+- `01-drama-dialogue.txt` — unit "那你现在想清楚了吗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 清楚
+    - CC-CEDICT, greedy longest match: 想 | 清楚
+    - Frequency-scored maximum-probability path (jieba-style): 想 | 清楚
+    - bert-ws-zh (shipped, contextual segmentation model): 想清楚
+- `01-drama-dialogue.txt` — unit "所以你才让我先喝汤":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先喝 | 汤
+    - CC-CEDICT, greedy longest match: 先 | 喝 | 汤
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 喝汤
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 喝 | 汤
+- `01-drama-dialogue.txt` — unit "汤都凉了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 凉了
+    - CC-CEDICT, greedy longest match: 凉 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 凉 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 凉 | 了
+- `01-drama-dialogue.txt` — unit "我再去热一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 再去
+    - CC-CEDICT, greedy longest match: 再 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 再 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 再 | 去
+- `01-drama-dialogue.txt` — unit "我在想":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `01-drama-dialogue.txt` — unit "想两年到底有多长":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `01-drama-dialogue.txt` — unit "想两年到底有多长":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 到底有
+    - CC-CEDICT, greedy longest match: 到底 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 到底 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 到底 | 有
+- `01-drama-dialogue.txt` — unit "想两年到底有多长":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多 | 长
+    - CC-CEDICT, greedy longest match: 多 | 长
+    - Frequency-scored maximum-probability path (jieba-style): 多长
+    - bert-ws-zh (shipped, contextual segmentation model): 多 | 长
+- `02-cooking-vlog-transcript.txt` — unit "大家好 又是我":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 又是
+    - CC-CEDICT, greedy longest match: 又 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 又 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 又 | 是
+- `02-cooking-vlog-transcript.txt` — unit "今天我们做一个很简单的菜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `02-cooking-vlog-transcript.txt` — unit "今天我们做一个很简单的菜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很简单
+    - CC-CEDICT, greedy longest match: 很 | 简单
+    - Frequency-scored maximum-probability path (jieba-style): 很 | 简单
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 简单
+- `02-cooking-vlog-transcript.txt` — unit "西红柿炒鸡蛋":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 炒 | 鸡蛋
+    - CC-CEDICT, greedy longest match: 炒鸡蛋
+    - Frequency-scored maximum-probability path (jieba-style): 炒鸡蛋
+    - bert-ws-zh (shipped, contextual segmentation model): 炒 | 鸡蛋
+- `02-cooking-vlog-transcript.txt` — unit "听起来简单 其实很多人做不好":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听起来
+    - CC-CEDICT, greedy longest match: 听起来
+    - Frequency-scored maximum-probability path (jieba-style): 听 | 起来
+    - bert-ws-zh (shipped, contextual segmentation model): 听起来
+- `02-cooking-vlog-transcript.txt` — unit "听起来简单 其实很多人做不好":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `02-cooking-vlog-transcript.txt` — unit "听起来简单 其实很多人做不好":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不好
+    - CC-CEDICT, greedy longest match: 不好
+    - Frequency-scored maximum-probability path (jieba-style): 不好
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 好
+- `02-cooking-vlog-transcript.txt` — unit "第一个问题是鸡蛋":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第 | 一个
+    - CC-CEDICT, greedy longest match: 第一 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 第一个
+    - bert-ws-zh (shipped, contextual segmentation model): 第一 | 个
+- `02-cooking-vlog-transcript.txt` — unit "鸡蛋要打散 但是不要打太久":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 久
+    - CC-CEDICT, greedy longest match: 太 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 太久
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 久
+- `02-cooking-vlog-transcript.txt` — unit "打太久了炒出来就老了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 久
+    - CC-CEDICT, greedy longest match: 太 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 太久
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 久
+- `02-cooking-vlog-transcript.txt` — unit "打太久了炒出来就老了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 炒 | 出来
+    - CC-CEDICT, greedy longest match: 炒 | 出来
+    - Frequency-scored maximum-probability path (jieba-style): 炒 | 出来
+    - bert-ws-zh (shipped, contextual segmentation model): 炒出来
+- `02-cooking-vlog-transcript.txt` — unit "打太久了炒出来就老了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 老了
+    - CC-CEDICT, greedy longest match: 老 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 老 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 老 | 了
+- `02-cooking-vlog-transcript.txt` — unit "我一般打三十秒左右":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三十 | 秒
+    - CC-CEDICT, greedy longest match: 三十 | 秒
+    - Frequency-scored maximum-probability path (jieba-style): 三十秒
+    - bert-ws-zh (shipped, contextual segmentation model): 三十 | 秒
+- `02-cooking-vlog-transcript.txt` — unit "里面加一点点盐":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一点 | 点
+    - CC-CEDICT, greedy longest match: 一点点
+    - Frequency-scored maximum-probability path (jieba-style): 一点点
+    - bert-ws-zh (shipped, contextual segmentation model): 一点点
+- `02-cooking-vlog-transcript.txt` — unit "不要加水 有人说加水会更嫩":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 加水
+    - CC-CEDICT, greedy longest match: 加 | 水
+    - Frequency-scored maximum-probability path (jieba-style): 加水
+    - bert-ws-zh (shipped, contextual segmentation model): 加 | 水
+- `02-cooking-vlog-transcript.txt` — unit "不要加水 有人说加水会更嫩":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 有人
+    - CC-CEDICT, greedy longest match: 有人
+    - Frequency-scored maximum-probability path (jieba-style): 有人
+    - bert-ws-zh (shipped, contextual segmentation model): 有 | 人
+- `02-cooking-vlog-transcript.txt` — unit "不要加水 有人说加水会更嫩":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 加水
+    - CC-CEDICT, greedy longest match: 加 | 水
+    - Frequency-scored maximum-probability path (jieba-style): 加水
+    - bert-ws-zh (shipped, contextual segmentation model): 加 | 水
+- `02-cooking-vlog-transcript.txt` — unit "我试过 效果不明显":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 试过
+    - CC-CEDICT, greedy longest match: 试 | 过
+    - Frequency-scored maximum-probability path (jieba-style): 试 | 过
+    - bert-ws-zh (shipped, contextual segmentation model): 试 | 过
+- `02-cooking-vlog-transcript.txt` — unit "我试过 效果不明显":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 明显
+    - CC-CEDICT, greedy longest match: 不明 | 显
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 明显
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 明显
+- `02-cooking-vlog-transcript.txt` — unit "锅要热 油要多一点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多 | 一点
+    - CC-CEDICT, greedy longest match: 多 | 一点
+    - Frequency-scored maximum-probability path (jieba-style): 多一点
+    - bert-ws-zh (shipped, contextual segmentation model): 多 | 一点
+- `02-cooking-vlog-transcript.txt` — unit "油少了鸡蛋会粘锅":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 少了
+    - CC-CEDICT, greedy longest match: 少 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 少 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 少 | 了
+- `02-cooking-vlog-transcript.txt` — unit "倒进去":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 倒 | 进去
+    - CC-CEDICT, greedy longest match: 倒 | 进去
+    - Frequency-scored maximum-probability path (jieba-style): 倒进去
+    - bert-ws-zh (shipped, contextual segmentation model): 倒进去
+- `02-cooking-vlog-transcript.txt` — unit "等边上鼓起来":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 边 | 上
+    - CC-CEDICT, greedy longest match: 边 | 上
+    - Frequency-scored maximum-probability path (jieba-style): 边上
+    - bert-ws-zh (shipped, contextual segmentation model): 边上
+- `02-cooking-vlog-transcript.txt` — unit "等边上鼓起来":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 鼓起来
+    - CC-CEDICT, greedy longest match: 鼓起 | 来
+    - Frequency-scored maximum-probability path (jieba-style): 鼓起来
+    - bert-ws-zh (shipped, contextual segmentation model): 鼓起来
+- `02-cooking-vlog-transcript.txt` — unit "差不多七成熟就出锅":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 七 | 成熟
+    - CC-CEDICT, greedy longest match: 七 | 成熟
+    - Frequency-scored maximum-probability path (jieba-style): 七 | 成熟
+    - bert-ws-zh (shipped, contextual segmentation model): 七成熟
+- `02-cooking-vlog-transcript.txt` — unit "差不多七成熟就出锅":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 出 | 锅
+    - CC-CEDICT, greedy longest match: 出 | 锅
+    - Frequency-scored maximum-probability path (jieba-style): 出 | 锅
+    - bert-ws-zh (shipped, contextual segmentation model): 出锅
+- `02-cooking-vlog-transcript.txt` — unit "剩下的热度会把它做熟":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 热 | 度会
+    - CC-CEDICT, greedy longest match: 热度 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 热度 | 会
+    - bert-ws-zh (shipped, contextual segmentation model): 热度 | 会
+- `02-cooking-vlog-transcript.txt` — unit "剩下的热度会把它做熟":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做 | 熟
+    - CC-CEDICT, greedy longest match: 做 | 熟
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 熟
+    - bert-ws-zh (shipped, contextual segmentation model): 做熟
+- `02-cooking-vlog-transcript.txt` — unit "西红柿最好去皮":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 去 | 皮
+    - CC-CEDICT, greedy longest match: 去皮
+    - Frequency-scored maximum-probability path (jieba-style): 去皮
+    - bert-ws-zh (shipped, contextual segmentation model): 去 | 皮
+- `02-cooking-vlog-transcript.txt` — unit "用开水烫一下 皮很容易掉":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 开水 | 烫
+    - CC-CEDICT, greedy longest match: 开水 | 烫
+    - Frequency-scored maximum-probability path (jieba-style): 开水烫
+    - bert-ws-zh (shipped, contextual segmentation model): 开水 | 烫
+- `02-cooking-vlog-transcript.txt` — unit "不想麻烦的话不去皮也可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不想
+    - CC-CEDICT, greedy longest match: 不想
+    - Frequency-scored maximum-probability path (jieba-style): 不想
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 想
+- `02-cooking-vlog-transcript.txt` — unit "不想麻烦的话不去皮也可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不去 | 皮
+    - CC-CEDICT, greedy longest match: 不 | 去皮
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 去皮
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 去 | 皮
+- `02-cooking-vlog-transcript.txt` — unit "不想麻烦的话不去皮也可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也可以
+    - CC-CEDICT, greedy longest match: 也 | 可以
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 可以
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 可以
+- `02-cooking-vlog-transcript.txt` — unit "就是吃的时候口感差一点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 吃 | 的
+    - CC-CEDICT, greedy longest match: 吃的
+    - Frequency-scored maximum-probability path (jieba-style): 吃 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 吃 | 的
+- `02-cooking-vlog-transcript.txt` — unit "就是吃的时候口感差一点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 差一点
+    - CC-CEDICT, greedy longest match: 差一点
+    - Frequency-scored maximum-probability path (jieba-style): 差一点
+    - bert-ws-zh (shipped, contextual segmentation model): 差 | 一点
+- `02-cooking-vlog-transcript.txt` — unit "切成小块 不要太小":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 小
+    - CC-CEDICT, greedy longest match: 太 | 小
+    - Frequency-scored maximum-probability path (jieba-style): 太小
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 小
+- `02-cooking-vlog-transcript.txt` — unit "太小了炒完就化了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 小
+    - CC-CEDICT, greedy longest match: 太 | 小
+    - Frequency-scored maximum-probability path (jieba-style): 太小
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 小
+- `02-cooking-vlog-transcript.txt` — unit "太小了炒完就化了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 炒 | 完
+    - CC-CEDICT, greedy longest match: 炒 | 完
+    - Frequency-scored maximum-probability path (jieba-style): 炒 | 完
+    - bert-ws-zh (shipped, contextual segmentation model): 炒完
+- `02-cooking-vlog-transcript.txt` — unit "炒到出汁":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 出汁
+    - CC-CEDICT, greedy longest match: 出汁
+    - Frequency-scored maximum-probability path (jieba-style): 出 | 汁
+    - bert-ws-zh (shipped, contextual segmentation model): 出 | 汁
+- `02-cooking-vlog-transcript.txt` — unit "这个时候放糖":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `02-cooking-vlog-transcript.txt` — unit "这个时候放糖":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 放糖
+    - CC-CEDICT, greedy longest match: 放 | 糖
+    - Frequency-scored maximum-probability path (jieba-style): 放糖
+    - bert-ws-zh (shipped, contextual segmentation model): 放 | 糖
+- `02-cooking-vlog-transcript.txt` — unit "放糖不是为了甜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 放糖
+    - CC-CEDICT, greedy longest match: 放 | 糖
+    - Frequency-scored maximum-probability path (jieba-style): 放糖
+    - bert-ws-zh (shipped, contextual segmentation model): 放 | 糖
+- `02-cooking-vlog-transcript.txt` — unit "放糖不是为了甜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `02-cooking-vlog-transcript.txt` — unit "放糖不是为了甜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 为了
+    - CC-CEDICT, greedy longest match: 为了
+    - Frequency-scored maximum-probability path (jieba-style): 为了
+    - bert-ws-zh (shipped, contextual segmentation model): 为 | 了
+- `02-cooking-vlog-transcript.txt` — unit "是为了压酸味":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 酸味
+    - CC-CEDICT, greedy longest match: 酸 | 味
+    - Frequency-scored maximum-probability path (jieba-style): 酸味
+    - bert-ws-zh (shipped, contextual segmentation model): 酸味
+- `02-cooking-vlog-transcript.txt` — unit "半勺就够了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 半 | 勺
+    - CC-CEDICT, greedy longest match: 半 | 勺
+    - Frequency-scored maximum-probability path (jieba-style): 半勺
+    - bert-ws-zh (shipped, contextual segmentation model): 半 | 勺
+- `02-cooking-vlog-transcript.txt` — unit "现在把鸡蛋倒回去":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 倒 | 回去
+    - CC-CEDICT, greedy longest match: 倒 | 回去
+    - Frequency-scored maximum-probability path (jieba-style): 倒回去
+    - bert-ws-zh (shipped, contextual segmentation model): 倒回去
+- `02-cooking-vlog-transcript.txt` — unit "翻两下就可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两下
+    - CC-CEDICT, greedy longest match: 两下
+    - Frequency-scored maximum-probability path (jieba-style): 两下
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 下
+- `02-cooking-vlog-transcript.txt` — unit "不要炒太久":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 久
+    - CC-CEDICT, greedy longest match: 太 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 太久
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 久
+- `02-cooking-vlog-transcript.txt` — unit "最后放一点葱花":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 葱 | 花
+    - CC-CEDICT, greedy longest match: 葱花
+    - Frequency-scored maximum-probability path (jieba-style): 葱花
+    - bert-ws-zh (shipped, contextual segmentation model): 葱花
+- `02-cooking-vlog-transcript.txt` — unit "不喜欢就不放":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不放
+    - CC-CEDICT, greedy longest match: 不 | 放
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 放
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 放
+- `02-cooking-vlog-transcript.txt` — unit "好了 就这么简单":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 好了
+    - CC-CEDICT, greedy longest match: 好 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 好 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 好 | 了
+- `02-cooking-vlog-transcript.txt` — unit "这个菜的关键其实是火":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `02-cooking-vlog-transcript.txt` — unit "这个菜的关键其实是火":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 其实是
+    - CC-CEDICT, greedy longest match: 其实 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 其实 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 其实 | 是
+- `02-cooking-vlog-transcript.txt` — unit "火太小什么都不好吃":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 小
+    - CC-CEDICT, greedy longest match: 太 | 小
+    - Frequency-scored maximum-probability path (jieba-style): 太小
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 小
+- `02-cooking-vlog-transcript.txt` — unit "火太小什么都不好吃":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都不 | 好吃
+    - CC-CEDICT, greedy longest match: 都 | 不好 | 吃
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 不 | 好吃
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 不 | 好吃
+- `02-cooking-vlog-transcript.txt` — unit "下次我们做一个稍微难一点的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下次
+    - CC-CEDICT, greedy longest match: 下次
+    - Frequency-scored maximum-probability path (jieba-style): 下次
+    - bert-ws-zh (shipped, contextual segmentation model): 下 | 次
+- `02-cooking-vlog-transcript.txt` — unit "下次我们做一个稍微难一点的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "那个时候你多大？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那个
+    - CC-CEDICT, greedy longest match: 那个
+    - Frequency-scored maximum-probability path (jieba-style): 那个
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 个
+- `05-podcast-interview.txt` — unit "那个时候你多大？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多大
+    - CC-CEDICT, greedy longest match: 多大
+    - Frequency-scored maximum-probability path (jieba-style): 多 | 大
+    - bert-ws-zh (shipped, contextual segmentation model): 多 | 大
+- `05-podcast-interview.txt` — unit "三十六。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三 | 十六
+    - CC-CEDICT, greedy longest match: 三十 | 六
+    - Frequency-scored maximum-probability path (jieba-style): 三十六
+    - bert-ws-zh (shipped, contextual segmentation model): 三十六
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不敢
+    - CC-CEDICT, greedy longest match: 不 | 敢
+    - Frequency-scored maximum-probability path (jieba-style): 不敢
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 敢
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 动了
+    - CC-CEDICT, greedy longest match: 动 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 动 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 动 | 了
+- `05-podcast-interview.txt` — unit "这两年在干什么？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `05-podcast-interview.txt` — unit "算出来是多久？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 算 | 出来
+    - CC-CEDICT, greedy longest match: 算出 | 来
+    - Frequency-scored maximum-probability path (jieba-style): 算 | 出来
+    - bert-ws-zh (shipped, contextual segmentation model): 算出来
+- `05-podcast-interview.txt` — unit "一个都没有？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "一个都没有？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没有
+    - CC-CEDICT, greedy longest match: 都 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没有
+- `05-podcast-interview.txt` — unit "那六个月你怎么过的？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 六个月
+    - CC-CEDICT, greedy longest match: 六 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 六个月
+    - bert-ws-zh (shipped, contextual segmentation model): 六 | 个 | 月
+- `05-podcast-interview.txt` — unit "那六个月你怎么过的？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 过的
+    - CC-CEDICT, greedy longest match: 过 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 过 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 过 | 的
+- `05-podcast-interview.txt` — unit "所以不是白做的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `05-podcast-interview.txt` — unit "所以不是白做的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做的
+    - CC-CEDICT, greedy longest match: 做 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 的
+- `05-podcast-interview.txt` — unit "如果重来一次，你会更早出来吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 重 | 来
+    - CC-CEDICT, greedy longest match: 重来
+    - Frequency-scored maximum-probability path (jieba-style): 重 | 来
+    - bert-ws-zh (shipped, contextual segmentation model): 重来
+- `05-podcast-interview.txt` — unit "如果重来一次，你会更早出来吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一次
+    - CC-CEDICT, greedy longest match: 一次
+    - Frequency-scored maximum-probability path (jieba-style): 一次
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 次
+- `05-podcast-interview.txt` — unit "如果重来一次，你会更早出来吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 你会
+    - CC-CEDICT, greedy longest match: 你 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 你 | 会
+    - bert-ws-zh (shipped, contextual segmentation model): 你 | 会
+- `05-podcast-interview.txt` — unit "现在你会拒绝项目吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 你会
+    - CC-CEDICT, greedy longest match: 你 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 你 | 会
+    - bert-ws-zh (shipped, contextual segmentation model): 你 | 会
+- `05-podcast-interview.txt` — unit "去年拒绝了三个。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 了三 | 个
+    - CC-CEDICT, greedy longest match: 了 | 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 了 | 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 了 | 三 | 个
+- `05-podcast-interview.txt` — unit "拒绝的时候心里怎么想？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 心里
+    - CC-CEDICT, greedy longest match: 心里
+    - Frequency-scored maximum-probability path (jieba-style): 心里
+    - bert-ws-zh (shipped, contextual segmentation model): 心 | 里
+- `05-podcast-interview.txt` — unit "最后一个问题。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+
+## Long prose
+
+110 segmentation unit(s) measured, drawn from 3 passage file(s).
+
+**Disagreement between each pair, as a proportion of character positions:**
+
+- bert-ws vs cedict-longest-match: 8.55% (195 of 2282 character positions disagree)
+- bert-ws vs frequency-path: 9.25% (211 of 2282 character positions disagree)
+- bert-ws vs intl-segmenter: 12.40% (283 of 2282 character positions disagree)
+- cedict-longest-match vs frequency-path: 7.10% (162 of 2282 character positions disagree)
+- cedict-longest-match vs intl-segmenter: 10.43% (238 of 2282 character positions disagree)
+- frequency-path vs intl-segmenter: 8.85% (202 of 2282 character positions disagree)
+
+**Disagreeing spans, with every candidate's reading:**
+
+- `03-travel-blog.txt` — unit "去年秋天我在成都住了三个星期。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `03-travel-blog.txt` — unit "去年秋天我在成都住了三个星期。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 了三 | 个
+    - CC-CEDICT, greedy longest match: 了 | 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 了 | 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 了 | 三 | 个
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 四 | 五天
+    - CC-CEDICT, greedy longest match: 四 | 五 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 四五天
+    - bert-ws-zh (shipped, contextual segmentation model): 四五 | 天
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 往后
+    - CC-CEDICT, greedy longest match: 往后
+    - Frequency-scored maximum-probability path (jieba-style): 往后
+    - bert-ws-zh (shipped, contextual segmentation model): 往 | 后
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每次
+    - CC-CEDICT, greedy longest match: 每次
+    - Frequency-scored maximum-probability path (jieba-style): 每次
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 次
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不太
+    - CC-CEDICT, greedy longest match: 不 | 太
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 太
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 太
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一条
+    - CC-CEDICT, greedy longest match: 一 | 条
+    - Frequency-scored maximum-probability path (jieba-style): 一条
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 条
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 老街 | 上
+    - CC-CEDICT, greedy longest match: 老街 | 上
+    - Frequency-scored maximum-probability path (jieba-style): 老 | 街上
+    - bert-ws-zh (shipped, contextual segmentation model): 老街 | 上
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一家
+    - CC-CEDICT, greedy longest match: 一家
+    - Frequency-scored maximum-probability path (jieba-style): 一家
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 家
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 自行 | 车
+    - CC-CEDICT, greedy longest match: 自行车
+    - Frequency-scored maximum-probability path (jieba-style): 自行车
+    - bert-ws-zh (shipped, contextual segmentation model): 自行车
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 铺 | 子
+    - CC-CEDICT, greedy longest match: 铺子
+    - Frequency-scored maximum-probability path (jieba-style): 铺子
+    - bert-ws-zh (shipped, contextual segmentation model): 铺子
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每天
+    - CC-CEDICT, greedy longest match: 每天
+    - Frequency-scored maximum-probability path (jieba-style): 每天
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 天
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 七 | 点 | 开门
+    - CC-CEDICT, greedy longest match: 七 | 点开 | 门
+    - Frequency-scored maximum-probability path (jieba-style): 七点 | 开门
+    - bert-ws-zh (shipped, contextual segmentation model): 七点 | 开门
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一件
+    - CC-CEDICT, greedy longest match: 一 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 一件
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 件
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一件
+    - CC-CEDICT, greedy longest match: 一 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 一件
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 件
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 摆 | 到
+    - CC-CEDICT, greedy longest match: 摆 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 摆 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 摆到
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 桌上
+    - CC-CEDICT, greedy longest match: 桌 | 上
+    - Frequency-scored maximum-probability path (jieba-style): 桌上
+    - bert-ws-zh (shipped, contextual segmentation model): 桌 | 上
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从来 | 不变
+    - CC-CEDICT, greedy longest match: 从来不 | 变
+    - Frequency-scored maximum-probability path (jieba-style): 从来不 | 变
+    - bert-ws-zh (shipped, contextual segmentation model): 从来 | 不变
+- `03-travel-blog.txt` — unit "我住的那间房朝北，早上不亮，所以我基本是被楼下的声音叫醒的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 朝北
+    - CC-CEDICT, greedy longest match: 朝 | 北
+    - Frequency-scored maximum-probability path (jieba-style): 朝 | 北
+    - bert-ws-zh (shipped, contextual segmentation model): 朝 | 北
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一段 | 时间
+    - CC-CEDICT, greedy longest match: 一 | 段 | 时间
+    - Frequency-scored maximum-probability path (jieba-style): 一段时间
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 段 | 时间
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 屋 | 里
+    - CC-CEDICT, greedy longest match: 屋 | 里
+    - Frequency-scored maximum-probability path (jieba-style): 屋里
+    - bert-ws-zh (shipped, contextual segmentation model): 屋 | 里
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 安静
+    - CC-CEDICT, greedy longest match: 太 | 安静
+    - Frequency-scored maximum-probability path (jieba-style): 太安静
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 安静
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 睡 | 不着
+    - CC-CEDICT, greedy longest match: 睡 | 不着
+    - Frequency-scored maximum-probability path (jieba-style): 睡不着
+    - bert-ws-zh (shipped, contextual segmentation model): 睡 | 不 | 着
+- `03-travel-blog.txt` — unit "成都最让我意外的不是吃的，是走路的节奏。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 最让
+    - CC-CEDICT, greedy longest match: 最 | 让
+    - Frequency-scored maximum-probability path (jieba-style): 最 | 让
+    - bert-ws-zh (shipped, contextual segmentation model): 最 | 让
+- `03-travel-blog.txt` — unit "成都最让我意外的不是吃的，是走路的节奏。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `03-travel-blog.txt` — unit "成都最让我意外的不是吃的，是走路的节奏。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 吃 | 的
+    - CC-CEDICT, greedy longest match: 吃的
+    - Frequency-scored maximum-probability path (jieba-style): 吃 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 吃 | 的
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走得
+    - CC-CEDICT, greedy longest match: 走 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 走 | 得
+    - bert-ws-zh (shipped, contextual segmentation model): 走 | 得
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很快
+    - CC-CEDICT, greedy longest match: 很 | 快
+    - Frequency-scored maximum-probability path (jieba-style): 很快
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 快
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 没变 | 绿
+    - CC-CEDICT, greedy longest match: 没 | 变 | 绿
+    - Frequency-scored maximum-probability path (jieba-style): 没 | 变绿
+    - bert-ws-zh (shipped, contextual segmentation model): 没 | 变绿
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 往前
+    - CC-CEDICT, greedy longest match: 往前
+    - Frequency-scored maximum-probability path (jieba-style): 往前
+    - bert-ws-zh (shipped, contextual segmentation model): 往 | 前
+- `03-travel-blog.txt` — unit "在成都不是这样。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `03-travel-blog.txt` — unit "等车的时候人是真的在等，站在那里聊天，或者什么也不做。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 站在
+    - CC-CEDICT, greedy longest match: 站 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 站 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 站 | 在
+- `03-travel-blog.txt` — unit "等车的时候人是真的在等，站在那里聊天，或者什么也不做。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也不
+    - CC-CEDICT, greedy longest match: 也 | 不
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 不
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 不
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 以为是
+    - CC-CEDICT, greedy longest match: 以为 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 以为 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 以为 | 是
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 几天
+    - CC-CEDICT, greedy longest match: 几天
+    - Frequency-scored maximum-probability path (jieba-style): 几天
+    - bert-ws-zh (shipped, contextual segmentation model): 几 | 天
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都是
+    - CC-CEDICT, greedy longest match: 都 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 是
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 着急
+    - CC-CEDICT, greedy longest match: 不着 | 急
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 着急
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 着急
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 街上
+    - CC-CEDICT, greedy longest match: 街上
+    - Frequency-scored maximum-probability path (jieba-style): 街上
+    - bert-ws-zh (shipped, contextual segmentation model): 街 | 上
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一家
+    - CC-CEDICT, greedy longest match: 一家
+    - Frequency-scored maximum-probability path (jieba-style): 一家
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 家
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 点
+    - CC-CEDICT, greedy longest match: 两 | 点
+    - Frequency-scored maximum-probability path (jieba-style): 两点
+    - bert-ws-zh (shipped, contextual segmentation model): 两点
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐满
+    - CC-CEDICT, greedy longest match: 坐 | 满
+    - Frequency-scored maximum-probability path (jieba-style): 坐满
+    - bert-ws-zh (shipped, contextual segmentation model): 坐满
+- `03-travel-blog.txt` — unit "里面大部分是上了年纪的人，一桌四个，打牌的时间比说话的时间长。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上了 | 年纪
+    - CC-CEDICT, greedy longest match: 上了年纪
+    - Frequency-scored maximum-probability path (jieba-style): 上 | 了 | 年纪
+    - bert-ws-zh (shipped, contextual segmentation model): 上了年纪
+- `03-travel-blog.txt` — unit "里面大部分是上了年纪的人，一桌四个，打牌的时间比说话的时间长。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一桌
+    - CC-CEDICT, greedy longest match: 一 | 桌
+    - Frequency-scored maximum-probability path (jieba-style): 一桌
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 桌
+- `03-travel-blog.txt` — unit "里面大部分是上了年纪的人，一桌四个，打牌的时间比说话的时间长。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 四 | 个
+    - CC-CEDICT, greedy longest match: 四 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 四个
+    - bert-ws-zh (shipped, contextual segmentation model): 四 | 个
+- `03-travel-blog.txt` — unit "有一天下雨，我进去躲雨，找了个角落坐着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一天 | 下雨
+    - CC-CEDICT, greedy longest match: 一 | 天下 | 雨
+    - Frequency-scored maximum-probability path (jieba-style): 一天 | 下雨
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 天 | 下雨
+- `03-travel-blog.txt` — unit "有一天下雨，我进去躲雨，找了个角落坐着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 找了
+    - CC-CEDICT, greedy longest match: 找 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 找 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 找 | 了
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 服务 | 员
+    - CC-CEDICT, greedy longest match: 服务员
+    - Frequency-scored maximum-probability path (jieba-style): 服务员
+    - bert-ws-zh (shipped, contextual segmentation model): 服务员
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 倒了
+    - CC-CEDICT, greedy longest match: 倒 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 倒 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 倒 | 了
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一杯
+    - CC-CEDICT, greedy longest match: 一 | 杯
+    - Frequency-scored maximum-probability path (jieba-style): 一杯
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 杯
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没
+    - CC-CEDICT, greedy longest match: 也 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没
+- `03-travel-blog.txt` — unit "我坐了两个多小时，一直没人来问我要不要再点东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐了
+    - CC-CEDICT, greedy longest match: 坐 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 坐 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 坐 | 了
+- `03-travel-blog.txt` — unit "我坐了两个多小时，一直没人来问我要不要再点东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 个
+    - CC-CEDICT, greedy longest match: 两 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 两个
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 个
+- `03-travel-blog.txt` — unit "我坐了两个多小时，一直没人来问我要不要再点东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我要 | 不要
+    - CC-CEDICT, greedy longest match: 我 | 要不 | 要
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 要 | 不要
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 要不要
+- `03-travel-blog.txt` — unit "走的时候我问多少钱，他说十块。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多少钱
+    - CC-CEDICT, greedy longest match: 多少 | 钱
+    - Frequency-scored maximum-probability path (jieba-style): 多少 | 钱
+    - bert-ws-zh (shipped, contextual segmentation model): 多少 | 钱
+- `03-travel-blog.txt` — unit "走的时候我问多少钱，他说十块。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十块
+    - CC-CEDICT, greedy longest match: 十 | 块
+    - Frequency-scored maximum-probability path (jieba-style): 十块
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 块
+- `03-travel-blog.txt` — unit "后来我常去。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 常去
+    - CC-CEDICT, greedy longest match: 常 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 常 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 常 | 去
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 去 | 得 | 多
+    - CC-CEDICT, greedy longest match: 去得 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 去 | 得 | 多
+    - bert-ws-zh (shipped, contextual segmentation model): 去 | 得多
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没有
+    - CC-CEDICT, greedy longest match: 也 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没有
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 变得
+    - CC-CEDICT, greedy longest match: 变得
+    - Frequency-scored maximum-probability path (jieba-style): 变得
+    - bert-ws-zh (shipped, contextual segmentation model): 变 | 得
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一进 | 门
+    - CC-CEDICT, greedy longest match: 一 | 进门
+    - Frequency-scored maximum-probability path (jieba-style): 一 | 进门
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 进 | 门
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一下 | 头
+    - CC-CEDICT, greedy longest match: 一下 | 头
+    - Frequency-scored maximum-probability path (jieba-style): 一下头
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 下 | 头
+- `03-travel-blog.txt` — unit "那三个星期我没做什么正经事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三 | 个
+    - CC-CEDICT, greedy longest match: 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 个
+- `03-travel-blog.txt` — unit "那三个星期我没做什么正经事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我没
+    - CC-CEDICT, greedy longest match: 我 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 没
+- `03-travel-blog.txt` — unit "那三个星期我没做什么正经事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 正经事
+    - CC-CEDICT, greedy longest match: 正经事
+    - Frequency-scored maximum-probability path (jieba-style): 正经事
+    - bert-ws-zh (shipped, contextual segmentation model): 正经 | 事
+- `03-travel-blog.txt` — unit "上午写点东西，写不下去就出门。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 写点
+    - CC-CEDICT, greedy longest match: 写 | 点
+    - Frequency-scored maximum-probability path (jieba-style): 写 | 点
+    - bert-ws-zh (shipped, contextual segmentation model): 写 | 点
+- `03-travel-blog.txt` — unit "上午写点东西，写不下去就出门。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不下去
+    - CC-CEDICT, greedy longest match: 不下 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 下去
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 下去
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 下雨
+    - CC-CEDICT, greedy longest match: 不下 | 雨
+    - Frequency-scored maximum-probability path (jieba-style): 不下雨
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 下雨
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 找个
+    - CC-CEDICT, greedy longest match: 找 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 找 | 个
+    - bert-ws-zh (shipped, contextual segmentation model): 找 | 个
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走到
+    - CC-CEDICT, greedy longest match: 走 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 走 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 走到
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走 | 不动
+    - CC-CEDICT, greedy longest match: 走 | 不动
+    - Frequency-scored maximum-probability path (jieba-style): 走不动
+    - bert-ws-zh (shipped, contextual segmentation model): 走不动
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 公 | 交 | 车
+    - CC-CEDICT, greedy longest match: 公交车
+    - Frequency-scored maximum-probability path (jieba-style): 公交车
+    - bert-ws-zh (shipped, contextual segmentation model): 公交车
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 公 | 交 | 车
+    - CC-CEDICT, greedy longest match: 公交车
+    - Frequency-scored maximum-probability path (jieba-style): 公交车
+    - bert-ws-zh (shipped, contextual segmentation model): 公交车
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我到
+    - CC-CEDICT, greedy longest match: 我 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 到
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没
+    - CC-CEDICT, greedy longest match: 也 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 搞清楚
+    - CC-CEDICT, greedy longest match: 搞 | 清楚
+    - Frequency-scored maximum-probability path (jieba-style): 搞清楚
+    - bert-ws-zh (shipped, contextual segmentation model): 搞清楚
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每次
+    - CC-CEDICT, greedy longest match: 每次
+    - Frequency-scored maximum-probability path (jieba-style): 每次
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 次
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都是
+    - CC-CEDICT, greedy longest match: 都 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 是
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上了
+    - CC-CEDICT, greedy longest match: 上 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 上 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 了
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 再看
+    - CC-CEDICT, greedy longest match: 再 | 看
+    - Frequency-scored maximum-probability path (jieba-style): 再 | 看
+    - bert-ws-zh (shipped, contextual segmentation model): 再 | 看
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两次
+    - CC-CEDICT, greedy longest match: 两 | 次
+    - Frequency-scored maximum-probability path (jieba-style): 两次
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 次
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐 | 反
+    - CC-CEDICT, greedy longest match: 坐 | 反
+    - Frequency-scored maximum-probability path (jieba-style): 坐 | 反
+    - bert-ws-zh (shipped, contextual segmentation model): 坐反
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也不 | 着急
+    - CC-CEDICT, greedy longest match: 也 | 不着 | 急
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 不 | 着急
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 不 | 着急
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐到
+    - CC-CEDICT, greedy longest match: 坐 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 坐 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 坐到
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 终点 | 站
+    - CC-CEDICT, greedy longest match: 终点站
+    - Frequency-scored maximum-probability path (jieba-style): 终点站
+    - bert-ws-zh (shipped, contextual segmentation model): 终点站
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么 | 样子
+    - CC-CEDICT, greedy longest match: 什么样 | 子
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 样子
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 样子
+- `03-travel-blog.txt` — unit "我认识的一个人说，一个地方待久了才知道自己喜不喜欢它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个 | 人
+    - CC-CEDICT, greedy longest match: 一个人
+    - Frequency-scored maximum-probability path (jieba-style): 一个 | 人
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个 | 人
+- `03-travel-blog.txt` — unit "我认识的一个人说，一个地方待久了才知道自己喜不喜欢它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `03-travel-blog.txt` — unit "我认识的一个人说，一个地方待久了才知道自己喜不喜欢它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 喜 | 不 | 喜欢
+    - CC-CEDICT, greedy longest match: 喜 | 不 | 喜欢
+    - Frequency-scored maximum-probability path (jieba-style): 喜不喜欢
+    - bert-ws-zh (shipped, contextual segmentation model): 喜不喜欢
+- `03-travel-blog.txt` — unit "我不太同意。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不太
+    - CC-CEDICT, greedy longest match: 不 | 太
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 太
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 太
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第二 | 天
+    - CC-CEDICT, greedy longest match: 第二天
+    - Frequency-scored maximum-probability path (jieba-style): 第二天
+    - bert-ws-zh (shipped, contextual segmentation model): 第二 | 天
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 二十 | 天
+    - CC-CEDICT, greedy longest match: 二十 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 二十天
+    - bert-ws-zh (shipped, contextual segmentation model): 二十 | 天
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这 | 件
+    - CC-CEDICT, greedy longest match: 这 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 这件
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 件
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 得很
+    - CC-CEDICT, greedy longest match: 得很
+    - Frequency-scored maximum-probability path (jieba-style): 得 | 很
+    - bert-ws-zh (shipped, contextual segmentation model): 得 | 很
+- `03-travel-blog.txt` — unit "要说有什么不习惯的，是天气。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 要 | 说
+    - CC-CEDICT, greedy longest match: 要说
+    - Frequency-scored maximum-probability path (jieba-style): 要说
+    - bert-ws-zh (shipped, contextual segmentation model): 要 | 说
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三 | 个
+    - CC-CEDICT, greedy longest match: 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 个
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 星期 | 里
+    - CC-CEDICT, greedy longest match: 星期 | 里
+    - Frequency-scored maximum-probability path (jieba-style): 星期 | 里
+    - bert-ws-zh (shipped, contextual segmentation model): 星期里
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 出 | 太阳
+    - CC-CEDICT, greedy longest match: 出 | 太阳
+    - Frequency-scored maximum-probability path (jieba-style): 出 | 太阳
+    - bert-ws-zh (shipped, contextual segmentation model): 出太阳
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 只有
+    - CC-CEDICT, greedy longest match: 只有
+    - Frequency-scored maximum-probability path (jieba-style): 只有
+    - bert-ws-zh (shipped, contextual segmentation model): 只 | 有
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 四天
+    - CC-CEDICT, greedy longest match: 四 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 四天
+    - bert-ws-zh (shipped, contextual segmentation model): 四 | 天
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 刚去
+    - CC-CEDICT, greedy longest match: 刚 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 刚 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 刚 | 去
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 以为是
+    - CC-CEDICT, greedy longest match: 以为 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 以为 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 以为 | 是
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不好
+    - CC-CEDICT, greedy longest match: 不好
+    - Frequency-scored maximum-probability path (jieba-style): 不好
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 好
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 问了
+    - CC-CEDICT, greedy longest match: 问 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 问 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 问 | 了
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 就是
+    - CC-CEDICT, greedy longest match: 就是
+    - Frequency-scored maximum-probability path (jieba-style): 就是
+    - bert-ws-zh (shipped, contextual segmentation model): 就 | 是
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 更少
+    - CC-CEDICT, greedy longest match: 更 | 少
+    - Frequency-scored maximum-probability path (jieba-style): 更 | 少
+    - bert-ws-zh (shipped, contextual segmentation model): 更少
+- `03-travel-blog.txt` — unit "我说那你们不觉得闷吗，他想了一下，说习惯了，而且不晒。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 觉得
+    - CC-CEDICT, greedy longest match: 不觉 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 觉得
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 觉得
+- `03-travel-blog.txt` — unit "我说那你们不觉得闷吗，他想了一下，说习惯了，而且不晒。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 他想
+    - CC-CEDICT, greedy longest match: 他 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 他 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 他 | 想
+- `03-travel-blog.txt` — unit "走的那天早上难得晴天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那天
+    - CC-CEDICT, greedy longest match: 那天
+    - Frequency-scored maximum-probability path (jieba-style): 那天
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 天
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下 | 楼
+    - CC-CEDICT, greedy longest match: 下楼
+    - Frequency-scored maximum-probability path (jieba-style): 下楼
+    - bert-ws-zh (shipped, contextual segmentation model): 下楼
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 自行 | 车
+    - CC-CEDICT, greedy longest match: 自行车
+    - Frequency-scored maximum-probability path (jieba-style): 自行车
+    - bert-ws-zh (shipped, contextual segmentation model): 自行车
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 看了
+    - CC-CEDICT, greedy longest match: 看 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 看 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 看 | 了
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一眼
+    - CC-CEDICT, greedy longest match: 一眼
+    - Frequency-scored maximum-probability path (jieba-style): 一眼
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 眼
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是不是
+    - CC-CEDICT, greedy longest match: 是不是
+    - Frequency-scored maximum-probability path (jieba-style): 是不是
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 不 | 是
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走了
+    - CC-CEDICT, greedy longest match: 走 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 走 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 走 | 了
+- `03-travel-blog.txt` — unit "他说下次来还住这儿。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下次
+    - CC-CEDICT, greedy longest match: 下次
+    - Frequency-scored maximum-probability path (jieba-style): 下次
+    - bert-ws-zh (shipped, contextual segmentation model): 下 | 次
+- `03-travel-blog.txt` — unit "我说好。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说 | 好
+    - CC-CEDICT, greedy longest match: 说好
+    - Frequency-scored maximum-probability path (jieba-style): 说好
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 好
+- `03-travel-blog.txt` — unit "其实我们之前没说过超过十句话。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 没说
+    - CC-CEDICT, greedy longest match: 没 | 说
+    - Frequency-scored maximum-probability path (jieba-style): 没 | 说
+    - bert-ws-zh (shipped, contextual segmentation model): 没 | 说
+- `03-travel-blog.txt` — unit "其实我们之前没说过超过十句话。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十句话
+    - CC-CEDICT, greedy longest match: 十 | 句 | 话
+    - Frequency-scored maximum-probability path (jieba-style): 十句话
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 句 | 话
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 有人
+    - CC-CEDICT, greedy longest match: 有人
+    - Frequency-scored maximum-probability path (jieba-style): 有人
+    - bert-ws-zh (shipped, contextual segmentation model): 有 | 人
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 怎么 | 样
+    - CC-CEDICT, greedy longest match: 怎么样
+    - Frequency-scored maximum-probability path (jieba-style): 怎么样
+    - bert-ws-zh (shipped, contextual segmentation model): 怎么样
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说 | 起
+    - CC-CEDICT, greedy longest match: 说起
+    - Frequency-scored maximum-probability path (jieba-style): 说起
+    - bert-ws-zh (shipped, contextual segmentation model): 说起
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句
+    - CC-CEDICT, greedy longest match: 一句
+    - Frequency-scored maximum-probability path (jieba-style): 一句
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 挺 | 舒服
+    - CC-CEDICT, greedy longest match: 挺 | 舒服
+    - Frequency-scored maximum-probability path (jieba-style): 挺舒服
+    - bert-ws-zh (shipped, contextual segmentation model): 挺 | 舒服
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | 。
+    - CC-CEDICT, greedy longest match: ” | 。
+    - Frequency-scored maximum-probability path (jieba-style): ” | 。
+    - bert-ws-zh (shipped, contextual segmentation model): ”。
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都不 | 满意
+    - CC-CEDICT, greedy longest match: 都 | 不满意
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 不 | 满意
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 不 | 满意
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想不出
+    - CC-CEDICT, greedy longest match: 想 | 不 | 出
+    - Frequency-scored maximum-probability path (jieba-style): 想不出
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 不 | 出
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 更好
+    - CC-CEDICT, greedy longest match: 更 | 好
+    - Frequency-scored maximum-probability path (jieba-style): 更好
+    - bert-ws-zh (shipped, contextual segmentation model): 更 | 好
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 大 | 半年
+    - CC-CEDICT, greedy longest match: 大半 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 大半年
+    - bert-ws-zh (shipped, contextual segmentation model): 大半 | 年
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我还是
+    - CC-CEDICT, greedy longest match: 我 | 还是
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 还是
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 还是
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 只能
+    - CC-CEDICT, greedy longest match: 只能
+    - Frequency-scored maximum-probability path (jieba-style): 只能
+    - bert-ws-zh (shipped, contextual segmentation model): 只 | 能
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想出
+    - CC-CEDICT, greedy longest match: 想出
+    - Frequency-scored maximum-probability path (jieba-style): 想 | 出
+    - bert-ws-zh (shipped, contextual segmentation model): 想出
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句
+    - CC-CEDICT, greedy longest match: 一句
+    - Frequency-scored maximum-probability path (jieba-style): 一句
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第三 | 年
+    - CC-CEDICT, greedy longest match: 第 | 三 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 第三年
+    - bert-ws-zh (shipped, contextual segmentation model): 第三 | 年
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 预料到
+    - CC-CEDICT, greedy longest match: 预料 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 预料到
+    - bert-ws-zh (shipped, contextual segmentation model): 预料到
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我能
+    - CC-CEDICT, greedy longest match: 我 | 能
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 能
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 能
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 读 | 懂
+    - CC-CEDICT, greedy longest match: 读懂
+    - Frequency-scored maximum-probability path (jieba-style): 读懂
+    - bert-ws-zh (shipped, contextual segmentation model): 读懂
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 能听 | 懂
+    - CC-CEDICT, greedy longest match: 能 | 听懂
+    - Frequency-scored maximum-probability path (jieba-style): 能 | 听懂
+    - bert-ws-zh (shipped, contextual segmentation model): 能 | 听懂
+- `04-language-learning-essay.txt` — unit "一开始我以为这只是练得不够。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 练得
+    - CC-CEDICT, greedy longest match: 练 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 练 | 得
+    - bert-ws-zh (shipped, contextual segmentation model): 练 | 得
+- `04-language-learning-essay.txt` — unit "一开始我以为这只是练得不够。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不够
+    - CC-CEDICT, greedy longest match: 不够
+    - Frequency-scored maximum-probability path (jieba-style): 不够
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 够
+- `04-language-learning-essay.txt` — unit "每天多听半个小时，听三个月，应该就会好一些。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每天
+    - CC-CEDICT, greedy longest match: 每天
+    - Frequency-scored maximum-probability path (jieba-style): 每天
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 天
+- `04-language-learning-essay.txt` — unit "每天多听半个小时，听三个月，应该就会好一些。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 半 | 个
+    - CC-CEDICT, greedy longest match: 半个
+    - Frequency-scored maximum-probability path (jieba-style): 半个
+    - bert-ws-zh (shipped, contextual segmentation model): 半 | 个
+- `04-language-learning-essay.txt` — unit "每天多听半个小时，听三个月，应该就会好一些。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三个月
+    - CC-CEDICT, greedy longest match: 三 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 三个 | 月
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 个 | 月
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没有
+    - CC-CEDICT, greedy longest match: 也 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没有
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 的是
+    - CC-CEDICT, greedy longest match: 的 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 的 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 的 | 是
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这 | 件
+    - CC-CEDICT, greedy longest match: 这 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 这件
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 件
+- `04-language-learning-essay.txt` — unit "后来我才想明白问题在哪里。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 才想
+    - CC-CEDICT, greedy longest match: 才 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 才 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 才 | 想
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): — | —
+    - CC-CEDICT, greedy longest match: — | —
+    - Frequency-scored maximum-probability path (jieba-style): — | —
+    - bert-ws-zh (shipped, contextual segmentation model): ——
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上 | 分开
+    - CC-CEDICT, greedy longest match: 上分 | 开
+    - Frequency-scored maximum-probability path (jieba-style): 上 | 分开
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 分开
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 脑子里
+    - CC-CEDICT, greedy longest match: 脑子 | 里
+    - Frequency-scored maximum-probability path (jieba-style): 脑子里
+    - bert-ws-zh (shipped, contextual segmentation model): 脑子 | 里
+- `04-language-learning-essay.txt` — unit "看到一句话，我会先找出我认识的词，再想它们之间的关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句 | 话
+    - CC-CEDICT, greedy longest match: 一句话
+    - Frequency-scored maximum-probability path (jieba-style): 一句 | 话
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句 | 话
+- `04-language-learning-essay.txt` — unit "看到一句话，我会先找出我认识的词，再想它们之间的关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我 | 会
+    - CC-CEDICT, greedy longest match: 我 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 我会
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 会
+- `04-language-learning-essay.txt` — unit "看到一句话，我会先找出我认识的词，再想它们之间的关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 再想
+    - CC-CEDICT, greedy longest match: 再 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 再 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 再 | 想
+- `04-language-learning-essay.txt` — unit "这个过程可以慢，可以停，可以往回看。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "这个过程可以慢，可以停，可以往回看。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 往 | 回
+    - CC-CEDICT, greedy longest match: 往 | 回
+    - Frequency-scored maximum-probability path (jieba-style): 往回
+    - bert-ws-zh (shipped, contextual segmentation model): 往 | 回
+- `04-language-learning-essay.txt` — unit "听的时候这三样都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三样
+    - CC-CEDICT, greedy longest match: 三 | 样
+    - Frequency-scored maximum-probability path (jieba-style): 三样
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 样
+- `04-language-learning-essay.txt` — unit "听的时候这三样都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没有
+    - CC-CEDICT, greedy longest match: 都 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没有
+- `04-language-learning-essay.txt` — unit "声音是连着的，一句话过去就过去了，我来不及找词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 连 | 着
+    - CC-CEDICT, greedy longest match: 连 | 着
+    - Frequency-scored maximum-probability path (jieba-style): 连 | 着
+    - bert-ws-zh (shipped, contextual segmentation model): 连着
+- `04-language-learning-essay.txt` — unit "声音是连着的，一句话过去就过去了，我来不及找词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句 | 话
+    - CC-CEDICT, greedy longest match: 一句话
+    - Frequency-scored maximum-probability path (jieba-style): 一句 | 话
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句 | 话
+- `04-language-learning-essay.txt` — unit "声音是连着的，一句话过去就过去了，我来不及找词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 找 | 词
+    - CC-CEDICT, greedy longest match: 找 | 词
+    - Frequency-scored maximum-probability path (jieba-style): 找词
+    - bert-ws-zh (shipped, contextual segmentation model): 找 | 词
+- `04-language-learning-essay.txt` — unit "所以我遇到的其实不是听力问题，是分词问题。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `04-language-learning-essay.txt` — unit "我不知道一串声音应该在哪里断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `04-language-learning-essay.txt` — unit "我不知道一串声音应该在哪里断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一串
+    - CC-CEDICT, greedy longest match: 一 | 串
+    - Frequency-scored maximum-probability path (jieba-style): 一串
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 串
+- `04-language-learning-essay.txt` — unit "这跟认识多少个词没有直接关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多少个
+    - CC-CEDICT, greedy longest match: 多少 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 多少 | 个
+    - bert-ws-zh (shipped, contextual segmentation model): 多少 | 个
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | ，
+    - CC-CEDICT, greedy longest match: ” | ，
+    - Frequency-scored maximum-probability path (jieba-style): ” | ，
+    - bert-ws-zh (shipped, contextual segmentation model): ”，
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | ，
+    - CC-CEDICT, greedy longest match: ” | ，
+    - Frequency-scored maximum-probability path (jieba-style): ” | ，
+    - bert-ws-zh (shipped, contextual segmentation model): ”，
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 才能
+    - CC-CEDICT, greedy longest match: 才能
+    - Frequency-scored maximum-probability path (jieba-style): 才能
+    - bert-ws-zh (shipped, contextual segmentation model): 才 | 能
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 而不是
+    - CC-CEDICT, greedy longest match: 而 | 不是
+    - Frequency-scored maximum-probability path (jieba-style): 而 | 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 而 | 不 | 是
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | 。
+    - CC-CEDICT, greedy longest match: ” | 。
+    - Frequency-scored maximum-probability path (jieba-style): ” | 。
+    - bert-ws-zh (shipped, contextual segmentation model): ”。
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一眼
+    - CC-CEDICT, greedy longest match: 一眼
+    - Frequency-scored maximum-probability path (jieba-style): 一眼
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 眼
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 能看 | 出来
+    - CC-CEDICT, greedy longest match: 能 | 看出 | 来
+    - Frequency-scored maximum-probability path (jieba-style): 能 | 看 | 出来
+    - bert-ws-zh (shipped, contextual segmentation model): 能 | 看出来
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一定是
+    - CC-CEDICT, greedy longest match: 一定 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 一定 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 一定 | 是
+- `04-language-learning-essay.txt` — unit "听的时候那一点时间我付不起。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 付 | 不起
+    - CC-CEDICT, greedy longest match: 付 | 不 | 起
+    - Frequency-scored maximum-probability path (jieba-style): 付 | 不 | 起
+    - bert-ws-zh (shipped, contextual segmentation model): 付不起
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我把
+    - CC-CEDICT, greedy longest match: 我 | 把
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 把
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 把
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十年 | 中文
+    - CC-CEDICT, greedy longest match: 十 | 年中 | 文
+    - Frequency-scored maximum-probability path (jieba-style): 十年 | 中文
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 年 | 中文
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也有
+    - CC-CEDICT, greedy longest match: 也 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 有
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 他认为
+    - CC-CEDICT, greedy longest match: 他 | 认为
+    - Frequency-scored maximum-probability path (jieba-style): 他 | 认为
+    - bert-ws-zh (shipped, contextual segmentation model): 他 | 认为
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都在
+    - CC-CEDICT, greedy longest match: 都 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 在
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很少 | 有人
+    - CC-CEDICT, greedy longest match: 很 | 少有 | 人
+    - Frequency-scored maximum-probability path (jieba-style): 很少 | 有人
+    - bert-ws-zh (shipped, contextual segmentation model): 很少 | 有 | 人
+- `04-language-learning-essay.txt` — unit "他给我的建议很简单：听你已经读过的东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "他给我的建议很简单：听你已经读过的东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很简单
+    - CC-CEDICT, greedy longest match: 很 | 简单
+    - Frequency-scored maximum-probability path (jieba-style): 很 | 简单
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 简单
+- `04-language-learning-essay.txt` — unit "他给我的建议很简单：听你已经读过的东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 过的
+    - CC-CEDICT, greedy longest match: 过 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 过 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 过 | 的
+- `04-language-learning-essay.txt` — unit "这个建议听起来像作弊，我一开始有点抵触。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "这个建议听起来像作弊，我一开始有点抵触。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听起来
+    - CC-CEDICT, greedy longest match: 听起来
+    - Frequency-scored maximum-probability path (jieba-style): 听 | 起来
+    - bert-ws-zh (shipped, contextual segmentation model): 听起来
+- `04-language-learning-essay.txt` — unit "但试了两个星期以后我明白了它的道理。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 个
+    - CC-CEDICT, greedy longest match: 两 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 两个
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 个
+- `04-language-learning-essay.txt` — unit "但试了两个星期以后我明白了它的道理。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 它的
+    - CC-CEDICT, greedy longest match: 它 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 它 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 它 | 的
+- `04-language-learning-essay.txt` — unit "当我已经知道一句话的意思和结构，我的注意力就不用花在猜测上，可以全部放在声音本身。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句 | 话
+    - CC-CEDICT, greedy longest match: 一句话
+    - Frequency-scored maximum-probability path (jieba-style): 一句 | 话
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句 | 话
+- `04-language-learning-essay.txt` — unit "当我已经知道一句话的意思和结构，我的注意力就不用花在猜测上，可以全部放在声音本身。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "当我已经知道一句话的意思和结构，我的注意力就不用花在猜测上，可以全部放在声音本身。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 放在
+    - CC-CEDICT, greedy longest match: 放 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 放在
+    - bert-ws-zh (shipped, contextual segmentation model): 放 | 在
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 同 | 一句
+    - CC-CEDICT, greedy longest match: 同一 | 句
+    - Frequency-scored maximum-probability path (jieba-style): 同 | 一句
+    - bert-ws-zh (shipped, contextual segmentation model): 同 | 一 | 句
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第三 | 遍
+    - CC-CEDICT, greedy longest match: 第 | 三 | 遍
+    - Frequency-scored maximum-probability path (jieba-style): 第三遍
+    - bert-ws-zh (shipped, contextual segmentation model): 第三 | 遍
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不再是
+    - CC-CEDICT, greedy longest match: 不再 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 不再 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 不再 | 是
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 在 | 理解
+    - CC-CEDICT, greedy longest match: 在理 | 解
+    - Frequency-scored maximum-probability path (jieba-style): 在 | 理解
+    - bert-ws-zh (shipped, contextual segmentation model): 在 | 理解
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 对 | 上
+    - CC-CEDICT, greedy longest match: 对上
+    - Frequency-scored maximum-probability path (jieba-style): 对 | 上
+    - bert-ws-zh (shipped, contextual segmentation model): 对上
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 对 | 齐
+    - CC-CEDICT, greedy longest match: 对齐
+    - Frequency-scored maximum-probability path (jieba-style): 对齐
+    - bert-ws-zh (shipped, contextual segmentation model): 对齐
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 才是
+    - CC-CEDICT, greedy longest match: 才 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 才 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 才 | 是
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 缺的
+    - CC-CEDICT, greedy longest match: 缺 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 缺 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 缺 | 的
+- `04-language-learning-essay.txt` — unit "从那以后我的方法就固定下来了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从 | 那 | 以后
+    - CC-CEDICT, greedy longest match: 从 | 那 | 以后
+    - Frequency-scored maximum-probability path (jieba-style): 从那以后
+    - bert-ws-zh (shipped, contextual segmentation model): 从 | 那 | 以后
+- `04-language-learning-essay.txt` — unit "从那以后我的方法就固定下来了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "从那以后我的方法就固定下来了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 固定 | 下来
+    - CC-CEDICT, greedy longest match: 固定 | 下来
+    - Frequency-scored maximum-probability path (jieba-style): 固定 | 下来
+    - bert-ws-zh (shipped, contextual segmentation model): 固定下来
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先读
+    - CC-CEDICT, greedy longest match: 先 | 读
+    - Frequency-scored maximum-probability path (jieba-style): 先读
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 读
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 读 | 到
+    - CC-CEDICT, greedy longest match: 读 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 读 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 读到
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 同 | 一段
+    - CC-CEDICT, greedy longest match: 同一 | 段
+    - Frequency-scored maximum-probability path (jieba-style): 同 | 一段
+    - bert-ws-zh (shipped, contextual segmentation model): 同 | 一 | 段
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也能
+    - CC-CEDICT, greedy longest match: 也 | 能
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 能
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 能
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 整个
+    - CC-CEDICT, greedy longest match: 整个
+    - Frequency-scored maximum-probability path (jieba-style): 整个
+    - bert-ws-zh (shipped, contextual segmentation model): 整 | 个
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 慢得 | 多
+    - CC-CEDICT, greedy longest match: 慢 | 得 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 慢 | 得 | 多
+    - bert-ws-zh (shipped, contextual segmentation model): 慢 | 得多
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十分钟
+    - CC-CEDICT, greedy longest match: 十分 | 钟
+    - Frequency-scored maximum-probability path (jieba-style): 十分钟
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 分钟
+- `04-language-learning-essay.txt` — unit "但是这十分钟是真的进去了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十分钟
+    - CC-CEDICT, greedy longest match: 十分 | 钟
+    - Frequency-scored maximum-probability path (jieba-style): 十分钟
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 分钟
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 的是
+    - CC-CEDICT, greedy longest match: 的 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 的 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 的 | 是
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 练了
+    - CC-CEDICT, greedy longest match: 练 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 练 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 练 | 了
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 半年
+    - CC-CEDICT, greedy longest match: 半年
+    - Frequency-scored maximum-probability path (jieba-style): 半年
+    - bert-ws-zh (shipped, contextual segmentation model): 半 | 年
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 发现 | 自己
+    - CC-CEDICT, greedy longest match: 发现 | 自己
+    - Frequency-scored maximum-probability path (jieba-style): 发现自己
+    - bert-ws-zh (shipped, contextual segmentation model): 发现 | 自己
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 变 | 快了
+    - CC-CEDICT, greedy longest match: 变 | 快 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 变 | 快 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 变快 | 了
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是 | 因为
+    - CC-CEDICT, greedy longest match: 是 | 因为
+    - Frequency-scored maximum-probability path (jieba-style): 是因为
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 因为
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这 | 件
+    - CC-CEDICT, greedy longest match: 这 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 这件
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 件
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 就是
+    - CC-CEDICT, greedy longest match: 就是
+    - Frequency-scored maximum-probability path (jieba-style): 就是
+    - bert-ws-zh (shipped, contextual segmentation model): 就 | 是
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 同 | 一个
+    - CC-CEDICT, greedy longest match: 同一 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 同一个
+    - bert-ws-zh (shipped, contextual segmentation model): 同 | 一 | 个
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 在读
+    - CC-CEDICT, greedy longest match: 在读
+    - Frequency-scored maximum-probability path (jieba-style): 在读
+    - bert-ws-zh (shipped, contextual segmentation model): 在 | 读
+- `04-language-learning-essay.txt` — unit "被迫在听力里练好了，读的时候就顺便变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 练好
+    - CC-CEDICT, greedy longest match: 练 | 好
+    - Frequency-scored maximum-probability path (jieba-style): 练 | 好
+    - bert-ws-zh (shipped, contextual segmentation model): 练好
+- `04-language-learning-essay.txt` — unit "被迫在听力里练好了，读的时候就顺便变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 变 | 快了
+    - CC-CEDICT, greedy longest match: 变 | 快 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 变 | 快 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 变快 | 了
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我还是
+    - CC-CEDICT, greedy longest match: 我 | 还是
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 还是
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 还是
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听不懂
+    - CC-CEDICT, greedy longest match: 听不懂
+    - Frequency-scored maximum-probability path (jieba-style): 听不懂
+    - bert-ws-zh (shipped, contextual segmentation model): 听 | 不 | 懂
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听不懂
+    - CC-CEDICT, greedy longest match: 听不懂
+    - Frequency-scored maximum-probability path (jieba-style): 听不懂
+    - bert-ws-zh (shipped, contextual segmentation model): 听 | 不 | 懂
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 个人
+    - CC-CEDICT, greedy longest match: 两 | 个人
+    - Frequency-scored maximum-probability path (jieba-style): 两个 | 人
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 个 | 人
+- `04-language-learning-essay.txt` — unit "但我至少知道自己在练什么了，这跟三年前不一样。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三年 | 前
+    - CC-CEDICT, greedy longest match: 三 | 年前
+    - Frequency-scored maximum-probability path (jieba-style): 三年 | 前
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 年 | 前
+- `04-language-learning-essay.txt` — unit "但我至少知道自己在练什么了，这跟三年前不一样。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 一样
+    - CC-CEDICT, greedy longest match: 不一样
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 一样
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 一样
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三年 | 前
+    - CC-CEDICT, greedy longest match: 三 | 年前
+    - Frequency-scored maximum-probability path (jieba-style): 三年 | 前
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 年 | 前
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我知道
+    - CC-CEDICT, greedy longest match: 我 | 知道
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 知道
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 的是
+    - CC-CEDICT, greedy longest match: 的 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 的 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 的 | 是
+- `05-podcast-interview.txt` — unit "今天请到的这位嘉宾，我们认识很久了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 请到
+    - CC-CEDICT, greedy longest match: 请 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 请 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 请到
+- `05-podcast-interview.txt` — unit "今天请到的这位嘉宾，我们认识很久了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这位
+    - CC-CEDICT, greedy longest match: 这位
+    - Frequency-scored maximum-probability path (jieba-style): 这位
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 位
+- `05-podcast-interview.txt` — unit "今天请到的这位嘉宾，我们认识很久了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很久
+    - CC-CEDICT, greedy longest match: 很 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 很 | 久
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 久
+- `05-podcast-interview.txt` — unit "你要不先自己介绍一下？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 你要 | 不
+    - CC-CEDICT, greedy longest match: 你 | 要不
+    - Frequency-scored maximum-probability path (jieba-style): 你 | 要 | 不
+    - bert-ws-zh (shipped, contextual segmentation model): 你 | 要不
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 陈 | 明
+    - CC-CEDICT, greedy longest match: 陈 | 明
+    - Frequency-scored maximum-probability path (jieba-style): 陈 | 明
+    - bert-ws-zh (shipped, contextual segmentation model): 陈明
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做了
+    - CC-CEDICT, greedy longest match: 做 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 了
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十二 | 年
+    - CC-CEDICT, greedy longest match: 十二 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 十二年
+    - bert-ws-zh (shipped, contextual segmentation model): 十二 | 年
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 建筑 | 设计
+    - CC-CEDICT, greedy longest match: 建筑 | 设计
+    - Frequency-scored maximum-probability path (jieba-style): 建筑设计
+    - bert-ws-zh (shipped, contextual segmentation model): 建筑 | 设计
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "十二年，然后突然自己出来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十二 | 年
+    - CC-CEDICT, greedy longest match: 十二 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 十二年
+    - bert-ws-zh (shipped, contextual segmentation model): 十二 | 年
+- `05-podcast-interview.txt` — unit "是有什么事情发生吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是有
+    - CC-CEDICT, greedy longest match: 是 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 是 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 有
+- `05-podcast-interview.txt` — unit "是有什么事情发生吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么 | 事情
+    - CC-CEDICT, greedy longest match: 什么事 | 情
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 事情
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 事情
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一天
+    - CC-CEDICT, greedy longest match: 一 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 一天
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 天
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 改到
+    - CC-CEDICT, greedy longest match: 改 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 改 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 改到
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第 | 三十 | 几 | 版
+    - CC-CEDICT, greedy longest match: 第 | 三十 | 几 | 版
+    - Frequency-scored maximum-probability path (jieba-style): 第三十 | 几版
+    - bert-ws-zh (shipped, contextual segmentation model): 第三十几 | 版
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 不 | 起来
+    - CC-CEDICT, greedy longest match: 想 | 不 | 起来
+    - Frequency-scored maximum-probability path (jieba-style): 想不起来
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 不 | 起来
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `05-podcast-interview.txt` — unit "我也不敢。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我也
+    - CC-CEDICT, greedy longest match: 我 | 也
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 也
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 也
+- `05-podcast-interview.txt` — unit "我也不敢。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不敢
+    - CC-CEDICT, greedy longest match: 不 | 敢
+    - Frequency-scored maximum-probability path (jieba-style): 不敢
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 敢
+- `05-podcast-interview.txt` — unit "我从想到做，中间隔了差不多两年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想到
+    - CC-CEDICT, greedy longest match: 想到
+    - Frequency-scored maximum-probability path (jieba-style): 想到
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 到
+- `05-podcast-interview.txt` — unit "我从想到做，中间隔了差不多两年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 中 | 间隔
+    - CC-CEDICT, greedy longest match: 中间 | 隔
+    - Frequency-scored maximum-probability path (jieba-style): 中 | 间隔
+    - bert-ws-zh (shipped, contextual segmentation model): 中间 | 隔
+- `05-podcast-interview.txt` — unit "我从想到做，中间隔了差不多两年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `05-podcast-interview.txt` — unit "在算钱。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 算 | 钱
+    - CC-CEDICT, greedy longest match: 算 | 钱
+    - Frequency-scored maximum-probability path (jieba-style): 算钱
+    - bert-ws-zh (shipped, contextual segmentation model): 算 | 钱
+- `05-podcast-interview.txt` — unit "说得好听一点，是在做准备；":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说得
+    - CC-CEDICT, greedy longest match: 说 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 说 | 得
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 得
+- `05-podcast-interview.txt` — unit "说得好听一点，是在做准备；":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是在
+    - CC-CEDICT, greedy longest match: 是 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 是 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 在
+- `05-podcast-interview.txt` — unit "说实话，就是在算我能撑多久。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说 | 实话
+    - CC-CEDICT, greedy longest match: 说实话
+    - Frequency-scored maximum-probability path (jieba-style): 说实话
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 实话
+- `05-podcast-interview.txt` — unit "说实话，就是在算我能撑多久。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我能
+    - CC-CEDICT, greedy longest match: 我 | 能
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 能
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 能
+- `05-podcast-interview.txt` — unit "十八个月。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十八 | 个
+    - CC-CEDICT, greedy longest match: 十八 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 十八个
+    - bert-ws-zh (shipped, contextual segmentation model): 十八 | 个
+- `05-podcast-interview.txt` — unit "后来实际用了十一个月才开始有稳定的活。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十 | 一个 | 月
+    - CC-CEDICT, greedy longest match: 十一 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 十一个月
+    - bert-ws-zh (shipped, contextual segmentation model): 十一 | 个 | 月
+- `05-podcast-interview.txt` — unit "比预期好，但过程里完全感觉不到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不到
+    - CC-CEDICT, greedy longest match: 不到
+    - Frequency-scored maximum-probability path (jieba-style): 不到
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 到
+- `05-podcast-interview.txt` — unit "前六个月我一个项目都没接到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 六个月
+    - CC-CEDICT, greedy longest match: 六 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 六个月
+    - bert-ws-zh (shipped, contextual segmentation model): 六 | 个 | 月
+- `05-podcast-interview.txt` — unit "前六个月我一个项目都没接到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "前六个月我一个项目都没接到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没
+    - CC-CEDICT, greedy longest match: 都 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没
+- `05-podcast-interview.txt` — unit "一个都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "一个都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没有
+    - CC-CEDICT, greedy longest match: 都 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没有
+- `05-podcast-interview.txt` — unit "我以前的客户都在原来的公司，我不能带走，这是规矩。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都在
+    - CC-CEDICT, greedy longest match: 都 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 在
+- `05-podcast-interview.txt` — unit "所以等于从零开始。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从 | 零 | 开始
+    - CC-CEDICT, greedy longest match: 从零开始
+    - Frequency-scored maximum-probability path (jieba-style): 从零开始
+    - bert-ws-zh (shipped, contextual segmentation model): 从 | 零 | 开始
+- `05-podcast-interview.txt` — unit "做了很多没有钱的事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做了
+    - CC-CEDICT, greedy longest match: 做 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 了
+- `05-podcast-interview.txt` — unit "做了很多没有钱的事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `05-podcast-interview.txt` — unit "给朋友的店改门面，帮人画施工图。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 门 | 面
+    - CC-CEDICT, greedy longest match: 门面
+    - Frequency-scored maximum-probability path (jieba-style): 门面
+    - bert-ws-zh (shipped, contextual segmentation model): 门面
+- `05-podcast-interview.txt` — unit "给朋友的店改门面，帮人画施工图。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 施工 | 图
+    - CC-CEDICT, greedy longest match: 施工 | 图
+    - Frequency-scored maximum-probability path (jieba-style): 施工图
+    - bert-ws-zh (shipped, contextual segmentation model): 施工图
+- `05-podcast-interview.txt` — unit "现在回头看，那些事情后来都变成了介绍人。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 介绍 | 人
+    - CC-CEDICT, greedy longest match: 介绍 | 人
+    - Frequency-scored maximum-probability path (jieba-style): 介绍 | 人
+    - bert-ws-zh (shipped, contextual segmentation model): 介绍人
+- `05-podcast-interview.txt` — unit "不是白做的，但当时不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `05-podcast-interview.txt` — unit "不是白做的，但当时不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做的
+    - CC-CEDICT, greedy longest match: 做 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 的
+- `05-podcast-interview.txt` — unit "不是白做的，但当时不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我想
+    - CC-CEDICT, greedy longest match: 我 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 想
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说的
+    - CC-CEDICT, greedy longest match: 说 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 说 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 的
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): — | —
+    - CC-CEDICT, greedy longest match: — | —
+    - Frequency-scored maximum-probability path (jieba-style): — | —
+    - bert-ws-zh (shipped, contextual segmentation model): ——
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `05-podcast-interview.txt` — unit "我需要那十二年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十二 | 年
+    - CC-CEDICT, greedy longest match: 十二 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 十二年
+    - bert-ws-zh (shipped, contextual segmentation model): 十二 | 年
+- `05-podcast-interview.txt` — unit "不是需要那些技能，是需要那些失败的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 开 | 工作室
+    - CC-CEDICT, greedy longest match: 开工 | 作 | 室
+    - Frequency-scored maximum-probability path (jieba-style): 开 | 工作室
+    - bert-ws-zh (shipped, contextual segmentation model): 开 | 工作室
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 最有 | 用
+    - CC-CEDICT, greedy longest match: 最 | 有用
+    - Frequency-scored maximum-probability path (jieba-style): 最 | 有用
+    - bert-ws-zh (shipped, contextual segmentation model): 最 | 有用
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 该 | 不该
+    - CC-CEDICT, greedy longest match: 该 | 不该
+    - Frequency-scored maximum-probability path (jieba-style): 该不该
+    - bert-ws-zh (shipped, contextual segmentation model): 该不该
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 只能 | 靠
+    - CC-CEDICT, greedy longest match: 只能 | 靠
+    - Frequency-scored maximum-probability path (jieba-style): 只能靠
+    - bert-ws-zh (shipped, contextual segmentation model): 只 | 能 | 靠
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不该
+    - CC-CEDICT, greedy longest match: 不该
+    - Frequency-scored maximum-probability path (jieba-style): 不该
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 该
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 接了
+    - CC-CEDICT, greedy longest match: 接 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 接 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 接 | 了
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不该
+    - CC-CEDICT, greedy longest match: 不该
+    - Frequency-scored maximum-probability path (jieba-style): 不该
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 该
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不只是
+    - CC-CEDICT, greedy longest match: 不只 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 只是
+    - bert-ws-zh (shipped, contextual segmentation model): 不只 | 是
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那几个
+    - CC-CEDICT, greedy longest match: 那 | 几个
+    - Frequency-scored maximum-probability path (jieba-style): 那 | 几个
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 几 | 个
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 还有
+    - CC-CEDICT, greedy longest match: 还有
+    - Frequency-scored maximum-probability path (jieba-style): 还有
+    - bert-ws-zh (shipped, contextual segmentation model): 还 | 有
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 接 | 下来
+    - CC-CEDICT, greedy longest match: 接下来
+    - Frequency-scored maximum-probability path (jieba-style): 接下来
+    - bert-ws-zh (shipped, contextual segmentation model): 接下来
+- `05-podcast-interview.txt` — unit "大概有两三次，都是在半夜。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 大概有
+    - CC-CEDICT, greedy longest match: 大概 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 大概 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 大概 | 有
+- `05-podcast-interview.txt` — unit "大概有两三次，都是在半夜。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 三次
+    - CC-CEDICT, greedy longest match: 两 | 三次
+    - Frequency-scored maximum-probability path (jieba-style): 两三次
+    - bert-ws-zh (shipped, contextual segmentation model): 两三 | 次
+- `05-podcast-interview.txt` — unit "大概有两三次，都是在半夜。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都是
+    - CC-CEDICT, greedy longest match: 都 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 是
+- `05-podcast-interview.txt` — unit "但是第二天早上起来就没事了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第二 | 天
+    - CC-CEDICT, greedy longest match: 第二天
+    - Frequency-scored maximum-probability path (jieba-style): 第二天
+    - bert-ws-zh (shipped, contextual segmentation model): 第二 | 天
+- `05-podcast-interview.txt` — unit "但是第二天早上起来就没事了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 没 | 事
+    - CC-CEDICT, greedy longest match: 没事
+    - Frequency-scored maximum-probability path (jieba-style): 没事
+    - bert-ws-zh (shipped, contextual segmentation model): 没 | 事
+- `05-podcast-interview.txt` — unit "所以我觉得那不算真的后悔，那是累。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不算
+    - CC-CEDICT, greedy longest match: 不算
+    - Frequency-scored maximum-probability path (jieba-style): 不算
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 算
+- `05-podcast-interview.txt` — unit "所以我觉得那不算真的后悔，那是累。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那是
+    - CC-CEDICT, greedy longest match: 那是
+    - Frequency-scored maximum-probability path (jieba-style): 那 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 是
+
+## Overall (both categories combined — supplementary, not a substitute for the split above)
+
+222 segmentation unit(s) measured, drawn from 5 passage file(s).
+
+**Disagreement between each pair, as a proportion of character positions:**
+
+- bert-ws vs cedict-longest-match: 8.90% (268 of 3011 character positions disagree)
+- bert-ws vs frequency-path: 9.50% (286 of 3011 character positions disagree)
+- bert-ws vs intl-segmenter: 12.72% (383 of 3011 character positions disagree)
+- cedict-longest-match vs frequency-path: 7.51% (226 of 3011 character positions disagree)
+- cedict-longest-match vs intl-segmenter: 10.66% (321 of 3011 character positions disagree)
+- frequency-path vs intl-segmenter: 9.33% (281 of 3011 character positions disagree)
+
+**Disagreeing spans, with every candidate's reading:**
+
+- `01-drama-dialogue.txt` — unit "路上堵得厉害吗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 路上
+    - CC-CEDICT, greedy longest match: 路上
+    - Frequency-scored maximum-probability path (jieba-style): 路上
+    - bert-ws-zh (shipped, contextual segmentation model): 路 | 上
+- `01-drama-dialogue.txt` — unit "还行 就是过桥的时候慢了点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 过 | 桥
+    - CC-CEDICT, greedy longest match: 过 | 桥
+    - Frequency-scored maximum-probability path (jieba-style): 过桥
+    - bert-ws-zh (shipped, contextual segmentation model): 过 | 桥
+- `01-drama-dialogue.txt` — unit "还行 就是过桥的时候慢了点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 慢了
+    - CC-CEDICT, greedy longest match: 慢 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 慢 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 慢 | 了
+- `01-drama-dialogue.txt` — unit "问你什么时候回家吃饭":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么时候
+    - CC-CEDICT, greedy longest match: 什么时候
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 时候
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 时候
+- `01-drama-dialogue.txt` — unit "项目下周一要交":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下 | 周一
+    - CC-CEDICT, greedy longest match: 下周 | 一
+    - Frequency-scored maximum-probability path (jieba-style): 下周一
+    - bert-ws-zh (shipped, contextual segmentation model): 下 | 周一
+- `01-drama-dialogue.txt` — unit "你上次也是这么说的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上次
+    - CC-CEDICT, greedy longest match: 上次
+    - Frequency-scored maximum-probability path (jieba-style): 上次
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 次
+- `01-drama-dialogue.txt` — unit "你上次也是这么说的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也是
+    - CC-CEDICT, greedy longest match: 也 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 是
+- `01-drama-dialogue.txt` — unit "你上次也是这么说的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说的
+    - CC-CEDICT, greedy longest match: 说 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 说 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 的
+- `01-drama-dialogue.txt` — unit "这次真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这次
+    - CC-CEDICT, greedy longest match: 这 | 次
+    - Frequency-scored maximum-probability path (jieba-style): 这次
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 次
+- `01-drama-dialogue.txt` — unit "这次真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 一样
+    - CC-CEDICT, greedy longest match: 不一样
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 一样
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 一样
+- `01-drama-dialogue.txt` — unit "每次都真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每次
+    - CC-CEDICT, greedy longest match: 每次
+    - Frequency-scored maximum-probability path (jieba-style): 每次
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 次
+- `01-drama-dialogue.txt` — unit "每次都真的不一样":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 一样
+    - CC-CEDICT, greedy longest match: 不一样
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 一样
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 一样
+- `01-drama-dialogue.txt` — unit "我知道 对不起":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我知道
+    - CC-CEDICT, greedy longest match: 我 | 知道
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 知道
+- `01-drama-dialogue.txt` — unit "她不是生气 她就是想见你":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `01-drama-dialogue.txt` — unit "她不是生气 她就是想见你":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 见
+    - CC-CEDICT, greedy longest match: 想见
+    - Frequency-scored maximum-probability path (jieba-style): 想见
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 见
+- `01-drama-dialogue.txt` — unit "现在太晚了 她该睡了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太晚
+    - CC-CEDICT, greedy longest match: 太 | 晚
+    - Frequency-scored maximum-probability path (jieba-style): 太晚
+    - bert-ws-zh (shipped, contextual segmentation model): 太晚
+- `01-drama-dialogue.txt` — unit "现在太晚了 她该睡了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 睡了
+    - CC-CEDICT, greedy longest match: 睡 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 睡 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 睡 | 了
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从来 | 不
+    - CC-CEDICT, greedy longest match: 从来不
+    - Frequency-scored maximum-probability path (jieba-style): 从来不
+    - bert-ws-zh (shipped, contextual segmentation model): 从来 | 不
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 早睡
+    - CC-CEDICT, greedy longest match: 早 | 睡
+    - Frequency-scored maximum-probability path (jieba-style): 早睡
+    - bert-ws-zh (shipped, contextual segmentation model): 早睡
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `01-drama-dialogue.txt` — unit "她从来不早睡 你又不是不知道":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `01-drama-dialogue.txt` — unit "等一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 等 | 一下
+    - CC-CEDICT, greedy longest match: 等一下
+    - Frequency-scored maximum-probability path (jieba-style): 等 | 一下
+    - bert-ws-zh (shipped, contextual segmentation model): 等一下
+- `01-drama-dialogue.txt` — unit "怎么了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 怎么 | 了
+    - CC-CEDICT, greedy longest match: 怎么了
+    - Frequency-scored maximum-probability path (jieba-style): 怎么 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 怎么 | 了
+- `01-drama-dialogue.txt` — unit "你先把外套脱了 手洗一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先把
+    - CC-CEDICT, greedy longest match: 先 | 把
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 把
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 把
+- `01-drama-dialogue.txt` — unit "你先把外套脱了 手洗一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 脱了
+    - CC-CEDICT, greedy longest match: 脱 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 脱 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 脱 | 了
+- `01-drama-dialogue.txt` — unit "你先把外套脱了 手洗一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 手洗
+    - CC-CEDICT, greedy longest match: 手洗
+    - Frequency-scored maximum-probability path (jieba-style): 手 | 洗
+    - bert-ws-zh (shipped, contextual segmentation model): 手 | 洗
+- `01-drama-dialogue.txt` — unit "锅里还有汤 我给你盛一碗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 还有
+    - CC-CEDICT, greedy longest match: 还有
+    - Frequency-scored maximum-probability path (jieba-style): 还有
+    - bert-ws-zh (shipped, contextual segmentation model): 还 | 有
+- `01-drama-dialogue.txt` — unit "锅里还有汤 我给你盛一碗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一碗
+    - CC-CEDICT, greedy longest match: 一 | 碗
+    - Frequency-scored maximum-probability path (jieba-style): 一碗
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 碗
+- `01-drama-dialogue.txt` — unit "不麻烦 本来也是给你留的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也是
+    - CC-CEDICT, greedy longest match: 也 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 是
+- `01-drama-dialogue.txt` — unit "那我先喝汤":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先喝 | 汤
+    - CC-CEDICT, greedy longest match: 先 | 喝 | 汤
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 喝汤
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 喝 | 汤
+- `01-drama-dialogue.txt` — unit "先喝汤":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先喝 | 汤
+    - CC-CEDICT, greedy longest match: 先 | 喝 | 汤
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 喝汤
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 喝 | 汤
+- `01-drama-dialogue.txt` — unit "你今天怎么这么好说话":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 好 | 说话
+    - CC-CEDICT, greedy longest match: 好说 | 话
+    - Frequency-scored maximum-probability path (jieba-style): 好 | 说话
+    - bert-ws-zh (shipped, contextual segmentation model): 好 | 说话
+- `01-drama-dialogue.txt` — unit "等你喝完":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 喝完
+    - CC-CEDICT, greedy longest match: 喝 | 完
+    - Frequency-scored maximum-probability path (jieba-style): 喝完
+    - bert-ws-zh (shipped, contextual segmentation model): 喝完
+- `01-drama-dialogue.txt` — unit "那肯定不是好事":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `01-drama-dialogue.txt` — unit "也不是坏事":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也不是
+    - CC-CEDICT, greedy longest match: 也 | 不是
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 不 | 是
+- `01-drama-dialogue.txt` — unit "公司让我去上海 待两年":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我去
+    - CC-CEDICT, greedy longest match: 我去
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 去
+- `01-drama-dialogue.txt` — unit "公司让我去上海 待两年":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `01-drama-dialogue.txt` — unit "什么时候定的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么时候
+    - CC-CEDICT, greedy longest match: 什么时候
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 时候
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 时候
+- `01-drama-dialogue.txt` — unit "上个月就问过我 我一直没答应":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上个 | 月
+    - CC-CEDICT, greedy longest match: 上个月
+    - Frequency-scored maximum-probability path (jieba-style): 上个月
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 个 | 月
+- `01-drama-dialogue.txt` — unit "上个月就问过我 我一直没答应":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 问过
+    - CC-CEDICT, greedy longest match: 问 | 过
+    - Frequency-scored maximum-probability path (jieba-style): 问 | 过
+    - bert-ws-zh (shipped, contextual segmentation model): 问 | 过
+- `01-drama-dialogue.txt` — unit "我想自己先想清楚":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我想
+    - CC-CEDICT, greedy longest match: 我 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 想
+- `01-drama-dialogue.txt` — unit "我想自己先想清楚":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 清楚
+    - CC-CEDICT, greedy longest match: 想 | 清楚
+    - Frequency-scored maximum-probability path (jieba-style): 想 | 清楚
+    - bert-ws-zh (shipped, contextual segmentation model): 想清楚
+- `01-drama-dialogue.txt` — unit "那你现在想清楚了吗":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 清楚
+    - CC-CEDICT, greedy longest match: 想 | 清楚
+    - Frequency-scored maximum-probability path (jieba-style): 想 | 清楚
+    - bert-ws-zh (shipped, contextual segmentation model): 想清楚
+- `01-drama-dialogue.txt` — unit "所以你才让我先喝汤":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先喝 | 汤
+    - CC-CEDICT, greedy longest match: 先 | 喝 | 汤
+    - Frequency-scored maximum-probability path (jieba-style): 先 | 喝汤
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 喝 | 汤
+- `01-drama-dialogue.txt` — unit "汤都凉了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 凉了
+    - CC-CEDICT, greedy longest match: 凉 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 凉 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 凉 | 了
+- `01-drama-dialogue.txt` — unit "我再去热一下":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 再去
+    - CC-CEDICT, greedy longest match: 再 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 再 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 再 | 去
+- `01-drama-dialogue.txt` — unit "我在想":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `01-drama-dialogue.txt` — unit "想两年到底有多长":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `01-drama-dialogue.txt` — unit "想两年到底有多长":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 到底有
+    - CC-CEDICT, greedy longest match: 到底 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 到底 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 到底 | 有
+- `01-drama-dialogue.txt` — unit "想两年到底有多长":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多 | 长
+    - CC-CEDICT, greedy longest match: 多 | 长
+    - Frequency-scored maximum-probability path (jieba-style): 多长
+    - bert-ws-zh (shipped, contextual segmentation model): 多 | 长
+- `02-cooking-vlog-transcript.txt` — unit "大家好 又是我":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 又是
+    - CC-CEDICT, greedy longest match: 又 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 又 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 又 | 是
+- `02-cooking-vlog-transcript.txt` — unit "今天我们做一个很简单的菜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `02-cooking-vlog-transcript.txt` — unit "今天我们做一个很简单的菜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很简单
+    - CC-CEDICT, greedy longest match: 很 | 简单
+    - Frequency-scored maximum-probability path (jieba-style): 很 | 简单
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 简单
+- `02-cooking-vlog-transcript.txt` — unit "西红柿炒鸡蛋":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 炒 | 鸡蛋
+    - CC-CEDICT, greedy longest match: 炒鸡蛋
+    - Frequency-scored maximum-probability path (jieba-style): 炒鸡蛋
+    - bert-ws-zh (shipped, contextual segmentation model): 炒 | 鸡蛋
+- `02-cooking-vlog-transcript.txt` — unit "听起来简单 其实很多人做不好":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听起来
+    - CC-CEDICT, greedy longest match: 听起来
+    - Frequency-scored maximum-probability path (jieba-style): 听 | 起来
+    - bert-ws-zh (shipped, contextual segmentation model): 听起来
+- `02-cooking-vlog-transcript.txt` — unit "听起来简单 其实很多人做不好":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `02-cooking-vlog-transcript.txt` — unit "听起来简单 其实很多人做不好":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不好
+    - CC-CEDICT, greedy longest match: 不好
+    - Frequency-scored maximum-probability path (jieba-style): 不好
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 好
+- `02-cooking-vlog-transcript.txt` — unit "第一个问题是鸡蛋":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第 | 一个
+    - CC-CEDICT, greedy longest match: 第一 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 第一个
+    - bert-ws-zh (shipped, contextual segmentation model): 第一 | 个
+- `02-cooking-vlog-transcript.txt` — unit "鸡蛋要打散 但是不要打太久":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 久
+    - CC-CEDICT, greedy longest match: 太 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 太久
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 久
+- `02-cooking-vlog-transcript.txt` — unit "打太久了炒出来就老了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 久
+    - CC-CEDICT, greedy longest match: 太 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 太久
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 久
+- `02-cooking-vlog-transcript.txt` — unit "打太久了炒出来就老了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 炒 | 出来
+    - CC-CEDICT, greedy longest match: 炒 | 出来
+    - Frequency-scored maximum-probability path (jieba-style): 炒 | 出来
+    - bert-ws-zh (shipped, contextual segmentation model): 炒出来
+- `02-cooking-vlog-transcript.txt` — unit "打太久了炒出来就老了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 老了
+    - CC-CEDICT, greedy longest match: 老 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 老 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 老 | 了
+- `02-cooking-vlog-transcript.txt` — unit "我一般打三十秒左右":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三十 | 秒
+    - CC-CEDICT, greedy longest match: 三十 | 秒
+    - Frequency-scored maximum-probability path (jieba-style): 三十秒
+    - bert-ws-zh (shipped, contextual segmentation model): 三十 | 秒
+- `02-cooking-vlog-transcript.txt` — unit "里面加一点点盐":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一点 | 点
+    - CC-CEDICT, greedy longest match: 一点点
+    - Frequency-scored maximum-probability path (jieba-style): 一点点
+    - bert-ws-zh (shipped, contextual segmentation model): 一点点
+- `02-cooking-vlog-transcript.txt` — unit "不要加水 有人说加水会更嫩":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 加水
+    - CC-CEDICT, greedy longest match: 加 | 水
+    - Frequency-scored maximum-probability path (jieba-style): 加水
+    - bert-ws-zh (shipped, contextual segmentation model): 加 | 水
+- `02-cooking-vlog-transcript.txt` — unit "不要加水 有人说加水会更嫩":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 有人
+    - CC-CEDICT, greedy longest match: 有人
+    - Frequency-scored maximum-probability path (jieba-style): 有人
+    - bert-ws-zh (shipped, contextual segmentation model): 有 | 人
+- `02-cooking-vlog-transcript.txt` — unit "不要加水 有人说加水会更嫩":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 加水
+    - CC-CEDICT, greedy longest match: 加 | 水
+    - Frequency-scored maximum-probability path (jieba-style): 加水
+    - bert-ws-zh (shipped, contextual segmentation model): 加 | 水
+- `02-cooking-vlog-transcript.txt` — unit "我试过 效果不明显":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 试过
+    - CC-CEDICT, greedy longest match: 试 | 过
+    - Frequency-scored maximum-probability path (jieba-style): 试 | 过
+    - bert-ws-zh (shipped, contextual segmentation model): 试 | 过
+- `02-cooking-vlog-transcript.txt` — unit "我试过 效果不明显":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 明显
+    - CC-CEDICT, greedy longest match: 不明 | 显
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 明显
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 明显
+- `02-cooking-vlog-transcript.txt` — unit "锅要热 油要多一点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多 | 一点
+    - CC-CEDICT, greedy longest match: 多 | 一点
+    - Frequency-scored maximum-probability path (jieba-style): 多一点
+    - bert-ws-zh (shipped, contextual segmentation model): 多 | 一点
+- `02-cooking-vlog-transcript.txt` — unit "油少了鸡蛋会粘锅":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 少了
+    - CC-CEDICT, greedy longest match: 少 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 少 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 少 | 了
+- `02-cooking-vlog-transcript.txt` — unit "倒进去":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 倒 | 进去
+    - CC-CEDICT, greedy longest match: 倒 | 进去
+    - Frequency-scored maximum-probability path (jieba-style): 倒进去
+    - bert-ws-zh (shipped, contextual segmentation model): 倒进去
+- `02-cooking-vlog-transcript.txt` — unit "等边上鼓起来":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 边 | 上
+    - CC-CEDICT, greedy longest match: 边 | 上
+    - Frequency-scored maximum-probability path (jieba-style): 边上
+    - bert-ws-zh (shipped, contextual segmentation model): 边上
+- `02-cooking-vlog-transcript.txt` — unit "等边上鼓起来":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 鼓起来
+    - CC-CEDICT, greedy longest match: 鼓起 | 来
+    - Frequency-scored maximum-probability path (jieba-style): 鼓起来
+    - bert-ws-zh (shipped, contextual segmentation model): 鼓起来
+- `02-cooking-vlog-transcript.txt` — unit "差不多七成熟就出锅":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 七 | 成熟
+    - CC-CEDICT, greedy longest match: 七 | 成熟
+    - Frequency-scored maximum-probability path (jieba-style): 七 | 成熟
+    - bert-ws-zh (shipped, contextual segmentation model): 七成熟
+- `02-cooking-vlog-transcript.txt` — unit "差不多七成熟就出锅":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 出 | 锅
+    - CC-CEDICT, greedy longest match: 出 | 锅
+    - Frequency-scored maximum-probability path (jieba-style): 出 | 锅
+    - bert-ws-zh (shipped, contextual segmentation model): 出锅
+- `02-cooking-vlog-transcript.txt` — unit "剩下的热度会把它做熟":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 热 | 度会
+    - CC-CEDICT, greedy longest match: 热度 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 热度 | 会
+    - bert-ws-zh (shipped, contextual segmentation model): 热度 | 会
+- `02-cooking-vlog-transcript.txt` — unit "剩下的热度会把它做熟":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做 | 熟
+    - CC-CEDICT, greedy longest match: 做 | 熟
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 熟
+    - bert-ws-zh (shipped, contextual segmentation model): 做熟
+- `02-cooking-vlog-transcript.txt` — unit "西红柿最好去皮":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 去 | 皮
+    - CC-CEDICT, greedy longest match: 去皮
+    - Frequency-scored maximum-probability path (jieba-style): 去皮
+    - bert-ws-zh (shipped, contextual segmentation model): 去 | 皮
+- `02-cooking-vlog-transcript.txt` — unit "用开水烫一下 皮很容易掉":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 开水 | 烫
+    - CC-CEDICT, greedy longest match: 开水 | 烫
+    - Frequency-scored maximum-probability path (jieba-style): 开水烫
+    - bert-ws-zh (shipped, contextual segmentation model): 开水 | 烫
+- `02-cooking-vlog-transcript.txt` — unit "不想麻烦的话不去皮也可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不想
+    - CC-CEDICT, greedy longest match: 不想
+    - Frequency-scored maximum-probability path (jieba-style): 不想
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 想
+- `02-cooking-vlog-transcript.txt` — unit "不想麻烦的话不去皮也可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不去 | 皮
+    - CC-CEDICT, greedy longest match: 不 | 去皮
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 去皮
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 去 | 皮
+- `02-cooking-vlog-transcript.txt` — unit "不想麻烦的话不去皮也可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也可以
+    - CC-CEDICT, greedy longest match: 也 | 可以
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 可以
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 可以
+- `02-cooking-vlog-transcript.txt` — unit "就是吃的时候口感差一点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 吃 | 的
+    - CC-CEDICT, greedy longest match: 吃的
+    - Frequency-scored maximum-probability path (jieba-style): 吃 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 吃 | 的
+- `02-cooking-vlog-transcript.txt` — unit "就是吃的时候口感差一点":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 差一点
+    - CC-CEDICT, greedy longest match: 差一点
+    - Frequency-scored maximum-probability path (jieba-style): 差一点
+    - bert-ws-zh (shipped, contextual segmentation model): 差 | 一点
+- `02-cooking-vlog-transcript.txt` — unit "切成小块 不要太小":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 小
+    - CC-CEDICT, greedy longest match: 太 | 小
+    - Frequency-scored maximum-probability path (jieba-style): 太小
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 小
+- `02-cooking-vlog-transcript.txt` — unit "太小了炒完就化了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 小
+    - CC-CEDICT, greedy longest match: 太 | 小
+    - Frequency-scored maximum-probability path (jieba-style): 太小
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 小
+- `02-cooking-vlog-transcript.txt` — unit "太小了炒完就化了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 炒 | 完
+    - CC-CEDICT, greedy longest match: 炒 | 完
+    - Frequency-scored maximum-probability path (jieba-style): 炒 | 完
+    - bert-ws-zh (shipped, contextual segmentation model): 炒完
+- `02-cooking-vlog-transcript.txt` — unit "炒到出汁":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 出汁
+    - CC-CEDICT, greedy longest match: 出汁
+    - Frequency-scored maximum-probability path (jieba-style): 出 | 汁
+    - bert-ws-zh (shipped, contextual segmentation model): 出 | 汁
+- `02-cooking-vlog-transcript.txt` — unit "这个时候放糖":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `02-cooking-vlog-transcript.txt` — unit "这个时候放糖":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 放糖
+    - CC-CEDICT, greedy longest match: 放 | 糖
+    - Frequency-scored maximum-probability path (jieba-style): 放糖
+    - bert-ws-zh (shipped, contextual segmentation model): 放 | 糖
+- `02-cooking-vlog-transcript.txt` — unit "放糖不是为了甜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 放糖
+    - CC-CEDICT, greedy longest match: 放 | 糖
+    - Frequency-scored maximum-probability path (jieba-style): 放糖
+    - bert-ws-zh (shipped, contextual segmentation model): 放 | 糖
+- `02-cooking-vlog-transcript.txt` — unit "放糖不是为了甜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `02-cooking-vlog-transcript.txt` — unit "放糖不是为了甜":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 为了
+    - CC-CEDICT, greedy longest match: 为了
+    - Frequency-scored maximum-probability path (jieba-style): 为了
+    - bert-ws-zh (shipped, contextual segmentation model): 为 | 了
+- `02-cooking-vlog-transcript.txt` — unit "是为了压酸味":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 酸味
+    - CC-CEDICT, greedy longest match: 酸 | 味
+    - Frequency-scored maximum-probability path (jieba-style): 酸味
+    - bert-ws-zh (shipped, contextual segmentation model): 酸味
+- `02-cooking-vlog-transcript.txt` — unit "半勺就够了":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 半 | 勺
+    - CC-CEDICT, greedy longest match: 半 | 勺
+    - Frequency-scored maximum-probability path (jieba-style): 半勺
+    - bert-ws-zh (shipped, contextual segmentation model): 半 | 勺
+- `02-cooking-vlog-transcript.txt` — unit "现在把鸡蛋倒回去":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 倒 | 回去
+    - CC-CEDICT, greedy longest match: 倒 | 回去
+    - Frequency-scored maximum-probability path (jieba-style): 倒回去
+    - bert-ws-zh (shipped, contextual segmentation model): 倒回去
+- `02-cooking-vlog-transcript.txt` — unit "翻两下就可以":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两下
+    - CC-CEDICT, greedy longest match: 两下
+    - Frequency-scored maximum-probability path (jieba-style): 两下
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 下
+- `02-cooking-vlog-transcript.txt` — unit "不要炒太久":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 久
+    - CC-CEDICT, greedy longest match: 太 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 太久
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 久
+- `02-cooking-vlog-transcript.txt` — unit "最后放一点葱花":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 葱 | 花
+    - CC-CEDICT, greedy longest match: 葱花
+    - Frequency-scored maximum-probability path (jieba-style): 葱花
+    - bert-ws-zh (shipped, contextual segmentation model): 葱花
+- `02-cooking-vlog-transcript.txt` — unit "不喜欢就不放":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不放
+    - CC-CEDICT, greedy longest match: 不 | 放
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 放
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 放
+- `02-cooking-vlog-transcript.txt` — unit "好了 就这么简单":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 好了
+    - CC-CEDICT, greedy longest match: 好 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 好 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 好 | 了
+- `02-cooking-vlog-transcript.txt` — unit "这个菜的关键其实是火":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `02-cooking-vlog-transcript.txt` — unit "这个菜的关键其实是火":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 其实是
+    - CC-CEDICT, greedy longest match: 其实 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 其实 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 其实 | 是
+- `02-cooking-vlog-transcript.txt` — unit "火太小什么都不好吃":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 小
+    - CC-CEDICT, greedy longest match: 太 | 小
+    - Frequency-scored maximum-probability path (jieba-style): 太小
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 小
+- `02-cooking-vlog-transcript.txt` — unit "火太小什么都不好吃":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都不 | 好吃
+    - CC-CEDICT, greedy longest match: 都 | 不好 | 吃
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 不 | 好吃
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 不 | 好吃
+- `02-cooking-vlog-transcript.txt` — unit "下次我们做一个稍微难一点的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下次
+    - CC-CEDICT, greedy longest match: 下次
+    - Frequency-scored maximum-probability path (jieba-style): 下次
+    - bert-ws-zh (shipped, contextual segmentation model): 下 | 次
+- `02-cooking-vlog-transcript.txt` — unit "下次我们做一个稍微难一点的":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `03-travel-blog.txt` — unit "去年秋天我在成都住了三个星期。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `03-travel-blog.txt` — unit "去年秋天我在成都住了三个星期。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 了三 | 个
+    - CC-CEDICT, greedy longest match: 了 | 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 了 | 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 了 | 三 | 个
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 四 | 五天
+    - CC-CEDICT, greedy longest match: 四 | 五 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 四五天
+    - bert-ws-zh (shipped, contextual segmentation model): 四五 | 天
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 往后
+    - CC-CEDICT, greedy longest match: 往后
+    - Frequency-scored maximum-probability path (jieba-style): 往后
+    - bert-ws-zh (shipped, contextual segmentation model): 往 | 后
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每次
+    - CC-CEDICT, greedy longest match: 每次
+    - Frequency-scored maximum-probability path (jieba-style): 每次
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 次
+- `03-travel-blog.txt` — unit "原本只打算待四五天，后来一直往后拖，理由每次都不太一样，最后连自己也不好意思再找理由了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不太
+    - CC-CEDICT, greedy longest match: 不 | 太
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 太
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 太
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一条
+    - CC-CEDICT, greedy longest match: 一 | 条
+    - Frequency-scored maximum-probability path (jieba-style): 一条
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 条
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 老街 | 上
+    - CC-CEDICT, greedy longest match: 老街 | 上
+    - Frequency-scored maximum-probability path (jieba-style): 老 | 街上
+    - bert-ws-zh (shipped, contextual segmentation model): 老街 | 上
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一家
+    - CC-CEDICT, greedy longest match: 一家
+    - Frequency-scored maximum-probability path (jieba-style): 一家
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 家
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 自行 | 车
+    - CC-CEDICT, greedy longest match: 自行车
+    - Frequency-scored maximum-probability path (jieba-style): 自行车
+    - bert-ws-zh (shipped, contextual segmentation model): 自行车
+- `03-travel-blog.txt` — unit "住的地方在一条老街上，楼下是一家修自行车的铺子。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 铺 | 子
+    - CC-CEDICT, greedy longest match: 铺子
+    - Frequency-scored maximum-probability path (jieba-style): 铺子
+    - bert-ws-zh (shipped, contextual segmentation model): 铺子
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每天
+    - CC-CEDICT, greedy longest match: 每天
+    - Frequency-scored maximum-probability path (jieba-style): 每天
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 天
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 七 | 点 | 开门
+    - CC-CEDICT, greedy longest match: 七 | 点开 | 门
+    - Frequency-scored maximum-probability path (jieba-style): 七点 | 开门
+    - bert-ws-zh (shipped, contextual segmentation model): 七点 | 开门
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一件
+    - CC-CEDICT, greedy longest match: 一 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 一件
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 件
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一件
+    - CC-CEDICT, greedy longest match: 一 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 一件
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 件
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 摆 | 到
+    - CC-CEDICT, greedy longest match: 摆 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 摆 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 摆到
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 桌上
+    - CC-CEDICT, greedy longest match: 桌 | 上
+    - Frequency-scored maximum-probability path (jieba-style): 桌上
+    - bert-ws-zh (shipped, contextual segmentation model): 桌 | 上
+- `03-travel-blog.txt` — unit "老板每天早上七点开门，把工具一件一件摆到门口的小桌上，顺序从来不变。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从来 | 不变
+    - CC-CEDICT, greedy longest match: 从来不 | 变
+    - Frequency-scored maximum-probability path (jieba-style): 从来不 | 变
+    - bert-ws-zh (shipped, contextual segmentation model): 从来 | 不变
+- `03-travel-blog.txt` — unit "我住的那间房朝北，早上不亮，所以我基本是被楼下的声音叫醒的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 朝北
+    - CC-CEDICT, greedy longest match: 朝 | 北
+    - Frequency-scored maximum-probability path (jieba-style): 朝 | 北
+    - bert-ws-zh (shipped, contextual segmentation model): 朝 | 北
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一段 | 时间
+    - CC-CEDICT, greedy longest match: 一 | 段 | 时间
+    - Frequency-scored maximum-probability path (jieba-style): 一段时间
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 段 | 时间
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 屋 | 里
+    - CC-CEDICT, greedy longest match: 屋 | 里
+    - Frequency-scored maximum-probability path (jieba-style): 屋里
+    - bert-ws-zh (shipped, contextual segmentation model): 屋 | 里
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 太 | 安静
+    - CC-CEDICT, greedy longest match: 太 | 安静
+    - Frequency-scored maximum-probability path (jieba-style): 太安静
+    - bert-ws-zh (shipped, contextual segmentation model): 太 | 安静
+- `03-travel-blog.txt` — unit "刚开始觉得吵，后来反而习惯了，回来以后有一段时间早上醒得特别早，屋里太安静，反倒睡不着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 睡 | 不着
+    - CC-CEDICT, greedy longest match: 睡 | 不着
+    - Frequency-scored maximum-probability path (jieba-style): 睡不着
+    - bert-ws-zh (shipped, contextual segmentation model): 睡 | 不 | 着
+- `03-travel-blog.txt` — unit "成都最让我意外的不是吃的，是走路的节奏。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 最让
+    - CC-CEDICT, greedy longest match: 最 | 让
+    - Frequency-scored maximum-probability path (jieba-style): 最 | 让
+    - bert-ws-zh (shipped, contextual segmentation model): 最 | 让
+- `03-travel-blog.txt` — unit "成都最让我意外的不是吃的，是走路的节奏。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `03-travel-blog.txt` — unit "成都最让我意外的不是吃的，是走路的节奏。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 吃 | 的
+    - CC-CEDICT, greedy longest match: 吃的
+    - Frequency-scored maximum-probability path (jieba-style): 吃 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 吃 | 的
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走得
+    - CC-CEDICT, greedy longest match: 走 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 走 | 得
+    - bert-ws-zh (shipped, contextual segmentation model): 走 | 得
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很快
+    - CC-CEDICT, greedy longest match: 很 | 快
+    - Frequency-scored maximum-probability path (jieba-style): 很快
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 快
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 没变 | 绿
+    - CC-CEDICT, greedy longest match: 没 | 变 | 绿
+    - Frequency-scored maximum-probability path (jieba-style): 没 | 变绿
+    - bert-ws-zh (shipped, contextual segmentation model): 没 | 变绿
+- `03-travel-blog.txt` — unit "我以前在的城市里，大家走得都很快，红灯还没变绿就已经开始往前挪。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 往前
+    - CC-CEDICT, greedy longest match: 往前
+    - Frequency-scored maximum-probability path (jieba-style): 往前
+    - bert-ws-zh (shipped, contextual segmentation model): 往 | 前
+- `03-travel-blog.txt` — unit "在成都不是这样。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `03-travel-blog.txt` — unit "等车的时候人是真的在等，站在那里聊天，或者什么也不做。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 站在
+    - CC-CEDICT, greedy longest match: 站 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 站 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 站 | 在
+- `03-travel-blog.txt` — unit "等车的时候人是真的在等，站在那里聊天，或者什么也不做。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也不
+    - CC-CEDICT, greedy longest match: 也 | 不
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 不
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 不
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 以为是
+    - CC-CEDICT, greedy longest match: 以为 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 以为 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 以为 | 是
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 几天
+    - CC-CEDICT, greedy longest match: 几天
+    - Frequency-scored maximum-probability path (jieba-style): 几天
+    - bert-ws-zh (shipped, contextual segmentation model): 几 | 天
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都是
+    - CC-CEDICT, greedy longest match: 都 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 是
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 着急
+    - CC-CEDICT, greedy longest match: 不着 | 急
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 着急
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 着急
+- `03-travel-blog.txt` — unit "我一开始还以为是我那几天运气好，碰上的都是不着急的人，后来发现不是。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 街上
+    - CC-CEDICT, greedy longest match: 街上
+    - Frequency-scored maximum-probability path (jieba-style): 街上
+    - bert-ws-zh (shipped, contextual segmentation model): 街 | 上
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一家
+    - CC-CEDICT, greedy longest match: 一家
+    - Frequency-scored maximum-probability path (jieba-style): 一家
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 家
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 点
+    - CC-CEDICT, greedy longest match: 两 | 点
+    - Frequency-scored maximum-probability path (jieba-style): 两点
+    - bert-ws-zh (shipped, contextual segmentation model): 两点
+- `03-travel-blog.txt` — unit "我住的街上有一家茶馆，下午两点以后几乎坐满。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐满
+    - CC-CEDICT, greedy longest match: 坐 | 满
+    - Frequency-scored maximum-probability path (jieba-style): 坐满
+    - bert-ws-zh (shipped, contextual segmentation model): 坐满
+- `03-travel-blog.txt` — unit "里面大部分是上了年纪的人，一桌四个，打牌的时间比说话的时间长。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上了 | 年纪
+    - CC-CEDICT, greedy longest match: 上了年纪
+    - Frequency-scored maximum-probability path (jieba-style): 上 | 了 | 年纪
+    - bert-ws-zh (shipped, contextual segmentation model): 上了年纪
+- `03-travel-blog.txt` — unit "里面大部分是上了年纪的人，一桌四个，打牌的时间比说话的时间长。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一桌
+    - CC-CEDICT, greedy longest match: 一 | 桌
+    - Frequency-scored maximum-probability path (jieba-style): 一桌
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 桌
+- `03-travel-blog.txt` — unit "里面大部分是上了年纪的人，一桌四个，打牌的时间比说话的时间长。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 四 | 个
+    - CC-CEDICT, greedy longest match: 四 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 四个
+    - bert-ws-zh (shipped, contextual segmentation model): 四 | 个
+- `03-travel-blog.txt` — unit "有一天下雨，我进去躲雨，找了个角落坐着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一天 | 下雨
+    - CC-CEDICT, greedy longest match: 一 | 天下 | 雨
+    - Frequency-scored maximum-probability path (jieba-style): 一天 | 下雨
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 天 | 下雨
+- `03-travel-blog.txt` — unit "有一天下雨，我进去躲雨，找了个角落坐着。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 找了
+    - CC-CEDICT, greedy longest match: 找 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 找 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 找 | 了
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 服务 | 员
+    - CC-CEDICT, greedy longest match: 服务员
+    - Frequency-scored maximum-probability path (jieba-style): 服务员
+    - bert-ws-zh (shipped, contextual segmentation model): 服务员
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 倒了
+    - CC-CEDICT, greedy longest match: 倒 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 倒 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 倒 | 了
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一杯
+    - CC-CEDICT, greedy longest match: 一 | 杯
+    - Frequency-scored maximum-probability path (jieba-style): 一杯
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 杯
+- `03-travel-blog.txt` — unit "服务员过来问我喝什么，我说随便，他就给我倒了一杯，也没说是什么茶。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没
+    - CC-CEDICT, greedy longest match: 也 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没
+- `03-travel-blog.txt` — unit "我坐了两个多小时，一直没人来问我要不要再点东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐了
+    - CC-CEDICT, greedy longest match: 坐 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 坐 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 坐 | 了
+- `03-travel-blog.txt` — unit "我坐了两个多小时，一直没人来问我要不要再点东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 个
+    - CC-CEDICT, greedy longest match: 两 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 两个
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 个
+- `03-travel-blog.txt` — unit "我坐了两个多小时，一直没人来问我要不要再点东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我要 | 不要
+    - CC-CEDICT, greedy longest match: 我 | 要不 | 要
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 要 | 不要
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 要不要
+- `03-travel-blog.txt` — unit "走的时候我问多少钱，他说十块。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多少钱
+    - CC-CEDICT, greedy longest match: 多少 | 钱
+    - Frequency-scored maximum-probability path (jieba-style): 多少 | 钱
+    - bert-ws-zh (shipped, contextual segmentation model): 多少 | 钱
+- `03-travel-blog.txt` — unit "走的时候我问多少钱，他说十块。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十块
+    - CC-CEDICT, greedy longest match: 十 | 块
+    - Frequency-scored maximum-probability path (jieba-style): 十块
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 块
+- `03-travel-blog.txt` — unit "后来我常去。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 常去
+    - CC-CEDICT, greedy longest match: 常 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 常 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 常 | 去
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 去 | 得 | 多
+    - CC-CEDICT, greedy longest match: 去得 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 去 | 得 | 多
+    - bert-ws-zh (shipped, contextual segmentation model): 去 | 得多
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没有
+    - CC-CEDICT, greedy longest match: 也 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没有
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 变得
+    - CC-CEDICT, greedy longest match: 变得
+    - Frequency-scored maximum-probability path (jieba-style): 变得
+    - bert-ws-zh (shipped, contextual segmentation model): 变 | 得
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一进 | 门
+    - CC-CEDICT, greedy longest match: 一 | 进门
+    - Frequency-scored maximum-probability path (jieba-style): 一 | 进门
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 进 | 门
+- `03-travel-blog.txt` — unit "去得多了，老板认得我了，但也没有变得更热情，就是我一进门他会点一下头。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一下 | 头
+    - CC-CEDICT, greedy longest match: 一下 | 头
+    - Frequency-scored maximum-probability path (jieba-style): 一下头
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 下 | 头
+- `03-travel-blog.txt` — unit "那三个星期我没做什么正经事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三 | 个
+    - CC-CEDICT, greedy longest match: 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 个
+- `03-travel-blog.txt` — unit "那三个星期我没做什么正经事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我没
+    - CC-CEDICT, greedy longest match: 我 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 没
+- `03-travel-blog.txt` — unit "那三个星期我没做什么正经事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 正经事
+    - CC-CEDICT, greedy longest match: 正经事
+    - Frequency-scored maximum-probability path (jieba-style): 正经事
+    - bert-ws-zh (shipped, contextual segmentation model): 正经 | 事
+- `03-travel-blog.txt` — unit "上午写点东西，写不下去就出门。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 写点
+    - CC-CEDICT, greedy longest match: 写 | 点
+    - Frequency-scored maximum-probability path (jieba-style): 写 | 点
+    - bert-ws-zh (shipped, contextual segmentation model): 写 | 点
+- `03-travel-blog.txt` — unit "上午写点东西，写不下去就出门。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不下去
+    - CC-CEDICT, greedy longest match: 不下 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 下去
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 下去
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 下雨
+    - CC-CEDICT, greedy longest match: 不下 | 雨
+    - Frequency-scored maximum-probability path (jieba-style): 不下雨
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 下雨
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 找个
+    - CC-CEDICT, greedy longest match: 找 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 找 | 个
+    - bert-ws-zh (shipped, contextual segmentation model): 找 | 个
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走到
+    - CC-CEDICT, greedy longest match: 走 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 走 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 走到
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走 | 不动
+    - CC-CEDICT, greedy longest match: 走 | 不动
+    - Frequency-scored maximum-probability path (jieba-style): 走不动
+    - bert-ws-zh (shipped, contextual segmentation model): 走不动
+- `03-travel-blog.txt` — unit "下午如果不下雨就随便找个方向走，走到走不动为止，然后坐公交车回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 公 | 交 | 车
+    - CC-CEDICT, greedy longest match: 公交车
+    - Frequency-scored maximum-probability path (jieba-style): 公交车
+    - bert-ws-zh (shipped, contextual segmentation model): 公交车
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 公 | 交 | 车
+    - CC-CEDICT, greedy longest match: 公交车
+    - Frequency-scored maximum-probability path (jieba-style): 公交车
+    - bert-ws-zh (shipped, contextual segmentation model): 公交车
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我到
+    - CC-CEDICT, greedy longest match: 我 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 到
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没
+    - CC-CEDICT, greedy longest match: 也 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 搞清楚
+    - CC-CEDICT, greedy longest match: 搞 | 清楚
+    - Frequency-scored maximum-probability path (jieba-style): 搞清楚
+    - bert-ws-zh (shipped, contextual segmentation model): 搞清楚
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每次
+    - CC-CEDICT, greedy longest match: 每次
+    - Frequency-scored maximum-probability path (jieba-style): 每次
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 次
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都是
+    - CC-CEDICT, greedy longest match: 都 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 是
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上了
+    - CC-CEDICT, greedy longest match: 上 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 上 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 了
+- `03-travel-blog.txt` — unit "成都的公交车路线我到走之前也没搞清楚，每次都是上了车再看手机。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 再看
+    - CC-CEDICT, greedy longest match: 再 | 看
+    - Frequency-scored maximum-probability path (jieba-style): 再 | 看
+    - bert-ws-zh (shipped, contextual segmentation model): 再 | 看
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两次
+    - CC-CEDICT, greedy longest match: 两 | 次
+    - Frequency-scored maximum-probability path (jieba-style): 两次
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 次
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐 | 反
+    - CC-CEDICT, greedy longest match: 坐 | 反
+    - Frequency-scored maximum-probability path (jieba-style): 坐 | 反
+    - bert-ws-zh (shipped, contextual segmentation model): 坐反
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也不 | 着急
+    - CC-CEDICT, greedy longest match: 也 | 不着 | 急
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 不 | 着急
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 不 | 着急
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 坐到
+    - CC-CEDICT, greedy longest match: 坐 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 坐 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 坐到
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 终点 | 站
+    - CC-CEDICT, greedy longest match: 终点站
+    - Frequency-scored maximum-probability path (jieba-style): 终点站
+    - bert-ws-zh (shipped, contextual segmentation model): 终点站
+- `03-travel-blog.txt` — unit "有两次坐反了方向，反正也不着急，就坐到终点站，看看那边是什么样子，再坐回来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么 | 样子
+    - CC-CEDICT, greedy longest match: 什么样 | 子
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 样子
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 样子
+- `03-travel-blog.txt` — unit "我认识的一个人说，一个地方待久了才知道自己喜不喜欢它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个 | 人
+    - CC-CEDICT, greedy longest match: 一个人
+    - Frequency-scored maximum-probability path (jieba-style): 一个 | 人
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个 | 人
+- `03-travel-blog.txt` — unit "我认识的一个人说，一个地方待久了才知道自己喜不喜欢它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `03-travel-blog.txt` — unit "我认识的一个人说，一个地方待久了才知道自己喜不喜欢它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 喜 | 不 | 喜欢
+    - CC-CEDICT, greedy longest match: 喜 | 不 | 喜欢
+    - Frequency-scored maximum-probability path (jieba-style): 喜不喜欢
+    - bert-ws-zh (shipped, contextual segmentation model): 喜不喜欢
+- `03-travel-blog.txt` — unit "我不太同意。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不太
+    - CC-CEDICT, greedy longest match: 不 | 太
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 太
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 太
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第二 | 天
+    - CC-CEDICT, greedy longest match: 第二天
+    - Frequency-scored maximum-probability path (jieba-style): 第二天
+    - bert-ws-zh (shipped, contextual segmentation model): 第二 | 天
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 二十 | 天
+    - CC-CEDICT, greedy longest match: 二十 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 二十天
+    - bert-ws-zh (shipped, contextual segmentation model): 二十 | 天
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这 | 件
+    - CC-CEDICT, greedy longest match: 这 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 这件
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 件
+- `03-travel-blog.txt` — unit "我第二天就知道我喜欢成都，剩下的二十天只是在验证这件事，而且验证得很顺利。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 得很
+    - CC-CEDICT, greedy longest match: 得很
+    - Frequency-scored maximum-probability path (jieba-style): 得 | 很
+    - bert-ws-zh (shipped, contextual segmentation model): 得 | 很
+- `03-travel-blog.txt` — unit "要说有什么不习惯的，是天气。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 要 | 说
+    - CC-CEDICT, greedy longest match: 要说
+    - Frequency-scored maximum-probability path (jieba-style): 要说
+    - bert-ws-zh (shipped, contextual segmentation model): 要 | 说
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三 | 个
+    - CC-CEDICT, greedy longest match: 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 个
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 星期 | 里
+    - CC-CEDICT, greedy longest match: 星期 | 里
+    - Frequency-scored maximum-probability path (jieba-style): 星期 | 里
+    - bert-ws-zh (shipped, contextual segmentation model): 星期里
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 出 | 太阳
+    - CC-CEDICT, greedy longest match: 出 | 太阳
+    - Frequency-scored maximum-probability path (jieba-style): 出 | 太阳
+    - bert-ws-zh (shipped, contextual segmentation model): 出太阳
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 只有
+    - CC-CEDICT, greedy longest match: 只有
+    - Frequency-scored maximum-probability path (jieba-style): 只有
+    - bert-ws-zh (shipped, contextual segmentation model): 只 | 有
+- `03-travel-blog.txt` — unit "三个星期里出太阳的日子大概只有四天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 四天
+    - CC-CEDICT, greedy longest match: 四 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 四天
+    - bert-ws-zh (shipped, contextual segmentation model): 四 | 天
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 刚去
+    - CC-CEDICT, greedy longest match: 刚 | 去
+    - Frequency-scored maximum-probability path (jieba-style): 刚 | 去
+    - bert-ws-zh (shipped, contextual segmentation model): 刚 | 去
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 以为是
+    - CC-CEDICT, greedy longest match: 以为 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 以为 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 以为 | 是
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不好
+    - CC-CEDICT, greedy longest match: 不好
+    - Frequency-scored maximum-probability path (jieba-style): 不好
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 好
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 问了
+    - CC-CEDICT, greedy longest match: 问 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 问 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 问 | 了
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 就是
+    - CC-CEDICT, greedy longest match: 就是
+    - Frequency-scored maximum-probability path (jieba-style): 就是
+    - bert-ws-zh (shipped, contextual segmentation model): 就 | 是
+- `03-travel-blog.txt` — unit "刚去的时候我以为是运气不好，问了房东，他说这个季节就是这样，冬天更少。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 更少
+    - CC-CEDICT, greedy longest match: 更 | 少
+    - Frequency-scored maximum-probability path (jieba-style): 更 | 少
+    - bert-ws-zh (shipped, contextual segmentation model): 更少
+- `03-travel-blog.txt` — unit "我说那你们不觉得闷吗，他想了一下，说习惯了，而且不晒。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 觉得
+    - CC-CEDICT, greedy longest match: 不觉 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 觉得
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 觉得
+- `03-travel-blog.txt` — unit "我说那你们不觉得闷吗，他想了一下，说习惯了，而且不晒。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 他想
+    - CC-CEDICT, greedy longest match: 他 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 他 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 他 | 想
+- `03-travel-blog.txt` — unit "走的那天早上难得晴天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那天
+    - CC-CEDICT, greedy longest match: 那天
+    - Frequency-scored maximum-probability path (jieba-style): 那天
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 天
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下 | 楼
+    - CC-CEDICT, greedy longest match: 下楼
+    - Frequency-scored maximum-probability path (jieba-style): 下楼
+    - bert-ws-zh (shipped, contextual segmentation model): 下楼
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 自行 | 车
+    - CC-CEDICT, greedy longest match: 自行车
+    - Frequency-scored maximum-probability path (jieba-style): 自行车
+    - bert-ws-zh (shipped, contextual segmentation model): 自行车
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 看了
+    - CC-CEDICT, greedy longest match: 看 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 看 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 看 | 了
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一眼
+    - CC-CEDICT, greedy longest match: 一眼
+    - Frequency-scored maximum-probability path (jieba-style): 一眼
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 眼
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是不是
+    - CC-CEDICT, greedy longest match: 是不是
+    - Frequency-scored maximum-probability path (jieba-style): 是不是
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 不 | 是
+- `03-travel-blog.txt` — unit "我拖着箱子下楼，修自行车的老板正在摆工具，抬头看了我一眼，问我是不是要走了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 走了
+    - CC-CEDICT, greedy longest match: 走 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 走 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 走 | 了
+- `03-travel-blog.txt` — unit "他说下次来还住这儿。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 下次
+    - CC-CEDICT, greedy longest match: 下次
+    - Frequency-scored maximum-probability path (jieba-style): 下次
+    - bert-ws-zh (shipped, contextual segmentation model): 下 | 次
+- `03-travel-blog.txt` — unit "我说好。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说 | 好
+    - CC-CEDICT, greedy longest match: 说好
+    - Frequency-scored maximum-probability path (jieba-style): 说好
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 好
+- `03-travel-blog.txt` — unit "其实我们之前没说过超过十句话。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 没说
+    - CC-CEDICT, greedy longest match: 没 | 说
+    - Frequency-scored maximum-probability path (jieba-style): 没 | 说
+    - bert-ws-zh (shipped, contextual segmentation model): 没 | 说
+- `03-travel-blog.txt` — unit "其实我们之前没说过超过十句话。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十句话
+    - CC-CEDICT, greedy longest match: 十 | 句 | 话
+    - Frequency-scored maximum-probability path (jieba-style): 十句话
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 句 | 话
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 有人
+    - CC-CEDICT, greedy longest match: 有人
+    - Frequency-scored maximum-probability path (jieba-style): 有人
+    - bert-ws-zh (shipped, contextual segmentation model): 有 | 人
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 怎么 | 样
+    - CC-CEDICT, greedy longest match: 怎么样
+    - Frequency-scored maximum-probability path (jieba-style): 怎么样
+    - bert-ws-zh (shipped, contextual segmentation model): 怎么样
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说 | 起
+    - CC-CEDICT, greedy longest match: 说起
+    - Frequency-scored maximum-probability path (jieba-style): 说起
+    - bert-ws-zh (shipped, contextual segmentation model): 说起
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句
+    - CC-CEDICT, greedy longest match: 一句
+    - Frequency-scored maximum-probability path (jieba-style): 一句
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 挺 | 舒服
+    - CC-CEDICT, greedy longest match: 挺 | 舒服
+    - Frequency-scored maximum-probability path (jieba-style): 挺舒服
+    - bert-ws-zh (shipped, contextual segmentation model): 挺 | 舒服
+- `03-travel-blog.txt` — unit "回来以后有人问我成都怎么样，我一时不知道从哪儿说起，最后说了一句“挺舒服的”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | 。
+    - CC-CEDICT, greedy longest match: ” | 。
+    - Frequency-scored maximum-probability path (jieba-style): ” | 。
+    - bert-ws-zh (shipped, contextual segmentation model): ”。
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都不 | 满意
+    - CC-CEDICT, greedy longest match: 都 | 不满意
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 不 | 满意
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 不 | 满意
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想不出
+    - CC-CEDICT, greedy longest match: 想 | 不 | 出
+    - Frequency-scored maximum-probability path (jieba-style): 想不出
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 不 | 出
+- `03-travel-blog.txt` — unit "这个答案我自己都不满意，但当时确实想不出更好的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 更好
+    - CC-CEDICT, greedy longest match: 更 | 好
+    - Frequency-scored maximum-probability path (jieba-style): 更好
+    - bert-ws-zh (shipped, contextual segmentation model): 更 | 好
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 大 | 半年
+    - CC-CEDICT, greedy longest match: 大半 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 大半年
+    - bert-ws-zh (shipped, contextual segmentation model): 大半 | 年
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我还是
+    - CC-CEDICT, greedy longest match: 我 | 还是
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 还是
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 还是
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 只能
+    - CC-CEDICT, greedy longest match: 只能
+    - Frequency-scored maximum-probability path (jieba-style): 只能
+    - bert-ws-zh (shipped, contextual segmentation model): 只 | 能
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想出
+    - CC-CEDICT, greedy longest match: 想出
+    - Frequency-scored maximum-probability path (jieba-style): 想 | 出
+    - bert-ws-zh (shipped, contextual segmentation model): 想出
+- `03-travel-blog.txt` — unit "现在过了大半年，我还是只能想出这一句。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句
+    - CC-CEDICT, greedy longest match: 一句
+    - Frequency-scored maximum-probability path (jieba-style): 一句
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第三 | 年
+    - CC-CEDICT, greedy longest match: 第 | 三 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 第三年
+    - bert-ws-zh (shipped, contextual segmentation model): 第三 | 年
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 预料到
+    - CC-CEDICT, greedy longest match: 预料 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 预料到
+    - bert-ws-zh (shipped, contextual segmentation model): 预料到
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我能
+    - CC-CEDICT, greedy longest match: 我 | 能
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 能
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 能
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 读 | 懂
+    - CC-CEDICT, greedy longest match: 读懂
+    - Frequency-scored maximum-probability path (jieba-style): 读懂
+    - bert-ws-zh (shipped, contextual segmentation model): 读懂
+- `04-language-learning-essay.txt` — unit "学中文的第三年，我遇到了一个自己没有预料到的问题：我能读懂的东西越来越多，但能听懂的东西几乎没有增加。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 能听 | 懂
+    - CC-CEDICT, greedy longest match: 能 | 听懂
+    - Frequency-scored maximum-probability path (jieba-style): 能 | 听懂
+    - bert-ws-zh (shipped, contextual segmentation model): 能 | 听懂
+- `04-language-learning-essay.txt` — unit "一开始我以为这只是练得不够。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 练得
+    - CC-CEDICT, greedy longest match: 练 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 练 | 得
+    - bert-ws-zh (shipped, contextual segmentation model): 练 | 得
+- `04-language-learning-essay.txt` — unit "一开始我以为这只是练得不够。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不够
+    - CC-CEDICT, greedy longest match: 不够
+    - Frequency-scored maximum-probability path (jieba-style): 不够
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 够
+- `04-language-learning-essay.txt` — unit "每天多听半个小时，听三个月，应该就会好一些。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 每天
+    - CC-CEDICT, greedy longest match: 每天
+    - Frequency-scored maximum-probability path (jieba-style): 每天
+    - bert-ws-zh (shipped, contextual segmentation model): 每 | 天
+- `04-language-learning-essay.txt` — unit "每天多听半个小时，听三个月，应该就会好一些。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 半 | 个
+    - CC-CEDICT, greedy longest match: 半个
+    - Frequency-scored maximum-probability path (jieba-style): 半个
+    - bert-ws-zh (shipped, contextual segmentation model): 半 | 个
+- `04-language-learning-essay.txt` — unit "每天多听半个小时，听三个月，应该就会好一些。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三个月
+    - CC-CEDICT, greedy longest match: 三 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 三个 | 月
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 个 | 月
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也没有
+    - CC-CEDICT, greedy longest match: 也 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 没有
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 的是
+    - CC-CEDICT, greedy longest match: 的 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 的 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 的 | 是
+- `04-language-learning-essay.txt` — unit "我听的材料难度没有变化，我的理解程度也没有变化，唯一变了的是我对这件事的耐心。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这 | 件
+    - CC-CEDICT, greedy longest match: 这 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 这件
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 件
+- `04-language-learning-essay.txt` — unit "后来我才想明白问题在哪里。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 才想
+    - CC-CEDICT, greedy longest match: 才 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 才 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 才 | 想
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): — | —
+    - CC-CEDICT, greedy longest match: — | —
+    - Frequency-scored maximum-probability path (jieba-style): — | —
+    - bert-ws-zh (shipped, contextual segmentation model): ——
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 上 | 分开
+    - CC-CEDICT, greedy longest match: 上分 | 开
+    - Frequency-scored maximum-probability path (jieba-style): 上 | 分开
+    - bert-ws-zh (shipped, contextual segmentation model): 上 | 分开
+- `04-language-learning-essay.txt` — unit "我读的时候，词与词之间是分开的——不是印在纸上分开，而是我自己在脑子里分开的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 脑子里
+    - CC-CEDICT, greedy longest match: 脑子 | 里
+    - Frequency-scored maximum-probability path (jieba-style): 脑子里
+    - bert-ws-zh (shipped, contextual segmentation model): 脑子 | 里
+- `04-language-learning-essay.txt` — unit "看到一句话，我会先找出我认识的词，再想它们之间的关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句 | 话
+    - CC-CEDICT, greedy longest match: 一句话
+    - Frequency-scored maximum-probability path (jieba-style): 一句 | 话
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句 | 话
+- `04-language-learning-essay.txt` — unit "看到一句话，我会先找出我认识的词，再想它们之间的关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我 | 会
+    - CC-CEDICT, greedy longest match: 我 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 我会
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 会
+- `04-language-learning-essay.txt` — unit "看到一句话，我会先找出我认识的词，再想它们之间的关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 再想
+    - CC-CEDICT, greedy longest match: 再 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 再 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 再 | 想
+- `04-language-learning-essay.txt` — unit "这个过程可以慢，可以停，可以往回看。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "这个过程可以慢，可以停，可以往回看。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 往 | 回
+    - CC-CEDICT, greedy longest match: 往 | 回
+    - Frequency-scored maximum-probability path (jieba-style): 往回
+    - bert-ws-zh (shipped, contextual segmentation model): 往 | 回
+- `04-language-learning-essay.txt` — unit "听的时候这三样都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三样
+    - CC-CEDICT, greedy longest match: 三 | 样
+    - Frequency-scored maximum-probability path (jieba-style): 三样
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 样
+- `04-language-learning-essay.txt` — unit "听的时候这三样都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没有
+    - CC-CEDICT, greedy longest match: 都 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没有
+- `04-language-learning-essay.txt` — unit "声音是连着的，一句话过去就过去了，我来不及找词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 连 | 着
+    - CC-CEDICT, greedy longest match: 连 | 着
+    - Frequency-scored maximum-probability path (jieba-style): 连 | 着
+    - bert-ws-zh (shipped, contextual segmentation model): 连着
+- `04-language-learning-essay.txt` — unit "声音是连着的，一句话过去就过去了，我来不及找词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句 | 话
+    - CC-CEDICT, greedy longest match: 一句话
+    - Frequency-scored maximum-probability path (jieba-style): 一句 | 话
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句 | 话
+- `04-language-learning-essay.txt` — unit "声音是连着的，一句话过去就过去了，我来不及找词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 找 | 词
+    - CC-CEDICT, greedy longest match: 找 | 词
+    - Frequency-scored maximum-probability path (jieba-style): 找词
+    - bert-ws-zh (shipped, contextual segmentation model): 找 | 词
+- `04-language-learning-essay.txt` — unit "所以我遇到的其实不是听力问题，是分词问题。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `04-language-learning-essay.txt` — unit "我不知道一串声音应该在哪里断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `04-language-learning-essay.txt` — unit "我不知道一串声音应该在哪里断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一串
+    - CC-CEDICT, greedy longest match: 一 | 串
+    - Frequency-scored maximum-probability path (jieba-style): 一串
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 串
+- `04-language-learning-essay.txt` — unit "这跟认识多少个词没有直接关系。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多少个
+    - CC-CEDICT, greedy longest match: 多少 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 多少 | 个
+    - bert-ws-zh (shipped, contextual segmentation model): 多少 | 个
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | ，
+    - CC-CEDICT, greedy longest match: ” | ，
+    - Frequency-scored maximum-probability path (jieba-style): ” | ，
+    - bert-ws-zh (shipped, contextual segmentation model): ”，
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | ，
+    - CC-CEDICT, greedy longest match: ” | ，
+    - Frequency-scored maximum-probability path (jieba-style): ” | ，
+    - bert-ws-zh (shipped, contextual segmentation model): ”，
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 才能
+    - CC-CEDICT, greedy longest match: 才能
+    - Frequency-scored maximum-probability path (jieba-style): 才能
+    - bert-ws-zh (shipped, contextual segmentation model): 才 | 能
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 而不是
+    - CC-CEDICT, greedy longest match: 而 | 不是
+    - Frequency-scored maximum-probability path (jieba-style): 而 | 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 而 | 不 | 是
+- `04-language-learning-essay.txt` — unit "我认识“地方”，也认识“方便”，但是听到“这个地方便宜”的时候，我需要一点时间才能确定是“地方 便宜”而不是“地 方便”。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): ” | 。
+    - CC-CEDICT, greedy longest match: ” | 。
+    - Frequency-scored maximum-probability path (jieba-style): ” | 。
+    - bert-ws-zh (shipped, contextual segmentation model): ”。
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一眼
+    - CC-CEDICT, greedy longest match: 一眼
+    - Frequency-scored maximum-probability path (jieba-style): 一眼
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 眼
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 能看 | 出来
+    - CC-CEDICT, greedy longest match: 能 | 看出 | 来
+    - Frequency-scored maximum-probability path (jieba-style): 能 | 看 | 出来
+    - bert-ws-zh (shipped, contextual segmentation model): 能 | 看出来
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "读的时候我一眼就能看出来，因为“这个”后面跟的一定是名词。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一定是
+    - CC-CEDICT, greedy longest match: 一定 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 一定 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 一定 | 是
+- `04-language-learning-essay.txt` — unit "听的时候那一点时间我付不起。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 付 | 不起
+    - CC-CEDICT, greedy longest match: 付 | 不 | 起
+    - Frequency-scored maximum-probability path (jieba-style): 付 | 不 | 起
+    - bert-ws-zh (shipped, contextual segmentation model): 付不起
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我把
+    - CC-CEDICT, greedy longest match: 我 | 把
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 把
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 把
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十年 | 中文
+    - CC-CEDICT, greedy longest match: 十 | 年中 | 文
+    - Frequency-scored maximum-probability path (jieba-style): 十年 | 中文
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 年 | 中文
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也有
+    - CC-CEDICT, greedy longest match: 也 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 有
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 他认为
+    - CC-CEDICT, greedy longest match: 他 | 认为
+    - Frequency-scored maximum-probability path (jieba-style): 他 | 认为
+    - bert-ws-zh (shipped, contextual segmentation model): 他 | 认为
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都在
+    - CC-CEDICT, greedy longest match: 都 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 在
+- `04-language-learning-essay.txt` — unit "我把这个想法跟一个学了十年中文的朋友说了，他说他也有过一样的阶段，而且他认为大部分人卡住的地方都在这里，只是很少有人这样描述它。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很少 | 有人
+    - CC-CEDICT, greedy longest match: 很 | 少有 | 人
+    - Frequency-scored maximum-probability path (jieba-style): 很少 | 有人
+    - bert-ws-zh (shipped, contextual segmentation model): 很少 | 有 | 人
+- `04-language-learning-essay.txt` — unit "他给我的建议很简单：听你已经读过的东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "他给我的建议很简单：听你已经读过的东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很简单
+    - CC-CEDICT, greedy longest match: 很 | 简单
+    - Frequency-scored maximum-probability path (jieba-style): 很 | 简单
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 简单
+- `04-language-learning-essay.txt` — unit "他给我的建议很简单：听你已经读过的东西。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 过的
+    - CC-CEDICT, greedy longest match: 过 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 过 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 过 | 的
+- `04-language-learning-essay.txt` — unit "这个建议听起来像作弊，我一开始有点抵触。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "这个建议听起来像作弊，我一开始有点抵触。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听起来
+    - CC-CEDICT, greedy longest match: 听起来
+    - Frequency-scored maximum-probability path (jieba-style): 听 | 起来
+    - bert-ws-zh (shipped, contextual segmentation model): 听起来
+- `04-language-learning-essay.txt` — unit "但试了两个星期以后我明白了它的道理。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 个
+    - CC-CEDICT, greedy longest match: 两 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 两个
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 个
+- `04-language-learning-essay.txt` — unit "但试了两个星期以后我明白了它的道理。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 它的
+    - CC-CEDICT, greedy longest match: 它 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 它 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 它 | 的
+- `04-language-learning-essay.txt` — unit "当我已经知道一句话的意思和结构，我的注意力就不用花在猜测上，可以全部放在声音本身。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一句 | 话
+    - CC-CEDICT, greedy longest match: 一句话
+    - Frequency-scored maximum-probability path (jieba-style): 一句 | 话
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 句 | 话
+- `04-language-learning-essay.txt` — unit "当我已经知道一句话的意思和结构，我的注意力就不用花在猜测上，可以全部放在声音本身。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "当我已经知道一句话的意思和结构，我的注意力就不用花在猜测上，可以全部放在声音本身。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 放在
+    - CC-CEDICT, greedy longest match: 放 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 放在
+    - bert-ws-zh (shipped, contextual segmentation model): 放 | 在
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 同 | 一句
+    - CC-CEDICT, greedy longest match: 同一 | 句
+    - Frequency-scored maximum-probability path (jieba-style): 同 | 一句
+    - bert-ws-zh (shipped, contextual segmentation model): 同 | 一 | 句
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第三 | 遍
+    - CC-CEDICT, greedy longest match: 第 | 三 | 遍
+    - Frequency-scored maximum-probability path (jieba-style): 第三遍
+    - bert-ws-zh (shipped, contextual segmentation model): 第三 | 遍
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不再是
+    - CC-CEDICT, greedy longest match: 不再 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 不再 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 不再 | 是
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 在 | 理解
+    - CC-CEDICT, greedy longest match: 在理 | 解
+    - Frequency-scored maximum-probability path (jieba-style): 在 | 理解
+    - bert-ws-zh (shipped, contextual segmentation model): 在 | 理解
+- `04-language-learning-essay.txt` — unit "同一句话听第三遍的时候，我不再是在理解它，而是在把声音和我已经知道的词对上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 对 | 上
+    - CC-CEDICT, greedy longest match: 对上
+    - Frequency-scored maximum-probability path (jieba-style): 对 | 上
+    - bert-ws-zh (shipped, contextual segmentation model): 对上
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 对 | 齐
+    - CC-CEDICT, greedy longest match: 对齐
+    - Frequency-scored maximum-probability path (jieba-style): 对齐
+    - bert-ws-zh (shipped, contextual segmentation model): 对齐
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 才是
+    - CC-CEDICT, greedy longest match: 才 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 才 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 才 | 是
+- `04-language-learning-essay.txt` — unit "这个对齐的过程，才是我真正缺的练习。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 缺的
+    - CC-CEDICT, greedy longest match: 缺 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 缺 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 缺 | 的
+- `04-language-learning-essay.txt` — unit "从那以后我的方法就固定下来了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从 | 那 | 以后
+    - CC-CEDICT, greedy longest match: 从 | 那 | 以后
+    - Frequency-scored maximum-probability path (jieba-style): 从那以后
+    - bert-ws-zh (shipped, contextual segmentation model): 从 | 那 | 以后
+- `04-language-learning-essay.txt` — unit "从那以后我的方法就固定下来了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我的
+    - CC-CEDICT, greedy longest match: 我 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 的
+- `04-language-learning-essay.txt` — unit "从那以后我的方法就固定下来了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 固定 | 下来
+    - CC-CEDICT, greedy longest match: 固定 | 下来
+    - Frequency-scored maximum-probability path (jieba-style): 固定 | 下来
+    - bert-ws-zh (shipped, contextual segmentation model): 固定下来
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 先读
+    - CC-CEDICT, greedy longest match: 先 | 读
+    - Frequency-scored maximum-probability path (jieba-style): 先读
+    - bert-ws-zh (shipped, contextual segmentation model): 先 | 读
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 读 | 到
+    - CC-CEDICT, greedy longest match: 读 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 读 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 读到
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 同 | 一段
+    - CC-CEDICT, greedy longest match: 同一 | 段
+    - Frequency-scored maximum-probability path (jieba-style): 同 | 一段
+    - bert-ws-zh (shipped, contextual segmentation model): 同 | 一 | 段
+- `04-language-learning-essay.txt` — unit "先读，读到基本没有不认识的词，然后听同一段材料，听到不用想也能跟上。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 也能
+    - CC-CEDICT, greedy longest match: 也 | 能
+    - Frequency-scored maximum-probability path (jieba-style): 也 | 能
+    - bert-ws-zh (shipped, contextual segmentation model): 也 | 能
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 整个
+    - CC-CEDICT, greedy longest match: 整个
+    - Frequency-scored maximum-probability path (jieba-style): 整个
+    - bert-ws-zh (shipped, contextual segmentation model): 整 | 个
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 慢得 | 多
+    - CC-CEDICT, greedy longest match: 慢 | 得 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 慢 | 得 | 多
+    - bert-ws-zh (shipped, contextual segmentation model): 慢 | 得多
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `04-language-learning-essay.txt` — unit "整个过程比我以前的方法慢得多，一个星期可能只处理十分钟的材料。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十分钟
+    - CC-CEDICT, greedy longest match: 十分 | 钟
+    - Frequency-scored maximum-probability path (jieba-style): 十分钟
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 分钟
+- `04-language-learning-essay.txt` — unit "但是这十分钟是真的进去了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十分钟
+    - CC-CEDICT, greedy longest match: 十分 | 钟
+    - Frequency-scored maximum-probability path (jieba-style): 十分钟
+    - bert-ws-zh (shipped, contextual segmentation model): 十 | 分钟
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 的是
+    - CC-CEDICT, greedy longest match: 的 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 的 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 的 | 是
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 练了
+    - CC-CEDICT, greedy longest match: 练 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 练 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 练 | 了
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 半年
+    - CC-CEDICT, greedy longest match: 半年
+    - Frequency-scored maximum-probability path (jieba-style): 半年
+    - bert-ws-zh (shipped, contextual segmentation model): 半 | 年
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 发现 | 自己
+    - CC-CEDICT, greedy longest match: 发现 | 自己
+    - Frequency-scored maximum-probability path (jieba-style): 发现自己
+    - bert-ws-zh (shipped, contextual segmentation model): 发现 | 自己
+- `04-language-learning-essay.txt` — unit "有意思的是，这样练了半年以后，我发现自己读的速度也变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 变 | 快了
+    - CC-CEDICT, greedy longest match: 变 | 快 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 变 | 快 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 变快 | 了
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是 | 因为
+    - CC-CEDICT, greedy longest match: 是 | 因为
+    - Frequency-scored maximum-probability path (jieba-style): 是因为
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 因为
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这 | 件
+    - CC-CEDICT, greedy longest match: 这 | 件
+    - Frequency-scored maximum-probability path (jieba-style): 这件
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 件
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 就是
+    - CC-CEDICT, greedy longest match: 就是
+    - Frequency-scored maximum-probability path (jieba-style): 就是
+    - bert-ws-zh (shipped, contextual segmentation model): 就 | 是
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 同 | 一个
+    - CC-CEDICT, greedy longest match: 同一 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 同一个
+    - bert-ws-zh (shipped, contextual segmentation model): 同 | 一 | 个
+- `04-language-learning-essay.txt` — unit "我猜是因为分词这件事本来就是同一个能力，只是在读的时候可以偷懒，在听的时候不行。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 在读
+    - CC-CEDICT, greedy longest match: 在读
+    - Frequency-scored maximum-probability path (jieba-style): 在读
+    - bert-ws-zh (shipped, contextual segmentation model): 在 | 读
+- `04-language-learning-essay.txt` — unit "被迫在听力里练好了，读的时候就顺便变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 练好
+    - CC-CEDICT, greedy longest match: 练 | 好
+    - Frequency-scored maximum-probability path (jieba-style): 练 | 好
+    - bert-ws-zh (shipped, contextual segmentation model): 练好
+- `04-language-learning-essay.txt` — unit "被迫在听力里练好了，读的时候就顺便变快了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 变 | 快了
+    - CC-CEDICT, greedy longest match: 变 | 快 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 变 | 快 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 变快 | 了
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我还是
+    - CC-CEDICT, greedy longest match: 我 | 还是
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 还是
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 还是
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听不懂
+    - CC-CEDICT, greedy longest match: 听不懂
+    - Frequency-scored maximum-probability path (jieba-style): 听不懂
+    - bert-ws-zh (shipped, contextual segmentation model): 听 | 不 | 懂
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 听不懂
+    - CC-CEDICT, greedy longest match: 听不懂
+    - Frequency-scored maximum-probability path (jieba-style): 听不懂
+    - bert-ws-zh (shipped, contextual segmentation model): 听 | 不 | 懂
+- `04-language-learning-essay.txt` — unit "现在我还是听不懂新闻，也听不懂两个人自然地聊天。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 个人
+    - CC-CEDICT, greedy longest match: 两 | 个人
+    - Frequency-scored maximum-probability path (jieba-style): 两个 | 人
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 个 | 人
+- `04-language-learning-essay.txt` — unit "但我至少知道自己在练什么了，这跟三年前不一样。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三年 | 前
+    - CC-CEDICT, greedy longest match: 三 | 年前
+    - Frequency-scored maximum-probability path (jieba-style): 三年 | 前
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 年 | 前
+- `04-language-learning-essay.txt` — unit "但我至少知道自己在练什么了，这跟三年前不一样。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不 | 一样
+    - CC-CEDICT, greedy longest match: 不一样
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 一样
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 一样
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三年 | 前
+    - CC-CEDICT, greedy longest match: 三 | 年前
+    - Frequency-scored maximum-probability path (jieba-style): 三年 | 前
+    - bert-ws-zh (shipped, contextual segmentation model): 三 | 年 | 前
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我知道
+    - CC-CEDICT, greedy longest match: 我 | 知道
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 知道
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `04-language-learning-essay.txt` — unit "三年前我以为我在学词，现在我知道我在学的是哪里可以断开。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 的是
+    - CC-CEDICT, greedy longest match: 的 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 的 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 的 | 是
+- `05-podcast-interview.txt` — unit "今天请到的这位嘉宾，我们认识很久了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 请到
+    - CC-CEDICT, greedy longest match: 请 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 请 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 请到
+- `05-podcast-interview.txt` — unit "今天请到的这位嘉宾，我们认识很久了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这位
+    - CC-CEDICT, greedy longest match: 这位
+    - Frequency-scored maximum-probability path (jieba-style): 这位
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 位
+- `05-podcast-interview.txt` — unit "今天请到的这位嘉宾，我们认识很久了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很久
+    - CC-CEDICT, greedy longest match: 很 | 久
+    - Frequency-scored maximum-probability path (jieba-style): 很 | 久
+    - bert-ws-zh (shipped, contextual segmentation model): 很 | 久
+- `05-podcast-interview.txt` — unit "你要不先自己介绍一下？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 你要 | 不
+    - CC-CEDICT, greedy longest match: 你 | 要不
+    - Frequency-scored maximum-probability path (jieba-style): 你 | 要 | 不
+    - bert-ws-zh (shipped, contextual segmentation model): 你 | 要不
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 陈 | 明
+    - CC-CEDICT, greedy longest match: 陈 | 明
+    - Frequency-scored maximum-probability path (jieba-style): 陈 | 明
+    - bert-ws-zh (shipped, contextual segmentation model): 陈明
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做了
+    - CC-CEDICT, greedy longest match: 做 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 了
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十二 | 年
+    - CC-CEDICT, greedy longest match: 十二 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 十二年
+    - bert-ws-zh (shipped, contextual segmentation model): 十二 | 年
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 建筑 | 设计
+    - CC-CEDICT, greedy longest match: 建筑 | 设计
+    - Frequency-scored maximum-probability path (jieba-style): 建筑设计
+    - bert-ws-zh (shipped, contextual segmentation model): 建筑 | 设计
+- `05-podcast-interview.txt` — unit "我叫陈明，做了十二年建筑设计，去年开始自己做一个小工作室。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "十二年，然后突然自己出来。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十二 | 年
+    - CC-CEDICT, greedy longest match: 十二 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 十二年
+    - bert-ws-zh (shipped, contextual segmentation model): 十二 | 年
+- `05-podcast-interview.txt` — unit "是有什么事情发生吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是有
+    - CC-CEDICT, greedy longest match: 是 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 是 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 有
+- `05-podcast-interview.txt` — unit "是有什么事情发生吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 什么 | 事情
+    - CC-CEDICT, greedy longest match: 什么事 | 情
+    - Frequency-scored maximum-probability path (jieba-style): 什么 | 事情
+    - bert-ws-zh (shipped, contextual segmentation model): 什么 | 事情
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一天
+    - CC-CEDICT, greedy longest match: 一 | 天
+    - Frequency-scored maximum-probability path (jieba-style): 一天
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 天
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我在
+    - CC-CEDICT, greedy longest match: 我 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 在
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 改到
+    - CC-CEDICT, greedy longest match: 改 | 到
+    - Frequency-scored maximum-probability path (jieba-style): 改 | 到
+    - bert-ws-zh (shipped, contextual segmentation model): 改到
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第 | 三十 | 几 | 版
+    - CC-CEDICT, greedy longest match: 第 | 三十 | 几 | 版
+    - Frequency-scored maximum-probability path (jieba-style): 第三十 | 几版
+    - bert-ws-zh (shipped, contextual segmentation model): 第三十几 | 版
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想 | 不 | 起来
+    - CC-CEDICT, greedy longest match: 想 | 不 | 起来
+    - Frequency-scored maximum-probability path (jieba-style): 想不起来
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 不 | 起来
+- `05-podcast-interview.txt` — unit "就是有一天我在改一个图，改到第三十几版，我发现我已经想不起来这个项目最初要解决什么问题了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `05-podcast-interview.txt` — unit "那个时候你多大？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那个
+    - CC-CEDICT, greedy longest match: 那个
+    - Frequency-scored maximum-probability path (jieba-style): 那个
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 个
+- `05-podcast-interview.txt` — unit "那个时候你多大？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 多大
+    - CC-CEDICT, greedy longest match: 多大
+    - Frequency-scored maximum-probability path (jieba-style): 多 | 大
+    - bert-ws-zh (shipped, contextual segmentation model): 多 | 大
+- `05-podcast-interview.txt` — unit "三十六。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 三 | 十六
+    - CC-CEDICT, greedy longest match: 三十 | 六
+    - Frequency-scored maximum-probability path (jieba-style): 三十六
+    - bert-ws-zh (shipped, contextual segmentation model): 三十六
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不敢
+    - CC-CEDICT, greedy longest match: 不 | 敢
+    - Frequency-scored maximum-probability path (jieba-style): 不敢
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 敢
+- `05-podcast-interview.txt` — unit "很多人到这个年纪反而不敢动了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 动了
+    - CC-CEDICT, greedy longest match: 动 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 动 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 动 | 了
+- `05-podcast-interview.txt` — unit "我也不敢。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我也
+    - CC-CEDICT, greedy longest match: 我 | 也
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 也
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 也
+- `05-podcast-interview.txt` — unit "我也不敢。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不敢
+    - CC-CEDICT, greedy longest match: 不 | 敢
+    - Frequency-scored maximum-probability path (jieba-style): 不敢
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 敢
+- `05-podcast-interview.txt` — unit "我从想到做，中间隔了差不多两年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 想到
+    - CC-CEDICT, greedy longest match: 想到
+    - Frequency-scored maximum-probability path (jieba-style): 想到
+    - bert-ws-zh (shipped, contextual segmentation model): 想 | 到
+- `05-podcast-interview.txt` — unit "我从想到做，中间隔了差不多两年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 中 | 间隔
+    - CC-CEDICT, greedy longest match: 中间 | 隔
+    - Frequency-scored maximum-probability path (jieba-style): 中 | 间隔
+    - bert-ws-zh (shipped, contextual segmentation model): 中间 | 隔
+- `05-podcast-interview.txt` — unit "我从想到做，中间隔了差不多两年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `05-podcast-interview.txt` — unit "这两年在干什么？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 年
+    - CC-CEDICT, greedy longest match: 两 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 两年
+    - bert-ws-zh (shipped, contextual segmentation model): 两 | 年
+- `05-podcast-interview.txt` — unit "在算钱。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 算 | 钱
+    - CC-CEDICT, greedy longest match: 算 | 钱
+    - Frequency-scored maximum-probability path (jieba-style): 算钱
+    - bert-ws-zh (shipped, contextual segmentation model): 算 | 钱
+- `05-podcast-interview.txt` — unit "说得好听一点，是在做准备；":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说得
+    - CC-CEDICT, greedy longest match: 说 | 得
+    - Frequency-scored maximum-probability path (jieba-style): 说 | 得
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 得
+- `05-podcast-interview.txt` — unit "说得好听一点，是在做准备；":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 是在
+    - CC-CEDICT, greedy longest match: 是 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 是 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 是 | 在
+- `05-podcast-interview.txt` — unit "说实话，就是在算我能撑多久。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说 | 实话
+    - CC-CEDICT, greedy longest match: 说实话
+    - Frequency-scored maximum-probability path (jieba-style): 说实话
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 实话
+- `05-podcast-interview.txt` — unit "说实话，就是在算我能撑多久。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我能
+    - CC-CEDICT, greedy longest match: 我 | 能
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 能
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 能
+- `05-podcast-interview.txt` — unit "算出来是多久？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 算 | 出来
+    - CC-CEDICT, greedy longest match: 算出 | 来
+    - Frequency-scored maximum-probability path (jieba-style): 算 | 出来
+    - bert-ws-zh (shipped, contextual segmentation model): 算出来
+- `05-podcast-interview.txt` — unit "十八个月。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十八 | 个
+    - CC-CEDICT, greedy longest match: 十八 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 十八个
+    - bert-ws-zh (shipped, contextual segmentation model): 十八 | 个
+- `05-podcast-interview.txt` — unit "后来实际用了十一个月才开始有稳定的活。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十 | 一个 | 月
+    - CC-CEDICT, greedy longest match: 十一 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 十一个月
+    - bert-ws-zh (shipped, contextual segmentation model): 十一 | 个 | 月
+- `05-podcast-interview.txt` — unit "比预期好，但过程里完全感觉不到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不到
+    - CC-CEDICT, greedy longest match: 不到
+    - Frequency-scored maximum-probability path (jieba-style): 不到
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 到
+- `05-podcast-interview.txt` — unit "前六个月我一个项目都没接到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 六个月
+    - CC-CEDICT, greedy longest match: 六 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 六个月
+    - bert-ws-zh (shipped, contextual segmentation model): 六 | 个 | 月
+- `05-podcast-interview.txt` — unit "前六个月我一个项目都没接到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "前六个月我一个项目都没接到。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没
+    - CC-CEDICT, greedy longest match: 都 | 没
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没
+- `05-podcast-interview.txt` — unit "一个都没有？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "一个都没有？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没有
+    - CC-CEDICT, greedy longest match: 都 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没有
+- `05-podcast-interview.txt` — unit "一个都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "一个都没有。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都没有
+    - CC-CEDICT, greedy longest match: 都 | 没有
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 没有
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 没有
+- `05-podcast-interview.txt` — unit "我以前的客户都在原来的公司，我不能带走，这是规矩。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都在
+    - CC-CEDICT, greedy longest match: 都 | 在
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 在
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 在
+- `05-podcast-interview.txt` — unit "所以等于从零开始。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 从 | 零 | 开始
+    - CC-CEDICT, greedy longest match: 从零开始
+    - Frequency-scored maximum-probability path (jieba-style): 从零开始
+    - bert-ws-zh (shipped, contextual segmentation model): 从 | 零 | 开始
+- `05-podcast-interview.txt` — unit "那六个月你怎么过的？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 六个月
+    - CC-CEDICT, greedy longest match: 六 | 个 | 月
+    - Frequency-scored maximum-probability path (jieba-style): 六个月
+    - bert-ws-zh (shipped, contextual segmentation model): 六 | 个 | 月
+- `05-podcast-interview.txt` — unit "那六个月你怎么过的？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 过的
+    - CC-CEDICT, greedy longest match: 过 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 过 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 过 | 的
+- `05-podcast-interview.txt` — unit "做了很多没有钱的事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做了
+    - CC-CEDICT, greedy longest match: 做 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 了
+- `05-podcast-interview.txt` — unit "做了很多没有钱的事。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `05-podcast-interview.txt` — unit "给朋友的店改门面，帮人画施工图。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 门 | 面
+    - CC-CEDICT, greedy longest match: 门面
+    - Frequency-scored maximum-probability path (jieba-style): 门面
+    - bert-ws-zh (shipped, contextual segmentation model): 门面
+- `05-podcast-interview.txt` — unit "给朋友的店改门面，帮人画施工图。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 施工 | 图
+    - CC-CEDICT, greedy longest match: 施工 | 图
+    - Frequency-scored maximum-probability path (jieba-style): 施工图
+    - bert-ws-zh (shipped, contextual segmentation model): 施工图
+- `05-podcast-interview.txt` — unit "现在回头看，那些事情后来都变成了介绍人。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 介绍 | 人
+    - CC-CEDICT, greedy longest match: 介绍 | 人
+    - Frequency-scored maximum-probability path (jieba-style): 介绍 | 人
+    - bert-ws-zh (shipped, contextual segmentation model): 介绍人
+- `05-podcast-interview.txt` — unit "所以不是白做的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `05-podcast-interview.txt` — unit "所以不是白做的。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做的
+    - CC-CEDICT, greedy longest match: 做 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 的
+- `05-podcast-interview.txt` — unit "不是白做的，但当时不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `05-podcast-interview.txt` — unit "不是白做的，但当时不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 做的
+    - CC-CEDICT, greedy longest match: 做 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 做 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 做 | 的
+- `05-podcast-interview.txt` — unit "不是白做的，但当时不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 我想
+    - CC-CEDICT, greedy longest match: 我 | 想
+    - Frequency-scored maximum-probability path (jieba-style): 我 | 想
+    - bert-ws-zh (shipped, contextual segmentation model): 我 | 想
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 说的
+    - CC-CEDICT, greedy longest match: 说 | 的
+    - Frequency-scored maximum-probability path (jieba-style): 说 | 的
+    - bert-ws-zh (shipped, contextual segmentation model): 说 | 的
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): — | —
+    - CC-CEDICT, greedy longest match: — | —
+    - Frequency-scored maximum-probability path (jieba-style): — | —
+    - bert-ws-zh (shipped, contextual segmentation model): ——
+- `05-podcast-interview.txt` — unit "这是我想说的重点——当时真的不知道。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不知道
+    - CC-CEDICT, greedy longest match: 不知 | 道
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 知道
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 知道
+- `05-podcast-interview.txt` — unit "如果重来一次，你会更早出来吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 重 | 来
+    - CC-CEDICT, greedy longest match: 重来
+    - Frequency-scored maximum-probability path (jieba-style): 重 | 来
+    - bert-ws-zh (shipped, contextual segmentation model): 重来
+- `05-podcast-interview.txt` — unit "如果重来一次，你会更早出来吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一次
+    - CC-CEDICT, greedy longest match: 一次
+    - Frequency-scored maximum-probability path (jieba-style): 一次
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 次
+- `05-podcast-interview.txt` — unit "如果重来一次，你会更早出来吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 你会
+    - CC-CEDICT, greedy longest match: 你 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 你 | 会
+    - bert-ws-zh (shipped, contextual segmentation model): 你 | 会
+- `05-podcast-interview.txt` — unit "我需要那十二年。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 十二 | 年
+    - CC-CEDICT, greedy longest match: 十二 | 年
+    - Frequency-scored maximum-probability path (jieba-style): 十二年
+    - bert-ws-zh (shipped, contextual segmentation model): 十二 | 年
+- `05-podcast-interview.txt` — unit "不是需要那些技能，是需要那些失败的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不是
+    - CC-CEDICT, greedy longest match: 不是
+    - Frequency-scored maximum-probability path (jieba-style): 不是
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 是
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 开 | 工作室
+    - CC-CEDICT, greedy longest match: 开工 | 作 | 室
+    - Frequency-scored maximum-probability path (jieba-style): 开 | 工作室
+    - bert-ws-zh (shipped, contextual segmentation model): 开 | 工作室
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 最有 | 用
+    - CC-CEDICT, greedy longest match: 最 | 有用
+    - Frequency-scored maximum-probability path (jieba-style): 最 | 有用
+    - bert-ws-zh (shipped, contextual segmentation model): 最 | 有用
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 该 | 不该
+    - CC-CEDICT, greedy longest match: 该 | 不该
+    - Frequency-scored maximum-probability path (jieba-style): 该不该
+    - bert-ws-zh (shipped, contextual segmentation model): 该不该
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 这个
+    - CC-CEDICT, greedy longest match: 这个
+    - Frequency-scored maximum-probability path (jieba-style): 这个
+    - bert-ws-zh (shipped, contextual segmentation model): 这 | 个
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 只能 | 靠
+    - CC-CEDICT, greedy longest match: 只能 | 靠
+    - Frequency-scored maximum-probability path (jieba-style): 只能靠
+    - bert-ws-zh (shipped, contextual segmentation model): 只 | 能 | 靠
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 很多
+    - CC-CEDICT, greedy longest match: 很 | 多
+    - Frequency-scored maximum-probability path (jieba-style): 很多
+    - bert-ws-zh (shipped, contextual segmentation model): 很多
+- `05-podcast-interview.txt` — unit "自己开工作室以后，最有用的能力是判断一个项目该不该接，这个判断只能靠做过很多不该接的项目。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不该
+    - CC-CEDICT, greedy longest match: 不该
+    - Frequency-scored maximum-probability path (jieba-style): 不该
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 该
+- `05-podcast-interview.txt` — unit "现在你会拒绝项目吗？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 你会
+    - CC-CEDICT, greedy longest match: 你 | 会
+    - Frequency-scored maximum-probability path (jieba-style): 你 | 会
+    - bert-ws-zh (shipped, contextual segmentation model): 你 | 会
+- `05-podcast-interview.txt` — unit "去年拒绝了三个。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 了三 | 个
+    - CC-CEDICT, greedy longest match: 了 | 三 | 个
+    - Frequency-scored maximum-probability path (jieba-style): 了 | 三个
+    - bert-ws-zh (shipped, contextual segmentation model): 了 | 三 | 个
+- `05-podcast-interview.txt` — unit "拒绝的时候心里怎么想？":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 心里
+    - CC-CEDICT, greedy longest match: 心里
+    - Frequency-scored maximum-probability path (jieba-style): 心里
+    - bert-ws-zh (shipped, contextual segmentation model): 心 | 里
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 接了
+    - CC-CEDICT, greedy longest match: 接 | 了
+    - Frequency-scored maximum-probability path (jieba-style): 接 | 了
+    - bert-ws-zh (shipped, contextual segmentation model): 接 | 了
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不该
+    - CC-CEDICT, greedy longest match: 不该
+    - Frequency-scored maximum-probability path (jieba-style): 不该
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 该
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不只是
+    - CC-CEDICT, greedy longest match: 不只 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 不 | 只是
+    - bert-ws-zh (shipped, contextual segmentation model): 不只 | 是
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那几个
+    - CC-CEDICT, greedy longest match: 那 | 几个
+    - Frequency-scored maximum-probability path (jieba-style): 那 | 几个
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 几 | 个
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 还有
+    - CC-CEDICT, greedy longest match: 还有
+    - Frequency-scored maximum-probability path (jieba-style): 还有
+    - bert-ws-zh (shipped, contextual segmentation model): 还 | 有
+- `05-podcast-interview.txt` — unit "现在好一点了，因为我发现接了不该接的项目，损失的不只是那几个月，还有接下来能接什么。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 接 | 下来
+    - CC-CEDICT, greedy longest match: 接下来
+    - Frequency-scored maximum-probability path (jieba-style): 接下来
+    - bert-ws-zh (shipped, contextual segmentation model): 接下来
+- `05-podcast-interview.txt` — unit "最后一个问题。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 一个
+    - CC-CEDICT, greedy longest match: 一个
+    - Frequency-scored maximum-probability path (jieba-style): 一个
+    - bert-ws-zh (shipped, contextual segmentation model): 一 | 个
+- `05-podcast-interview.txt` — unit "大概有两三次，都是在半夜。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 大概有
+    - CC-CEDICT, greedy longest match: 大概 | 有
+    - Frequency-scored maximum-probability path (jieba-style): 大概 | 有
+    - bert-ws-zh (shipped, contextual segmentation model): 大概 | 有
+- `05-podcast-interview.txt` — unit "大概有两三次，都是在半夜。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 两 | 三次
+    - CC-CEDICT, greedy longest match: 两 | 三次
+    - Frequency-scored maximum-probability path (jieba-style): 两三次
+    - bert-ws-zh (shipped, contextual segmentation model): 两三 | 次
+- `05-podcast-interview.txt` — unit "大概有两三次，都是在半夜。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 都是
+    - CC-CEDICT, greedy longest match: 都 | 是
+    - Frequency-scored maximum-probability path (jieba-style): 都 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 都 | 是
+- `05-podcast-interview.txt` — unit "但是第二天早上起来就没事了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 第二 | 天
+    - CC-CEDICT, greedy longest match: 第二天
+    - Frequency-scored maximum-probability path (jieba-style): 第二天
+    - bert-ws-zh (shipped, contextual segmentation model): 第二 | 天
+- `05-podcast-interview.txt` — unit "但是第二天早上起来就没事了。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 没 | 事
+    - CC-CEDICT, greedy longest match: 没事
+    - Frequency-scored maximum-probability path (jieba-style): 没事
+    - bert-ws-zh (shipped, contextual segmentation model): 没 | 事
+- `05-podcast-interview.txt` — unit "所以我觉得那不算真的后悔，那是累。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 不算
+    - CC-CEDICT, greedy longest match: 不算
+    - Frequency-scored maximum-probability path (jieba-style): 不算
+    - bert-ws-zh (shipped, contextual segmentation model): 不 | 算
+- `05-podcast-interview.txt` — unit "所以我觉得那不算真的后悔，那是累。":
+    - Intl.Segmenter (rejected — per-character on the reader’s device, R11): 那是
+    - CC-CEDICT, greedy longest match: 那是
+    - Frequency-scored maximum-probability path (jieba-style): 那 | 是
+    - bert-ws-zh (shipped, contextual segmentation model): 那 | 是

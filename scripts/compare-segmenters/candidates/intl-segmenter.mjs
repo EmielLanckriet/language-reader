@@ -1,12 +1,22 @@
-// Candidate: `Intl.Segmenter('zh', { granularity: 'word' })` — the analyzer the application ships.
+// Candidate: `Intl.Segmenter('zh', { granularity: 'word' })`.
 //
-// **This is a reimplementation, not the shipped code.** It is written to mirror
-// `src/lib/analyzer/chinese.ts` as it reads on the date this harness was built (2026-09-02/03), but
-// this file cannot import that module — it is TypeScript with an extensionless import, and this
-// harness is plain .mjs, deliberately outside `src/` (ADR-0012). Nothing enforces the two staying in
-// step: if `chinese.ts` changes and this file is not updated to match, this candidate quietly stops
-// measuring what the application actually ships, and the comparison's conclusion about the shipped
-// analyzer would be wrong without anyone noticing. Say so plainly in the report, not just here.
+// **No longer the shipped analyzer, and rejected.** This was the first analyzer the application
+// shipped, and it is kept here only as a comparison point, not as the candidate to beat. It was
+// rejected because on the reader's own Android Chrome it returned every character as a separate
+// segment — not a subtly wrong boundary, but no word boundaries at all — because that build of
+// Chrome ships without the CJK dictionary data ICU's word breaking depends on, and `Intl.Segmenter`
+// answers anyway rather than signalling that it cannot (research.md R11). A laptop or desktop
+// browser gives no warning of this: the same call returns real words there, which is exactly what
+// made the gap invisible until it was checked on the actual device. The application now ships
+// `bert-ws-zh` instead (see `candidates/bert-ws.mjs`).
+//
+// **This is a reimplementation, not the shipped code — nor, now, of shipped code at all.** It is
+// written to mirror `src/lib/analyzer/chinese.ts` as it read while this was still the shipped
+// analyzer (2026-09-02/03), but this file cannot import that module — it is TypeScript with an
+// extensionless import, and this harness is plain .mjs, deliberately outside `src/` (ADR-0012).
+// Nothing enforces the two staying in step: if `chinese.ts` changes further and this file is not
+// updated to match, this candidate quietly stops measuring what it claims to measure. Say so plainly
+// in the report, not just here.
 //
 // What is mirrored, deliberately:
 //   - `Intl.Segmenter('zh', { granularity: 'word' })`, nothing more elaborate.
@@ -15,13 +25,13 @@
 //   - `isWord` decided by Han script, not by the platform's `isWordLike` (research.md R7) — though
 //     this harness only uses isWord for display, never for the boundary metric itself.
 //
-// Zero data to fetch, so this candidate can never be "unavailable": it is the one candidate the
-// application already ships and costs nothing to run.
+// Zero data to fetch, so this candidate can never be "unavailable" for lack of a download — the run
+// on a real device is what made it unavailable in the sense that matters.
 
 import { codePointIndexMap, codePointLength } from '../lib/offsets.mjs';
 
 export const id = 'intl-segmenter';
-export const label = 'Intl.Segmenter (shipped, zero install cost)';
+export const label = 'Intl.Segmenter (rejected — per-character on the reader’s device, R11)';
 
 function isStudiable(surface) {
 	return /\p{Script=Han}/u.test(surface);

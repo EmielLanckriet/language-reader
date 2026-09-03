@@ -16,6 +16,7 @@ import { buildReport } from './report.mjs';
 import * as intlSegmenter from './candidates/intl-segmenter.mjs';
 import * as cedictLongestMatch from './candidates/cedict-longest-match.mjs';
 import * as frequencyPath from './candidates/frequency-path.mjs';
+import * as bertWs from './candidates/bert-ws.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PASSAGES_DIR = join(HERE, 'passages');
@@ -29,7 +30,7 @@ const REPORT_PATH = join(HERE, 'report.md');
 // available to classify by (T036) — this threshold is a documented judgment call, not a measurement.
 const SHORT_LINE_THRESHOLD = 20;
 
-const CANDIDATE_MODULES = [intlSegmenter, cedictLongestMatch, frequencyPath];
+const CANDIDATE_MODULES = [intlSegmenter, cedictLongestMatch, frequencyPath, bertWs];
 
 async function prepareCandidates() {
 	const candidates = [];
@@ -48,7 +49,7 @@ async function prepareCandidates() {
 	return candidates;
 }
 
-function collectUnits(passageFiles, candidates) {
+async function collectUnits(passageFiles, candidates) {
 	const units = [];
 
 	for (const fileName of passageFiles) {
@@ -67,7 +68,11 @@ function collectUnits(passageFiles, candidates) {
 			for (const unit of splitIntoUnits(line, CHINESE_UNIT_DELIMITERS)) {
 				const tokensByCandidate = {};
 				for (const candidate of candidates) {
-					tokensByCandidate[candidate.id] = candidate.segmentUnit(unit.text);
+					// `await` on a plain array (every dictionary-based candidate's return value) resolves
+					// to that same array immediately; only bert-ws's model inference is actually
+					// asynchronous. One code path serves both without candidates needing to agree on
+					// sync-versus-async among themselves.
+					tokensByCandidate[candidate.id] = await candidate.segmentUnit(unit.text);
 				}
 				units.push({ passage: fileName, category, unitText: unit.text, tokensByCandidate });
 			}
@@ -109,7 +114,7 @@ async function main() {
 	}
 
 	console.log(`\nSegmenting ${passageFiles.length} passage file(s)...`);
-	const units = collectUnits(passageFiles, candidates);
+	const units = await collectUnits(passageFiles, candidates);
 
 	const report = buildReport({
 		candidates: candidates.map((c) => ({ id: c.id, label: c.label })),

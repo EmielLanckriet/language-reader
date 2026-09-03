@@ -152,9 +152,9 @@ annotation, and a judgment weighing quality against install cost.
 - [X] T034 [US3] Report per-pair disagreement as a proportion of character positions, not as anecdotes, in `scripts/compare-segmenters/report.mjs` (FR-026, FR-027)
 - [X] T035 [US3] Show each disagreeing span with every candidate's reading of it in `scripts/compare-segmenters/report.mjs`, so a disagreement can be judged rather than counted (FR-027)
 - [X] T036 [US3] Report short spoken-language lines separately from long prose in `scripts/compare-segmenters/report.mjs` (FR-028) — a segmenter can be good at one and bad at the other, and short lines are the intended content
-- [ ] T037 [US3] Collect at least five passages of the reader's own material into `scripts/compare-segmenters/passages/`, at least two of them subtitle- or transcript-like (SC-007). Not a benchmark corpus — the question is what *this* reader reads
-- [ ] T038 [US3] Hand-mark the words in one 500-character passage from `scripts/compare-segmenters/passages/` and record the proportion the shipped analyzer produced as single tokens into `specs/003-real-segmentation/research.md`, as the baseline later changes are compared against (SC-001)
-- [ ] T039 [US3] Write the conclusion into `specs/003-real-segmentation/research.md`: whether the shipped analyzer is materially worse than the alternatives held in reserve, on what evidence, and — if a better-scoring candidate was not adopted — why not, naming its install cost (FR-029, FR-030, SC-002)
+- [X] T037 [US3] Collect at least five passages of the reader's own material into `scripts/compare-segmenters/passages/`, at least two of them subtitle- or transcript-like (SC-007). Not a benchmark corpus — the question is what *this* reader reads
+- [X] T038 [US3] Hand-mark the words in one 500-character passage from `scripts/compare-segmenters/passages/` and record the proportion the shipped analyzer produced as single tokens into `specs/003-real-segmentation/research.md`, as the baseline later changes are compared against (SC-001)
+- [X] T039 [US3] Write the conclusion into `specs/003-real-segmentation/research.md`: whether the shipped analyzer is materially worse than the alternatives held in reserve, on what evidence, and — if a better-scoring candidate was not adopted — why not, naming its install cost (FR-029, FR-030, SC-002)
 
 **Checkpoint**: the question the register has carried since before slice 0 is answered in writing. An
 absent conclusion means the slice is not finished (FR-029).

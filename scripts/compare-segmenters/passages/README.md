@@ -19,10 +19,36 @@ segmenter serves *this* reader on *what they actually read*.
 
 ## What not to put here
 
-- **No sample or placeholder text.** `run.mjs` was verified against a few throwaway lines while it
-  was being built, and that text was deleted before this harness was finished — committing it here
-  would silently become the thing being measured, which defeats the entire point of this directory.
 - **No benchmark corpus** (news text, a textbook's example sentences, anything not actually read).
+
+## What is actually here, and why that weakens the conclusion (2026-09-03)
+
+The five passages committed here are **not the reader's own material**. The reader declined to
+collect any and asked for passages to be written instead, so they were generated to match the
+*kinds* of material recorded in the product direction: everyday spoken dialogue, a video
+transcript, and connected prose of the sort read for interest rather than study.
+
+This is a real weakening and it is written down here so that nobody reads the report as stronger
+evidence than it is:
+
+- **The material and the answer key have the same author.** Whoever writes the passages and then
+  hand-marks the words in them is scoring segmenters against their own beliefs about word-hood, on
+  text they chose. A candidate that happens to divide words the way the author does will score well
+  for a reason that has nothing to do with serving a reader.
+- **Word-hood is learner-dependent on this project** (ADR-0002). Generated text cannot show what
+  *this* reader finds hard, which is the thing FR-026 asked the comparison to measure.
+
+Two things limit the damage, and neither removes it. First, the passages are ordinary connected
+text on ordinary topics, not a list of contested words — a passage assembled from cases whose
+answers were already known would measure nothing. Second, the hand-marking in T038 adjudicates
+only the spans where candidates actually *disagree*, rather than authoring a full answer key from
+scratch, which is a much narrower place for an author's bias to act.
+
+An earlier version of this file forbade exactly this ("no sample or placeholder text"), on the
+grounds that placeholder text would silently become the thing being measured. That reasoning still
+stands. It is not silent now: the report and the conclusion in research.md both say what the
+passages are. **If the reader ever does paste real material, delete these and re-run — the
+conclusion drawn from them is provisional in a way a conclusion from real material would not be.**
 
 ## How lines are classified
 

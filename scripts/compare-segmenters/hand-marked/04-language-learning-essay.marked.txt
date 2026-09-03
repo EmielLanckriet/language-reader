@@ -1,0 +1,58 @@
+# Hand-marked words: the first 492 code points of 04-language-learning-essay.txt (T038, SC-001)
+#
+# One segmentation unit per line, words separated by single spaces. Punctuation is not a word and
+# is left attached to nothing — the scoring script ignores any token with no Han character.
+#
+# THE RULE USED, stated so that the marking can be argued with rather than only trusted. A span is
+# one word if the reader would want to tap it as a single thing to study, which is this project's
+# definition of word-hood (ADR-0002) and not any published standard's. Concretely:
+#
+#   - a numeral or demonstrative plus its measure word stays together (一个, 半个, 这件, 一句, 一串),
+#     because that is the unit a learner meets and looks up
+#   - the noun after such a phrase is separate (一句 话, 这件 事, 半个 小时)
+#   - a verb plus a resultative complement is separated when both parts are ordinary vocabulary
+#     (预料 到, 想 明白, 看 出来 → kept as 看出来 where it is idiomatic), because the learner needs the verb
+#   - a fixed multi-syllable pattern stays whole (越来越, 来不及, 一开始, 付不起, 有人)
+#   - 不 and 没有 are separate words, not prefixes (不 知道, 没有 变化)
+#
+# CONTESTABLE DECISIONS ARE MARKED WITH ?? IN THE COMMENT BLOCK AT THE END OF THIS FILE. There are
+# 11 of them out of 118 multi-character words. Anyone re-running this should read those first: on a
+# corpus this small, eleven judgment calls can move the score by several points.
+#
+# WHO MARKED THIS, AND WHY THAT WEAKENS IT: the same author who generated the passages (see
+# passages/README.md). Marking one's own text against one's own notion of word-hood is a weak form
+# of evidence and the conclusion in research.md R17 says so.
+
+学 中文 的 第三 年 我 遇到 了 一个 自己 没有 预料 到 的 问题 我 能 读懂 的 东西 越来越 多 但 能 听懂 的 东西 几乎 没有 增加
+一开始 我 以为 这 只是 练 得 不够
+每天 多 听 半个 小时 听 三个 月 应该 就 会 好 一些
+结果 并 没有
+我 听 的 材料 难度 没有 变化 我 的 理解 程度 也 没有 变化 唯一 变 了 的 是 我 对 这件 事 的 耐心
+后来 我 才 想 明白 问题 在 哪里
+我 读 的 时候 词 与 词 之间 是 分开 的 不是 印 在 纸 上 分开 而是 我 自己 在 脑子 里 分开 的
+看到 一句 话 我 会 先 找出 我 认识 的 词 再 想 它们 之间 的 关系
+这个 过程 可以 慢 可以 停 可以 往 回 看
+听 的 时候 这 三样 都 没有
+声音 是 连着 的 一句 话 过去 就 过去 了 我 来不及 找 词
+所以 我 遇到 的 其实 不是 听力 问题 是 分词 问题
+我 不 知道 一串 声音 应该 在 哪里 断开
+这 跟 认识 多少 个 词 没有 直接 关系
+我 认识 地方 也 认识 方便 但是 听到 这个 地方 便宜 的 时候 我 需要 一点 时间 才 能 确定 是 地方 便宜 而 不是 地 方便
+读 的 时候 我 一眼 就 能 看出来 因为 这个 后面 跟 的 一定 是 名词
+听 的 时候 那 一点 时间 我 付不起
+我 把 这个 想法 跟 一个 学 了 十 年 中文 的 朋友 说 了 他 说 他 也 有 过 一样 的 阶段 而且 他 认为 大部分 人 卡住 的 地方 都 在 这里 只是 很少 有人 这样 描述 它
+
+# ---------------------------------------------------------------------------------------------
+# The eleven contestable calls, so a reader can disagree with each one specifically:
+#
+#  ?? 第三 年      — could be 第三年 as one duration unit, or 第 三 年 compositionally
+#  ?? 预料 到      — 预料到 is a common V-到; split because 预料 is the item to learn
+#  ?? 三个 月      — could be 三个月 (a duration) or 三 个 月
+#  ?? 半个 小时    — could be 半 个 小时
+#  ?? 这件 事      — could be 这 件 事
+#  ?? 一句 话      — could be 一句话, which CC-CEDICT lists as a headword
+#  ?? 三样        — could be 三 样
+#  ?? 连着        — could be 连 着; kept whole as a fixed aspectual form
+#  ?? 看出来      — could be 看 出来; kept whole as idiomatic
+#  ?? 十 年       — could be 十年; split for consistency with 三个 月
+#  ?? 有人        — could be 有 人; kept whole because it means "someone", not "have people"
