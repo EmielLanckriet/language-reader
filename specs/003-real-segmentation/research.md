@@ -756,6 +756,57 @@ phone. Batching alone cannot fix this, and would have been a plausible-looking w
 the decision is the reader's to weigh. Recorded so that whoever picks it up starts from the
 measurement rather than from the batching hypothesis that looked obvious and was wrong.
 
+## R19. Dictionary-first, and a model download that hangs in headless Chrome (2026-09-03)
+
+**The change.** Import segments with the fallback dictionary unconditionally, and opening a document
+no longer re-derives merely because it is out of date. Measured in a browser, 4,999 characters:
+**import 329 ms, open 280 ms, 3,223 words rendered**, against SC-004's 3,000 ms. Previously over
+30 seconds on the phone.
+
+Two decisions inside it are worth keeping:
+
+1. **The question asked on opening is a property of the tokens, not a list of analyzer names.**
+   `looksUnsegmented` asks whether anything found a word longer than one character, with a Han test
+   so a page of Latin is not mistaken for unsegmented. A name cannot say what a device produced —
+   R11 is the proof, where two devices ran `intl-segmenter-zh` and one returned one token per
+   character.
+2. **When tokens *are* too poor to show, the repair runs the fallback, not the analyzer in force.**
+   The obligation is to show real words (FR-015), and the dictionary discharges it in 26 ms where
+   the model takes 27 s. Otherwise one path would still block for half a minute — the one reached
+   by a document written by slice 0's per-character dummy. After this, no path on opening a
+   document runs the model.
+
+The consequence, accepted deliberately: the background sweep is now the **only** thing that upgrades
+a readable document. If it never runs, the reader keeps dictionary segmentation — legible, and the
+shipped analyzer until this slice, so the floor is a previous release rather than nothing.
+
+### Unresolved: the model download hangs under headless Chrome
+
+The browser scenario that would make this the *strong* check — import stays fast even with the slow
+model available — could not be run, because downloading the model inside `verify-in-browser` hangs.
+Twice, each for the full 1,500-second deadline, on a clean profile. What was eliminated, each by
+measurement rather than reasoning:
+
+| suspected | measured | verdict |
+| --- | --- | --- |
+| network to Hugging Face | 7.0–8.5 MB/s over two 20 MB range requests | fine |
+| streamed `cache.put` of the 14 MB runtime | 142 ms, read back byte-exact | fine |
+| contention with the service worker reading the same cache while it is written | put into `language-reader-model-v1` with the worker controlling: 551 ms | fine |
+| the download loop itself | all three files replicated verbatim in the same browser: 15.7 s total, 102,904,192 bytes stored | fine |
+
+So the primitives work and the loop works; what hangs is the application's own wiring around them.
+The leading hypothesis, **untested**, is the per-chunk progress callback writing Svelte state
+thousands of times while a headless tab's renderer is throttled. It is recorded as a hypothesis
+precisely because the last one that looked this obvious — batching would fix SC-004 — was measured
+and was wrong (R18).
+
+**Not called a shipped regression, and not called fine either.** The same download succeeded on the
+reader's phone the same day and in an earlier laptop run, so it is more likely a headless artefact
+than a fault the reader would meet. But nobody has shown that, and the weaker check
+(`bigimport --no-warm`, dictionary only) is what the 329 ms above comes from. The strong claim —
+that import stays fast *because* it never consults the model — rests on there being no branch in
+the import path that could, and on the unit tests around `needsImmediateRederivation`.
+
 ## Open questions carried into design
 
 1. **Does Chrome on Android segment identically to Node here?** Unknown, and unknowable from this

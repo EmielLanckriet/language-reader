@@ -8,8 +8,8 @@
 	import { describeError } from '$lib/diagnostics/describe';
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
-	import { activeAnalyzer } from '$lib/analyzer/active';
-	import { isStale, rederiveDocument, tokensFor } from '$lib/storage/rederive';
+	import { activeAnalyzer, fallbackAnalyzer } from '$lib/analyzer/active';
+	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -50,24 +50,47 @@
 	}
 
 	/**
-	 * Re-derive a document opened under a superseded analyzer, before it is shown (FR-015).
+	 * Re-derive a document whose stored tokens are too poor to show, before it is shown (FR-015).
 	 *
-	 * The reader never sees placeholder tokens in something they opened. Note the fallback: a copy
-	 * that does not hold storage still segments the text and displays real words, it just cannot
-	 * write them down. Refusing to show the document, or showing it with character-per-token
-	 * segmentation, would both be worse than showing correct words and leaving the stamp stale for
-	 * a copy that can write to fix (FR-019).
+	 * The reader never sees placeholder tokens in something they opened — that guarantee is
+	 * unchanged. What changed in slice 2 is that being *out of date* no longer implies being too
+	 * poor to show: documents are imported with the fast fallback and upgraded by the background
+	 * sweep, so a document showing real dictionary words is shown at once and improved later. See
+	 * `needsImmediateRederivation`, and research.md R18 for why paying on open is not an option.
+	 *
+	 * Note the fallback below: a copy that does not hold storage still segments the text and
+	 * displays real words, it just cannot write them down. Refusing to show the document, or
+	 * showing it with character-per-token segmentation, would both be worse than showing correct
+	 * words and leaving the stamp stale for a copy that can write to fix (FR-019).
 	 */
 	async function bringUpToDate(
 		repository: Awaited<ReturnType<typeof session>>['repository'],
 		loaded: StoredDocument
 	): Promise<StoredDocument> {
 		const analyzer = await activeAnalyzer();
-		if (!isStale(loaded, analyzer)) return loaded;
+		// Out of date is now the ordinary condition of a document, not a fault: import stamps with
+		// the fast fallback and the sweep upgrades afterwards. So the question here is no longer
+		// "is this stale" but "are these tokens too poor to show" — paying four seconds per
+		// thousand characters to improve words that are already real is not a trade the reader
+		// would choose, and paying it on open is what failed SC-004 (research.md R18).
+		if (!needsImmediateRederivation(loaded, analyzer)) return loaded;
+
+		// **Repaired with the fallback, not with the analyzer in force.**
+		//
+		// The obligation is to show real words rather than placeholder ones (FR-015), and the
+		// dictionary discharges it in 26 ms where the model takes 27 s. Using the active analyzer
+		// here would leave one path that still blocks for half a minute — the one reached by a
+		// document written by slice 0's per-character dummy — and there is no reason for the
+		// reader to wait for the best possible words when what they need is any real ones.
+		//
+		// The document is therefore restamped with the fallback and is still out of date under the
+		// model, which is exactly the state a freshly imported document is in. The sweep upgrades
+		// both by the same path. After this line, **no path on opening a document runs the model.**
+		const repairWith = fallbackAnalyzer;
 
 		resegmenting = true;
 		try {
-			const stored = await rederiveDocument(repository, loaded, analyzer);
+			const stored = await rederiveDocument(repository, loaded, repairWith);
 			if (stored) {
 				return await repository.getDocument(loaded.id);
 			}
@@ -80,7 +103,7 @@
 			// and nothing was stored. The words are therefore readable and not markable, which is
 			// the honest outcome: a copy that cannot write a token cannot write a judgment either,
 			// and slice 1 already tells the reader why through the read-only notice.
-			const tokens = await tokensFor(loaded, analyzer);
+			const tokens = await tokensFor(loaded, repairWith);
 			return {
 				...loaded,
 				tokens: tokens.map(({ start, end, isWord }) => ({ start, end, isWord }))

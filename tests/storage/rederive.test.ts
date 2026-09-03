@@ -5,6 +5,11 @@ import { chineseSegmenter } from '../../src/lib/analyzer/chinese';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { codePointsOf } from '../../src/lib/domain/offsets';
+import {
+	isStale,
+	looksUnsegmented,
+	needsImmediateRederivation
+} from '../../src/lib/storage/rederive';
 import { freshDatabase } from './support';
 import type { Database } from '../../src/lib/storage/db';
 import type { Analyzer } from '../../src/lib/analyzer/types';
@@ -177,5 +182,78 @@ describe('re-deriving a document under a new analyzer', () => {
 		const swept = repository.getDocument(viaSweep);
 		expect(swept.tokens).toEqual(opened.tokens);
 		expect(swept.analyzerVersion).toBe(opened.analyzerVersion);
+	});
+});
+
+// Slice 2 shipped a segmenter that costs ~4 s per 1,000 characters (research.md R18), so
+// re-deriving on open — which slice 1 did unconditionally — turned a 5,000-character document into
+// a thirty-second wait and failed SC-004. Documents are now imported with the fast fallback and
+// upgraded by the background sweep, which means a document being *out of date* is the normal case
+// rather than an exception, and opening one must not pay for the upgrade.
+//
+// What may still not be shown is placeholder segmentation (FR-015). So the question opening a
+// document asks is no longer "is this stale" but "are these tokens too poor to show", and that is
+// what these tests are about. It is a property of the stored tokens, deliberately not a list of
+// analyzer names: a name cannot tell you what a device actually produced, which is the whole
+// lesson of research.md R11, where `Intl.Segmenter` returned one token per character on the
+// reader's phone and the name said nothing.
+
+describe('deciding whether an out-of-date document must be re-derived before it is shown', () => {
+	let db: Database;
+	let repository: Repository;
+
+	beforeEach(async () => {
+		db = await freshDatabase();
+		repository = new Repository(db);
+	});
+
+	afterEach(() => db?.close());
+
+	async function stored(analyzer: Analyzer, text: string) {
+		const document = await pasteSource.ingest(text);
+		const analyzed = await analyzer.analyze(document.rawContent);
+		const tokens = resolveTokens(document.rawContent, analyzed, analyzer);
+		const id = repository.saveDocument(document, tokens, stampOf(analyzer));
+		return repository.getDocument(id);
+	}
+
+	const prose = '朋友很好，我在中国学习中文。';
+
+	it('says yes for slice 0 placeholder tokens: every word one character', async () => {
+		const document = await stored(characterSplitter, prose);
+		expect(looksUnsegmented(document)).toBe(true);
+	});
+
+	it('says no for a real segmenter, which finds words longer than a character', async () => {
+		const document = await stored(chineseSegmenter, prose);
+		expect(looksUnsegmented(document)).toBe(false);
+	});
+
+	it('says no when there is no Han text to segment, whatever the analyzer', async () => {
+		// A document of digits and Latin has no multi-character *word* under any analyzer, and
+		// re-deriving it would be a thirty-second answer to a question nobody asked.
+		const document = await stored(characterSplitter, 'Python 3.14 / SQLite 3.45');
+		expect(looksUnsegmented(document)).toBe(false);
+	});
+
+	it('only ever asks the question of a document that is out of date', async () => {
+		// A document already stamped by the analyzer in force is not re-derived on any grounds:
+		// `rederiveDocument` is idempotent, and asking twice would be a wasted pass.
+		const document = await stored(characterSplitter, prose);
+		expect(needsImmediateRederivation(document, characterSplitter)).toBe(false);
+		expect(looksUnsegmented(document)).toBe(true);
+	});
+
+	it('re-derives placeholder tokens on open, and merely stamps real words as out of date', async () => {
+		const placeholder = await stored(characterSplitter, prose);
+		const real = await stored(chineseSegmenter, prose);
+
+		// Both are stale under a third analyzer; only one is too poor to show.
+		const other: Analyzer = { ...chineseSegmenter, version: 'something-else' };
+		expect(isStale(placeholder, other)).toBe(true);
+		expect(isStale(real, other)).toBe(true);
+
+		expect(needsImmediateRederivation(placeholder, other)).toBe(true);
+		expect(needsImmediateRederivation(real, other)).toBe(false);
 	});
 });

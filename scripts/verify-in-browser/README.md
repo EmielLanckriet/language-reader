@@ -30,6 +30,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `offline` | Reading with the server stopped. Warms with `words`, then stops the server. |
 | `readonly` | A second copy refuses a change it cannot keep (the storage lease). |
 | `model` | Downloads the model (~110 MB over the network) and checks the analyzer switches. Slow. |
+| `bigimport` | SC-004: a 4,999-character document imports and opens within 3 seconds **with the model on the device**. Warms with `model`, so it is slow. |
 
 `model` really does fetch the weights from HuggingFace, so it takes minutes and needs a network.
 It logs progress to `model-progress.log` in the working directory, because a check that looks
@@ -66,7 +67,11 @@ made you believe it. Two rules, both bought with time:
   thirty.
 
 If a scenario needs something to have happened first, add it to `WARM_UP` in `run.mjs` rather than
-assuming a warm profile — `offline` is the worked example.
+assuming a warm profile — `offline` and `bigimport` are the worked examples. `bigimport` is also the
+example of a check that is *worthless without its warm-up*: without the model downloaded, the
+application uses the fast dictionary anyway and the timing would pass while proving nothing. It
+therefore asserts the model is in use before it measures anything, rather than trusting the warm-up
+to have worked.
 
 Ad-hoc poking at a live page is fine and does not belong here; write it in a scratch directory and
 throw it away. What belongs here is a check worth running again.

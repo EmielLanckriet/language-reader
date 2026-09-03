@@ -746,6 +746,23 @@ port it cannot prove it owns.
 |---|---|---|---|---|
 | Merge the model's over-splits of closed-class phrases (一个, 这个, 每天, 半个, 一句, 这件) | medium | cheap | Derived data — a post-pass over the analyzer's output, no migration. `bert-base-chinese-ws` follows a convention that treats a numeral or demonstrative plus its measure word as two words: measured across 894 disagreeing cells it splits 一个 (26×), 这个 (26×) and 不是 (24×) where all three other candidates keep them whole, 182 cells against 48 the other way (research.md R17). Free in install terms — `/wordlist-zh.txt` is already precached for the fallback analyzer. **A general dictionary merge must not be used**: 国人 is a headword, so 哪 · 国 · 人 would merge straight back into the exact error the model was bought to fix. It has to be a restricted closed-class rule, with a list to maintain. | **Deferred by the reader, 2026-09-03**, in these words: happy with how the model splits, fix it "if I get annoyed at it". The trigger is annoyance in real reading, not a score. Note that slice 3's manual merge/split (the "User segmentation corrections" row above) would let the reader fix these by hand anyway, which may be the whole answer |
 
+### Deferred with the reader's consent: incremental re-derivation
+
+| Change | Value | Cost | Notes | Action |
+|---|---|---|---|---|
+| Upgrade the page being read first, rather than the document as a whole | medium | **moderate** | Derived data, but it changes what "this document is segmented" means, which is the expensive part. Today import stamps with the dictionary and the background sweep re-derives the whole document in one transaction, so the reader sees dictionary words until the entire document finishes and then all of them change at once. Upgrading in reading order would put model-quality words on the first page first. Measured ceiling on what that can feel like (research.md R18): creating the inference session costs 1,172 ms, and a 300-character screenful 1,854 ms, both on a laptop — so **the first page cannot be model-segmented in ~1 s**, which is what was asked for. Roughly 2–3 s on a laptop with the session pre-warmed at start-up, and unknown-but-more on the phone, because ">30 s" for the full document is a lower bound read off a screen rather than a measurement. The real cost is that a half-upgraded document becomes a state the sweep, the reader and the staleness check must all agree about, and that is where a subtle bug would live. | **Deferred by the reader, 2026-09-03**: "add the incrementality as a TODO if it annoys me. We don't need this yet." Dictionary-first shipped instead. **Before building this, measure the phone** — put a fixed 300-character timing on the diagnostics page, because every figure above is a laptop extrapolation and it decides whether the first page is 2 s or 8 s |
+
+Two smaller things fall out of the same measurement and are worth doing first if this is ever
+picked up, because both are cheap and neither needs a partial state:
+
+- **Pre-warm the inference session at start-up.** 1,172 ms of the wait is session creation, paid on
+  the first segmentation after every page load. Creating it when the application loads moves that
+  off the critical path entirely.
+- **Move inference off the main thread.** Roughly 4 s per 1,000 characters currently runs in the
+  page, so the background sweep stutters the interface for the length of the upgrade. This does not
+  reduce the total work and does not help SC-004 directly, but it is what "doesn't even really
+  work" was describing, and dictionary-first only moves that stutter rather than removing it.
+
 The measured cost is real but its headline number is untrustworthy in a specific way: the
 hand-marking rule that produced it was written by the same person who generated the passages, and
 it says a numeral plus its measure word is one word — precisely the convention the model does not

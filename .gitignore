@@ -31,3 +31,8 @@ vite.config.ts.timestamp-*
 # Reference data fetched at run time by the segmentation comparison harness (ADR-0012).
 # Dictionaries are megabytes and are never committed; the harness downloads what it needs.
 /scripts/compare-segmenters/data/
+
+# Written by scripts/verify-in-browser/harness.mjs into the working directory, so that a check
+# which is working and one which is wedged do not look identical. A run artefact, never committed.
+model-progress.log
+chrome*.log

@@ -29,6 +29,10 @@ const BUILD = 'build';
 const args = process.argv.slice(2);
 const scenario = args.find((a) => !a.startsWith('--'));
 const keep = args.includes('--keep');
+// Skip a scenario's warm-up. For `bigimport` that turns the strong check (import stays fast
+// even with the slow model available) into the weaker one (the dictionary path is fast), which
+// the scenario then says plainly in its own result rather than leaving to be inferred.
+const noWarm = args.includes('--no-warm');
 
 if (!scenario) {
 	console.error('usage: node scripts/verify-in-browser/run.mjs <scenario> [--keep]');
@@ -159,7 +163,7 @@ process.on('exit', stopChildren);
 process.on('SIGINT', () => process.exit(130));
 
 /** Scenarios that need something to have happened first, and what produces it. */
-const WARM_UP = { offline: 'words' };
+const WARM_UP = { offline: 'words', bigimport: 'model' };
 
 function runScenario(name) {
 	const harness = run(
@@ -222,7 +226,7 @@ try {
 	// application cached and a document saved — so a scenario that produces both runs first, in
 	// the same browser, and then the server goes away. Emulating the network instead does not
 	// work: `Network.emulateNetworkConditions` does not apply to a service worker's own fetches.
-	if (WARM_UP[scenario]) {
+	if (WARM_UP[scenario] && !noWarm) {
 		console.error(`verify-in-browser: warming with "${WARM_UP[scenario]}" first`);
 		const warmed = await runScenario(WARM_UP[scenario]);
 		if (warmed !== 0) {

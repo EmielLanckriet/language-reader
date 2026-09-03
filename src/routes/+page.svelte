@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { pasteSource } from '$lib/content/paste';
-	import { activeAnalyzer } from '$lib/analyzer/active';
+	import { fallbackAnalyzer } from '$lib/analyzer/active';
 	import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 	import { RejectedInput } from '$lib/content/types';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
@@ -75,9 +75,25 @@
 		try {
 			const { repository } = await session();
 			const document = await pasteSource.ingest(pasted);
-			// Resolved per save rather than held: the reader may have finished downloading the
-			// contextual segmenter since the page loaded.
-			const analyzer = await activeAnalyzer();
+			// **The fallback, deliberately, even when the model is on the device.**
+			//
+			// The model costs about 4 s per 1,000 characters (research.md R18), so importing five
+			// thousand characters with it took over thirty seconds on the reader's phone against
+			// SC-004's three, and — in their words — "doesn't even really work". The dictionary
+			// segments the same document in 26 ms.
+			//
+			// The document is therefore saved stamped with the fallback, which makes it immediately
+			// out of date under the model. That is not a defect being tolerated; it is the existing
+			// staleness machinery being used for what it is for. The background sweep re-derives it
+			// (FR-016), and T048 confirmed on a real device that re-derivation preserves the marks
+			// made in the meantime — marks live on lexemes, which `replaceTokens` reuses rather
+			// than deletes.
+			//
+			// The reader consequently reads dictionary words first and better words shortly after.
+			// That trade was put to them explicitly and chosen. What it costs, and the incremental
+			// version that would upgrade the first page first, are recorded in
+			// docs/anticipated-changes.md.
+			const analyzer = fallbackAnalyzer;
 			const analyzed = await analyzer.analyze(document.rawContent);
 			const tokens = resolveTokens(document.rawContent, analyzed, analyzer);
 			await repository.saveDocument(document, tokens, stampOf(analyzer));

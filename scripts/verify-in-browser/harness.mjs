@@ -190,6 +190,102 @@ const scenarios = {
 		}
 	},
 
+	// SC-004 with the model on the device: a 5,000-character document must appear within 3 seconds.
+	//
+	// Only meaningful once the model has been downloaded, which is why run.mjs warms this with the
+	// `model` scenario. Without it `activeAnalyzer()` is the dictionary anyway and the check would
+	// pass while proving nothing -- the thing being tested is that import uses the fast fallback
+	// *even when the slow model is available* (research.md R18).
+	async bigimport() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/diagnostics');
+			const hasModel = await until('the diagnostics page to say which analyzer is in use', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('dd')].map((d) => d.textContent).find((t) => /bert-ws|cedict/.test(t)) || null`
+				)
+			);
+			// Reported rather than required. With the model on the device this is the strong check —
+			// that import stays fast even when a slow analyzer is available. Without it, it still
+			// establishes that importing and opening 4,999 characters is fast end to end in a real
+			// browser, which is worth having on its own. What it cannot establish without the model
+			// is the *absence of a branch* at import; that is guaranteed by there being no code path
+			// there that consults the model, and by the unit tests around
+			// `needsImmediateRederivation`. Say which one ran, in the result, rather than let a
+			// green line be read as the stronger claim.
+			const modelPresent = /bert-ws/.test(hasModel);
+
+			await tab.goto('/');
+			await until('the paste box', () =>
+				tab.evaluate('return !!document.querySelector("main textarea")')
+			);
+
+			// 4,999 code points: one under the limit, and the size the reader actually reported.
+			const typed = await tab.evaluate(`
+				const filler = '我读的时候词与词之间是分开的，而是我自己在脑子里分开的。看到一句话，我会先找出我认识的词。';
+				let text = '';
+				while ([...text].length < 4999) text += filler;
+				text = [...text].slice(0, 4999).join('');
+				const box = document.querySelector('main textarea');
+				box.value = text;
+				box.dispatchEvent(new Event('input', { bubbles: true }));
+				return [...text].length;
+			`);
+
+			const before = await tab.evaluate(`return ${READ_LINKS}`);
+			const startedSaving = Date.now();
+			const clicked = await tab.evaluate(`
+				const b = ${SAVE_BUTTON};
+				if (!b || b.disabled) return false;
+				b.click();
+				return true;
+			`);
+			if (!clicked) return { pass: false, error: 'the Save button was missing or disabled', typed };
+
+			await until(
+				'the document to be saved',
+				async () => ((await tab.evaluate(`return ${READ_LINKS}`)) > before ? true : null),
+				60000,
+				50
+			);
+			const importMs = Date.now() - startedSaving;
+
+			// And opening it, which is the other half: showing a document that is now out of date
+			// under the model must not pay for the upgrade either.
+			const link = await tab.evaluate(`return ${READ_LINK}`);
+			const startedOpening = Date.now();
+			await tab.send('Page.navigate', { url: `${appOrigin}${link}` });
+			const words = await until(
+				'the reader to render words',
+				async () => {
+					const n = await tab.evaluate(
+						'return document.querySelectorAll(".reading button.token").length'
+					);
+					return n > 0 ? n : null;
+				},
+				60000,
+				50
+			);
+			const openMs = Date.now() - startedOpening;
+
+			return {
+				pass: importMs < 3000 && openMs < 3000,
+				modelPresent,
+				analyzerInUse: hasModel.trim().slice(0, 60),
+				typed,
+				importMs,
+				openMs,
+				words,
+				budgetMs: 3000,
+				note: modelPresent
+					? 'the strong check: the model was on the device and import still used the fallback. The background sweep may be upgrading at the same time, which is realistic.'
+					: 'WEAKER: the model was not on the device, so this measures the dictionary path only. Run the `model` scenario first (or drop --no-warm) for the check that matters.'
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Collect console output and uncaught exceptions during boot.
 	async boot() {
 		const tab = await openTab('about:blank');

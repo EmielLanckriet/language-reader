@@ -54,7 +54,16 @@
 			);
 		} catch {
 			// Nothing here is worth telling the reader about. The sweep is the application catching
-			// up with itself; if it cannot, every document still re-derives the moment it is opened.
+			// up with itself.
+			//
+			// It used to be able to add that every document re-derives the moment it is opened
+			// anyway, so a failed sweep cost nothing. That is no longer true: opening a document
+			// re-derives it only when its tokens are too poor to show, because the model costs
+			// about 4 s per 1,000 characters and paying that on open failed SC-004 (research.md
+			// R18). **The sweep is now the only thing that upgrades a readable document.** If it
+			// never runs, the reader keeps dictionary segmentation — which is legible, and was the
+			// shipped analyzer until this slice, so the floor is a previous release rather than
+			// nothing.
 		}
 	}
 
