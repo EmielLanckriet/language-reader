@@ -72,12 +72,26 @@ describe('the initial migration', () => {
 
 	it('records which migrations have been applied', () => {
 		expect(tableNames(db)).toContain('schema_migration');
-		expect(appliedVersions(db)).toEqual([1]);
+		expect(appliedVersions(db)).toEqual([1, 2]);
 	});
 
 	it('is idempotent — applying it twice changes nothing', () => {
 		expect(() => applyMigrations(db)).not.toThrow();
-		expect(appliedVersions(db)).toEqual([1]);
+		expect(appliedVersions(db)).toEqual([1, 2]);
+	});
+
+	it('lets a document say it is part-way through an upgrade, and defaults to saying it is not', () => {
+		// ADR-0016. The defaults are the load-bearing part: every document that existed before this
+		// migration must read as "no upgrade in progress, every token from the stamp", and it must
+		// do so without anything having to visit it.
+		const document = columns(db, 'document');
+
+		expect(document.get('upgrade_analyzer')?.notnull).toBe(0);
+		expect(document.get('upgrade_version')?.notnull).toBe(0);
+
+		const through = document.get('upgraded_through');
+		expect(through?.notnull).toBe(1);
+		expect(Number(through?.dflt_value)).toBe(0);
 	});
 
 	describe('the hedge columns', () => {

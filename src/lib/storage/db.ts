@@ -18,6 +18,7 @@ import sqlite3InitModule, {
 } from '@sqlite.org/sqlite-wasm';
 
 import initialSql from './migrations/001-initial.sql?raw';
+import partialUpgradeSql from './migrations/002-partial-upgrade.sql?raw';
 
 export type { Database, SqlValue };
 
@@ -77,7 +78,8 @@ export function lastInsertId(db: Database): number {
  * Reading the schema means reading the SQL, which is the point (ADR-0008, Principle VII).
  */
 const MIGRATIONS: { version: number; name: string; sql: string }[] = [
-	{ version: 1, name: '001-initial', sql: initialSql }
+	{ version: 1, name: '001-initial', sql: initialSql },
+	{ version: 2, name: '002-partial-upgrade', sql: partialUpgradeSql }
 ];
 
 /** The database file, inside the origin-private file system. Invisible to the reader. */

@@ -16,7 +16,7 @@
  */
 
 import { type Database } from './db';
-import { Repository } from './repository';
+import { Repository, type UpgradeBatch } from './repository';
 import { acquire, release } from './lease';
 import { next, acceptsWrites, type Availability, type Event } from './availability';
 import { clearDiagnostics, readDiagnostics, recordDiagnostic } from '../diagnostics/log';
@@ -30,7 +30,7 @@ import type { Request, Response, ToWorker } from './protocol';
  * The two calls that create data the reader earned, and the only ones that go through FR-015's
  * "try again, then carry out what they were doing" path. Everything else waits its turn instead.
  */
-// Deliberately NOT including 'replaceTokens'. Re-derivation is the application catching up with
+// Deliberately NOT including 'replaceTokens' or 'advanceUpgrade'. Re-derivation is the application catching up with
 // itself, not the reader making a change: there is nothing to remember and retry on their behalf,
 // and raising the read-only notice for background work would tell them something is wrong when
 // nothing is. Without the lease it simply fails, the sweep moves on, and the document stays stale
@@ -220,6 +220,12 @@ function run(request: Request): unknown {
 			return repository.replaceTokens(
 				request.args[0],
 				request.args[1] as ResolvedToken[],
+				request.args[2] as AnalyzerStamp
+			);
+		case 'advanceUpgrade':
+			return repository.advanceUpgrade(
+				request.args[0],
+				request.args[1] as UpgradeBatch,
 				request.args[2] as AnalyzerStamp
 			);
 		case 'staleDocumentIds':

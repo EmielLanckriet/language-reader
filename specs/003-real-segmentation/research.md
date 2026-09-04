@@ -830,3 +830,60 @@ the import path that could, and on the unit tests around `needsImmediateRederiva
 3. **Should the catch-up sweep report to the diagnostics page?** Left open by clarification as
    low-impact. Design leans yes, because slice 1 established diagnostics as where invisible work
    becomes visible, and the sweep is invisible work by definition.
+
+## R20. Why the upgrade never arrived: three defects, one of them in `await` (2026-09-04)
+
+Reported from the phone after T080 shipped: *"everything seems to be segmented only by longest word
+lookup because Bert takes so long."* Dictionary-first import worked — documents open at once — but
+the background upgrade to the model was never observed to land on any document.
+
+Reading the code found three separate causes. They are independent, and each alone is enough to
+produce exactly that report.
+
+### 1. The awaits release nothing
+
+`taggedAnalyzer.analyze` splits at sentence delimiters and again at 500 characters, and `await`s
+each chunk. That looks like thirty small pieces of work. It is not: `await` yields **microtasks**,
+and the browser paints and dispatches input between **tasks**. The continuation after an `await` is
+a microtask, so it runs in the same task, so the task never ends.
+
+Measured, `scripts/measure/yield.mjs`:
+
+```
+await-only:  2000 ms of work, timer ran during it: false
+with yield:  2010 ms of work, timer ran during it: true
+```
+
+A 4,999-character document is therefore one **27-second block of the main thread**. Nothing paints,
+no tap is answered, and a mobile browser may reasonably conclude the page is hung and reload it —
+which would also destroy the pass, feeding cause 3.
+
+The fix is a real task boundary (`setTimeout(…, 0)`) between units, not a smaller chunk size.
+Chunking without yielding buys nothing at all, which is why the splitting that was already there did
+not help.
+
+### 2. The reader never re-reads
+
+`read/[id]/+page.svelte` loads tokens in an effect keyed on the route id. An upgrade that completes
+while the document is open changes the database and nothing else. The reader would have to close the
+document and reopen it to see the words improve — and would have no reason to think of doing so.
+
+### 3. An interrupted pass loses everything
+
+`rederiveDocument` computes the whole document and then writes once. Interrupted at 26 of 27
+seconds — phone locked, app switched, tab reloaded — all 26 seconds are discarded and the next
+attempt starts at zero. On a phone, a 27-second uninterrupted foreground window is not a given, and
+a document that never gets one stays on the dictionary permanently. Combined with cause 1, which
+makes the page look hung for precisely that window, this is self-reinforcing.
+
+### What this changes
+
+Cause 3 is the one with a design consequence, and it is ADR-0016: a document may be mid-upgrade and
+records where the upgrade has reached, so progress survives interruption and the reader watches the
+page they are on improve. Causes 1 and 2 are repairs.
+
+**The reader's own diagnosis was right, for a reason worth recording.** The suggestion was to split
+the document into pieces workable in about five seconds. The computing was already split — into
+pieces of at most 500 characters. What was not split was the **saving**, and what was missing was
+any yield between the pieces. "Split it up" was the correct instinct aimed at the wrong half, and
+reading the code rather than reasoning from the symptom is what separated them.

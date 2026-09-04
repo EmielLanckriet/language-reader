@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
@@ -10,6 +11,7 @@
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
 	import { activeAnalyzer, fallbackAnalyzer } from '$lib/analyzer/active';
 	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
+	import { upgradeOf } from '$lib/storage/upgrades';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -19,6 +21,14 @@
 
 	/** True while a stale document is being brought up to date, which the reader waits for. */
 	let resegmenting = $state(false);
+
+	/**
+	 * A batch landed while the reader had the word menu open, and the words have not been re-read.
+	 *
+	 * Held rather than applied, because replacing the tokens under an open menu would move or
+	 * remove the word it is about. It is applied the moment the menu closes.
+	 */
+	let refreshWhenFree = $state(false);
 
 	/**
 	 * The document's characters, converted once.
@@ -31,6 +41,30 @@
 
 	$effect(() => {
 		void load(Number(page.params.id));
+	});
+
+	/**
+	 * Show the improvement as it arrives (ADR-0016).
+	 *
+	 * The sweep upgrades a document a batch at a time, and a document being read is exactly the one
+	 * worth improving first. Without this the reader would have to close and reopen it to see any of
+	 * it, which is what made the upgrade invisible in practice (research.md R20).
+	 */
+	let shownThrough = -1;
+
+	$effect(() => {
+		const advanced = upgradeOf(Number(page.params.id));
+		if (!advanced) return;
+
+		// `untrack`, and not decoration: everything below reads state that `showLatestWords` then
+		// writes — `document` above all — so without it this effect would retrigger itself for as
+		// long as the reader stayed on the page. The only dependency it is meant to have is the
+		// progress reported by the sweep.
+		untrack(() => {
+			if (advanced.through === shownThrough || !document || loading) return;
+			shownThrough = advanced.through;
+			void showLatestWords();
+		});
 	});
 
 	async function load(id: number) {
@@ -113,6 +147,38 @@
 		}
 	}
 
+	/**
+	 * Re-read the tokens of the document already on screen.
+	 *
+	 * Not `load`: nothing here is allowed to blank the page the reader is reading. The document is
+	 * replaced in place, marks are re-read for the words that now exist, and the reader's scroll
+	 * position is left alone.
+	 */
+	async function showLatestWords() {
+		if (!document) return;
+		if (chosen) {
+			refreshWhenFree = true;
+			return;
+		}
+
+		try {
+			const { repository } = await session();
+			const fresh = await repository.getDocument(document.id);
+			document = fresh;
+			states = await repository.getStates(lexemesIn(fresh));
+			refreshWhenFree = false;
+		} catch {
+			// The words on screen are still correct words, just not the newest ones, and the next
+			// batch will bring another chance. Nothing here is worth interrupting reading for.
+		}
+	}
+
+	/** The reader has finished with the menu, so a refresh that was waiting for them can happen. */
+	function menuClosed() {
+		chosen = null;
+		if (refreshWhenFree) void showLatestWords();
+	}
+
 	function lexemesIn(loaded: StoredDocument): LexemeId[] {
 		return loaded.tokens
 			.map((token) => token.lexemeId)
@@ -150,6 +216,12 @@
 		}
 	}
 
+	/** How much of the document the upgrade has reached, for the subtitle. */
+	function percentUpgraded(loaded: StoredDocument): number {
+		if (!loaded.upgrade) return 100;
+		return Math.round((loaded.upgrade.through / characters.length) * 100);
+	}
+
 	function textOf(token: Token): string {
 		return characters.slice(token.start, token.end).join('');
 	}
@@ -172,7 +244,13 @@
 	<!-- The version is a fingerprint of the analyzer's own behaviour, not a number anyone chose
 	     (ADR-0011), so it reads as opaque and is meant to. It is shown because it is the only way
 	     to tell whether this device's ICU segments like the one the comparison was run on. -->
-	<p class="subtitle">Segmented by {document.analyzer} · {document.analyzerVersion}</p>
+	<p class="subtitle">
+		Segmented by {document.analyzer} · {document.analyzerVersion}{#if document.upgrade}<br />
+			<!-- Two stamps, because a document mid-upgrade genuinely has two: the words before the
+			     boundary came from one analyzer and the words after it from another (ADR-0016). A
+			     single stamp here would be describing part of the page and claiming all of it. -->
+			Upgrading to {document.upgrade.analyzer} — {percentUpgraded(document)}% done{/if}
+	</p>
 
 	<!-- No whitespace between tokens: this is Chinese, and the browser would render any gap the
 	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->
@@ -188,7 +266,7 @@
 			word={textOf(chosen)}
 			current={stateOf(chosen)}
 			onchoose={choose}
-			onclose={() => (chosen = null)}
+			onclose={menuClosed}
 		/>
 	{/if}
 {/if}

@@ -8,7 +8,7 @@
 
 import { RejectedInput } from '../content/types';
 import { StorageFailure } from './failures';
-import type { DocumentSummary, StoredDocument } from './repository';
+import type { DocumentSummary, StoredDocument, UpgradeBatch } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
@@ -169,6 +169,17 @@ export class RepositoryClient {
 		analyzer: AnalyzerStamp
 	): Promise<void> {
 		return this.call({ method: 'replaceTokens', args: [documentId, tokens, analyzer] });
+	}
+
+	/**
+	 * One instalment of an upgrade, durable the moment it returns (ADR-0016).
+	 *
+	 * Not a reader change either, for the same reason `replaceTokens` is not: see the worker's
+	 * READER_CHANGES. Without the lease it simply fails and the sweep stops, leaving the document
+	 * exactly as far along as its last batch got it.
+	 */
+	advanceUpgrade(documentId: number, batch: UpgradeBatch, upgrade: AnalyzerStamp): Promise<void> {
+		return this.call({ method: 'advanceUpgrade', args: [documentId, batch, upgrade] });
 	}
 
 	staleDocumentIds(analyzerName: string, analyzerVersion: string): Promise<number[]> {

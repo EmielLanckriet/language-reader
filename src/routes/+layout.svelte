@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
 	import '$lib/ui/app.css';
 	import InstallOffer from '$lib/ui/InstallOffer.svelte';
 	import UpdateOffer from '$lib/ui/UpdateOffer.svelte';
@@ -7,6 +8,7 @@
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
 	import { sweepStaleDocuments } from '$lib/storage/sweep';
+	import { noteUpgraded } from '$lib/storage/upgrades';
 	import { activeAnalyzer } from '$lib/analyzer/active';
 	import { describeError } from '$lib/diagnostics/describe';
 
@@ -46,11 +48,21 @@
 				repository,
 				await activeAnalyzer(),
 				() => document.visibilityState === 'visible',
-				(documentId, error) =>
-					void repository.recordDiagnostic(
-						'analysis',
-						`Could not re-segment document ${documentId}: ${describeError(error)}`
-					)
+				{
+					onFailure: (documentId, error) =>
+						void repository.recordDiagnostic(
+							'analysis',
+							`Could not re-segment document ${documentId}: ${describeError(error)}`
+						),
+					// A document being read right now should improve while it is being read, rather
+					// than at the next time it happens to be opened (ADR-0016) — which means both
+					// telling the page about it and doing that document first.
+					onAdvance: noteUpgraded,
+					prefer: () => {
+						const open = Number(page.params.id);
+						return Number.isFinite(open) ? open : undefined;
+					}
+				}
 			);
 		} catch {
 			// Nothing here is worth telling the reader about. The sweep is the application catching
