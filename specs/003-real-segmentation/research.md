@@ -923,7 +923,20 @@ the first second of a first visit was discarded.
 
 ### What it also explains
 
-Both of the other harness debts, which were filed as separate mysteries:
+**All three** of the harness debts, which were filed as separate mysteries:
+
+- **T082, the model download hangs under headless Chrome** — two full 1,500-second timeouts, every
+  hypothesis measured and disproved, and three observations that no path through `downloadModel`
+  could account for. A reload 614 ms into the download accounts for all three at once:
+  `ort-runtime.js` alone in the cache is the first of three files, the button reading "Download"
+  rather than "Downloading" is a remounted component, and no error on screen is nothing having
+  failed. The `model` scenario now passes end to end: 你是哪国人 goes from 你 是 哪 国人 to
+  你 是 哪 国 人 and the stamp reads `bert-ws-zh · 1-8550a78c-q8`.
+
+  Not proved by re-breaking it, and the reason is worth stating: the only change between the last
+  1,500-second timeout and a clean pass is this one, the download code was measured good in every
+  part (R19), and the reload explains the three observations that nothing else did. Re-breaking it
+  would cost another 98 MB download to raise "the only remaining explanation" to "demonstrated".
 
 - **T094, `bigimport` gave four answers in four runs** — 328 ms, 462 ms, a 4,516 ms outlier, and one
   failure with no measurement. After the fix: 621, 613, 621 ms. The reload was racing a

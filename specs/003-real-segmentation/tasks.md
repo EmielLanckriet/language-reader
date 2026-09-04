@@ -236,7 +236,7 @@ identically everywhere.
 - [X] T079 Move the browser harness into `scripts/verify-in-browser/` behind `npm run verify:browser`, with a launcher that refuses to run on a build without `BASE_PATH`, on a debug port it cannot prove it owns, or against a server kinder than GitHub Pages — the three arrangements that each produced a failure indistinguishable from an application bug
 - [X] T080 Import with the fallback analyzer and let the background sweep upgrade to the model, so a document appears in 26 ms rather than 30 s (SC-004, research.md R18). Opening a document now re-derives only when its stored tokens are too poor to show — `needsImmediateRederivation` in `src/lib/storage/rederive.ts`, decided on a property of the tokens rather than a list of analyzer names, because a name did not tell the truth on the reader's phone (R11)
 - [X] T081 On the phone: confirm a 4,999-character document now appears within 3 seconds, and say whether the background upgrade to the model is tolerable or whether it makes reading unpleasant while it runs — **answered: documents appear at once, and the upgrade never arrives at all.** "Everything seems to be segmented only by longest word lookup." Three independent causes, any one of them sufficient, in research.md R20
-- [ ] T082 Find out why downloading the model hangs under headless Chrome in `scripts/verify-in-browser`. Network, streamed `cache.put`, service-worker cache contention and the download loop itself are all measured good (research.md R19); the per-chunk progress callback is measured good too (98 MB with a DOM write per chunk: 3.1 s), so every hypothesis so far is disproved and the next place to look is what runs *after* the download resolves — `refreshModelState` and `reload`, which creates the inference session. Until this is answered, `bigimport` can only be run in its weaker `--no-warm` form
+- [X] T082 Find out why downloading the model hangs under headless Chrome — **answered: the same first-visit reload as T093 and T094** (research.md R21). The page reloaded 614 ms in, mid-download, which accounts for all three observations that no path through `downloadModel` could explain: `ort-runtime.js` alone in the cache (only the first of three files had been stored), the button reading "Download" rather than "Downloading" (the component had remounted), and no error on screen (nothing had failed). The `model` scenario now passes end to end, and `bigimport` can be run in its strong form again
 
 ## Phase 11: The Upgrade That Never Arrived
 
@@ -259,6 +259,9 @@ third has a design consequence and gets an ADR; the other two are repairs.
 
 **Checkpoint**: segmentation resolves the cases only context can resolve, and the reader who does not
 want the download loses nothing.
+
+**Slice 2 is complete.** 96 tasks, all closed. The three items that stood open longest — T082, T093
+and T094 — turned out to be one bug, and not the one any of them was filed as.
 
 ---
 
