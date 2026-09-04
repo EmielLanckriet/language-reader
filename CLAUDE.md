@@ -2,7 +2,7 @@
 
 Short on purpose: this file is read every session, so length here is a tax on every session.
 
-The constitution (`.specify/memory/constitution.md`) says what this project *is*. This says how to
+The constitution (`.specify/memory/constitution.md`) says what this project _is_. This says how to
 work in it without spending more than the work is worth. Everything below came from a session that
 cost far more than it should have, and the diagnosis is in the last section.
 
@@ -13,7 +13,7 @@ Full discipline — test-first, exact assertions, transactions, an ADR when a do
 - `Repository.assertState`, `appendEvent`, `writeProjectedState` — the reader's judgments
 - `src/lib/storage/migrations/` — one-way by definition
 - anything that deletes a `lexeme` — marks point at them
-- segmentation *correctness* properties (tiling, offsets, coverage, unit-locality)
+- segmentation _correctness_ properties (tiling, offsets, coverage, unit-locality)
 
 Everything else — tokens, segmentation output, caches, the model, every screen, the sweep, the
 service worker — is derived and recomputable on purpose (ADR-0003). Breaking it costs a re-derive,
@@ -30,7 +30,7 @@ change shipped 860 test lines for 400 lines of logic; maybe a third of that was 
 Mutate the code it covers and watch it go red. Three tests written in one session could not fail at
 all — two equivalence properties that were true by construction, and a property whose generator
 skipped nearly every case. A test that cannot fail is worse than no test, because it reads as
-coverage. This habit *reduces* the number of tests worth writing.
+coverage. This habit _reduces_ the number of tests worth writing.
 
 ## Measure before asserting, not after
 
@@ -47,4 +47,4 @@ the phone (a deploy, an update prompt, a wait on a person).
 - Run only the `verify:browser` scenarios a change can plausibly reach.
 - Batch phone checks: three or four changes per deploy, not one.
 - Reading this codebase is expensive too — `src/` is about a third comment lines. Write comments for
-  *decisions*, and let mechanical code be read as code.
+  _decisions_, and let mechanical code be read as code.
