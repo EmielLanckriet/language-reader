@@ -887,3 +887,16 @@ the document into pieces workable in about five seconds. The computing was alrea
 pieces of at most 500 characters. What was not split was the **saving**, and what was missing was
 any yield between the pieces. "Split it up" was the correct instinct aimed at the wrong half, and
 reading the code rather than reasoning from the symptom is what separated them.
+
+### Confirmed on the phone, 2026-09-04
+
+Build 1788513182746, reported by the reader: the subtitle shows how far the upgrade has reached, the
+words improve in steps while the document is being read, and locking the phone part-way does not
+lose the work — it resumes. So all three defects above are fixed on the device that matters.
+
+One residual, accepted rather than fixed: **a noticeable wait before the model starts working at
+all.** Not measured on the phone, but its parts are known from R18 — 1,172 ms to create the
+inference session, plus the sweep's deliberate wait for the first idle moment, plus one document
+read. It is a fixed cost paid once per page load rather than per batch, which is why it is visible
+at the start and not afterwards. The cheap fix is already written down as a follow-on in the
+register: create the session when the application loads rather than on the first segmentation.
