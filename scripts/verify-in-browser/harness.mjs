@@ -456,10 +456,82 @@ const scenarios = {
 	// The notice appears when a change is *attempted*, not when a second copy merely opens: slice 1
 	// decided the check happens inside the action, so a change is performed or refused immediately
 	// rather than held in hope. So this scenario has to actually try to save.
+	// A first visit must not reload itself. Found while chasing `readonly`, which kept failing
+	// because the reload landed on the click it was making (T093).
+	async firstload() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/');
+			await until('the paste box to render', () =>
+				tab.evaluate('return !!document.querySelector("textarea");')
+			);
+
+			// A value on `window` survives anything except a new document. Cheaper and more direct
+			// than watching navigation events, and it cannot be confused by SPA routing.
+			await tab.evaluate('window.__stillHere = true; return true;');
+
+			const deadline = Date.now() + 20000;
+			let reloadedAfterMs = null;
+			const started = Date.now();
+			while (Date.now() < deadline) {
+				const state = await tab.evaluate(`
+					return {
+						stillHere: window.__stillHere === true,
+						controlled: !!navigator.serviceWorker.controller,
+						navigation: performance.getEntriesByType('navigation')[0]?.type ?? null
+					};
+				`);
+				if (!state.stillHere) {
+					reloadedAfterMs = Date.now() - started;
+					return {
+						pass: false,
+						error: 'the page reloaded itself on a first visit',
+						reloadedAfterMs,
+						navigation: state.navigation,
+						controlled: state.controlled,
+						note: 'anything the reader had typed at that moment is gone'
+					};
+				}
+				if (state.controlled) {
+					// Controlled without having reloaded: give it a moment to prove it stays put,
+					// because the reload would happen on the controllerchange we just saw.
+					await new Promise((resolve) => setTimeout(resolve, 1500));
+					const after = await tab.evaluate('return window.__stillHere === true;');
+					return {
+						pass: after,
+						controlled: true,
+						waitedForControlMs: Date.now() - started,
+						note: after
+							? 'the worker took control and the page stayed put'
+							: 'the page reloaded just after the worker took control'
+					};
+				}
+				await new Promise((resolve) => setTimeout(resolve, 200));
+			}
+
+			return { pass: false, error: 'the worker never took control within 20 s' };
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async readonly() {
 		const first = await openTab('about:blank');
 		const second = await openTab('about:blank');
+		const console_ = [];
 		try {
+			await first.send('Runtime.enable');
+			await first.send('Log.enable');
+			first.onEvent((method, params) => {
+				if (method === 'Runtime.exceptionThrown')
+					console_.push(
+						'EXC: ' +
+							(params.exceptionDetails.exception?.description ?? params.exceptionDetails.text)
+					);
+				if (method === 'Log.entryAdded' && params.entry.level === 'error')
+					console_.push('ERR: ' + params.entry.text);
+			});
+
 			await first.goto('/');
 			await until('first copy ready', () =>
 				first.evaluate(`return ${SAVE_BUTTON} ? true : false;`)
@@ -494,24 +566,64 @@ const scenarios = {
 			// Poll for either outcome — refused, or accepted — rather than only for the one being
 			// hoped for. A harness that can only observe failure cannot tell a regression from an
 			// artefact of headless visibility handling.
-			const outcome = await until(
-				'the background copy to refuse or accept',
-				async () => {
-					const state = await first.evaluate(`
-						const refusal = document.body.innerText.match(/cannot save right now|will not let the app store/i);
-						return {
-							refusal: refusal ? refusal[0] : null,
-							documents: ${READ_LINKS},
-							visibility: document.visibilityState
-						};
-					`);
-					// Either it refused, or a NEW document appeared. Counting from a baseline taken
-					// just before the click, because earlier scenarios already saved documents and
-					// "a /read/ link exists" was therefore true before this scenario began.
-					return state.refusal || state.documents > before ? state : null;
-				},
-				15000
-			);
+			//
+			// And when NEITHER happens, say what was on the page instead of timing out with
+			// nothing. This scenario spent a whole debugging session reporting `last: null`, which
+			// is the least informative thing it could have said: the page had been read
+			// successfully every time and simply showed neither outcome, and none of the three
+			// candidate explanations could be told apart from outside.
+			const readState = () =>
+				first.evaluate(`
+					const refusal = document.body.innerText.match(/cannot save right now|will not let the app store/i);
+					return {
+						refusal: refusal ? refusal[0] : null,
+						documents: ${READ_LINKS},
+						visibility: document.visibilityState,
+						saveDisabled: ${SAVE_BUTTON}?.disabled ?? null,
+						saveLabel: ${SAVE_BUTTON}?.textContent?.trim() ?? null,
+						text: document.body.innerText.replace(/[\\s]+/g, ' ').slice(0, 500)
+					};
+				`);
+
+			// Either it refused, or a NEW document appeared. Counting from a baseline taken just
+			// before the click, because earlier scenarios already saved documents and "a /read/
+			// link exists" was therefore true before this scenario began.
+			const settled = (state) => state.refusal || state.documents > before;
+
+			let outcome = await readState();
+			const deadline = Date.now() + 15000;
+			while (!settled(outcome) && Date.now() < deadline) {
+				await new Promise((resolve) => setTimeout(resolve, 200));
+				outcome = await readState();
+			}
+
+			if (!settled(outcome)) {
+				// Ask the copy that CAN read storage whether anything was written. The background
+				// copy's own library list is not evidence either way: it renders nothing at all
+				// while its `loading` flag is set, so a save that succeeded and a save that never
+				// happened look identical from there. This is the measurement that separates them.
+				await second.goto('/');
+				const foregroundDocuments = await until(
+					'the foreground copy to list its library',
+					() =>
+						second
+							.evaluate(
+								`return document.body.innerText.includes("Opening your library") ? null : ${READ_LINKS};`
+							)
+							.then((count) => (count === null ? null : { count })),
+					20000
+				);
+
+				return {
+					pass: false,
+					error: 'the background copy neither refused nor accepted within 15 s',
+					observed: outcome,
+					documentsBefore: before,
+					documentsInStorage: foregroundDocuments.count,
+					foregroundVisibility: await second.evaluate('return document.visibilityState'),
+					console: console_
+				};
+			}
 
 			const visibilities = {
 				background: outcome.visibility,
@@ -524,7 +636,8 @@ const scenarios = {
 				visibilities,
 				note: outcome.refusal
 					? 'the copy without the lease refused, as slice 1 requires'
-					: 'the background copy accepted the change — check whether headless reports both tabs visible, which would mean it legitimately held the lease'
+					: 'the background copy accepted the change — check whether headless reports both tabs visible, which would mean it legitimately held the lease',
+				console: console_.slice(0, 8)
 			};
 		} finally {
 			await first.close();

@@ -25,6 +25,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | --- | --- |
 | `probe` | What is actually on the page — buttons, links, text. Run this first when a selector fails, instead of guessing. |
 | `boot` | Console output and uncaught exceptions during start-up. |
+| `firstload` | A first visit does not reload itself. Exists because it did, for 614 ms, and the reload was silently failing three other scenarios (research.md R21). |
 | `shell` | The service worker takes control and the manifest is real. |
 | `words` | Real segmentation is visible in the reader and the words are words. |
 | `offline` | Reading with the server stopped. Warms with `words`, then stops the server. |

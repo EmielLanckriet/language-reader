@@ -88,7 +88,23 @@
 
 			// The new worker has taken over. Reloading here rather than immediately after asking it
 			// to activate: until control actually changes, a reload would just re-run the old one.
-			const took = () => window.location.reload();
+			//
+			// **Only when a worker is being replaced, though.** `controllerchange` fires for two
+			// different events and only one of them is an update. On a first visit the page starts
+			// with no controller, the worker installs, and `clients.claim()` gives it the page it
+			// was installed from — which is deliberate and right (see service-worker.ts), but is
+			// not an update and there is nothing to reload for. Reloading anyway threw away
+			// whatever the reader had typed in the first moments of their first ever visit.
+			// Measured at 614 ms after the paste box appeared, which is well inside the time it
+			// takes to paste something (T093, research.md R21).
+			//
+			// So the question is whether this page was *already* controlled. If it was, control
+			// changing means a different worker now serves it and the code running here is stale.
+			// If it was not, this is the first install and the page is already current.
+			const wasControlled = navigator.serviceWorker.controller !== null;
+			const took = () => {
+				if (wasControlled) window.location.reload();
+			};
 			navigator.serviceWorker.addEventListener('controllerchange', took);
 
 			stop = () => {

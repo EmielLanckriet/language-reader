@@ -900,3 +900,38 @@ inference session, plus the sweep's deliberate wait for the first idle moment, p
 read. It is a fixed cost paid once per page load rather than per batch, which is why it is visible
 at the start and not afterwards. The cheap fix is already written down as a follow-on in the
 register: create the session when the application loads rather than on the first segmentation.
+
+## R21. The application reloaded itself on every first visit (2026-09-04)
+
+T093 asked why the `readonly` scenario timed out. The answer was not about the storage lease, which
+works: **the page reloads itself 614 ms into a first visit, and the reload was landing on the click
+the scenario was making.**
+
+`UpdateOffer` reloads on `controllerchange`. That event fires for two different things and only one
+of them is an update:
+
+| what happened | controller before | reload correct? |
+| --- | --- | --- |
+| the reader accepted a new version, or another tab did | a worker | yes — the code running is stale |
+| first install: the worker activated and called `clients.claim()` | none | **no** — the page is already current |
+
+`clients.claim()` on a first install is deliberate and right (see service-worker.ts): it lets the
+worker serve the page it was installed from, so the application is offline-capable without a second
+visit. The defect was reloading in response to it. The fix is one question asked at the right time —
+was this page *already* controlled — and the reader-visible consequence was real: anything typed in
+the first second of a first visit was discarded.
+
+### What it also explains
+
+Both of the other harness debts, which were filed as separate mysteries:
+
+- **T094, `bigimport` gave four answers in four runs** — 328 ms, 462 ms, a 4,516 ms outlier, and one
+  failure with no measurement. After the fix: 621, 613, 621 ms. The reload was racing a
+  4,999-character paste, and which side won decided what got measured.
+- The general flakiness of scenarios on a fresh profile.
+
+The lesson is the one this harness keeps teaching: **the checks were not flaky, the application
+was.** Three separate runs were written off as headless artefacts, and a fourth was filed as a debt,
+because a failure that reads as "the environment is unreliable" is easy to believe. The `firstload`
+scenario exists so that this particular one cannot be believed again — it asserts the single fact
+that was wrong, that a first visit stays put.
