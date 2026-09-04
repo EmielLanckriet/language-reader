@@ -6,6 +6,7 @@ import {
 	queryRows,
 	type Database
 } from '../../src/lib/storage/db';
+import initialSql from '../../src/lib/storage/migrations/001-initial.sql?raw';
 
 // Invariant 5 of data-model.md. Almost every column checked here supports no capability a reader
 // can see in this slice, which is exactly why the check exists: an invisible column is what a
@@ -177,6 +178,67 @@ describe('the database the application opens', () => {
 			expect(() => db.exec('SELECT 1 FROM document')).not.toThrow();
 			expect(() => db.exec('SELECT 1 FROM status_event')).not.toThrow();
 			expect(() => db.exec('SELECT 1 FROM word_state')).not.toThrow();
+		} finally {
+			db.close();
+		}
+	});
+});
+
+// The reader's phone already holds a database written by the previous version, with documents and
+// marks in it. Every test above starts from nothing, which is the one starting state that device
+// will never be in. This one starts where the phone actually is.
+describe('upgrading a database that already has a reader in it', () => {
+	let sqlite3: Awaited<ReturnType<typeof loadSqlite>>;
+
+	beforeAll(async () => {
+		sqlite3 = await loadSqlite();
+	});
+
+	/** A database at schema version 1, as the last release left it. */
+	function atVersionOne(): Database {
+		const db = new sqlite3.oo1.DB(':memory:', 'c');
+		db.exec(`CREATE TABLE IF NOT EXISTS schema_migration (
+      version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`);
+		db.exec(initialSql);
+		db.exec(
+			`INSERT INTO schema_migration (version, name, applied_at)
+       VALUES (1, '001-initial', '2026-09-01T00:00:00.000Z')`
+		);
+		return db;
+	}
+
+	it('adds the upgrade columns without disturbing what was already stored', () => {
+		const db = atVersionOne();
+		try {
+			db.exec(
+				`INSERT INTO document
+           (raw_content, content_type, language, analyzer, analyzer_version, title, created_at)
+         VALUES ('我在中国', 'text/plain', 'zh', 'cedict-longest-match-zh', '1-abc', '我在中国', '2026-09-01T00:00:00.000Z')`
+			);
+
+			applyMigrations(db);
+
+			expect(appliedVersions(db)).toEqual([1, 2]);
+
+			// The document is untouched, and reads as what it is: not mid-upgrade, every token from
+			// its own stamp. Nothing had to visit it to make that true.
+			const rows = queryRows(db, 'SELECT * FROM document');
+			expect(rows).toHaveLength(1);
+			expect(rows[0].raw_content).toBe('我在中国');
+			expect(rows[0].analyzer).toBe('cedict-longest-match-zh');
+			expect(rows[0].upgrade_analyzer).toBeNull();
+			expect(rows[0].upgraded_through).toBe(0);
+		} finally {
+			db.close();
+		}
+	});
+
+	it('is applied once, however often the application starts', () => {
+		const db = atVersionOne();
+		try {
+			applyMigrations(db);
+			applyMigrations(db);
+			expect(appliedVersions(db)).toEqual([1, 2]);
 		} finally {
 			db.close();
 		}
