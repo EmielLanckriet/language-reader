@@ -207,14 +207,30 @@ describe('upgrading a database that already has a reader in it', () => {
 		return db;
 	}
 
+	/** A document, a word, and a judgment the reader made about it. */
+	function withAReaderInIt(db: Database): void {
+		db.exec(
+			`INSERT INTO document
+         (raw_content, content_type, language, analyzer, analyzer_version, title, created_at)
+       VALUES ('我在中国', 'text/plain', 'zh', 'cedict-longest-match-zh', '1-abc', '我在中国', '2026-09-01T00:00:00.000Z')`
+		);
+		db.exec("INSERT INTO lexeme (id, language, surface) VALUES (7, 'zh', '中国')");
+		db.exec("INSERT INTO device (id, next_seq) VALUES ('device-1', 2)");
+		db.exec(
+			`INSERT INTO status_event
+         (lexeme_id, asserted, asserted_at, device_id, device_seq, provenance, user_id)
+       VALUES (7, 'known', '2026-09-01T12:00:00.000Z', 'device-1', 1, 'reader', 1)`
+		);
+		db.exec(
+			`INSERT INTO word_state (lexeme_id, state, provenance, user_id)
+       VALUES (7, 'known', 'reader', 1)`
+		);
+	}
+
 	it('adds the upgrade columns without disturbing what was already stored', () => {
 		const db = atVersionOne();
 		try {
-			db.exec(
-				`INSERT INTO document
-           (raw_content, content_type, language, analyzer, analyzer_version, title, created_at)
-         VALUES ('我在中国', 'text/plain', 'zh', 'cedict-longest-match-zh', '1-abc', '我在中国', '2026-09-01T00:00:00.000Z')`
-			);
+			withAReaderInIt(db);
 
 			applyMigrations(db);
 
@@ -228,6 +244,27 @@ describe('upgrading a database that already has a reader in it', () => {
 			expect(rows[0].analyzer).toBe('cedict-longest-match-zh');
 			expect(rows[0].upgrade_analyzer).toBeNull();
 			expect(rows[0].upgraded_through).toBe(0);
+
+			// The earned data, asserted exactly. This migration only adds columns to `document`, so
+			// it cannot reach these tables — but the comment above this block promises a database
+			// "with documents and marks in it", and until an audit pointed it out only the document
+			// half was true. A later migration in this slice that did touch them would have found
+			// nothing here to stop it.
+			expect(queryRows(db, 'SELECT * FROM status_event')).toEqual([
+				expect.objectContaining({
+					lexeme_id: 7,
+					asserted: 'known',
+					asserted_at: '2026-09-01T12:00:00.000Z',
+					device_id: 'device-1',
+					device_seq: 1,
+					provenance: 'reader',
+					user_id: 1
+				})
+			]);
+			expect(queryRows(db, 'SELECT * FROM word_state')).toEqual([
+				expect.objectContaining({ lexeme_id: 7, state: 'known', provenance: 'reader', user_id: 1 })
+			]);
+			expect(queryRows(db, 'SELECT surface FROM lexeme')).toEqual([{ surface: '中国' }]);
 		} finally {
 			db.close();
 		}
@@ -236,6 +273,7 @@ describe('upgrading a database that already has a reader in it', () => {
 	it('is applied once, however often the application starts', () => {
 		const db = atVersionOne();
 		try {
+			withAReaderInIt(db);
 			applyMigrations(db);
 			applyMigrations(db);
 			expect(appliedVersions(db)).toEqual([1, 2]);

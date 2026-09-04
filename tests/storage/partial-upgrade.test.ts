@@ -2,15 +2,21 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fc from 'fast-check';
 import { Repository, type StoredDocument } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
-import { CHINESE_UNIT_DELIMITERS } from '../../src/lib/analyzer/delimiters';
-import { splitIntoUnits } from '../../src/lib/analyzer/units';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { codePointsOf } from '../../src/lib/domain/offsets';
 import { tiles } from '../../src/lib/domain/tiling';
-import { freshDatabase } from './support';
+import {
+	freshDatabase,
+	pairwiseAnalyzer as pairwise,
+	unitBoundaries as boundariesOf
+} from './support';
 import type { Database } from '../../src/lib/storage/db';
-import type { Analyzer, AnalyzedToken } from '../../src/lib/analyzer/types';
+import type { Analyzer } from '../../src/lib/analyzer/types';
+
+function unitBoundaries(text: string, analyzer: Analyzer): number[] {
+	return boundariesOf(text, analyzer);
+}
 
 // A document may be part-way through an upgrade to a better analyzer (ADR-0016), and these are the
 // properties that make the boundary it records trustworthy rather than merely plausible.
@@ -21,59 +27,18 @@ import type { Analyzer, AnalyzedToken } from '../../src/lib/analyzer/types';
 // the recorded boundary describes the tokens that are actually stored. Marks are **earned**, so
 // they are asserted exactly: by count, and by content.
 //
-// The analyzers are fakes on purpose. The real upgrade analyzer is a 98 MB model that cannot run in
-// a unit test, and the mechanism must hold for any pair of analyzers that respect the same
-// segmentation units, not for one particular segmenter.
-
-/**
- * Pairs characters inside each segmentation unit.
- *
- * Chosen for one reason: it produces multi-character words, so a document upgraded from
- * `characterSplitter` to this one changes visibly and in a way a property can check, and it
- * respects unit delimiters, which is the condition ADR-0016's boundary rests on.
- */
-const pairwise: Analyzer = {
-	name: 'pairwise-test',
-	version: '1',
-	language: 'zh',
-	unitDelimiters: CHINESE_UNIT_DELIMITERS,
-
-	async analyze(text: string): Promise<AnalyzedToken[]> {
-		const tokens: AnalyzedToken[] = [];
-
-		for (const unit of splitIntoUnits(text, CHINESE_UNIT_DELIMITERS)) {
-			const characters = codePointsOf(unit.text);
-			let at = 0;
-			while (at < characters.length) {
-				if (CHINESE_UNIT_DELIMITERS.has(characters[at])) {
-					tokens.push({ start: unit.start + at, end: unit.start + at + 1, isWord: false });
-					at += 1;
-					continue;
-				}
-				const end = Math.min(at + 2, characters.length);
-				tokens.push({ start: unit.start + at, end: unit.start + end, isWord: true });
-				at = end;
-			}
-		}
-
-		return tokens;
-	},
-
-	lexemeKey: (surface) => surface
-};
+// The analyzers are fakes on purpose: the real upgrade analyzer is a 98 MB model that cannot run in
+// a unit test. What that buys, and what it does not, is worth being exact about — an audit of these
+// tests found the claim here overstated once already. The fake decides each unit independently, so
+// **the equivalence below is a property of the storage path, not of segmentation**: it catches a
+// batch written to the wrong range, a delete that takes too much, a lexeme attached to the wrong
+// token. It cannot catch an analyzer whose answers depend on text outside the unit, because no fake
+// of this shape has any. That property is checked against the real analyzers in
+// tests/analyzer/unit-locality.test.ts, and the two together are what makes batching safe.
 
 const TEXT =
 	'我在中国学习中文。他骑自行车去上班。今天天气很好！你是哪国人？' +
 	'她昨天买了一本新书。我们一起去看电影吧！明天见。';
-
-/** Where segmentation units end, which is where a batch may stop (ADR-0013, ADR-0016). */
-function unitBoundaries(text: string, analyzer: Analyzer): number[] {
-	const boundaries: number[] = [];
-	for (const unit of splitIntoUnits(text, analyzer.unitDelimiters)) {
-		boundaries.push(unit.start + codePointsOf(unit.text).length);
-	}
-	return boundaries;
-}
 
 /**
  * One batch, produced by analysing **only** its own stretch of the document.
@@ -133,7 +98,7 @@ describe('upgrading a document one batch at a time', () => {
 		}
 	}
 
-	it('reaches the same tokens however it is batched', async () => {
+	it('stores the same tokens however it is batched', async () => {
 		const boundaries = unitBoundaries(TEXT, pairwise);
 		const interior = boundaries.slice(0, -1);
 		const end = boundaries[boundaries.length - 1];
@@ -302,6 +267,37 @@ describe('upgrading a document one batch at a time', () => {
 
 		// The boundary described tokens that no longer exist, so it must not survive them.
 		expect(repository.getDocument(id).upgrade).toBeUndefined();
+	});
+
+	it('refuses a batch that would cut a stored token in half', async () => {
+		// The runtime enforcement of ADR-0016's central sentence — no token may straddle the
+		// boundary — and until an audit pointed it out, nothing reached it. Every other fixture
+		// upgrades from `characterSplitter`, whose tokens are one character wide and therefore
+		// cannot straddle anything, so the guard was written and never fired.
+		//
+		// This analyzer has no delimiters at all and calls the whole text one word, which is the
+		// shape that collides: any batch boundary falls inside its single token.
+		const oneWord: Analyzer = {
+			name: 'one-word-test',
+			version: '1',
+			language: 'zh',
+			unitDelimiters: new Set(),
+			analyze: async (text) => [{ start: 0, end: codePointsOf(text).length, isWord: true }],
+			lexemeKey: (surface) => surface
+		};
+
+		const id = await saveUnder(oneWord);
+		const batch = await batchOf(TEXT, pairwise, 0, unitBoundaries(TEXT, pairwise)[0]);
+
+		expect(() => repository.advanceUpgrade(id, batch, stampOf(pairwise))).toThrow(
+			/would cut stored tokens \[0, \d+\) in half/
+		);
+
+		// Refused, and refused without changing anything.
+		const untouched = repository.getDocument(id);
+		expect(untouched.analyzer).toBe(oneWord.name);
+		expect(untouched.upgrade).toBeUndefined();
+		expect(untouched.tokens).toHaveLength(1);
 	});
 
 	it('refuses to upgrade a document to the analyzer that already stamped it', async () => {

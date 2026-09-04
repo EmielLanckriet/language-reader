@@ -1,48 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { nextBatch, upgradeStart, BATCH_BUDGET_MS } from '../../src/lib/storage/upgrade';
-import { CHINESE_UNIT_DELIMITERS } from '../../src/lib/analyzer/delimiters';
-import { splitIntoUnits } from '../../src/lib/analyzer/units';
 import { codePointsOf } from '../../src/lib/domain/offsets';
+import { pairwiseAnalyzer as pairwise, unitBoundaries as boundariesOf } from './support';
 import type { StoredDocument } from '../../src/lib/storage/repository';
-import type { Analyzer, AnalyzedToken } from '../../src/lib/analyzer/types';
 
 // The driver that turns "upgrade this document" into instalments (ADR-0016).
 //
-// Two of these properties are the reason the file exists. The first is that analysing a stretch on
-// its own gives the same answer as analysing the whole document — which is what makes resuming
-// legitimate rather than merely convenient. The second is that a real task boundary is taken
-// between units: `await` alone yields microtasks, the browser paints between tasks, and the
-// difference is the whole of research.md R20.
-
-/** Pairs characters inside each unit, so a batch is visibly more than one token per character. */
-const pairwise: Analyzer = {
-	name: 'pairwise-test',
-	version: '1',
-	language: 'zh',
-	unitDelimiters: CHINESE_UNIT_DELIMITERS,
-
-	async analyze(text: string): Promise<AnalyzedToken[]> {
-		const tokens: AnalyzedToken[] = [];
-		for (const unit of splitIntoUnits(text, CHINESE_UNIT_DELIMITERS)) {
-			const characters = codePointsOf(unit.text);
-			let at = 0;
-			while (at < characters.length) {
-				if (CHINESE_UNIT_DELIMITERS.has(characters[at])) {
-					tokens.push({ start: unit.start + at, end: unit.start + at + 1, isWord: false });
-					at += 1;
-					continue;
-				}
-				const end = Math.min(at + 2, characters.length);
-				tokens.push({ start: unit.start + at, end: unit.start + end, isWord: true });
-				at = end;
-			}
-		}
-		return tokens;
-	},
-
-	lexemeKey: (surface) => surface
-};
+// One property here is the reason the file exists: a real task boundary is taken between units.
+// `await` alone yields microtasks, a browser paints between tasks, and the difference is the whole
+// of research.md R20.
+//
+// What this file deliberately does **not** assert is that analysing a stretch on its own gives the
+// same answer as analysing the whole document. That is what makes resuming legitimate, but it is a
+// property of the analyzers rather than of this driver, and a fake analyzer that decides each unit
+// independently — which every fake of this shape does — makes it true whatever the driver does. It
+// is checked against the real analyzers in tests/analyzer/unit-locality.test.ts. An audit of these
+// tests found it asserted here and passing for that reason, which is worse than not asserting it:
+// a test that cannot fail reads as coverage.
 
 const TEXT =
 	'我在中国学习中文。他骑自行车去上班。今天天气很好！你是哪国人？' +
@@ -63,9 +38,7 @@ function documentOf(text = TEXT): StoredDocument {
 }
 
 function unitBoundaries(text: string): number[] {
-	return splitIntoUnits(text, CHINESE_UNIT_DELIMITERS).map(
-		(unit) => unit.start + codePointsOf(unit.text).length
-	);
+	return boundariesOf(text, pairwise);
 }
 
 /** Never waits, so the budget can be driven by a fake clock instead of by real time. */
@@ -92,32 +65,6 @@ describe('planning where an upgrade starts', () => {
 });
 
 describe('taking the next batch of an upgrade', () => {
-	it('gives the same tokens as analysing the whole document at once', async () => {
-		const boundaries = unitBoundaries(TEXT);
-		const document = documentOf();
-		const whole = await pairwise.analyze(TEXT);
-
-		await fc.assert(
-			fc.asyncProperty(fc.constantFrom(0, ...boundaries.slice(0, -1)), async (from) => {
-				const batch = await nextBatch(
-					document,
-					pairwise,
-					{ from, atLeast: from },
-					{ budgetMs: 0, yieldToBrowser: immediately }
-				);
-
-				const expected = whole
-					.filter((token) => token.start >= batch!.from && token.start < batch!.through)
-					.map(({ start, end, isWord }) => ({ start, end, isWord }));
-
-				expect(batch!.tokens.map(({ start, end, isWord }) => ({ start, end, isWord }))).toEqual(
-					expected
-				);
-			}),
-			{ numRuns: 20 }
-		);
-	});
-
 	it('stops on a unit boundary, never inside one', async () => {
 		const boundaries = new Set(unitBoundaries(TEXT));
 

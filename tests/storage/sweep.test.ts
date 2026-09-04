@@ -2,51 +2,21 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Repository } from '../../src/lib/storage/repository';
 import { sweepStaleDocuments, type SweepStorage } from '../../src/lib/storage/sweep';
 import { characterSplitter } from '../../src/lib/analyzer/character';
-import { CHINESE_UNIT_DELIMITERS } from '../../src/lib/analyzer/delimiters';
-import { splitIntoUnits } from '../../src/lib/analyzer/units';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { pasteSource } from '../../src/lib/content/paste';
 import { codePointsOf } from '../../src/lib/domain/offsets';
 import { tiles } from '../../src/lib/domain/tiling';
-import { freshDatabase } from './support';
+import { freshDatabase, pairwiseAnalyzer as pairwise, unitBoundaries } from './support';
 import type { Database } from '../../src/lib/storage/db';
-import type { Analyzer, AnalyzedToken } from '../../src/lib/analyzer/types';
+import type { Analyzer } from '../../src/lib/analyzer/types';
 
 // The sweep is now the only thing that improves a document the reader can already read
 // (research.md R18), and since ADR-0016 it is also the thing that has to survive being interrupted.
 // These run it against a real database rather than a fake, because what is being checked is the
 // part that persists.
 
-const pairwise: Analyzer = {
-	name: 'pairwise-test',
-	version: '1',
-	language: 'zh',
-	unitDelimiters: CHINESE_UNIT_DELIMITERS,
-
-	async analyze(text: string): Promise<AnalyzedToken[]> {
-		const tokens: AnalyzedToken[] = [];
-		for (const unit of splitIntoUnits(text, CHINESE_UNIT_DELIMITERS)) {
-			const characters = codePointsOf(unit.text);
-			let at = 0;
-			while (at < characters.length) {
-				if (CHINESE_UNIT_DELIMITERS.has(characters[at])) {
-					tokens.push({ start: unit.start + at, end: unit.start + at + 1, isWord: false });
-					at += 1;
-					continue;
-				}
-				const end = Math.min(at + 2, characters.length);
-				tokens.push({ start: unit.start + at, end: unit.start + end, isWord: true });
-				at = end;
-			}
-		}
-		return tokens;
-	},
-
-	lexemeKey: (surface) => surface
-};
-
 const TEXT = '我在中国学习中文。他骑自行车去上班。今天天气很好！你是哪国人？';
-const UNITS = splitIntoUnits(TEXT, CHINESE_UNIT_DELIMITERS).length;
+const UNITS = unitBoundaries(TEXT, pairwise).length;
 
 /** One unit per batch, and no waiting for a budget the test does not care about. */
 const ONE_UNIT_AT_A_TIME = { budgetMs: 0, yieldToBrowser: () => Promise.resolve() };
