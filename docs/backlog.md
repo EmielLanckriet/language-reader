@@ -2,6 +2,16 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## Test install and share-into-the-app on the emulator — needs a Google sign-in
+
+Blocked on 2026-09-25: installing needs a Google account in the emulator's Play Store (logcat:
+`WebAPK service unknown_account`), and signing in needs the reader's phone for two-step
+verification. Once signed in: update Chrome through the Play Store, install Reader from
+https://emiellanckriet.github.io/language-reader/, share a bundle from Termux into it, and check
+Chrome's local-network permission prompt for 127.0.0.1:8765 (newer than the emulator's Chrome 124).
+Start the emulator with a window (drop `-no-window`, see scripts/android-emulator/README.md) so the
+reader can sign in themselves.
+
 ## Termux is 724 MB
 
 Mostly ffmpeg's dependencies (mesa, vulkan, X11 libraries, libllvm), which a downloader that only
