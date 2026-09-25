@@ -132,6 +132,63 @@ const SUBMIT_SHARE = `
 	return true;`;
 
 const scenarios = {
+	// English for each line arrives from Termux and is revealed on tap. Plumbing only: run
+	// translate.py with TRANSLATE_STUB=1 on the fixture-media job (make-fixtures.sh), so each line
+	// reads "EN: <the Chinese>", and the reader service on 127.0.0.1:8765.
+	async translate() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+			await tab.goto('/');
+			await until('the service worker to control the page', () =>
+				tab.evaluate('return !!navigator.serviceWorker.controller;')
+			);
+			await tab.evaluate(`
+				const response = await fetch('${BASE}/test-bundle.tar');
+				if (!response.ok) throw new Error('run make-fixtures.sh first');
+				const tar = await response.blob();
+				${SUBMIT_SHARE}`);
+			await until(
+				'the document to open',
+				() => tab.evaluate(`return !!document.querySelector('.lines p');`),
+				30000
+			);
+			const buttons = await until(
+				'English to arrive',
+				() => tab.evaluate(`return document.querySelectorAll('.lines .reveal').length || null;`),
+				30000,
+				500
+			);
+			const hiddenAtFirst = await tab.evaluate(
+				`return document.querySelectorAll('.lines .english').length;`
+			);
+			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
+			const shown = await until(
+				'the English to show on tap',
+				() =>
+					tab.evaluate(`
+						const line = document.querySelector('.lines p');
+						const english = line.querySelector('.english')?.textContent;
+						return english ? { chinese: line.querySelector('.token')?.textContent, english } : null;
+					`),
+				3000
+			).catch(async (error) => ({
+				error: error.message,
+				pressed: await tab.evaluate(
+					`return document.querySelector('.lines .reveal').getAttribute('aria-pressed');`
+				)
+			}));
+			return {
+				pass: hiddenAtFirst === 0 && buttons > 10 && /^EN: /.test(shown.english ?? ''),
+				buttons,
+				hiddenAtFirst,
+				...shown
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// The reader's work survives the site's storage being wiped (spec 005): mark two words, let the
 	// copy reach the reader service, clear everything the origin stores, and restore. Needs
 	// scripts/termux/reader-service.py on 127.0.0.1:8765, reachable from the browser (adb reverse

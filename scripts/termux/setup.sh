@@ -11,24 +11,30 @@ pkg install -y --no-install-recommends python ffmpeg nodejs curl
 curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "$PREFIX/bin/yt-dlp"
 chmod +x "$PREFIX/bin/yt-dlp"
 # Speech-to-text for videos without Chinese subtitles: whisper-cli from this repository's release
-# (scripts/termux/build-whisper.sh), and the base and small models (148 + 488 MB).
-RELEASE="${RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/whisper-d09f61a}"
+# (scripts/termux/build-binaries.sh), and the base and small models (148 + 488 MB).
+RELEASE="${RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-d09f61a-d81aef1}"
 case "$(uname -m)" in
 x86_64) variant=x86_64-avx2 ;;
 *) grep -qw asimddp /proc/cpuinfo && variant=arm64-dotprod || variant=arm64 ;;
 esac
-curl -fsSL "$RELEASE/whisper-cli-$variant" -o "$PREFIX/bin/whisper-cli"
-chmod +x "$PREFIX/bin/whisper-cli"
+for tool in whisper-cli llama-completion; do
+	curl -fsSL "$RELEASE/$tool-$variant" -o "$PREFIX/bin/$tool"
+	chmod +x "$PREFIX/bin/$tool"
+done
 MODELS="${MODELS:-https://huggingface.co/ggerganov/whisper.cpp/resolve/main}"
 mkdir -p ~/.whisper
 for model in base small; do
 	[ -f ~/.whisper/ggml-$model.bin ] || curl -fL "$MODELS/ggml-$model.bin" -o ~/.whisper/ggml-$model.bin
 done
+# Translation into English (translate.py): Qwen3-1.7B at Q8, 1.8 GB. Q4 merged lines, so not smaller.
+[ -f ~/.whisper/qwen3-1.7b-q8.gguf ] ||
+	curl -fL https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf -o ~/.whisper/qwen3-1.7b-q8.gguf
 
 mkdir -p ~/bin
 curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener
 curl -fsSL "$SOURCE/transcribe.py" -o ~/bin/transcribe.py
 curl -fsSL "$SOURCE/reader-service.py" -o ~/bin/reader-service.py
+curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 
 # The service that keeps copies of the reader's work and serves transcripts (ADR-0020). Termux:Boot
 # (F-Droid, next to Termux; open it once after installing) starts it at boot; opening Termux starts

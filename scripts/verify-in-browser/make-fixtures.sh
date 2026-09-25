@@ -17,9 +17,16 @@ ffmpeg -loglevel error -y -i "$video" -t 45 -c copy "$clip/media.mp4"
 echo '{"title":"Test clip, 45 s"}' >"$clip/meta.json"
 
 if [ -n "$subtitles" ]; then
-	cp "$subtitles" "$clip/media.zh-CN.vtt"
-	tar cf "$build/test-bundle.tar" -C "$clip" media.mp4 media.zh-CN.vtt meta.json
-	rm "$clip/media.zh-CN.vtt"
+	# Names a Termux job, so the translate scenario can follow its English: run translate.py
+	# (TRANSLATE_STUB=1) on <serve-root>/downloads/fixture-media.
+	media=$(mktemp -d)
+	cp "$clip/media.mp4" "$media/"
+	cp "$subtitles" "$media/media.zh-CN.vtt"
+	echo '{"title":"Test clip, 45 s","job":"fixture-media"}' >"$media/meta.json"
+	tar cf "$build/test-bundle.tar" -C "$media" media.mp4 media.zh-CN.vtt meta.json
+	mkdir -p "$root/downloads/fixture-media"
+	cp "$subtitles" "$root/downloads/fixture-media/media.zh-CN.vtt"
+	rm -f "$root/downloads/fixture-media/media.en.vtt" "$root/downloads/fixture-media/translate.json"
 fi
 
 mkdir -p "$root/downloads/fixture-live"

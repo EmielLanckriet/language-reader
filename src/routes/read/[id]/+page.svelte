@@ -15,6 +15,8 @@
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import { findVideo } from '$lib/backup/destination';
+	import { followTranslation, jobOf } from '$lib/media/translation';
+	import { saveMedia } from '$lib/media/store';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -23,6 +25,22 @@
 	let chosen = $state<Token | null>(null);
 
 	let media = $state<StoredMedia | null>(null);
+	/** English per line: kept beside the video once complete, followed from Termux until then. */
+	let translations = $state<string[]>([]);
+
+	$effect(() => {
+		const current = media;
+		const id = document?.id;
+		if (!current || id === undefined) return;
+		translations = current.translation.map((cue) => cue.text);
+		const job = jobOf(current.meta);
+		if (current.translation.length > 0 || !job) return;
+		return followTranslation(job, (lines, done, vtt) => {
+			translations = lines;
+			if (done) void saveMedia(id, [{ name: 'media.en.vtt', blob: new Blob([vtt]) }]);
+		});
+	});
+
 	/** Where to start playing, when arriving from a transcript that just finished. */
 	const startAt = Number(page.url.searchParams.get('t') ?? 0);
 
@@ -309,6 +327,7 @@
 			{lines}
 			language={document.language}
 			{startAt}
+			{translations}
 			onword={chooseWord}
 		/>
 	{:else}

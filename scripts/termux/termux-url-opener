@@ -56,8 +56,12 @@ else
 	echo "$work/bundle.tar"
 fi
 
+# Everything below runs while the reader watches; the app picks it up from the reader service.
+command -v termux-wake-lock >/dev/null && termux-wake-lock
+# English for each line, following the transcript as it grows when there is one.
+command -v llama-completion >/dev/null && python3 ~/bin/translate.py "$work" &
 if [ -n "$transcribe" ]; then
-	command -v termux-wake-lock >/dev/null && termux-wake-lock
-	python3 ~/bin/transcribe.py "$work" "$work/$(ls media.* | head -1)"
-	command -v termux-wake-unlock >/dev/null && termux-wake-unlock
+	python3 ~/bin/transcribe.py "$work" "$work/$(ls media.* | grep -E '\.(mp4|webm|m4a|mp3|opus)$' | head -1)"
 fi
+wait
+command -v termux-wake-unlock >/dev/null && termux-wake-unlock

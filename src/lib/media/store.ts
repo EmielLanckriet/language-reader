@@ -11,6 +11,8 @@ import { parseSubtitles, type Cue } from './subtitles';
 export interface StoredMedia {
 	media: File | undefined;
 	cues: Cue[];
+	/** English per cue, in cue order; empty until Termux has translated it. Derived. */
+	translation: Cue[];
 	meta: Record<string, unknown>;
 }
 
@@ -76,8 +78,13 @@ export async function removePending(job: string): Promise<void> {
 	await (await directoryAt(['pending'], false)).removeEntry(job, { recursive: true });
 }
 
+/** A Chinese subtitle track: any .vtt or .srt except the English one translate.py writes. */
 export function isSubtitle(name: string): boolean {
-	return /\.(vtt|srt)$/i.test(name);
+	return /\.(vtt|srt)$/i.test(name) && !isTranslation(name);
+}
+
+export function isTranslation(name: string): boolean {
+	return /\.en\.vtt$/i.test(name);
 }
 
 export function isPlayable(name: string): boolean {
@@ -91,12 +98,13 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	} catch {
 		return null;
 	}
-	const found: StoredMedia = { media: undefined, cues: [], meta: {} };
+	const found: StoredMedia = { media: undefined, cues: [], translation: [], meta: {} };
 	for await (const handle of directory.values()) {
 		if (handle.kind !== 'file') continue;
 		const file = await (handle as FileSystemFileHandle).getFile();
 		if (isPlayable(file.name)) found.media = file;
 		else if (isSubtitle(file.name)) found.cues = parseSubtitles(await file.text());
+		else if (isTranslation(file.name)) found.translation = parseSubtitles(await file.text());
 		else if (file.name === 'meta.json') found.meta = JSON.parse(await file.text());
 	}
 	return found;

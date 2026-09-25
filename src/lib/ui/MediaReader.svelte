@@ -22,6 +22,7 @@
 		lines,
 		language = 'zh',
 		startAt = 0,
+		translations = [],
 		onword,
 		player = $bindable(null)
 	}: {
@@ -30,12 +31,20 @@
 		lines: LineWord[][];
 		language?: string;
 		startAt?: number;
+		/** English for line i, when Termux has translated it; revealed per line on tap. */
+		translations?: string[];
 		onword: (line: number, word: LineWord) => void;
 		player?: HTMLMediaElement | null;
 	} = $props();
 
 	let url = $state<string | null>(null);
 	let currentLine = $state(-1);
+	let revealed = $state<number[]>([]);
+	let showAll = $state(false);
+
+	function reveal(line: number) {
+		revealed = revealed.includes(line) ? revealed.filter((i) => i !== line) : [...revealed, line];
+	}
 	const isAudio = $derived(/\.(m4a|mp3|ogg|opus|wav)$/i.test(file.name));
 
 	$effect(() => {
@@ -95,6 +104,12 @@
 	{/if}
 {/if}
 
+{#if translations.some(Boolean)}
+	<label class="all-english">
+		<input type="checkbox" bind:checked={showAll} /> Show all English
+	</label>
+{/if}
+
 <!-- No whitespace between words: this is Chinese, and the browser renders any gap the markup has. -->
 <div class="reading lines" lang={language}>
 	{#each lines as line, i (i)}
@@ -104,7 +119,15 @@
 				>{/if}{#each line as word (word.key)}{#if word.isWord}<button
 						class="token {word.mark ?? 'state-none'}"
 						onclick={() => tap(i, word)}>{word.text}</button
-					>{:else}<span class="token">{word.text}</span>{/if}{/each}
+					>{:else}<span class="token">{word.text}</span>{/if}{/each}{#if translations[i]}<button
+					class="reveal"
+					aria-label="Show the English"
+					aria-pressed={showAll || revealed.includes(i)}
+					onclick={() => reveal(i)}>EN</button
+				>{/if}{#if translations[i] && (showAll || revealed.includes(i))}<span
+					class="english"
+					lang="en">{translations[i]}</span
+				>{/if}
 		</p>
 	{/each}
 </div>
@@ -131,6 +154,27 @@
 	}
 	.lines p.current {
 		background: color-mix(in srgb, currentColor 8%, transparent);
+	}
+	.reveal {
+		font-size: 0.65rem;
+		vertical-align: middle;
+		margin-left: 0.4rem;
+		padding: 0 0.3rem;
+		min-height: 0;
+		min-width: 0;
+		opacity: 0.5;
+	}
+	.english {
+		display: block;
+		font-size: 0.95rem;
+		line-height: 1.4;
+		color: var(--muted);
+		margin: 0.1rem 0 0.2rem;
+	}
+	.all-english {
+		display: block;
+		font-size: 0.85rem;
+		margin: 0.4rem 0;
 	}
 	.seek {
 		font-size: 0.8rem;

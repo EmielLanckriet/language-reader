@@ -9,6 +9,7 @@
 	import { createMediaDocument, titleIn } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
+	import { followTranslation } from '$lib/media/translation';
 
 	/**
 	 * A video whose transcript Termux is still producing (ADR-0019). Lines are fetched from Termux
@@ -28,6 +29,8 @@
 	let chosen = $state<{ line: number; word: LineWord } | null>(null);
 	let player = $state<HTMLMediaElement | null>(null);
 	let finishing = false;
+	let translations = $state<string[]>([]);
+	let translated = $state<{ done: boolean; vtt: string } | null>(null);
 
 	const media = $derived(files.find((file) => isPlayable(file.name)));
 
@@ -63,7 +66,9 @@
 		const kept = files.filter((file) => file.name !== 'transcribing.json');
 		const id = await createMediaDocument(title, vtt, [
 			...kept.map((file) => ({ name: file.name, blob: file })),
-			{ name: 'media.zh.vtt', blob: new Blob([vtt], { type: 'text/vtt' }) }
+			{ name: 'media.zh.vtt', blob: new Blob([vtt], { type: 'text/vtt' }) },
+			// A finished translation goes with it; an unfinished one is followed on by the reader page.
+			...(translated?.done ? [{ name: 'media.en.vtt', blob: new Blob([translated.vtt]) }] : [])
 		]);
 		await removePending(job);
 		const at = Math.floor(player?.currentTime ?? 0);
@@ -74,6 +79,7 @@
 
 	$effect(() => {
 		let timer: ReturnType<typeof setInterval> | undefined;
+		let stopTranslation = () => {};
 		void (async () => {
 			try {
 				files = await loadPending(job);
@@ -84,11 +90,24 @@
 				);
 				await poll(where);
 				timer = setInterval(() => void poll(where), POLL_MS);
+				const termuxJob = /\/downloads\/([^/]+)\//.exec(where.vtt)?.[1];
+				if (termuxJob) {
+					stopTranslation = followTranslation(
+						decodeURIComponent(termuxJob),
+						(lines, done, text) => {
+							translations = lines;
+							translated = { done, vtt: text };
+						}
+					);
+				}
 			} catch (error) {
 				problem = error instanceof Error ? error.message : String(error);
 			}
 		})();
-		return () => clearInterval(timer);
+		return () => {
+			clearInterval(timer);
+			stopTranslation();
+		};
 	});
 
 	function sentenceOf(line: number): string {
@@ -113,6 +132,7 @@
 		file={media}
 		{cues}
 		{lines}
+		{translations}
 		bind:player
 		onword={(line, word) => (chosen = { line, word })}
 	/>

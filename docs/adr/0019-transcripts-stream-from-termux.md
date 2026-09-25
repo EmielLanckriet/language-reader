@@ -47,7 +47,7 @@ ADR-0017's "nothing at read time" becomes: **Termux is needed only while an impo
   keeps about 2× ahead of playback. The emulator's Termux runs about 2.2× faster than playback with
   the AVX2 build. Two findings changed the code: **4 threads, not all cores** (16 threads beside
   other load took 44 s against 6 s), and **no baseline builds** (without AVX2 or ARM dotprod, 4.4×
-  slower). `scripts/termux/build-whisper.sh` builds the variants; setup picks one by
+  slower). `scripts/termux/build-binaries.sh` builds the variants; setup picks one by
   `/proc/cpuinfo`.
 - **Not measured: any of this on the reader's phone.** The first-chunk time there decides whether
   the design meets its target. If `small` cannot keep ahead of playback, the reader catches up with
