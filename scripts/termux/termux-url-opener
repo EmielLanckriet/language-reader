@@ -4,6 +4,9 @@
 # to Language Reader. Pick "Reader" in the share sheet that opens at the end.
 set -euo pipefail
 url="$1"
+# The service serves live transcripts and keeps copies; make sure it runs (ADR-0020).
+curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null ||
+	(nohup python3 ~/bin/reader-service.py >/dev/null 2>&1 &)
 work="$HOME/downloads/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$work"
 cd "$work"
@@ -25,7 +28,8 @@ python3 "$(command -v yt-dlp)" \
 
 # The info json is large and mostly noise; keep only what the app shows.
 if [ -f media.info.json ]; then
-	python3 -c 'import json,sys; d=json.load(open("media.info.json")); json.dump({k:d.get(k) for k in ("id","title","uploader","duration","webpage_url","language")},open("meta.json","w"),ensure_ascii=False)'
+	# job: where this bundle lives, so a restored document can find its video again (ADR-0020).
+	JOB=$(basename "$work") python3 -c 'import json,os; d=json.load(open("media.info.json")); m={k:d.get(k) for k in ("id","title","uploader","duration","webpage_url","language")}; m["job"]=os.environ["JOB"]; json.dump(m,open("meta.json","w"),ensure_ascii=False)'
 	rm media.info.json
 fi
 
@@ -39,7 +43,7 @@ fi
 transcribe=
 if ! ls media.*.vtt >/dev/null 2>&1 && command -v whisper-cli >/dev/null; then
 	job=$(basename "$work")
-	printf '{"status":"http://127.0.0.1:8765/%s/status.json","vtt":"http://127.0.0.1:8765/%s/media.zh.vtt"}' \
+	printf '{"status":"http://127.0.0.1:8765/downloads/%s/status.json","vtt":"http://127.0.0.1:8765/downloads/%s/media.zh.vtt"}' \
 		"$job" "$job" >transcribing.json
 	transcribe=1
 fi

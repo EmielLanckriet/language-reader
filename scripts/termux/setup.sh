@@ -28,5 +28,16 @@ done
 mkdir -p ~/bin
 curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener
 curl -fsSL "$SOURCE/transcribe.py" -o ~/bin/transcribe.py
+curl -fsSL "$SOURCE/reader-service.py" -o ~/bin/reader-service.py
+
+# The service that keeps copies of the reader's work and serves transcripts (ADR-0020). Termux:Boot
+# (F-Droid, next to Termux; open it once after installing) starts it at boot; opening Termux starts
+# it again if Android stopped it.
+START='curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || (nohup python3 ~/bin/reader-service.py >/dev/null 2>&1 &)'
+mkdir -p ~/.termux/boot
+printf '#!/data/data/com.termux/files/usr/bin/sh\ntermux-wake-lock\n%s\n' "$START" >~/.termux/boot/reader-service
+chmod +x ~/.termux/boot/reader-service
+grep -q reader-service ~/.bashrc 2>/dev/null || printf '%s\n' "$START" >>~/.bashrc
+sh ~/.termux/boot/reader-service
 chmod +x ~/bin/termux-url-opener
-echo "Done. In YouTube: Share → Termux."
+echo "Done. In YouTube: Share → Termux. For copies at boot, install Termux:Boot from F-Droid and open it once."

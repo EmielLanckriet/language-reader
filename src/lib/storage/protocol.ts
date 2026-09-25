@@ -19,6 +19,8 @@ export type Call =
 	| { method: 'advanceUpgrade'; args: [number, unknown, unknown] }
 	| { method: 'staleDocumentIds'; args: [string, string] }
 	| { method: 'rebuildProjection'; args: [] }
+	| { method: 'exportBody'; args: [string, string] }
+	| { method: 'restoreCopy'; args: [unknown] }
 	| { method: 'readDiagnostics'; args: [number?] }
 	| { method: 'clearDiagnostics'; args: [] }
 	| { method: 'recordDiagnostic'; args: [string, string] };

@@ -22,11 +22,12 @@ if [ -n "$subtitles" ]; then
 	rm "$clip/media.zh-CN.vtt"
 fi
 
-mkdir -p "$root/fixture-live"
-cp "$clip/media.mp4" "$clip/meta.json" "$root/fixture-live/"
-rm -f "$root/fixture-live/status.json" "$root/fixture-live/media.zh.vtt"
-printf '{"status":"http://127.0.0.1:8765/fixture-live/status.json","vtt":"http://127.0.0.1:8765/fixture-live/media.zh.vtt"}' \
-	>"$root/fixture-live/transcribing.json"
-tar cf "$build/test-live.tar" -C "$root/fixture-live" media.mp4 meta.json transcribing.json
+mkdir -p "$root/downloads/fixture-live"
+cp "$clip/media.mp4" "$clip/meta.json" "$root/downloads/fixture-live/"
+rm -f "$root/downloads/fixture-live/status.json" "$root/downloads/fixture-live/media.zh.vtt"
+printf '{"status":"http://127.0.0.1:8765/downloads/fixture-live/status.json","vtt":"http://127.0.0.1:8765/downloads/fixture-live/media.zh.vtt"}' \
+	>"$root/downloads/fixture-live/transcribing.json"
+tar cf "$build/test-live.tar" -C "$root/downloads/fixture-live" media.mp4 meta.json transcribing.json
 ls -la "$build"/test-*.tar
-echo "transcriber: python3 scripts/termux/transcribe.py $root/fixture-live $root/fixture-live/media.mp4"
+echo "service:     python3 scripts/termux/reader-service.py --root $root"
+echo "transcriber: python3 scripts/termux/transcribe.py $root/downloads/fixture-live $root/downloads/fixture-live/media.mp4"

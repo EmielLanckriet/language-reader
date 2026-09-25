@@ -7,6 +7,7 @@
  */
 
 import { RejectedInput } from '../content/types';
+import type { CopyBody } from '../backup/format';
 import { StorageFailure } from './failures';
 import type { DocumentSummary, StoredDocument, UpgradeBatch } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
@@ -201,6 +202,16 @@ export class RepositoryClient {
 
 	rebuildProjection(): Promise<void> {
 		return this.call({ method: 'rebuildProjection', args: [] });
+	}
+
+	exportBody(app: string, createdAt: string): Promise<CopyBody> {
+		return this.call({ method: 'exportBody', args: [app, createdAt] });
+	}
+
+	restoreCopy(
+		body: CopyBody
+	): Promise<{ restored: Map<number, number> } | { rejected: string; message: string }> {
+		return this.call({ method: 'restoreCopy', args: [body] });
 	}
 
 	readDiagnostics(limit?: number): Promise<Diagnostic[]> {

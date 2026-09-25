@@ -14,6 +14,7 @@
 	import { upgradeOf } from '$lib/storage/upgrades';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
+	import { findVideo } from '$lib/backup/destination';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -104,6 +105,7 @@
 			document = await bringUpToDate(repository, loaded);
 			states = await repository.getStates(lexemesIn(document));
 			media = await loadMedia(id);
+			if (media && !media.media && (await findVideo(id))) media = await loadMedia(id);
 		} catch (error) {
 			problem = error;
 			await record(error);
@@ -293,6 +295,13 @@
 
 	<!-- No whitespace between tokens: this is Chinese, and the browser would render any gap the
 	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->
+	{#if media && !media.media}
+		<!-- Restored from a copy, which keeps a video's place but not the video (ADR-0020). -->
+		<p class="notice">
+			This video isn't on this device yet, and Termux did not have it just now. Open Termux, then
+			reopen this page to try again; the text and your marks work without it.
+		</p>
+	{/if}
 	{#if media?.media}
 		<MediaReader
 			file={media.media}

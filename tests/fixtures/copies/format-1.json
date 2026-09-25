@@ -1,0 +1,140 @@
+{
+	"format": 1,
+	"app": "fixture",
+	"createdAt": "2026-09-25T12:00:00.000Z",
+	"writer": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+	"devices": [
+		{
+			"id": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+			"nextSeq": 6
+		}
+	],
+	"documents": [
+		{
+			"id": 1,
+			"title": "我在中国学习中文",
+			"language": "zh",
+			"contentType": "text/plain",
+			"rawContent": "我在中国学习中文",
+			"createdAt": "2026-09-25T09:26:34.231Z"
+		},
+		{
+			"id": 2,
+			"title": "他看书",
+			"language": "zh",
+			"contentType": "text/plain",
+			"rawContent": "他看书",
+			"createdAt": "2026-09-25T09:26:34.235Z",
+			"media": {
+				"subtitles": {
+					"name": "media.zh-CN.vtt",
+					"text": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n他看书\n"
+				},
+				"meta": {
+					"id": "ive5H8hCBFs",
+					"title": "他看书",
+					"webpage_url": "https://www.youtube.com/watch?v=ive5H8hCBFs"
+				}
+			}
+		}
+	],
+	"events": [
+		{
+			"deviceId": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+			"deviceSeq": 1,
+			"language": "zh",
+			"surface": "我",
+			"asserted": "known",
+			"assertedAt": "2026-09-25T09:26:34.239Z",
+			"provenance": "manual",
+			"userId": 1,
+			"documentId": 1,
+			"from": 0,
+			"to": 1
+		},
+		{
+			"deviceId": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+			"deviceSeq": 2,
+			"language": "zh",
+			"surface": "习",
+			"asserted": "learning",
+			"assertedAt": "2026-09-25T09:26:34.240Z",
+			"provenance": "manual",
+			"userId": 1,
+			"documentId": 1,
+			"from": 5,
+			"to": 6
+		},
+		{
+			"deviceId": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+			"deviceSeq": 3,
+			"language": "zh",
+			"surface": "看",
+			"asserted": "learning",
+			"assertedAt": "2026-09-25T09:26:34.241Z",
+			"provenance": "manual",
+			"userId": 1,
+			"documentId": 2,
+			"from": 1,
+			"to": 2
+		},
+		{
+			"deviceId": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+			"deviceSeq": 4,
+			"language": "zh",
+			"surface": "看",
+			"asserted": "known",
+			"assertedAt": "2026-09-25T09:26:34.242Z",
+			"provenance": "manual",
+			"userId": 1,
+			"documentId": 2,
+			"from": 1,
+			"to": 2
+		},
+		{
+			"deviceId": "a29fc9b0-7e3c-4b81-9e8e-5683fd4f6dd4",
+			"deviceSeq": 5,
+			"language": "zh",
+			"surface": "国",
+			"asserted": "ignored",
+			"assertedAt": "2026-09-25T09:26:34.243Z",
+			"provenance": "manual",
+			"userId": 1,
+			"documentId": 1,
+			"from": 3,
+			"to": 4
+		}
+	],
+	"states": [
+		{
+			"language": "zh",
+			"surface": "习",
+			"state": "learning",
+			"provenance": "manual",
+			"userId": 1
+		},
+		{
+			"language": "zh",
+			"surface": "国",
+			"state": "ignored",
+			"provenance": "manual",
+			"userId": 1
+		},
+		{
+			"language": "zh",
+			"surface": "我",
+			"state": "known",
+			"provenance": "manual",
+			"userId": 1
+		},
+		{
+			"language": "zh",
+			"surface": "看",
+			"state": "known",
+			"provenance": "manual",
+			"userId": 1
+		}
+	],
+	"corrections": [],
+	"integrity": "dbef70ea2a7f115815f9cd1f33cdbedd0a1202f659e508f2c01b93976ec03a0a"
+}

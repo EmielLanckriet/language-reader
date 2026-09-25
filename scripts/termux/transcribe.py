@@ -4,23 +4,19 @@
     transcribe.py <job directory> <media file>
 
 Writes <job>/media.zh.vtt after every chunk, and <job>/status.json as {"through": seconds, "done": bool}.
-Serves the parent directory on 127.0.0.1:8765 so the app can poll both while this runs; if the port
-is taken, an earlier run is already serving the same directory, and this one only transcribes.
+The reader service (reader-service.py) serves them from ~/downloads, so the app can poll both while
+this runs.
 
 The first chunk uses the base model so the first lines arrive in seconds; the rest use small, which
 measured four times fewer errors. Each chunk's last line is dropped and redone as the start of the
 next chunk, so no word is cut at a boundary.
 """
 
-import http.server
 import json
 import os
 import subprocess
 import sys
-import threading
-import time
 
-PORT = 8765
 CHUNK_MS = 30_000  # Whisper's own window: shorter chunks cost the same and do less.
 PROMPT = '以下是普通话的句子。'  # Without it, base drifts into traditional characters.
 # Four, not every core: 16 threads beside other load measured 44 s against 6 s for 4, and phones pair
@@ -31,36 +27,6 @@ MODELS = os.environ.get('WHISPER_MODELS', os.path.expanduser('~/.whisper'))
 FIRST_MODEL = os.environ.get('WHISPER_FIRST_MODEL', 'base')
 MODEL = os.environ.get('WHISPER_MODEL', 'small')
 WHISPER = os.environ.get('WHISPER', 'whisper-cli')
-
-
-class Handler(http.server.SimpleHTTPRequestHandler):
-    """Static files, readable from the app's origin, and never cached."""
-
-    def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Private-Network', 'true')
-        self.send_header('Cache-Control', 'no-store')
-        super().end_headers()
-
-    def do_OPTIONS(self):
-        self.send_response(204)
-        self.send_header('Access-Control-Allow-Methods', 'GET')
-        self.end_headers()
-
-    def log_message(self, *args):
-        pass
-
-
-def serve(root):
-    """True when this run owns the server."""
-    try:
-        server = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', PORT), lambda *a: Handler(*a, directory=root)
-        )
-    except OSError:
-        return False
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    return True
 
 
 def stamp(ms):
@@ -86,7 +52,6 @@ def main(job, media):
         ['ffmpeg', '-loglevel', 'error', '-y', '-i', media, '-ar', '16000', '-ac', '1', wav],
         check=True,
     )
-    serving = serve(os.path.dirname(os.path.abspath(job)))
     total = duration_ms(wav)
     cues, offset, first = [], 0, True
     status = os.path.join(job, 'status.json')
@@ -127,10 +92,6 @@ def main(job, media):
     os.remove(wav)
     write_atomically(status, json.dumps({'through': total / 1000, 'done': True}))
     print('transcript complete', flush=True)
-    if serving:
-        # The app fetches the final transcript on its next poll; give it time to, even if it was
-        # in the background when the last chunk landed.
-        time.sleep(15 * 60)
 
 
 if __name__ == '__main__':

@@ -51,12 +51,25 @@ export async function savePending(job: string, files: NamedBlob[]): Promise<void
 	await writeFiles(await directoryAt(['pending', job], true), files);
 }
 
-export async function loadPending(job: string): Promise<File[]> {
+async function filesAt(path: string[]): Promise<File[]> {
 	const files: File[] = [];
-	for await (const handle of (await directoryAt(['pending', job], false)).values()) {
+	for await (const handle of (await directoryAt(path, false)).values()) {
 		if (handle.kind === 'file') files.push(await (handle as FileSystemFileHandle).getFile());
 	}
 	return files;
+}
+
+export function loadPending(job: string): Promise<File[]> {
+	return filesAt(['pending', job]);
+}
+
+/** The files kept for a media document, or none when it is not one (ADR-0018). */
+export async function mediaFiles(documentId: number): Promise<File[]> {
+	try {
+		return await filesAt([String(documentId)]);
+	} catch {
+		return [];
+	}
 }
 
 export async function removePending(job: string): Promise<void> {

@@ -19,17 +19,17 @@ around a minute.
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `src/lib/backup/` and `tests/backup/`, and `tests/fixtures/copies/` for format fixtures kept forever (SC-005)
+- [X] T001 Create `src/lib/backup/` and `tests/backup/`, and `tests/fixtures/copies/` for format fixtures kept forever (SC-005)
 
 ---
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T002 [P] Define the copy type (format 1, per data-model.md), canonical JSON (keys sorted at every level), and `integrity` = SHA-256 hex, in `src/lib/backup/format.ts`. Pure; Web Crypto in the browser, `node:crypto` under vitest
-- [ ] T003 Add `exportCopy(): Copy` to `src/lib/storage/repository.ts`: one read transaction over devices, documents (+ media subtitle text and meta from `media/<id>/`, read on the page side and merged in `src/lib/backup/destination.ts`), events in log order with lexemes as `(language, surface)`, and states. Refuse, and record a diagnostic, when `states` ≠ the replay of `events` (copy-format.md, Writing 2)
-- [ ] T004 Carry `exportCopy` and (later) `restoreCopy` across the worker boundary in `src/lib/storage/protocol.ts`, `src/lib/storage/worker.ts`, `src/lib/storage/client.ts`
-- [ ] T005 [P] Write `scripts/termux/reader-service.py` per contracts/reader-service.md: `PUT/GET /backup`, `GET /backup/latest`, `GET /downloads/...`, `GET /media/<youtubeId>`, `GET /health`, with CORS and private-network headers, atomic writes, integrity check on PUT, and retention (20 recent + 30 daily). `--root` for tests
-- [ ] T006 [P] Update `scripts/termux/setup.sh`: install the service to `~/bin/`, a Termux:Boot script `~/.termux/boot/reader-service`, and a `~/.bashrc` guard that starts it when Termux opens and it is not running (research R7). Update `scripts/termux/termux-url-opener` to record `job` in `meta.json` (R8), and remove `transcribe.py`'s own server now that the service serves `/downloads` (R3)
+- [X] T002 [P] Define the copy type (format 1, per data-model.md), canonical JSON (keys sorted at every level), and `integrity` = SHA-256 hex, in `src/lib/backup/format.ts`. Pure; Web Crypto in the browser, `node:crypto` under vitest
+- [X] T003 Add `exportCopy(): Copy` to `src/lib/storage/repository.ts`: one read transaction over devices, documents (+ media subtitle text and meta from `media/<id>/`, read on the page side and merged in `src/lib/backup/destination.ts`), events in log order with lexemes as `(language, surface)`, and states. Refuse, and record a diagnostic, when `states` ≠ the replay of `events` (copy-format.md, Writing 2)
+- [X] T004 Carry `exportCopy` and (later) `restoreCopy` across the worker boundary in `src/lib/storage/protocol.ts`, `src/lib/storage/worker.ts`, `src/lib/storage/client.ts`
+- [X] T005 [P] Write `scripts/termux/reader-service.py` per contracts/reader-service.md: `PUT/GET /backup`, `GET /backup/latest`, `GET /downloads/...`, `GET /media/<youtubeId>`, `GET /health`, with CORS and private-network headers, atomic writes, integrity check on PUT, and retention (20 recent + 30 daily). `--root` for tests
+- [X] T006 [P] Update `scripts/termux/setup.sh`: install the service to `~/bin/`, a Termux:Boot script `~/.termux/boot/reader-service`, and a `~/.bashrc` guard that starts it when Termux opens and it is not running (research R7). Update `scripts/termux/termux-url-opener` to record `job` in `meta.json` (R8), and remove `transcribe.py`'s own server now that the service serves `/downloads` (R3)
 
 **Checkpoint**: `curl` checks in quickstart.md §Service pass.
 
@@ -42,18 +42,18 @@ around a minute.
 
 ### Tests first — each must fail before the code exists, and fail again under a mutation
 
-- [ ] T007 [P] [US1] Round-trip property in `tests/backup/roundtrip.test.ts`: generated histories (fast-check: documents, surfaces, devices, marks with occurrences) → `exportCopy` → `restoreCopy` into `freshDatabase()` (tests/storage/support.ts) → identical events (order, device seq, occurrence), states, documents. Mutation to try: drop `provenance`, or restore events out of order
-- [ ] T008 [P] [US1] Tamper and truncate in `tests/backup/validation.test.ts`: one flipped character, a cut file, an unknown `format`, and an event naming a missing document each make `restoreCopy` refuse with the failing check named, and leave the database identical (compare a full dump before and after). Mutation: skip the integrity check
-- [ ] T009 [P] [US1] Non-empty refusal in `tests/backup/refusal.test.ts`: any word state or event present → refuse and write nothing; documents only → allowed after confirmation. Mutation: remove the guard
-- [ ] T010 [US1] Generate `tests/fixtures/copies/format-1.json` from a scripted history via `exportCopy`, commit it, and add `tests/backup/formats.test.ts` restoring every `format-*.json` (SC-005)
+- [X] T007 [P] [US1] Round-trip property in `tests/backup/roundtrip.test.ts`: generated histories (fast-check: documents, surfaces, devices, marks with occurrences) → `exportCopy` → `restoreCopy` into `freshDatabase()` (tests/storage/support.ts) → identical events (order, device seq, occurrence), states, documents. Mutation to try: drop `provenance`, or restore events out of order
+- [X] T008 [P] [US1] Tamper and truncate in `tests/backup/validation.test.ts`: one flipped character, a cut file, an unknown `format`, and an event naming a missing document each make `restoreCopy` refuse with the failing check named, and leave the database identical (compare a full dump before and after). Mutation: skip the integrity check
+- [X] T009 [P] [US1] Non-empty refusal in `tests/backup/refusal.test.ts`: any word state or event present → refuse and write nothing; documents only → allowed after confirmation. Mutation: remove the guard
+- [X] T010 [US1] Generate `tests/fixtures/copies/format-1.json` from a scripted history via `exportCopy`, commit it, and add `tests/backup/formats.test.ts` restoring every `format-*.json` (SC-005)
 
 ### Implementation
 
-- [ ] T011 [US1] `restoreCopy(copy)` in `src/lib/storage/repository.ts` per copy-format.md, Restoring 1–3: validate, refuse if non-empty, then one transaction for devices, documents (ids kept), lexemes by `findOrCreateLexeme`, events in order, `rebuildProjection`, and a check that states equal `copy.states` or the transaction rolls back. `upgrade` steps (none yet) in `src/lib/backup/format.ts`
-- [ ] T012 [US1] After commit, in `src/lib/backup/destination.ts`: tokenise restored documents with the fast analyzer, write each media document's subtitle file and meta to `media/<id>/` (ADR-0018), then ask `GET /media/<youtubeId>` and re-import the video from the bundle when found (R8). Failures leave readable documents
-- [ ] T013 [US1] `latest()` and `list()` against the service in `src/lib/backup/destination.ts`, telling "service unreachable" (`/health` fails) from "no copy yet" (404)
-- [ ] T014 [US1] Restore offer on an empty library in `src/routes/+page.svelte`: the copy's date, document and word counts, Restore / Not now. If the service is unreachable, say so and "open Termux once", instead of an empty-library look (FR-006)
-- [ ] T015 [US1] A restored media document whose video was not found says so on `src/routes/read/[id]/+page.svelte`, and reads without it (US1 scenario 3)
+- [X] T011 [US1] `restoreCopy(copy)` in `src/lib/storage/repository.ts` per copy-format.md, Restoring 1–3: validate, refuse if non-empty, then one transaction for devices, documents (ids kept), lexemes by `findOrCreateLexeme`, events in order, `rebuildProjection`, and a check that states equal `copy.states` or the transaction rolls back. `upgrade` steps (none yet) in `src/lib/backup/format.ts`
+- [X] T012 [US1] After commit, in `src/lib/backup/destination.ts`: tokenise restored documents with the fast analyzer, write each media document's subtitle file and meta to `media/<id>/` (ADR-0018), then ask `GET /media/<youtubeId>` and re-import the video from the bundle when found (R8). Failures leave readable documents
+- [X] T013 [US1] `latest()` and `list()` against the service in `src/lib/backup/destination.ts`, telling "service unreachable" (`/health` fails) from "no copy yet" (404)
+- [X] T014 [US1] Restore offer on an empty library in `src/routes/+page.svelte`: the copy's date, document and word counts, Restore / Not now. If the service is unreachable, say so and "open Termux once", instead of an empty-library look (FR-006)
+- [X] T015 [US1] A restored media document whose video was not found says so on `src/routes/read/[id]/+page.svelte`, and reads without it (US1 scenario 3)
 
 **Checkpoint**: T007–T010 green, each seen red. A copy seeded with `curl` restores in the emulator.
 

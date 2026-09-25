@@ -10,6 +10,7 @@
 	import { MAXIMUM_CHARACTERS } from '$lib/content/paste';
 	import { codePointLength } from '$lib/domain/offsets';
 	import type { DocumentSummary } from '$lib/storage/repository';
+	import { latest, restore } from '$lib/backup/destination';
 
 	let documents = $state<DocumentSummary[]>([]);
 	let pasted = $state('');
@@ -66,6 +67,30 @@
 			await record('storage', error);
 		} finally {
 			loading = false;
+		}
+	}
+
+	let found = $state<Awaited<ReturnType<typeof latest>> | null>(null);
+	let restoring = $state(false);
+	let restoreProblem = $state<string | null>(null);
+
+	// Only asked for an empty library: that is when a copy is the thing the reader wants to see.
+	$effect(() => {
+		if (!loading && documents.length === 0 && found === null)
+			void latest().then((f) => (found = f));
+	});
+
+	async function restoreFound() {
+		if (!found || typeof found === 'string') return;
+		restoring = true;
+		restoreProblem = null;
+		try {
+			restoreProblem = await restore(found.text);
+			if (!restoreProblem) documents = await (await session()).repository.listDocuments();
+		} catch (error) {
+			restoreProblem = error instanceof Error ? error.message : String(error);
+		} finally {
+			restoring = false;
 		}
 	}
 
@@ -183,7 +208,27 @@
 {#if loading}
 	<p class="loading">Opening your library…</p>
 {:else if documents.length === 0}
-	<p class="empty">Nothing saved yet.</p>
+	{#if found && found !== 'none' && found !== 'unreachable'}
+		<!-- An empty library with a copy in Termux is a wipe, not a fresh start (FR-006). -->
+		<div class="notice restore">
+			<p>
+				<strong>Your work can be restored.</strong> Termux holds a copy from
+				{new Date(found.createdAt).toLocaleString()}: {found.documents} documents and {found.words}
+				marked words.
+			</p>
+			{#if restoreProblem}<p role="alert">{restoreProblem}</p>{/if}
+			<button onclick={restoreFound} disabled={restoring}>
+				{restoring ? 'Restoring…' : 'Restore'}
+			</button>
+		</div>
+	{:else if found === 'unreachable'}
+		<p class="empty">
+			Nothing saved yet. If you had work here before, open Termux once so the app can look for your
+			copy, then come back.
+		</p>
+	{:else}
+		<p class="empty">Nothing saved yet.</p>
+	{/if}
 {:else}
 	<ul class="library">
 		{#each documents as document (document.id)}

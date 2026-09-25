@@ -17,6 +17,7 @@
 
 import { type Database } from './db';
 import { Repository, type UpgradeBatch } from './repository';
+import { CopyRejected, type CopyBody } from '../backup/format';
 import { acquire, release } from './lease';
 import { next, acceptsWrites, type Availability, type Event } from './availability';
 import { clearDiagnostics, readDiagnostics, recordDiagnostic } from '../diagnostics/log';
@@ -232,6 +233,17 @@ function run(request: Request): unknown {
 			return repository.staleDocumentIds(request.args[0], request.args[1]);
 		case 'rebuildProjection':
 			return repository.rebuildProjection();
+		case 'exportBody':
+			return repository.exportBody(request.args[0], request.args[1]);
+		case 'restoreCopy':
+			// A refusal is an answer, not a failure: it crosses the boundary as a value, so the page
+			// can say which check refused (a thrown error arrives here without its fields).
+			try {
+				return { restored: repository.restoreCopy(request.args[0] as CopyBody) };
+			} catch (error) {
+				if (error instanceof CopyRejected) return { rejected: error.check, message: error.message };
+				throw error;
+			}
 		case 'readDiagnostics':
 			return readDiagnostics(db, request.args[0]);
 		case 'clearDiagnostics':

@@ -88,6 +88,7 @@ export interface StoredDocument {
 /** Raised when storage itself fails, as distinct from input being refused (FR-022). */
 export { StorageFailure } from './failures';
 import { StorageFailure } from './failures';
+import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
 
 export class Repository {
 	constructor(private readonly db: Database) {}
@@ -593,6 +594,220 @@ export class Repository {
              user_id = excluded.user_id`,
 			[state.lexemeId, state.state, state.provenance, state.userId]
 		);
+	}
+
+	/**
+	 * Everything the reader earned, and the inputs their documents came from, as a copy's body
+	 * (ADR-0020). One read transaction, so events and states agree. Media subtitles and metadata live
+	 * outside the database and are added by the caller.
+	 *
+	 * Refuses when the stored states are not the replay of the log: that means the database
+	 * disagrees with its own history, and a copy of it would carry the disagreement forward.
+	 */
+	exportBody(app: string, createdAt: string): CopyBody {
+		return transact(this.db, () => {
+			const surfaces = new Map(
+				queryRows(this.db, 'SELECT id, language, surface FROM lexeme').map((row) => [
+					Number(row.id),
+					{ language: String(row.language), surface: String(row.surface) }
+				])
+			);
+			const word = (lexemeId: LexemeId) => surfaces.get(lexemeId)!;
+			const history = this.readHistory();
+
+			const stored = queryRows(
+				this.db,
+				'SELECT lexeme_id, state, provenance, user_id FROM word_state'
+			);
+			const replayed = projectStates(history);
+			const agrees =
+				stored.length === replayed.size &&
+				stored.every((row) => {
+					const state = replayed.get(Number(row.lexeme_id));
+					return state?.state === row.state && state.provenance === row.provenance;
+				});
+			if (!agrees) {
+				throw new StorageFailure('the stored word states are not the replay of their history');
+			}
+
+			// One device in practice: `deviceIdOf` takes the first row unordered, which is only
+			// unambiguous while there is one. A copy restores that device first either way.
+			const devices = queryRows(this.db, 'SELECT id, next_seq FROM device').map((row) => ({
+				id: String(row.id),
+				nextSeq: Number(row.next_seq)
+			}));
+
+			return {
+				format: FORMAT,
+				app,
+				createdAt,
+				writer: devices[0]?.id ?? '',
+				devices,
+				documents: queryRows(
+					this.db,
+					'SELECT id, title, language, content_type, raw_content, created_at FROM document ORDER BY id'
+				).map((row) => ({
+					id: Number(row.id),
+					title: String(row.title),
+					language: String(row.language),
+					contentType: String(row.content_type),
+					rawContent: String(row.raw_content),
+					createdAt: String(row.created_at)
+				})),
+				events: history.map((entry) => ({
+					deviceId: entry.deviceId,
+					deviceSeq: entry.deviceSeq,
+					...word(entry.lexemeId),
+					asserted: entry.asserted,
+					assertedAt: entry.assertedAt,
+					provenance: entry.provenance,
+					userId: entry.userId,
+					...(entry.occurrence
+						? {
+								documentId: entry.occurrence.documentId,
+								from: entry.occurrence.fromOffset,
+								to: entry.occurrence.toOffset,
+								...(entry.occurrence.observedPronunciation === undefined
+									? {}
+									: { observedPronunciation: entry.occurrence.observedPronunciation })
+							}
+						: {})
+				})),
+				states: [...replayed.values()]
+					.map((state) => ({
+						...word(state.lexemeId),
+						state: state.state,
+						provenance: state.provenance,
+						userId: state.userId
+					}))
+					.sort((a, b) =>
+						a.language === b.language
+							? a.surface < b.surface
+								? -1
+								: a.surface > b.surface
+									? 1
+									: 0
+							: a.language < b.language
+								? -1
+								: 1
+					),
+				corrections: []
+			};
+		});
+	}
+
+	/**
+	 * Put a copy's earned data back, all or nothing (copy-format.md, Restoring).
+	 *
+	 * Refuses a library with any mark in it (FR-010). Documents are renumbered, since a library may
+	 * already hold some, and events follow them. The device that wrote the copy carries on, so new
+	 * marks continue its sequence. States are not taken from the copy but replayed from the restored
+	 * log, then required to equal the copy's: that is FR-007's own definition, checked on every
+	 * restore. Documents come back without tokens, stamped so that opening one re-derives it.
+	 *
+	 * Returns the new id of each copied document.
+	 */
+	restoreCopy(copy: CopyBody): Map<DocumentId, DocumentId> {
+		const earned = queryRows(
+			this.db,
+			'SELECT (SELECT COUNT(*) FROM word_state) + (SELECT COUNT(*) FROM status_event) AS n'
+		);
+		if (Number(earned[0].n) > 0) {
+			throw new CopyRejected(
+				'not-empty',
+				'This library already has marked words, so restoring could overwrite newer work.'
+			);
+		}
+		const documentIds = new Set(copy.documents.map((document) => document.id));
+		const deviceIds = new Set(copy.devices.map((device) => device.id));
+		const dangling = copy.events.find(
+			(event) =>
+				!deviceIds.has(event.deviceId) ||
+				(event.documentId !== undefined && !documentIds.has(event.documentId))
+		);
+		if (dangling) {
+			throw new CopyRejected('references', 'The copy is inconsistent: a mark points at nothing.');
+		}
+
+		return transact(this.db, () => {
+			run(this.db, 'DELETE FROM device');
+			const writerFirst = [...copy.devices].sort(
+				(a, b) => Number(b.id === copy.writer) - Number(a.id === copy.writer)
+			);
+			for (const device of writerFirst) {
+				run(this.db, 'INSERT INTO device (id, next_seq) VALUES (?, ?)', [
+					device.id,
+					device.nextSeq
+				]);
+			}
+
+			const renumbered = new Map<DocumentId, DocumentId>();
+			for (const document of copy.documents) {
+				run(
+					this.db,
+					`INSERT INTO document
+             (raw_content, content_type, language, analyzer, analyzer_version, title, created_at)
+           VALUES (?, ?, ?, 'restored', '0', ?, ?)`,
+					[
+						document.rawContent,
+						document.contentType,
+						document.language,
+						document.title,
+						document.createdAt
+					]
+				);
+				renumbered.set(document.id, lastInsertId(this.db));
+			}
+
+			for (const event of copy.events) {
+				this.appendEvent(
+					assertion({
+						lexemeId: this.findOrCreateLexeme(event.language, event.surface),
+						asserted: event.asserted,
+						assertedAt: event.assertedAt,
+						deviceId: event.deviceId,
+						deviceSeq: event.deviceSeq,
+						provenance: event.provenance,
+						userId: event.userId,
+						occurrence:
+							event.documentId === undefined
+								? undefined
+								: {
+										documentId: renumbered.get(event.documentId)!,
+										fromOffset: event.from!,
+										toOffset: event.to!,
+										...(event.observedPronunciation === undefined
+											? {}
+											: { observedPronunciation: event.observedPronunciation })
+									}
+					})
+				);
+			}
+
+			const replayed = projectStates(this.readHistory());
+			for (const state of replayed.values()) this.writeProjectedState(state);
+			const expected = new Map(
+				copy.states.map((state) => [`${state.language}\u0000${state.surface}`, state])
+			);
+			const matches =
+				replayed.size === expected.size &&
+				[...replayed.values()].every((state) => {
+					const { language, surface } = queryRows(
+						this.db,
+						'SELECT language, surface FROM lexeme WHERE id = ?',
+						[state.lexemeId]
+					)[0];
+					const want = expected.get(`${String(language)}\u0000${String(surface)}`);
+					return want?.state === state.state && want.provenance === state.provenance;
+				});
+			if (!matches) {
+				throw new CopyRejected(
+					'states',
+					'The copy is inconsistent: its marks do not match its history.'
+				);
+			}
+			return renumbered;
+		});
 	}
 
 	/**
