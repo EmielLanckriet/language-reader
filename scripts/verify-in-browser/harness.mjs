@@ -132,6 +132,72 @@ const SUBMIT_SHARE = `
 	return true;`;
 
 const scenarios = {
+	// A video without subtitles: shared while Termux transcribes, readable as lines arrive, and an
+	// ordinary document once the transcript is done (ADR-0019). Needs scripts/verify-in-browser/make-fixtures.sh and a
+	// transcriber serving 127.0.0.1:8765 (scripts/termux/transcribe.py; see android-emulator/).
+	async live() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/');
+			await until('the service worker to control the page', () =>
+				tab.evaluate('return !!navigator.serviceWorker.controller;')
+			);
+			await tab.evaluate(`
+				const response = await fetch('${BASE}/test-live.tar');
+				if (!response.ok) throw new Error('copy a bundle to build/test-live.tar first');
+				const tar = await response.blob();
+				${SUBMIT_SHARE}`);
+			await until(
+				'the live page',
+				() => tab.evaluate(`return location.pathname.includes('/live/');`),
+				30000
+			);
+			const opened = Date.now();
+			const firstLines = await until(
+				'the first transcribed lines',
+				() => tab.evaluate(`return document.querySelectorAll('.lines p').length || null;`),
+				60000,
+				250
+			);
+			const secondsToFirstLines = (Date.now() - opened) / 1000;
+			const word = await tab.evaluate(`
+				const button = document.querySelector('.lines button.token');
+				button.click();
+				return button.textContent;
+			`);
+			const meaning = await until('a meaning for the tapped word', () =>
+				tab.evaluate(`
+					const sheet = document.querySelector('.meanings');
+					return sheet && !sheet.textContent.includes('Looking up') ? sheet.innerText.slice(0, 80) : null;
+				`)
+			);
+			const markingHidden = await tab.evaluate(`return !document.querySelector('.choices');`);
+			await tab.evaluate(`document.querySelector('.cancel')?.click(); return true;`);
+			const stored = await until(
+				'the finished transcript to become a stored document',
+				() =>
+					tab.evaluate(`
+						const video = document.querySelector('video');
+						if (!location.pathname.includes('/read/') || !video || !(video.duration > 0)) return null;
+						return { url: location.pathname + location.search, lines: document.querySelectorAll('.lines p').length };
+					`),
+				120000,
+				500
+			);
+			return {
+				pass: secondsToFirstLines < 20 && !!meaning && markingHidden && stored.lines >= firstLines,
+				secondsToFirstLines,
+				firstLines,
+				word,
+				meaning,
+				markingHidden,
+				stored
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Tapping a word shows its pinyin and meaning, and links its sentence to a translator. Opens
 	// the first document in the library, so run after anything that saved one (media, words).
 	async lookup() {

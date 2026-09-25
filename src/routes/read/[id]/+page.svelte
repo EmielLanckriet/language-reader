@@ -13,6 +13,7 @@
 	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 	import { upgradeOf } from '$lib/storage/upgrades';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
+	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -21,53 +22,29 @@
 	let chosen = $state<Token | null>(null);
 
 	let media = $state<StoredMedia | null>(null);
-	let mediaUrl = $state<string | null>(null);
-	let player = $state<HTMLMediaElement | null>(null);
-	let currentLine = $state(-1);
-	const isAudio = $derived(!!media?.media && /\.(m4a|mp3|ogg|opus|wav)$/i.test(media.media.name));
+	/** Where to start playing, when arriving from a transcript that just finished. */
+	const startAt = Number(page.url.searchParams.get('t') ?? 0);
 
 	/** Line i of a media document is cue i, so tokens are grouped by the line they start on. */
 	const lines = $derived.by(() => {
 		if (!media || !document) return [];
-		const grouped: Token[][] = [[]];
+		const grouped: LineWord[][] = [[]];
 		let line = 0;
 		let offset = 0;
 		for (const token of document.tokens) {
 			while (offset < token.start) if (characters[offset++] === '\n') grouped[++line] = [];
-			grouped[line].push(token);
+			grouped[line].push({
+				key: token.start,
+				text: textOf(token).replace(/\n/g, ''),
+				isWord: token.isWord,
+				mark: `state-${stateOf(token) ?? 'none'}`
+			});
 		}
 		return grouped;
 	});
 
-	$effect(() => {
-		const file = media?.media;
-		if (!file) return;
-		const url = URL.createObjectURL(file);
-		mediaUrl = url;
-		return () => URL.revokeObjectURL(url);
-	});
-
-	function followPlayback() {
-		if (!player || !media) return;
-		const time = player.currentTime;
-		let at = -1;
-		for (let i = 0; i < media.cues.length && media.cues[i].start <= time; i++) at = i;
-		if (at === currentLine) return;
-		currentLine = at;
-		window.document
-			.getElementById(`line-${at}`)
-			?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-	}
-
-	function seek(line: number) {
-		if (!player || !media) return;
-		player.currentTime = media.cues[line].start;
-		void player.play();
-	}
-
-	function chooseToken(token: Token) {
-		player?.pause();
-		chosen = token;
+	function chooseWord(_line: number, word: LineWord) {
+		chosen = document?.tokens.find((token) => token.start === word.key) ?? null;
 	}
 
 	/** True while a stale document is being brought up to date, which the reader waits for. */
@@ -316,42 +293,15 @@
 
 	<!-- No whitespace between tokens: this is Chinese, and the browser would render any gap the
 	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->
-	{#if media}
-		{#if mediaUrl}
-			{#if isAudio}
-				<audio
-					class="player"
-					controls
-					src={mediaUrl}
-					bind:this={player}
-					ontimeupdate={followPlayback}
-				></audio>
-			{:else}
-				<!-- svelte-ignore a11y_media_has_caption -->
-				<video
-					class="player"
-					controls
-					playsinline
-					src={mediaUrl}
-					bind:this={player}
-					ontimeupdate={followPlayback}
-				></video>
-			{/if}
-		{/if}
-		<div class="reading lines" lang={document.language}>
-			{#each lines as line, i (i)}
-				<p id="line-{i}" class:current={i === currentLine}>
-					{#if media.cues[i]}<button
-							class="seek"
-							aria-label="Play from here"
-							onclick={() => seek(i)}>▸</button
-						>{/if}{#each line as token (token.start)}{#if token.isWord}<button
-								class="token state-{stateOf(token) ?? 'none'}"
-								onclick={() => chooseToken(token)}>{textOf(token)}</button
-							>{:else}<span class="token">{textOf(token).replace(/\n/g, '')}</span>{/if}{/each}
-				</p>
-			{/each}
-		</div>
+	{#if media?.media}
+		<MediaReader
+			file={media.media}
+			cues={media.cues}
+			{lines}
+			language={document.language}
+			{startAt}
+			onword={chooseWord}
+		/>
 	{:else}
 		<div class="reading" lang={document.language}>
 			{#each document.tokens as token (token.start)}{#if token.isWord}<button
@@ -373,39 +323,8 @@
 {/if}
 
 <style>
-	.player {
-		position: sticky;
-		top: 0;
-		z-index: 1;
-		width: 100%;
-		max-height: 35vh;
-		background: #000;
-	}
-	audio.player {
-		background: var(--bg, #fff);
-	}
 	h1.compact {
 		font-size: 1rem;
 		margin: 0.25rem 0;
-	}
-	.lines {
-		line-height: 1.7;
-	}
-	.lines p {
-		margin: 0 0 0.4rem;
-		padding: 0.1rem 0.25rem;
-		border-radius: 6px;
-	}
-	.lines p.current {
-		background: color-mix(in srgb, currentColor 8%, transparent);
-	}
-	.seek {
-		font-size: 0.8rem;
-		vertical-align: middle;
-		margin-right: 0.3rem;
-		padding: 0 0.3rem;
-		min-height: 0;
-		min-width: 0;
-		opacity: 0.6;
 	}
 </style>

@@ -19,21 +19,48 @@ async function mediaRoot(): Promise<FileSystemDirectoryHandle> {
 	return root.getDirectoryHandle('media', { create: true });
 }
 
-export async function saveMedia(
-	documentId: number,
-	files: { name: string; blob: Blob }[]
-): Promise<void> {
-	const directory = await (
-		await mediaRoot()
-	).getDirectoryHandle(String(documentId), {
-		create: true
-	});
+export interface NamedBlob {
+	name: string;
+	blob: Blob;
+}
+
+async function directoryAt(path: string[], create: boolean): Promise<FileSystemDirectoryHandle> {
+	let directory = await mediaRoot();
+	for (const part of path) directory = await directory.getDirectoryHandle(part, { create });
+	return directory;
+}
+
+async function writeFiles(directory: FileSystemDirectoryHandle, files: NamedBlob[]) {
 	for (const { name, blob } of files) {
 		const handle = await directory.getFileHandle(name, { create: true });
 		const writable = await handle.createWritable();
 		await writable.write(blob);
 		await writable.close();
 	}
+}
+
+export async function saveMedia(documentId: number, files: NamedBlob[]): Promise<void> {
+	await writeFiles(await directoryAt([String(documentId)], true), files);
+}
+
+/**
+ * A video whose transcript is still arriving from Termux (ADR-0019). No document exists yet: it is
+ * created, and these files copied to it, when the transcript is complete.
+ */
+export async function savePending(job: string, files: NamedBlob[]): Promise<void> {
+	await writeFiles(await directoryAt(['pending', job], true), files);
+}
+
+export async function loadPending(job: string): Promise<File[]> {
+	const files: File[] = [];
+	for await (const handle of (await directoryAt(['pending', job], false)).values()) {
+		if (handle.kind === 'file') files.push(await (handle as FileSystemFileHandle).getFile());
+	}
+	return files;
+}
+
+export async function removePending(job: string): Promise<void> {
+	await (await directoryAt(['pending'], false)).removeEntry(job, { recursive: true });
 }
 
 export function isSubtitle(name: string): boolean {

@@ -34,10 +34,26 @@ if ! ls media.* >/dev/null 2>&1; then
 	exit 1
 fi
 
+# No Chinese subtitles: share the video now and transcribe while it is being watched (ADR-0019).
+# The app polls these two addresses and adds lines as they arrive.
+transcribe=
+if ! ls media.*.vtt >/dev/null 2>&1 && command -v whisper-cli >/dev/null; then
+	job=$(basename "$work")
+	printf '{"status":"http://127.0.0.1:8765/%s/status.json","vtt":"http://127.0.0.1:8765/%s/media.zh.vtt"}' \
+		"$job" "$job" >transcribing.json
+	transcribe=1
+fi
+
 tar cf bundle.tar --exclude=bundle.tar ./*
 echo "Packed:"; tar tvf bundle.tar
 if command -v termux-open >/dev/null; then
 	termux-open --send --content-type application/x-tar bundle.tar
 else
 	echo "$work/bundle.tar"
+fi
+
+if [ -n "$transcribe" ]; then
+	command -v termux-wake-lock >/dev/null && termux-wake-lock
+	python3 ~/bin/transcribe.py "$work" "$work/$(ls media.* | head -1)"
+	command -v termux-wake-unlock >/dev/null && termux-wake-unlock
 fi

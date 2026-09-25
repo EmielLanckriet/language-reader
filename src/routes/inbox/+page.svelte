@@ -24,9 +24,13 @@
 		importing = true;
 		problem = null;
 		try {
-			const id = await importBundle(blob, name.replace(/\.tar$/, ''));
+			const imported = await importBundle(blob, name.replace(/\.tar$/, ''));
 			if (key) await (await caches.open(INBOX_CACHE)).delete(key);
-			await goto(resolve('/read/[id]', { id: String(id) }));
+			await goto(
+				'pending' in imported
+					? resolve('/live/[job]', { job: imported.pending })
+					: resolve('/read/[id]', { id: String(imported.documentId) })
+			);
 		} catch (error) {
 			problem = error instanceof Error ? error.message : describeError(error);
 		} finally {

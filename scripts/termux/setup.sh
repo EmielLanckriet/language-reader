@@ -10,7 +10,23 @@ pkg install -y --no-install-recommends python ffmpeg nodejs curl
 # yt-dlp's own single-file release, so no pip; `yt-dlp -U` updates it when YouTube breaks it.
 curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "$PREFIX/bin/yt-dlp"
 chmod +x "$PREFIX/bin/yt-dlp"
+# Speech-to-text for videos without Chinese subtitles: whisper-cli from this repository's release
+# (scripts/termux/build-whisper.sh), and the base and small models (148 + 488 MB).
+RELEASE="${RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/whisper-d09f61a}"
+case "$(uname -m)" in
+x86_64) variant=x86_64-avx2 ;;
+*) grep -qw asimddp /proc/cpuinfo && variant=arm64-dotprod || variant=arm64 ;;
+esac
+curl -fsSL "$RELEASE/whisper-cli-$variant" -o "$PREFIX/bin/whisper-cli"
+chmod +x "$PREFIX/bin/whisper-cli"
+MODELS="${MODELS:-https://huggingface.co/ggerganov/whisper.cpp/resolve/main}"
+mkdir -p ~/.whisper
+for model in base small; do
+	[ -f ~/.whisper/ggml-$model.bin ] || curl -fL "$MODELS/ggml-$model.bin" -o ~/.whisper/ggml-$model.bin
+done
+
 mkdir -p ~/bin
 curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener
+curl -fsSL "$SOURCE/transcribe.py" -o ~/bin/transcribe.py
 chmod +x ~/bin/termux-url-opener
 echo "Done. In YouTube: Share → Termux."

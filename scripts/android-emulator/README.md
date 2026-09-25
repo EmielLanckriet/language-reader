@@ -29,18 +29,26 @@ adb forward tcp:9333 localabstract:chrome_devtools_remote  # Chrome's DevTools o
 node scripts/verify-in-browser/harness.mjs lookup --cdp 9333 --app http://localhost:4175
 ```
 
-`media` needs a real bundle at `build/test-bundle.tar` (run `scripts/termux/termux-url-opener` on
-the laptop once to get one). Termux can fetch the scripts from the laptop too:
+`media` and `live` need test bundles: `scripts/verify-in-browser/make-fixtures.sh <video> [vtt]`
+cuts a 45 s clip into `build/test-bundle.tar` and `build/test-live.tar` (get a video once with
+`scripts/termux/termux-url-opener` on the laptop). For `live`, forward the transcriber's port with
+`adb reverse tcp:8765 tcp:8765` and start the transcriber the script prints, with
+`WHISPER_FIRST_MODEL=tiny WHISPER_MODEL=tiny`. The check then takes about 20 s. Keep checks short:
+full-length videos are for measuring speed or accuracy, once, not for testing. Termux can fetch the scripts from the laptop too:
 `SOURCE=http://localhost:4175/language-reader/termux` with `scripts/termux/*` copied into `build/termux/`.
 
 ## What bit
+
+- **Typing into Termux with `adb shell input text`** cannot type Chinese, and text typed while a
+  script runs goes to that script's stdin. Fetch a script from the laptop and pipe it to `bash`.
+- **A plain `-DGGML_NATIVE=OFF` build is slow**: 4.4× slower without AVX2 (x86) or dotprod (ARM).
 
 - **Chrome's DevTools socket** appeared only after `adb shell am force-stop com.android.chrome` and a
   fresh start.
 - **Only the visible tab gets storage** (ADR-0010). A tab opened over DevTools while Termux is in
   front waits at "Opening your library…" indefinitely — correct behaviour, not a hang. Bring Chrome
   forward first. Scenarios run back to back can hit the same wait while the closed tab lets go;
-  run them one at a time. (A suspicion about the hand-off time, not measured.)
+  run them one at a time. A 3 s pause between runs failed and 20 s worked; why is not yet known.
 - **Termux picks a random mirror**, and one in China made setup look stuck for minutes. Output
   piped through `curl -T -` is buffered, so a quiet log is not a stopped process.
 - **Installing the app did not work** from `http://localhost`: "Install" produced nothing. Either

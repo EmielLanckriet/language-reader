@@ -13,12 +13,15 @@
 	let {
 		word,
 		sentence,
+		marking = true,
 		current,
 		onchoose,
 		onclose
 	}: {
 		word: string;
 		sentence?: string;
+		/** False while a transcript is still arriving: there is no stored word to mark yet. */
+		marking?: boolean;
 		current: string | null;
 		onchoose: (state: string) => void;
 		onclose: () => void;
@@ -69,18 +72,22 @@
 			>
 		{/if}
 
-		<div class="choices">
-			{#each AVAILABLE_STATES as state (state.name)}
-				<button
-					class="choice"
-					class:chosen={current === state.name}
-					onclick={() => onchoose(state.name)}
-				>
-					<span class="swatch state-{state.name}"></span>
-					{state.label}
-				</button>
-			{/each}
-		</div>
+		{#if marking}
+			<div class="choices">
+				{#each AVAILABLE_STATES as state (state.name)}
+					<button
+						class="choice"
+						class:chosen={current === state.name}
+						onclick={() => onchoose(state.name)}
+					>
+						<span class="swatch state-{state.name}"></span>
+						{state.label}
+					</button>
+				{/each}
+			</div>
+		{:else}
+			<p class="muted">You can mark words once the transcript is complete.</p>
+		{/if}
 
 		<button class="secondary cancel" onclick={onclose}>Cancel</button>
 	</div>

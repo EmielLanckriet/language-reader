@@ -1,6 +1,6 @@
 # ADR-0017: Termux Is The Import Pipeline For Media, And Nothing At Read Time
 
-**Status**: Accepted
+**Status**: Accepted; amended by ADR-0019 (Termux also serves a transcript while an import finishes)
 **Date**: 2026-09-25
 **Relates to**: ADR-0007 (no server, browser first), the change register's "Analysis Is Import-Time"
 and "Prefer Local Computation", constitution Technology Stack (preserved options)

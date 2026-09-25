@@ -36,3 +36,6 @@ vite.config.ts.timestamp-*
 # which is working and one which is wedged do not look identical. A run artefact, never committed.
 model-progress.log
 chrome*.log
+
+# scripts/termux/build-whisper.sh output
+/whisper-dist
