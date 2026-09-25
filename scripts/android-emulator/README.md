@@ -37,10 +37,16 @@ cuts a 45 s clip into `build/test-bundle.tar` and `build/test-live.tar` (get a v
 full-length videos are for measuring speed or accuracy, once, not for testing. Termux can fetch the scripts from the laptop too:
 `SOURCE=http://localhost:4175/language-reader/termux` with `scripts/termux/*` copied into `build/termux/`.
 
+`wipe` (spec 005) needs the reader service instead of a transcriber:
+`python3 scripts/termux/reader-service.py --root <fresh dir>` and `adb reverse tcp:8765 tcp:8765`.
+It marks two words, waits for the copy, clears the origin's storage, restores, and takes about 10 s.
+
 ## What bit
 
 - **Typing into Termux with `adb shell input text`** cannot type Chinese, and text typed while a
   script runs goes to that script's stdin. Fetch a script from the laptop and pipe it to `bash`.
+- **A home-screen shortcut looks installed**: it reports `display-mode: standalone`, but storage
+  protection is refused. Only `persisted()` tells them apart.
 - **A plain `-DGGML_NATIVE=OFF` build is slow**: 4.4× slower without AVX2 (x86) or dotprod (ARM).
 
 - **Chrome's DevTools socket** appeared only after `adb shell am force-stop com.android.chrome` and a

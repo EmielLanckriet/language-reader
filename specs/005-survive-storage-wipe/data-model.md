@@ -14,8 +14,8 @@ The full contract is in [contracts/copy-format.md](contracts/copy-format.md).
 | `format` | Copy format version | Integer. A restore accepts `1..current` |
 | `app` | Build that wrote it | For diagnostics only |
 | `createdAt` | When the snapshot was taken | ISO 8601 |
-| `devices[]` | `{id, nextSeq}` | Every device that has events. Restoring these keeps `(device_id, device_seq)` unique |
-| `documents[]` | `{id, title, language, contentType, rawContent, createdAt, media?}` | `id` is preserved. `media` is `{subtitles: {name, text}, meta}` for a media document |
+| `writer`, `devices[]` | the writing device; `{id, nextSeq}` | Every device that has events. Restoring these keeps `(device_id, device_seq)` unique |
+| `documents[]` | `{id, title, language, contentType, rawContent, createdAt, media?}` | `id` is the copy's own; a restore renumbers and events follow. `media` is `{subtitles: {name, text}, meta}` for a media document |
 | `events[]` | `{deviceId, deviceSeq, surface, language, asserted, assertedAt, documentId?, from?, to?, observedPronunciation?, provenance}` | In log order. `(surface, language)` identifies the lexeme. `documentId` must name a document in the copy |
 | `states[]` | `{surface, language, state, provenance}` | Must equal replaying `events` (checked on write and on restore) |
 | `corrections[]` | Empty until spec 004 | Reserved so that 004 adds data without a new format |

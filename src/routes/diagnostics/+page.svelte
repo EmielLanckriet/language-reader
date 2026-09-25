@@ -1,5 +1,30 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { safeguards, type Safeguards } from '$lib/backup/safeguards';
+	import { latest, restore } from '$lib/backup/destination';
+
+	let guards = $state<Safeguards | null>(null);
+	let restoring = $state(false);
+	let restoreNote = $state<string | null>(null);
+	$effect(() => {
+		void safeguards().then((found) => (guards = found));
+	});
+
+	/** Available at any time (FR-012); the repository refuses a library that already has marks. */
+	async function restoreLatest() {
+		restoring = true;
+		restoreNote = null;
+		try {
+			const found = await latest();
+			if (found === 'unreachable') restoreNote = "Termux's reader service isn't running.";
+			else if (found === 'none') restoreNote = 'Termux has no copy yet.';
+			else restoreNote = (await restore(found.text)) ?? 'Restored.';
+		} catch (error) {
+			restoreNote = error instanceof Error ? error.message : String(error);
+		} finally {
+			restoring = false;
+		}
+	}
 	import { session } from '$lib/storage/session';
 	import { explain, type Availability } from '$lib/storage/availability';
 	import type { Diagnostic } from '$lib/diagnostics/describe';
@@ -160,6 +185,31 @@
 <h2 class="section">Right now</h2>
 
 <dl class="facts">
+	<dt>Safeguards</dt>
+	<dd>
+		{#if guards}
+			Installed: {guards.installed ? 'yes' : 'no (a tab or shortcut)'} · Storage kept: {guards.persisted
+				? 'yes'
+				: 'no'} · Copy in Termux: {guards.copy === 'current'
+				? 'up to date'
+				: guards.copy === 'stale'
+					? 'behind'
+					: 'service not reachable'}
+			<br />
+			<small>
+				Last copy: {guards.lastCopy
+					? `${new Date(guards.lastCopy.at).toLocaleString()}, ${Math.round(guards.lastCopy.bytes / 1024)} KB`
+					: 'none from this device yet'}
+			</small>
+			<br />
+			<button class="secondary" onclick={restoreLatest} disabled={restoring}>
+				{restoring ? 'Restoring…' : 'Restore the latest copy'}
+			</button>
+			{#if restoreNote}<small role="status">{restoreNote}</small>{/if}
+		{:else}
+			…
+		{/if}
+	</dd>
 	<dt>Version</dt>
 	<dd>
 		<!--

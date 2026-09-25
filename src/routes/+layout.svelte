@@ -5,6 +5,7 @@
 	import InstallOffer from '$lib/ui/InstallOffer.svelte';
 	import UpdateOffer from '$lib/ui/UpdateOffer.svelte';
 	import ReadOnlyNotice from '$lib/ui/ReadOnlyNotice.svelte';
+	import SafeguardNotice from '$lib/ui/SafeguardNotice.svelte';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
 	import { sweepStaleDocuments } from '$lib/storage/sweep';
@@ -114,6 +115,7 @@
 	<InstallOffer />
 	<UpdateOffer />
 	<ReadOnlyNotice />
+	<SafeguardNotice />
 </div>
 
 <main>

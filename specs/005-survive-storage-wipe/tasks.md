@@ -77,17 +77,17 @@ around a minute.
 **Goal**: each unprotected state is named on the first screen, with one action; none is shown when all is well.
 **Independent test**: quickstart.md §Warnings.
 
-- [ ] T019 [P] [US3] `src/lib/backup/safeguards.ts`: installed (`display-mode: standalone`), protection (`persisted()`), copy (fresh / stale / never / service unreachable)
-- [ ] T020 [US3] `src/lib/ui/SafeguardNotice.svelte` in the layout: one distinct warning per unprotected state, each naming one action (FR-011). It replaces the home page's current persistence warning
-- [ ] T021 [US3] `src/routes/diagnostics/+page.svelte`: state of each safeguard, time and size of the last copy, and Restore at any time (FR-012), with the same refusal rules
-- [ ] T022 [US3] Measure what `display-mode` a Chrome shortcut reports in the emulator (R5), and record it in research.md R5
+- [X] T019 [P] [US3] `src/lib/backup/safeguards.ts`: installed (`display-mode: standalone`), protection (`persisted()`), copy (fresh / stale / never / service unreachable)
+- [X] T020 [US3] `src/lib/ui/SafeguardNotice.svelte` in the layout: one distinct warning per unprotected state, each naming one action (FR-011). It replaces the home page's current persistence warning
+- [X] T021 [US3] `src/routes/diagnostics/+page.svelte`: state of each safeguard, time and size of the last copy, and Restore at any time (FR-012), with the same refusal rules
+- [X] T022 [US3] Measure what `display-mode` a Chrome shortcut reports in the emulator (R5), and record it in research.md R5
 
 ---
 
 ## Phase 6: Polish
 
-- [ ] T023 [P] Update `scripts/android-emulator/README.md` (running the service for `wipe`), the register (`docs/anticipated-changes.md`: backup built) and `docs/backlog.md` (store-wipe item → what is still unknown: the original cause, the phone)
-- [ ] T024 Run `npm run check`, `npm run lint`, `npm test`, and `media`, `live`, `wipe` on the emulator one at a time (a 20 s pause between them), then commit
+- [X] T023 [P] Update `scripts/android-emulator/README.md` (running the service for `wipe`), the register (`docs/anticipated-changes.md`: backup built) and `docs/backlog.md` (store-wipe item → what is still unknown: the original cause, the phone)
+- [X] T024 Run `npm run check`, `npm run lint`, `npm test`, and `media`, `live`, `wipe` on the emulator one at a time (a 20 s pause between them), then commit
 - [ ] T025 On the phone, when available (not blocking): install Termux:Boot, reboot, confirm the service is up and a copy arrives; note the app's safeguard state, which may reveal the original wipe's cause
 
 ---

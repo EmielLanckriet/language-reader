@@ -68,8 +68,11 @@ requested.
 
 **Rationale**: The emulator showed the failure mode. When Chrome cannot install the WebAPK, it
 falls back to a shortcut, which opens in a browser tab. There `display-mode` is `browser` and
-persistence is denied. **Measure**: which `display-mode` a Chrome shortcut reports. It is
-expected to be `browser`, and only the emulator can check that today.
+persistence is denied. **Measured 2026-09-25, and the expectation was wrong**: a Chrome home-screen shortcut
+reports `display-mode: standalone`, exactly like an installed app, with `persisted()` **false**. So
+`display-mode` only tells a browser tab from the rest. The shortcut is caught by storage protection:
+standalone but not persisted means a shortcut, and the notice says so. This is the likeliest cause of
+the original wipe; it can only be confirmed on the phone.
 
 ## R6. Chrome's Local Network Access prompt
 

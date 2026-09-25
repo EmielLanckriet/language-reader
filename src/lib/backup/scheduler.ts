@@ -19,20 +19,26 @@ function delays(): { quiet: number; every: number } {
 }
 
 let started = false;
+let unsentSince: number | null = Date.now();
+
+/** Since when a change has waited to be copied, or null when the latest copy has everything. */
+export function waitingSince(): number | null {
+	return unsentSince;
+}
 
 export function startCopying(): void {
 	if (started || typeof window === 'undefined') return;
 	started = true;
 	const { quiet, every } = delays();
-	let unsent = true;
 	let sending = false;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	async function flush() {
-		if (!unsent || sending) return;
+		if (unsentSince === null || sending) return;
 		sending = true;
 		try {
-			unsent = !(await send(await makeCopy()));
+			const since = unsentSince;
+			if (await send(await makeCopy())) unsentSince = unsentSince === since ? null : unsentSince;
 		} catch {
 			// Not sent: stays unsent, and the safeguard notice turns stale after the bound.
 		} finally {
@@ -41,7 +47,7 @@ export function startCopying(): void {
 	}
 
 	window.addEventListener(EARNED_CHANGE, () => {
-		unsent = true;
+		unsentSince ??= Date.now();
 		clearTimeout(timer);
 		timer = setTimeout(() => void flush(), quiet);
 	});

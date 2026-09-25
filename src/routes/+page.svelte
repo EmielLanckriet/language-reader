@@ -17,7 +17,6 @@
 	let loading = $state(true);
 	let saving = $state(false);
 	let problem = $state<unknown>(null);
-	let warning = $state<string | null>(null);
 
 	// Counted in characters, matching the limit the content source enforces (FR-020). Shown live
 	// so the reader can see they are over the limit before pressing anything.
@@ -47,21 +46,12 @@
 
 	async function load() {
 		try {
-			const { repository, persistence } = await session();
+			const { repository } = await session();
 
 			// This waits for the storage lease rather than resolving empty without it. Every return
 			// to the foreground passes through acquiring, and a library that briefly showed nothing
 			// on each of them would be indistinguishable from having lost everything.
 			documents = await repository.listDocuments();
-
-			// Whether this copy can save at all is ReadOnlyNotice's business, in the layout, so it
-			// is said once wherever the reader happens to be. What is left here is the quieter
-			// point that storage is durable but evictable.
-			if (persistence !== 'granted') {
-				warning =
-					'The browser has not promised to keep your saved reading. It may be deleted if ' +
-					'the device runs short of space.';
-			}
 		} catch (error) {
 			problem = error;
 			await record('storage', error);
@@ -155,10 +145,6 @@
 	Paste Chinese text, then tap words as you read. Videos from Termux arrive in the
 	<a href={resolve('/inbox')}>inbox</a>.
 </p>
-
-{#if warning}
-	<p class="notice warning">{warning}</p>
-{/if}
 
 <!--
 	A sample to hand, so checking the reader on a phone does not start with typing Chinese into a

@@ -144,6 +144,9 @@ const scenarios = {
 				`return [...new Set([...document.querySelectorAll('.reading .token.state-known')].map((b) => b.textContent))];`
 			);
 		try {
+			// Start from nothing, so the library holds only this run's document: with others
+			// present, "the first document" after a restore is not necessarily the one marked.
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
 			await tab.goto('/');
 			await tab.evaluate(
 				`localStorage.setItem('reader.copyDelays', JSON.stringify({ quiet: 500, every: 3000 })); return true;`
@@ -193,7 +196,12 @@ const scenarios = {
 					const response = await fetch(`${service}/backup/latest`).catch(() => null);
 					if (!response?.ok) return null;
 					const copy = await response.json();
-					return copy.states.filter((s) => s.state === 'known').length >= 2 ? copy : null;
+					// Every word shown as known, not merely two: an older copy from an earlier run would
+					// satisfy "two", and the restore would then rightly bring back that older state.
+					const known = new Set(
+						copy.states.filter((s) => s.state === 'known').map((s) => s.surface)
+					);
+					return marked.every((word) => known.has(word)) ? copy : null;
 				},
 				30000,
 				500
