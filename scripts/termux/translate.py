@@ -56,8 +56,10 @@ def ask(lines):
     numbered = '\n'.join(f'{i + 1}. {line}' for i, line in enumerate(lines))
     prompt = (f'<|im_start|>system\n{SYSTEM}<|im_end|>\n<|im_start|>user\n{numbered} /no_think'
               f'<|im_end|>\n<|im_start|>assistant\n')
+    # -c: without it llama.cpp reserves the model's whole 40k-token context, measured at 6.4 GB peak
+    # against 2.0 GB with 1024. That froze a 5.6 GB phone twice. A 20-line chunk needs ~1500.
     out = subprocess.run(
-        [LLAMA, '-m', MODEL, '-p', prompt, '-n', str(40 * len(lines) + 40), '--temp', '0.2',
+        [LLAMA, '-m', MODEL, '-c', '2048', '-p', prompt, '-n', str(40 * len(lines) + 40), '--temp', '0.2',
          '-t', THREADS, '-no-cnv', '--no-display-prompt'],
         capture_output=True, text=True, check=True,
     ).stdout.replace('[end of text]', '')  # llama-completion's own end marker, not the model's
