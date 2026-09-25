@@ -64,9 +64,9 @@ around a minute.
 **Goal**: copies go out with no action from the reader, at most 5 minutes behind.
 **Independent test**: the `wipe` scenario.
 
-- [ ] T016 [US2] `send(copy)` in `src/lib/backup/destination.ts` (PUT /backup), recording the last successful send time in `localStorage` (data-model.md; losing it only errs toward warning)
-- [ ] T017 [US2] `src/lib/backup/scheduler.ts`: after an earned change (`saveDocument`, `assertState`, and restore itself), send 30 s after the last change, on `visibilitychange` to hidden, and every 5 minutes while unsent (R4). The delays can be overridden for the harness. Start it from `src/routes/+layout.svelte`
-- [ ] T018 [US2] `wipe` scenario in `scripts/verify-in-browser/harness.mjs`: mark two words, wait for the copy (short delay), clear the origin's storage with `Storage.clearDataForOrigin`, reload, accept the restore, and check both marks and their history. Needs the service reachable on 127.0.0.1:8765. Make it fail once (disable the send)
+- [X] T016 [US2] `send(copy)` in `src/lib/backup/destination.ts` (PUT /backup), recording the last successful send time in `localStorage` (data-model.md; losing it only errs toward warning)
+- [X] T017 [US2] `src/lib/backup/scheduler.ts`: after an earned change (`saveDocument`, `assertState`, and restore itself), send 30 s after the last change, on `visibilitychange` to hidden, and every 5 minutes while unsent (R4). The delays can be overridden for the harness. Start it from `src/routes/+layout.svelte`
+- [X] T018 [US2] `wipe` scenario in `scripts/verify-in-browser/harness.mjs`: mark two words, wait for the copy (short delay), clear the origin's storage with `Storage.clearDataForOrigin`, reload, accept the restore, and check both marks and their history. Needs the service reachable on 127.0.0.1:8765. Make it fail once (disable the send)
 
 **Checkpoint**: `wipe` passes on the emulator in about a minute, against the deployed app and a local build.
 

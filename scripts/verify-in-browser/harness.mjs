@@ -132,6 +132,122 @@ const SUBMIT_SHARE = `
 	return true;`;
 
 const scenarios = {
+	// The reader's work survives the site's storage being wiped (spec 005): mark two words, let the
+	// copy reach the reader service, clear everything the origin stores, and restore. Needs
+	// scripts/termux/reader-service.py on 127.0.0.1:8765, reachable from the browser (adb reverse
+	// on the emulator), and preferably a fresh --root so "latest" is this run's copy.
+	async wipe() {
+		const service = valueOf('--service') ?? 'http://127.0.0.1:8765';
+		const tab = await openTab('about:blank');
+		const words = async () =>
+			tab.evaluate(
+				`return [...new Set([...document.querySelectorAll('.reading .token.state-known')].map((b) => b.textContent))];`
+			);
+		try {
+			await tab.goto('/');
+			await tab.evaluate(
+				`localStorage.setItem('reader.copyDelays', JSON.stringify({ quiet: 500, every: 3000 })); return true;`
+			);
+			await tab.goto('/');
+			await until('the paste box', () =>
+				tab.evaluate('return !!document.querySelector("textarea");')
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('Load sample text')).click(); return true;`
+			);
+			await until('Save to be enabled', () =>
+				tab.evaluate(`return ${SAVE_BUTTON} && !${SAVE_BUTTON}.disabled;`)
+			);
+			await tab.evaluate(`${SAVE_BUTTON}.click(); return true;`);
+			const link = await until('the saved document', () => tab.evaluate(`return ${READ_LINK};`));
+			await tab.evaluate(`location.href = ${JSON.stringify(link)}; return true;`);
+			for (const index of [0, 2]) {
+				await until(`word ${index} to mark`, () =>
+					tab.evaluate(`
+						const word = [...document.querySelectorAll('.reading button.token')].filter((b) => !b.className.includes('state-known'))[${index === 0 ? 0 : 1}];
+						if (!word) return null;
+						word.click();
+						return true;
+					`)
+				);
+				await until('the Known choice', () =>
+					tab.evaluate(`
+						const choice = [...document.querySelectorAll('.choice')].find((b) => b.textContent.includes('Known'));
+						if (!choice) return null;
+						choice.click();
+						return true;
+					`)
+				);
+				await until('the menu to close', () =>
+					tab.evaluate(`return !document.querySelector('.choices');`)
+				);
+			}
+			const marked = await until('two marked words', async () => {
+				const list = await words();
+				return list.length >= 2 ? list : null;
+			});
+
+			const copied = await until(
+				'the copy to reach the service with both marks',
+				async () => {
+					const response = await fetch(`${service}/backup/latest`).catch(() => null);
+					if (!response?.ok) return null;
+					const copy = await response.json();
+					return copy.states.filter((s) => s.state === 'known').length >= 2 ? copy : null;
+				},
+				30000,
+				500
+			);
+
+			// Leave the page first: the open database holds the files a wipe must remove.
+			await tab.send('Page.navigate', { url: 'about:blank' });
+			await until('the page to be gone', () =>
+				tab.evaluate(`return location.href === 'about:blank';`)
+			);
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+
+			await tab.goto('/');
+			await until(
+				'the restore offer',
+				() =>
+					tab.evaluate(
+						`return [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Restore');`
+					),
+				30000
+			);
+			const emptyBeforeRestore = await tab.evaluate(`return ${READ_LINKS};`);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Restore').click(); return true;`
+			);
+			const restoredLink = await until(
+				'the restored document',
+				() => tab.evaluate(`return ${READ_LINK};`),
+				30000
+			);
+			await tab.evaluate(`location.href = ${JSON.stringify(restoredLink)}; return true;`);
+			const restored = await until(
+				'the marks to be back',
+				async () => {
+					const list = await words();
+					return list.length >= 2 ? list : null;
+				},
+				30000
+			);
+			return {
+				pass:
+					emptyBeforeRestore === 0 &&
+					restored.length === marked.length &&
+					restored.every((w) => marked.includes(w)),
+				marked,
+				copiedStates: copied.states.length,
+				emptyBeforeRestore,
+				restored
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// A video without subtitles: shared while Termux transcribes, readable as lines arrive, and an
 	// ordinary document once the transcript is done (ADR-0019). Needs scripts/verify-in-browser/make-fixtures.sh and a
 	// transcriber serving 127.0.0.1:8765 (scripts/termux/transcribe.py; see android-emulator/).

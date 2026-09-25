@@ -8,6 +8,14 @@
 
 import { RejectedInput } from '../content/types';
 import type { CopyBody } from '../backup/format';
+
+/** Announced after anything the reader earned was written; the copy's scheduler listens (ADR-0020). */
+export const EARNED_CHANGE = 'reader:earned-change';
+
+function earned<T>(result: T): T {
+	if (typeof window !== 'undefined') window.dispatchEvent(new Event(EARNED_CHANGE));
+	return result;
+}
 import { StorageFailure } from './failures';
 import type { DocumentSummary, StoredDocument, UpgradeBatch } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
@@ -158,7 +166,9 @@ export class RepositoryClient {
 		tokens: ResolvedToken[],
 		analyzer: AnalyzerStamp
 	): Promise<number> {
-		return this.call({ method: 'saveDocument', args: [document, tokens, analyzer] });
+		return this.call<number>({ method: 'saveDocument', args: [document, tokens, analyzer] }).then(
+			earned
+		);
 	}
 
 	/**
@@ -188,7 +198,9 @@ export class RepositoryClient {
 	}
 
 	assertState(lexemeId: LexemeId, asserted: string, occurrence?: Occurrence): Promise<void> {
-		return this.call({ method: 'assertState', args: [lexemeId, asserted, occurrence] });
+		return this.call<void>({ method: 'assertState', args: [lexemeId, asserted, occurrence] }).then(
+			earned
+		);
 	}
 
 	getStates(lexemeIds: LexemeId[]): Promise<Map<LexemeId, WordState>> {
@@ -211,7 +223,10 @@ export class RepositoryClient {
 	restoreCopy(
 		body: CopyBody
 	): Promise<{ restored: Map<number, number> } | { rejected: string; message: string }> {
-		return this.call({ method: 'restoreCopy', args: [body] });
+		return this.call<{ restored: Map<number, number> } | { rejected: string; message: string }>({
+			method: 'restoreCopy',
+			args: [body]
+		}).then(earned);
 	}
 
 	readDiagnostics(limit?: number): Promise<Diagnostic[]> {

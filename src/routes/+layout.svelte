@@ -10,6 +10,7 @@
 	import { sweepStaleDocuments } from '$lib/storage/sweep';
 	import { noteUpgraded } from '$lib/storage/upgrades';
 	import { activeAnalyzer } from '$lib/analyzer/active';
+	import { startCopying } from '$lib/backup/scheduler';
 	import { describeError } from '$lib/diagnostics/describe';
 
 	let { children } = $props();
@@ -26,6 +27,7 @@
 		// Registered here rather than in app.html so it happens once the application is running,
 		// and so the registration is available to the parts of the interface that need it.
 		void serviceWorker();
+		startCopying();
 
 		// Catch up the documents the reader has not opened (FR-016). Started once, from the layout,
 		// because it is about the library rather than about any screen — and starting it per screen
