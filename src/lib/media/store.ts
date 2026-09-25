@@ -13,6 +13,8 @@ export interface StoredMedia {
 	cues: Cue[];
 	/** English per cue, in cue order; empty until Termux has translated it. Derived. */
 	translation: Cue[];
+	/** The quick model's English per cue, null where not yet translated (ADR-0023). Derived. */
+	quick: (string | null)[];
 	meta: Record<string, unknown>;
 }
 
@@ -87,6 +89,9 @@ export function isTranslation(name: string): boolean {
 	return /\.en\.vtt$/i.test(name);
 }
 
+/** Kept apart from the LLM's media.en.vtt, so neither translator can overwrite the other. */
+export const QUICK_ENGLISH = 'quick-english.json';
+
 export function isPlayable(name: string): boolean {
 	return /\.(mp4|webm|m4a|mp3|ogg|opus|wav)$/i.test(name);
 }
@@ -98,7 +103,7 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	} catch {
 		return null;
 	}
-	const found: StoredMedia = { media: undefined, cues: [], translation: [], meta: {} };
+	const found: StoredMedia = { media: undefined, cues: [], translation: [], quick: [], meta: {} };
 	for await (const handle of directory.values()) {
 		if (handle.kind !== 'file') continue;
 		const file = await (handle as FileSystemFileHandle).getFile();
@@ -106,6 +111,7 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 		else if (isSubtitle(file.name)) found.cues = parseSubtitles(await file.text());
 		else if (isTranslation(file.name)) found.translation = parseSubtitles(await file.text());
 		else if (file.name === 'meta.json') found.meta = JSON.parse(await file.text());
+		else if (file.name === QUICK_ENGLISH) found.quick = JSON.parse(await file.text());
 	}
 	return found;
 }

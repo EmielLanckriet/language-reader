@@ -117,19 +117,29 @@ function storedHeaders(response: Response): Headers {
  * next file is fetched, and it asks for all three.
  */
 export async function downloadModel(onProgress?: (p: DownloadProgress) => void): Promise<void> {
-	const cache = await caches.open(MODEL_CACHE);
-
 	// Runtime first: it is the smaller part, and finishing it means a failure part-way through the
 	// large download leaves the cheap half already done for the retry.
 	const order = [...RUNTIME_PATHS.map((path) => `${base}${path}`), MODEL_URL];
+	await downloadInto(order, 'the segmenter', onProgress);
+}
 
+/**
+ * Streams each of `urls` into the model cache, as `downloadModel` describes; shared with the quick
+ * translator's model (ADR-0023). `what` names the download in errors.
+ */
+export async function downloadInto(
+	urls: string[],
+	what: string,
+	onProgress?: (p: DownloadProgress) => void
+): Promise<void> {
+	const cache = await caches.open(MODEL_CACHE);
 	let receivedBytes = 0;
 	let knownTotal: number | undefined;
 
-	for (const url of order) {
+	for (const url of urls) {
 		const response = await fetch(url);
 		if (!response.ok || !response.body) {
-			throw new Error(`Could not download the segmenter (${response.status}).`);
+			throw new Error(`Could not download ${what} (${response.status}).`);
 		}
 
 		const expected = expectedBodyBytes(response);
@@ -154,7 +164,9 @@ export async function downloadModel(onProgress?: (p: DownloadProgress) => void):
 
 		if (expected !== undefined && bodyBytes !== expected) {
 			await cache.delete(url);
-			throw new Error(`The segmenter downloaded incompletely (${bodyBytes} of ${expected} bytes).`);
+			throw new Error(
+				`${what[0].toUpperCase()}${what.slice(1)} downloaded incompletely (${bodyBytes} of ${expected} bytes).`
+			);
 		}
 	}
 }

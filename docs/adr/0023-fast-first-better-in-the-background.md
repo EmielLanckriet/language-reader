@@ -37,9 +37,23 @@ incremental background operation to improve while using it already."
    better piece is never overwritten by a rougher one; each piece records the method that made it.
    Derived data only.
 2. **Line translation is layered**: opus-mt translates each line at once, and Qwen3-1.7B's lines
-   replace them as they arrive from Termux. Each line records its source (`opus` or `qwen`). Where
-   opus-mt runs, in Reader through its ONNX runtime or in Termux, is decided when it is built and
-   recorded here.
+   replace them as they arrive from Termux. Each line records its source (`quick` or `llm`,
+   `src/lib/translation/lines.ts`), and the two are kept in separate files beside the video
+   (`quick-english.json`, `media.en.vtt`), so neither can overwrite the other.
+3. **opus-mt runs inside Reader**, in a worker, on the ONNX runtime 1.29 the segmenter already
+   ships and caches (`/ort/`), with our own Unigram tokenizer and greedy decoder
+   (`src/lib/translation/`, ~150 lines). Its tokenizer gives ids identical to transformers.js on
+   the 20 test lines, and 19 of 20 translations are identical (the twentieth differs on a
+   near-tie, presumably numerical, between runtime versions). 20 lines take 4.9 s single-threaded on
+   the laptop. The model (~115 MB, quantized encoder and merged decoder, from HuggingFace) is
+   downloaded the first time a video is opened, into the model cache beside the runtime, so it
+   works offline and survives deploys. Lines are translated nearest-first from where playback is,
+   and a line the reader taps jumps the queue.
+
+   Rejected for this: **in Termux**, because Termux has the ONNX runtime only as a C library (no
+   Python binding, and onnxruntime-node does not run on Termux), and it would only help imported
+   videos, not pasted text; **transformers.js**, because it brings a second runtime (1.31-dev),
+   loaded from a CDN unless copied and cached like `/ort/`, for code we can own in 150 lines.
 
 ## Alternatives Rejected
 
@@ -59,3 +73,8 @@ incremental background operation to improve while using it already."
   rougher one win.
 - **Open**: the count check in `translate.py` does not catch shifted lines; Qwen's lines need a
   stronger check before they replace opus-mt's.
+- **Open**: a transcript still being written (the live page, ADR-0019) gets only the LLM's lines
+  so far; quick English for growing lines is the next step.
+- **Open**: the model's own settings ask for a 6-way beam search; greedy decoding is what was
+  measured and shipped, as the fast first. Beams would cost about 6× per line.
+- The diagnostics page's "discard" frees the whole model cache, so it frees this model too.

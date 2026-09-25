@@ -214,6 +214,56 @@ const scenarios = {
 		}
 	},
 
+	// Quick English (ADR-0023): with no English from Termux at all, tapping a line's EN still shows
+	// English, from opus-mt running in the browser. Serve a fixture-media job that has no
+	// media.en.vtt (make-fixtures.sh, without running translate.py). The first run downloads the
+	// model (~115 MB), so it is slow once.
+	async quick() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the document to open',
+				() => tab.evaluate(`return !!document.querySelector('.lines .reveal');`),
+				30000
+			);
+			const started = Date.now();
+			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
+			const shown = await until(
+				'quick English on the first line',
+				() =>
+					tab.evaluate(`
+						const english = document.querySelector('.lines p .english');
+						return english && !english.classList.contains('pending')
+							? { text: english.textContent, quick: english.classList.contains('quick') }
+							: null;
+					`),
+				300000,
+				1000
+			);
+			const seconds = Math.round((Date.now() - started) / 1000);
+			const later = await until(
+				'more lines translated in the background',
+				() =>
+					tab.evaluate(`
+						document.querySelector('.all-english input').click();
+						const n = document.querySelectorAll('.lines .english.quick').length;
+						return n >= 5 ? n : null;
+					`),
+				60000,
+				1000
+			);
+			return {
+				pass: shown.quick && /[a-z]/i.test(shown.text) && !/^EN: /.test(shown.text) && later >= 5,
+				...shown,
+				secondsToFirstLine: seconds,
+				quickLinesAfter: later
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// The reader's work survives the site's storage being wiped (spec 005): mark two words, let the
 	// copy reach the reader service, clear everything the origin stores, and restore. Needs
 	// scripts/termux/reader-service.py on 127.0.0.1:8765, reachable from the browser (adb reverse

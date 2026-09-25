@@ -10,6 +10,7 @@
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import { followTranslation } from '$lib/media/translation';
+	import { englishFor } from '$lib/translation/lines';
 
 	/**
 	 * A video whose transcript Termux is still producing (ADR-0019). Lines are fetched from Termux
@@ -132,7 +133,7 @@
 		file={media}
 		{cues}
 		{lines}
-		{translations}
+		translations={englishFor(cues.length, translations, [])}
 		bind:player
 		onword={(line, word) => (chosen = { line, word })}
 	/>

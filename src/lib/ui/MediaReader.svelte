@@ -10,6 +10,7 @@
 
 <script lang="ts">
 	import type { Cue } from '$lib/media/subtitles';
+	import type { English } from '$lib/translation/lines';
 
 	/**
 	 * A player with its subtitle lines underneath: the current line follows playback, ▸ seeks to a
@@ -23,6 +24,9 @@
 		language = 'zh',
 		startAt = 0,
 		translations = [],
+		askable = false,
+		onask,
+		online,
 		onword,
 		player = $bindable(null)
 	}: {
@@ -31,8 +35,14 @@
 		lines: LineWord[][];
 		language?: string;
 		startAt?: number;
-		/** English for line i, when Termux has translated it; revealed per line on tap. */
-		translations?: string[];
+		/** English for line i, from whichever translator has it best (ADR-0023); revealed per line. */
+		translations?: (English | undefined)[];
+		/** Whether English can still be asked for, so every line offers it. */
+		askable?: boolean;
+		/** The reader wants line i's English and it is not there yet. */
+		onask?: (line: number) => void;
+		/** Playback moved to line i. */
+		online?: (line: number) => void;
 		onword: (line: number, word: LineWord) => void;
 		player?: HTMLMediaElement | null;
 	} = $props();
@@ -43,6 +53,7 @@
 	let showAll = $state(false);
 
 	function reveal(line: number) {
+		if (!translations[line]) onask?.(line);
 		revealed = revealed.includes(line) ? revealed.filter((i) => i !== line) : [...revealed, line];
 	}
 	const isAudio = $derived(/\.(m4a|mp3|ogg|opus|wav)$/i.test(file.name));
@@ -65,6 +76,7 @@
 		for (let i = 0; i < cues.length && cues[i].start <= time; i++) at = i;
 		if (at === currentLine) return;
 		currentLine = at;
+		if (at >= 0) online?.(at);
 		document.getElementById(`line-${at}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 	}
 
@@ -104,7 +116,7 @@
 	{/if}
 {/if}
 
-{#if translations.some(Boolean)}
+{#if askable || translations.some(Boolean)}
 	<label class="all-english">
 		<input type="checkbox" bind:checked={showAll} /> Show all English
 	</label>
@@ -119,15 +131,18 @@
 				>{/if}{#each line as word (word.key)}{#if word.isWord}<button
 						class="token {word.mark ?? 'state-none'}"
 						onclick={() => tap(i, word)}>{word.text}</button
-					>{:else}<span class="token">{word.text}</span>{/if}{/each}{#if translations[i]}<button
+					>{:else}<span class="token">{word.text}</span
+					>{/if}{/each}{#if translations[i] || (askable && cues[i])}<button
 					class="reveal"
 					aria-label="Show the English"
 					aria-pressed={showAll || revealed.includes(i)}
 					onclick={() => reveal(i)}>EN</button
-				>{/if}{#if translations[i] && (showAll || revealed.includes(i))}<span
-					class="english"
-					lang="en">{translations[i]}</span
-				>{/if}
+				>{/if}{#if showAll || revealed.includes(i)}{#if translations[i]}<span
+						class="english"
+						class:quick={translations[i]?.source === 'quick'}
+						title={translations[i]?.source === 'quick' ? 'Quick translation' : undefined}
+						lang="en">{translations[i]?.text}</span
+					>{:else if askable && cues[i]}<span class="english pending">…</span>{/if}{/if}
 		</p>
 	{/each}
 </div>
@@ -170,6 +185,12 @@
 		line-height: 1.4;
 		color: var(--muted);
 		margin: 0.1rem 0 0.2rem;
+	}
+	.english.quick {
+		font-style: italic;
+	}
+	.english.pending {
+		opacity: 0.6;
 	}
 	.all-english {
 		display: block;

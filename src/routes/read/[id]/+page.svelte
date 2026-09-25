@@ -16,7 +16,9 @@
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
-	import { saveMedia } from '$lib/media/store';
+	import { saveMedia, QUICK_ENGLISH } from '$lib/media/store';
+	import { englishFor } from '$lib/translation/lines';
+	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -25,20 +27,61 @@
 	let chosen = $state<Token | null>(null);
 
 	let media = $state<StoredMedia | null>(null);
-	/** English per line: kept beside the video once complete, followed from Termux until then. */
-	let translations = $state<string[]>([]);
+	/** Derived, so marking a word (which replaces `document`) does not restart the translators. */
+	const documentId = $derived(document?.id);
+
+	/** English per line from the local LLM: kept once complete, followed from Termux until then. */
+	let llmLines = $state<string[]>([]);
+	/** The quick model's English, there within seconds and replaced by the LLM's (ADR-0023). */
+	let quickLines = $state<(string | null)[]>([]);
+	let quick = $state<QuickTranslation | undefined>();
+	let quickStatus = $state<string | undefined>();
+	const english = $derived(media ? englishFor(media.cues.length, llmLines, quickLines) : []);
 
 	$effect(() => {
 		const current = media;
-		const id = document?.id;
+		const id = documentId;
 		if (!current || id === undefined) return;
-		translations = current.translation.map((cue) => cue.text);
+		llmLines = current.translation.map((cue) => cue.text);
 		const job = jobOf(current.meta);
 		if (current.translation.length > 0 || !job) return;
 		return followTranslation(job, (lines, done, vtt) => {
-			translations = lines;
+			llmLines = lines;
 			if (done) void saveMedia(id, [{ name: 'media.en.vtt', blob: new Blob([vtt]) }]);
 		});
+	});
+
+	$effect(() => {
+		const current = media;
+		const id = documentId;
+		if (!current || id === undefined) return;
+		quickLines = [...current.quick];
+		// The LLM has every line already: nothing for the quick model to add.
+		if (current.translation.length > 0) return;
+
+		let unsaved = 0;
+		const save = () => {
+			unsaved = 0;
+			const blob = new Blob([JSON.stringify(quickLines)]);
+			return saveMedia(id, [{ name: QUICK_ENGLISH, blob }]);
+		};
+		const translator = quickTranslation(
+			current.cues.map((cue) => cue.text),
+			(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
+			(i, text) => {
+				const next = [...quickLines];
+				next[i] = text;
+				quickLines = next;
+				if (++unsaved >= 10) void save();
+			},
+			(status) => (quickStatus = status)
+		);
+		quick = translator;
+		return () => {
+			translator.stop();
+			quick = undefined;
+			if (unsaved > 0) void save();
+		};
 	});
 
 	/** Where to start playing, when arriving from a transcript that just finished. */
@@ -320,6 +363,9 @@
 			reopen this page to try again; the text and your marks work without it.
 		</p>
 	{/if}
+	{#if media?.media && quickStatus}
+		<p class="quick-status">{quickStatus}</p>
+	{/if}
 	{#if media?.media}
 		<MediaReader
 			file={media.media}
@@ -327,7 +373,10 @@
 			{lines}
 			language={document.language}
 			{startAt}
-			{translations}
+			translations={english}
+			askable={quick !== undefined}
+			onask={(line) => quick?.focus(line, true)}
+			online={(line) => quick?.focus(line)}
 			onword={chooseWord}
 		/>
 	{:else}
@@ -351,6 +400,11 @@
 {/if}
 
 <style>
+	.quick-status {
+		font-size: 0.85rem;
+		color: var(--muted);
+		margin: 0.3rem 0;
+	}
 	h1.compact {
 		font-size: 1rem;
 		margin: 0.25rem 0;
