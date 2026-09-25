@@ -126,7 +126,10 @@
 </script>
 
 <h1>Reader</h1>
-<p class="subtitle">Paste Chinese text, then tap words as you read.</p>
+<p class="subtitle">
+	Paste Chinese text, then tap words as you read. Videos from Termux arrive in the
+	<a href={resolve('/inbox')}>inbox</a>.
+</p>
 
 {#if warning}
 	<p class="notice warning">{warning}</p>

@@ -61,7 +61,12 @@ function everyFile(directory) {
 //
 // What this ceiling still catches is the thing it was built for: a second dictionary, the full
 // CC-CEDICT with glosses, or the model itself arriving in the install without a decision.
-const SANCTIONED_INSTALL = { files: 37, bytes: 2529253 };
+//
+// **Raised on 2026-09-25 for word lookup**: the full CC-CEDICT with glosses (static/dictionary-zh.txt,
+// 8.19 MB raw, 3.5 MB gzipped) is now in the install, on purpose, so meanings work offline from the
+// first launch. Chosen over fetching it on demand because it is the simpler of the two; revisit if
+// the install size is ever felt.
+const SANCTIONED_INSTALL = { files: 38, bytes: 2529253 + 8190220 };
 
 // Ten per cent, unchanged in spirit: wide enough that ordinary code growth never trips it, far
 // narrower than anything worth catching.

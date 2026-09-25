@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { AVAILABLE_STATES } from '$lib/domain/state';
+	import { lookUp } from '$lib/analyzer/lookup';
 
 	/**
 	 * The menu a tap opens (FR-006).
@@ -11,15 +12,23 @@
 	 */
 	let {
 		word,
+		sentence,
 		current,
 		onchoose,
 		onclose
 	}: {
 		word: string;
+		sentence?: string;
 		current: string | null;
 		onchoose: (state: string) => void;
 		onclose: () => void;
 	} = $props();
+
+	const looked = $derived(lookUp(word));
+	const translateUrl = $derived(
+		sentence &&
+			`https://translate.google.com/?sl=zh-CN&tl=en&op=translate&text=${encodeURIComponent(sentence)}`
+	);
 </script>
 
 <svelte:window
@@ -34,6 +43,31 @@
 
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="Mark {word}">
 		<p class="word" lang="zh">{word}</p>
+
+		<div class="meanings">
+			{#await looked}
+				<p class="muted">Looking up…</p>
+			{:then parts}
+				{#each parts as part (part.text)}
+					{#if parts.length > 1}<p class="part" lang="zh">{part.text}</p>{/if}
+					{#each part.entries.slice(0, 4) as entry, i (i)}
+						<p><span class="pinyin">{entry.pinyin}</span> {entry.meaning}</p>
+					{/each}
+				{:else}
+					<p class="muted">Not in the dictionary.</p>
+				{/each}
+			{:catch error}
+				<p class="muted">{error.message}</p>
+			{/await}
+		</div>
+
+		{#if translateUrl}
+			<!-- An external site, so there is nothing for resolve() to resolve. -->
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a class="translate" href={translateUrl} target="_blank" rel="noreferrer"
+				>Translate sentence ↗</a
+			>
+		{/if}
 
 		<div class="choices">
 			{#each AVAILABLE_STATES as state (state.name)}
@@ -53,6 +87,37 @@
 </div>
 
 <style>
+	.meanings {
+		max-height: 30vh;
+		overflow-y: auto;
+		margin-bottom: 0.75rem;
+		font-size: 0.95rem;
+		line-height: 1.4;
+	}
+
+	.meanings p {
+		margin: 0.2rem 0;
+	}
+
+	.pinyin {
+		font-weight: 600;
+		margin-right: 0.3rem;
+	}
+
+	.part {
+		font-size: 1.2rem;
+		margin-top: 0.5rem !important;
+	}
+
+	.muted {
+		color: var(--muted);
+	}
+
+	.translate {
+		display: block;
+		margin-bottom: 0.75rem;
+	}
+
 	.backdrop {
 		position: fixed;
 		inset: 0;

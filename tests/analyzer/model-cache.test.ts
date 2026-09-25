@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { cachesToDiscard, MODEL_CACHE } from '../../src/lib/analyzer/model-cache';
+import { cachesToDiscard, INBOX_CACHE, MODEL_CACHE } from '../../src/lib/analyzer/model-cache';
 
 /**
  * Which caches a new build is allowed to throw away.
@@ -28,6 +28,14 @@ describe('choosing which caches to discard on activation', () => {
 		fc.assert(
 			fc.property(fc.array(anyName), fc.string({ minLength: 1 }), (present, current) => {
 				expect(cachesToDiscard([...present, MODEL_CACHE], current)).not.toContain(MODEL_CACHE);
+			})
+		);
+	});
+
+	it('never discards files shared to the app and not yet imported', async () => {
+		fc.assert(
+			fc.property(fc.array(anyName), fc.string({ minLength: 1 }), (present, current) => {
+				expect(cachesToDiscard([...present, INBOX_CACHE], current)).not.toContain(INBOX_CACHE);
 			})
 		);
 	});

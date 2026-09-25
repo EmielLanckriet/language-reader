@@ -117,7 +117,175 @@ const SAVE_BUTTON = `[...document.querySelectorAll("main button")].find((b) => b
 const READ_LINKS = `[...document.querySelectorAll("a")].filter((a) => (a.getAttribute("href") || "").includes("/read/")).length`;
 const READ_LINK = `[...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => h && h.includes("/read/"))`;
 
+// Submit the Blob in \`tar\` the way Android's share sheet does: a navigation POST to share_target.
+const SUBMIT_SHARE = `
+	const form = document.createElement('form');
+	form.method = 'post'; form.enctype = 'multipart/form-data';
+	form.action = '${BASE}/share-target';
+	const input = document.createElement('input');
+	input.type = 'file'; input.name = 'media';
+	const files = new DataTransfer();
+	files.items.add(new File([tar], 'bundle.tar', { type: 'application/x-tar' }));
+	input.files = files.files;
+	form.append(input); document.body.append(form);
+	form.submit();
+	return true;`;
+
 const scenarios = {
+	// Tapping a word shows its pinyin and meaning, and links its sentence to a translator. Opens
+	// the first document in the library, so run after anything that saved one (media, words).
+	async lookup() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/');
+			const link = await until('a document in the library', () =>
+				tab.evaluate(`return ${READ_LINK};`)
+			);
+			await tab.evaluate(`location.href = ${JSON.stringify(link)}; return true;`);
+			const word = await until('a word to tap', () =>
+				tab.evaluate(`
+					const button = [...document.querySelectorAll('.reading button.token')].find((b) => b.textContent.length > 1);
+					if (!button) return null;
+					button.click();
+					return button.textContent;
+				`)
+			);
+			const started = Date.now();
+			const shown = await until(
+				'the meaning to appear',
+				() =>
+					tab.evaluate(`
+						const sheet = document.querySelector('.meanings');
+						if (!sheet || sheet.textContent.includes('Looking up')) return null;
+						return {
+							meaning: sheet.innerText.slice(0, 200),
+							translate: document.querySelector('.translate')?.href ?? null
+						};
+					`),
+				30000
+			);
+			const sentence =
+				shown.translate && decodeURIComponent(new URL(shown.translate).searchParams.get('text'));
+			return {
+				pass:
+					!!shown.translate &&
+					sentence.includes(word) &&
+					/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(shown.meaning),
+				word,
+				secondsToMeaning: (Date.now() - started) / 1000,
+				meaning: shown.meaning,
+				sentence
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
+	// A real bundle from termux-url-opener, shared, imported, and played. Needs the bundle copied
+	// to build/test-bundle.tar first; it is fetched from there so the check works on the emulator.
+	async media() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/');
+			await until('the service worker to control the page', () =>
+				tab.evaluate('return !!navigator.serviceWorker.controller;')
+			);
+			await tab.evaluate(`
+				const response = await fetch('${BASE}/test-bundle.tar');
+				if (!response.ok) throw new Error('copy a bundle to build/test-bundle.tar first');
+				const tar = await response.blob();
+				${SUBMIT_SHARE}`);
+			// A share imports by itself; nothing to press.
+			const started = Date.now();
+			const opened = await until(
+				'the imported document to open with its player',
+				() =>
+					tab.evaluate(`
+						const player = document.querySelector('.player');
+						if (!location.pathname.includes('/read/') || !player || !(player.duration > 0)) return null;
+						return { lines: document.querySelectorAll('.lines p').length, duration: player.duration, title: document.querySelector('h1')?.textContent };
+					`),
+				120000,
+				250
+			);
+			const secondsToOpen = (Date.now() - started) / 1000;
+			const followed = await until('the current line to follow a seek', () =>
+				tab.evaluate(`
+					const player = document.querySelector('.player');
+					player.muted = true;
+					if (player.paused) document.querySelectorAll('.seek')[5].click();
+					const current = document.querySelector('.lines p.current');
+					return current ? { current: current.id, time: player.currentTime } : null;
+				`)
+			);
+			return {
+				pass: opened.lines > 10 && followed.current === 'line-5',
+				secondsToOpen,
+				...opened,
+				...followed
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
+	// Android delivers a share as a navigation POST to the manifest's share_target; the service
+	// worker must take it, keep the file, and land on the inbox. The Android share sheet itself is
+	// not reached from here — only what happens once Chrome hands the request to the worker.
+	async share() {
+		const megabytes = Number(valueOf('--mb') ?? 150);
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/');
+			await until('the service worker to control the page', () =>
+				tab.evaluate('return !!navigator.serviceWorker.controller;')
+			);
+			await tab.evaluate(`
+				const pad = (n) => new Uint8Array((512 - (n % 512)) % 512);
+				function header(name, size) {
+					const h = new Uint8Array(512);
+					const put = (text, at) => h.set(new TextEncoder().encode(text), at);
+					put(name, 0); put('0000644\\0', 100); put('0000000\\0', 108); put('0000000\\0', 116);
+					put(size.toString(8).padStart(11, '0') + '\\0', 124);
+					put('00000000000\\0', 136); put('        ', 148); put('0', 156); put('ustar\\u000000', 257);
+					let sum = 0; for (const b of h) sum += b;
+					put(sum.toString(8).padStart(6, '0') + '\\0 ', 148);
+					return h;
+				}
+				const vtt = new TextEncoder().encode('WEBVTT\\n\\n00:00:00.100 --> 00:00:06.300\\n大家好\\n');
+				const video = ${megabytes} * 1_000_000;
+				const tar = new Blob([
+					header('media.zh-CN.vtt', vtt.length), vtt, pad(vtt.length),
+					header('media.mp4', video), new Uint8Array(video), pad(video),
+					new Uint8Array(1024)
+				], { type: 'application/x-tar' });
+				${SUBMIT_SHARE}
+			`);
+			const started = Date.now();
+			const listed = await until(
+				'the inbox to list the shared tar',
+				() =>
+					tab.evaluate(`
+						if (!location.pathname.endsWith('/inbox')) return null;
+						const text = document.body.innerText;
+						return text.includes('media.mp4') ? text : null;
+					`),
+				120000,
+				250
+			);
+			return {
+				pass:
+					listed.includes(`media.mp4 — ${megabytes.toFixed(1)} MB`) &&
+					listed.includes('media.zh-CN.vtt'),
+				megabytes,
+				secondsToInbox: (Date.now() - started) / 1000,
+				inbox: listed.slice(0, 400)
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Download the 98 MB model, then check the device probe changes to model-quality segmentation.
 	async model() {
 		const tab = await openTab('about:blank');

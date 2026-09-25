@@ -1,0 +1,43 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Termux runs this with the URL when something is shared to it. Downloads the video and its
+# Chinese subtitles, packs them into one tar (Termux can share only one file), and shares that
+# to Language Reader. Pick "Reader" in the share sheet that opens at the end.
+set -euo pipefail
+url="$1"
+work="$HOME/downloads/$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$work"
+cd "$work"
+
+# 480p keeps a 20-minute video around 100 MB. Only original-language tracks: asking for YouTube's
+# machine-translated variants (zh-Hant-zh-CN, ...) as well got rate-limited (HTTP 429). The app
+# sees human and automatic tracks and prefers human; nothing is decided here.
+# --ignore-errors: a failed subtitle must not cost the video.
+# Through python3: the zipapp's /usr/bin/env shebang fails when Termux starts this from a share.
+python3 "$(command -v yt-dlp)" \
+	--js-runtimes node \
+	-f 'bv*[height<=480][ext=mp4]+ba[ext=m4a]/b[height<=480]/b' \
+	--merge-output-format mp4 \
+	--write-subs --write-auto-subs --sub-langs 'zh,zh-CN,zh-Hans,zh-SG,zh-TW,zh-Hant,zh-HK' --sub-format vtt \
+	--sleep-subtitles 2 --ignore-errors \
+	--write-info-json --no-write-playlist-metafiles --no-playlist \
+	-o 'media.%(ext)s' \
+	"$url" || echo "yt-dlp reported an error; packing whatever arrived."
+
+# The info json is large and mostly noise; keep only what the app shows.
+if [ -f media.info.json ]; then
+	python3 -c 'import json,sys; d=json.load(open("media.info.json")); json.dump({k:d.get(k) for k in ("id","title","uploader","duration","webpage_url","language")},open("meta.json","w"),ensure_ascii=False)'
+	rm media.info.json
+fi
+
+if ! ls media.* >/dev/null 2>&1; then
+	echo "Nothing was downloaded. If YouTube changed something, try: yt-dlp -U"
+	exit 1
+fi
+
+tar cf bundle.tar --exclude=bundle.tar ./*
+echo "Packed:"; tar tvf bundle.tar
+if command -v termux-open >/dev/null; then
+	termux-open --send --content-type application/x-tar bundle.tar
+else
+	echo "$work/bundle.tar"
+fi
