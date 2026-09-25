@@ -18,7 +18,8 @@ has not promised to keep your saved reading" — persistence is denied there. If
 as a shortcut instead of an install, the data was evictable. Check that first. Causes still to tell apart: persist denied, the app being uninstalled or reinstalled, site data
 being cleared, the deploy origin changing, or a migration. Whatever the cause, the fix is probably
 a copy of the earned data (states, events, corrections) kept somewhere the origin's storage does not
-own: an export or automatic backup file, or sync. Find the cause first; then build the backup.
+own: an export or automatic backup file, or sync. Find the cause first; then build the backup. It must copy OPFS `media/` as well as the database
+(ADR-0018), or restored videos come back without their files.
 
 ## Segmentation corrections (spec 004) — on hold
 

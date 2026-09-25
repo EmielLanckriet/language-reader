@@ -94,9 +94,9 @@ principle change, that requires an ADR at the point of choosing.
 
 | Change | Plausibility | Retrofit cost | Reasoning | Action |
 |---|---|---|---|---|
-| Subtitle (.srt/.vtt) import | high | cheap | New implementation of the ingestion interface, plus timing metadata as additive columns. | Defer |
-| YouTube transcripts | high | cheap | Ingestion implementation plus a fetch step. | Defer |
-| Video playback with synced subtitles | high | cheap | Largely a new UI surface. Timing data is retained at ingest under the Principle V retention rule, so nothing is lost by deferring. | Defer |
+| Subtitle (.srt/.vtt) import | high | cheap | **Built 2026-09-25**, without timing columns: the `.vtt` is kept verbatim beside the database and line i of the document is cue i ([ADR-0018](adr/0018-media-originals-beside-the-database.md)). A table waits until something needs to query cues. | Built |
+| YouTube transcripts | high | cheap | **Built 2026-09-25** via Termux on the phone, since a browser cannot fetch from YouTube ([ADR-0017](adr/0017-termux-as-the-import-pipeline.md)). Human tracks where they exist; 1 of 3 vlogs measured had none. | Built |
+| Video playback with synced subtitles | high | cheap | **Built 2026-09-25**: sticky player, current line follows playback (last cue that started; no line before the first), seek per line, pause on word tap. Emulator-verified, not yet phone-verified. | Built |
 | EPUB import | medium | cheap | As above. Anchoring is already settled — see reading position. | Defer |
 | Reading position / progress per document | high | — | **Decided** (ADR-0002): anchors on character offsets into retained raw text, never token indices. Re-segmentation is inevitable in Chinese, so token indices are unstable. | Built in slice 1 |
 | Webpage overlay preserving original layout | medium | **expensive** if unhedged | Tokens must map into HTML rather than plain text. If the document model assumes `raw_text` is plain text, HTML documents do not fit and every stored document needs touching. Delivered on phone by a server-side proxy, not an extension. | **Decided** — `raw_content` + `content_type` from first migration |
@@ -132,8 +132,8 @@ principle change, that requires an ADR at the point of choosing.
 |---|---|---|---|---|
 | Frequency / HSK-level word ordering | high | cheap | Additive reference data joined at read time, expressed as value + scheme. | Defer |
 | TTS for words and sentences | high | cheap | Derived. **Already solved** in the developer's `sentencegen` project: Kokoro v1.1-zh server-side in Python, to a standard already vetted against Google TTS. No browser model download is needed — see Borrowed Approaches for the three load-bearing details. | Defer (approach known) |
-| Audio content with synced text (listen while reading) | high | cheap | Distinct from TTS: playing authentic recordings with the text following along. Derived, given the media file and its cues are retained. The developer listens more than they read, so this is closer to essential than the rating suggests. | **Slice 3** |
-| Speech-to-text for audio without a transcript | medium | cheap | Content source. Lower priority than it looks: subtitles and YouTube transcripts both rate high and arrive *with* text. If a transcript is produced by STT it is derived and **the audio is the retained input** — keeping only the transcript forfeits re-deriving it with a better model, the same trap as discarding source text. | Defer |
+| Audio content with synced text (listen while reading) | high | cheap | Distinct from TTS: playing authentic recordings with the text following along. Derived, given the media file and its cues are retained. The developer listens more than they read, so this is closer to essential than the rating suggests. | **Player built** 2026-09-25; waits on a source (speech-to-text) |
+| Speech-to-text for audio without a transcript | medium | cheap | Content source. Lower priority than it looks: subtitles and YouTube transcripts both rate high and arrive *with* text. If a transcript is produced by STT it is derived and **the audio is the retained input** — keeping only the transcript forfeits re-deriving it with a better model, the same trap as discarding source text. **Re-rated 2026-09-25:** next, run in Termux at import (ADR-0017) and emitting a `.vtt`, so the app is unchanged. | **Next** |
 | Offline reading (PWA) | high | medium | **Not negotiable.** It is in the constitution because the developer requires it, not as an aspiration to be traded away later. Retrofitting offline onto an API-chatty client is real rework, so the API shape must serve it from slice 1. Reading offline implies *marking* offline, which implies queued writes and merge — and the append-only `status_event` log is already the right structure for that, since append-only logs merge without conflict resolution. The hedge built for history turns out to be the offline mechanism too. | **Delivered in slice 1** and phone-verified: installable, reads with the network disabled after a device restart |
 | Character stroke order / handwriting | low | cheap | Isolated feature, additive reference data. | Defer |
 
@@ -425,6 +425,10 @@ Consequences, each feeding the slice-1 offline ADR:
 
 - **Glosses are computed for the whole document at import**, not on demand, or tapping a word
   offline would fail.
+  **Deviation, 2026-09-25:** lookup is on tap, against the full CC-CEDICT shipped in the install.
+  The rule's purpose holds — it works offline and runs no analyzer, only a table read — but the
+  gloss is not per-document or contextual. A contextual gloss (an LLM at import, now possible in
+  Termux under ADR-0017) would restore the rule as written.
 - **Importing offline needs a local analyzer.** Most sources are fetched and therefore online
   anyway; pasted text is the case wanting a fallback, and `Intl.Segmenter` is one that costs
   nothing to ship.
