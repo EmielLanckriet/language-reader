@@ -39,3 +39,6 @@ chrome*.log
 
 # scripts/termux/build-whisper.sh output
 /whisper-dist
+
+# Python bytecode from the Termux scripts
+__pycache__/
