@@ -21,12 +21,7 @@
  */
 
 import { base, version } from '$service-worker';
-import {
-	INBOX_CACHE,
-	MODEL_CACHE,
-	RUNTIME_PREFIX,
-	cachesToDiscard
-} from '$lib/analyzer/model-cache';
+import { MODEL_CACHE, RUNTIME_PREFIX, cachesToDiscard } from '$lib/analyzer/model-cache';
 
 // `self` is a ServiceWorkerGlobalScope here; TypeScript needs telling, since the ambient `self` in
 // a DOM-typed project is a Window.
@@ -93,13 +88,6 @@ worker.addEventListener('fetch', (event) => {
 	const url = new URL(event.request.url);
 	if (url.origin !== worker.location.origin) return;
 
-	// Android's share sheet POSTs here (the manifest's share_target). There is no server to receive
-	// it, so the worker must, and must answer with a page to land on.
-	if (event.request.method === 'POST' && url.pathname === `${base}/share-target`) {
-		event.respondWith(receiveShare(event.request));
-		return;
-	}
-
 	// Only GET is cacheable, and this application makes no other kind of request anyway.
 	if (event.request.method !== 'GET') return;
 
@@ -150,38 +138,6 @@ async function respond(request: Request): Promise<Response> {
 	// No shell cached and no network: nothing left to serve. app.html's own fallback markup is the
 	// last word here, and it can only appear if some copy of the shell arrived from somewhere.
 	return Response.error();
-}
-
-/**
- * Keep whatever was shared in the inbox cache, then send the reader to the inbox page.
- *
- * Cache Storage rather than OPFS: the SQLite database in OPFS is held by the storage worker, and
- * the Cache API is available in every service worker. A shared file is keyed by arrival time.
- */
-async function receiveShare(request: Request): Promise<Response> {
-	const form = await request.formData();
-	const inbox = await caches.open(INBOX_CACHE);
-	const stamp = Date.now();
-	let index = 0;
-	for (const entry of form.getAll('media')) {
-		if (!(entry instanceof File)) continue;
-		const headers = {
-			'content-type': entry.type || 'application/octet-stream',
-			'x-name': encodeURIComponent(entry.name),
-			'x-received': String(stamp)
-		};
-		await inbox.put(`${base}/inbox/${stamp}-${index++}`, new Response(entry, { headers }));
-	}
-	const link = form.get('url') || form.get('text');
-	if (typeof link === 'string' && link) {
-		const headers = {
-			'content-type': 'text/uri-list',
-			'x-name': 'link',
-			'x-received': String(stamp)
-		};
-		await inbox.put(`${base}/inbox/${stamp}-link`, new Response(link, { headers }));
-	}
-	return Response.redirect(`${base}/inbox`, 303);
 }
 
 worker.addEventListener('message', (event) => {

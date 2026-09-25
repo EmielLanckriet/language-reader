@@ -36,11 +36,40 @@ async function until(describe, condition, timeoutMs = 20000, everyMs = 100) {
 }
 
 /** A CDP session against one freshly opened tab. */
-async function openTab(url) {
+/**
+ * A new tab's target. `/json/new` first; Chrome for Android 154 answers it with "Could not create
+ * new page", so then `Target.createTarget` over the browser connection, which it does support.
+ */
+async function newTarget(url) {
 	const created = await fetch(`http://localhost:${cdpPort}/json/new?${encodeURIComponent(url)}`, {
 		method: 'PUT'
 	});
-	const target = await created.json();
+	const text = await created.text();
+	if (created.ok && text.startsWith('{')) return JSON.parse(text);
+
+	const { webSocketDebuggerUrl } = await (
+		await fetch(`http://localhost:${cdpPort}/json/version`)
+	).json();
+	const browser = new WebSocket(webSocketDebuggerUrl);
+	await new Promise((resolve) => browser.addEventListener('open', resolve, { once: true }));
+	const targetId = await new Promise((resolve, reject) => {
+		browser.addEventListener('message', (event) => {
+			const message = JSON.parse(event.data);
+			if (message.id !== 1) return;
+			if (message.error) reject(new Error(JSON.stringify(message.error)));
+			else resolve(message.result.targetId);
+		});
+		browser.send(JSON.stringify({ id: 1, method: 'Target.createTarget', params: { url } }));
+	});
+	browser.close();
+	return until('the new tab to be listed', async () => {
+		const list = await (await fetch(`http://localhost:${cdpPort}/json/list`)).json();
+		return list.find((target) => target.id === targetId);
+	});
+}
+
+async function openTab(url) {
+	const target = await newTarget(url);
 	const socket = new WebSocket(target.webSocketDebuggerUrl);
 	await new Promise((resolve, reject) => {
 		socket.addEventListener('open', resolve, { once: true });
@@ -117,19 +146,24 @@ const SAVE_BUTTON = `[...document.querySelectorAll("main button")].find((b) => b
 const READ_LINKS = `[...document.querySelectorAll("a")].filter((a) => (a.getAttribute("href") || "").includes("/read/")).length`;
 const READ_LINK = `[...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => h && h.includes("/read/"))`;
 
-// Submit the Blob in \`tar\` the way Android's share sheet does: a navigation POST to share_target.
-const SUBMIT_SHARE = `
-	const form = document.createElement('form');
-	form.method = 'post'; form.enctype = 'multipart/form-data';
-	form.action = '${BASE}/share-target';
-	const input = document.createElement('input');
-	input.type = 'file'; input.name = 'media';
-	const files = new DataTransfer();
-	files.items.add(new File([tar], 'bundle.tar', { type: 'application/x-tar' }));
-	input.files = files.files;
-	form.append(input); document.body.append(form);
-	form.submit();
-	return true;`;
+// Import a Termux job the way the reader does: open the library, find it under "New from Termux",
+// press Open. The reader service must be serving it (make-fixtures.sh).
+async function importFromTermux(tab, title) {
+	await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+	await tab.goto('/');
+	await until(
+		`"${title}" under New from Termux`,
+		() =>
+			tab.evaluate(`
+				const item = [...document.querySelectorAll('.fresh li')].find((li) => li.textContent.includes(${JSON.stringify(title)}));
+				if (!item) return null;
+				item.querySelector('button').click();
+				return true;
+			`),
+		30000,
+		250
+	);
+}
 
 const scenarios = {
 	// English for each line arrives from Termux and is revealed on tap. Plumbing only: run
@@ -138,16 +172,7 @@ const scenarios = {
 	async translate() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
-			await tab.goto('/');
-			await until('the service worker to control the page', () =>
-				tab.evaluate('return !!navigator.serviceWorker.controller;')
-			);
-			await tab.evaluate(`
-				const response = await fetch('${BASE}/test-bundle.tar');
-				if (!response.ok) throw new Error('run make-fixtures.sh first');
-				const tar = await response.blob();
-				${SUBMIT_SHARE}`);
+			await importFromTermux(tab, 'Test clip, 45 s');
 			await until(
 				'the document to open',
 				() => tab.evaluate(`return !!document.querySelector('.lines p');`),
@@ -319,15 +344,7 @@ const scenarios = {
 	async live() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/');
-			await until('the service worker to control the page', () =>
-				tab.evaluate('return !!navigator.serviceWorker.controller;')
-			);
-			await tab.evaluate(`
-				const response = await fetch('${valueOf('--bundle') ?? `${BASE}/test-live.tar`}');
-				if (!response.ok) throw new Error('copy a bundle to build/test-live.tar first');
-				const tar = await response.blob();
-				${SUBMIT_SHARE}`);
+			await importFromTermux(tab, 'Test clip without subtitles');
 			await until(
 				'the live page',
 				() => tab.evaluate(`return location.pathname.includes('/live/');`),
@@ -428,20 +445,12 @@ const scenarios = {
 		}
 	},
 
-	// A real bundle from termux-url-opener, shared, imported, and played. Needs the bundle copied
-	// to build/test-bundle.tar first; it is fetched from there so the check works on the emulator.
+	// A Termux job with subtitles, imported from New from Termux and played. Needs make-fixtures.sh's
+	// fixture-media job served by reader-service.py on 127.0.0.1:8765.
 	async media() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/');
-			await until('the service worker to control the page', () =>
-				tab.evaluate('return !!navigator.serviceWorker.controller;')
-			);
-			await tab.evaluate(`
-				const response = await fetch('${BASE}/test-bundle.tar');
-				if (!response.ok) throw new Error('copy a bundle to build/test-bundle.tar first');
-				const tar = await response.blob();
-				${SUBMIT_SHARE}`);
+			await importFromTermux(tab, 'Test clip, 45 s');
 			// A share imports by itself; nothing to press.
 			const started = Date.now();
 			const opened = await until(
@@ -476,64 +485,6 @@ const scenarios = {
 		}
 	},
 
-	// Android delivers a share as a navigation POST to the manifest's share_target; the service
-	// worker must take it, keep the file, and land on the inbox. The Android share sheet itself is
-	// not reached from here — only what happens once Chrome hands the request to the worker.
-	async share() {
-		const megabytes = Number(valueOf('--mb') ?? 150);
-		const tab = await openTab('about:blank');
-		try {
-			await tab.goto('/');
-			await until('the service worker to control the page', () =>
-				tab.evaluate('return !!navigator.serviceWorker.controller;')
-			);
-			await tab.evaluate(`
-				const pad = (n) => new Uint8Array((512 - (n % 512)) % 512);
-				function header(name, size) {
-					const h = new Uint8Array(512);
-					const put = (text, at) => h.set(new TextEncoder().encode(text), at);
-					put(name, 0); put('0000644\\0', 100); put('0000000\\0', 108); put('0000000\\0', 116);
-					put(size.toString(8).padStart(11, '0') + '\\0', 124);
-					put('00000000000\\0', 136); put('        ', 148); put('0', 156); put('ustar\\u000000', 257);
-					let sum = 0; for (const b of h) sum += b;
-					put(sum.toString(8).padStart(6, '0') + '\\0 ', 148);
-					return h;
-				}
-				const vtt = new TextEncoder().encode('WEBVTT\\n\\n00:00:00.100 --> 00:00:06.300\\n大家好\\n');
-				const video = ${megabytes} * 1_000_000;
-				const tar = new Blob([
-					header('media.zh-CN.vtt', vtt.length), vtt, pad(vtt.length),
-					header('media.mp4', video), new Uint8Array(video), pad(video),
-					new Uint8Array(1024)
-				], { type: 'application/x-tar' });
-				${SUBMIT_SHARE}
-			`);
-			const started = Date.now();
-			const listed = await until(
-				'the inbox to list the shared tar',
-				() =>
-					tab.evaluate(`
-						if (!location.pathname.endsWith('/inbox')) return null;
-						const text = document.body.innerText;
-						return text.includes('media.mp4') ? text : null;
-					`),
-				120000,
-				250
-			);
-			return {
-				pass:
-					listed.includes(`media.mp4 — ${megabytes.toFixed(1)} MB`) &&
-					listed.includes('media.zh-CN.vtt'),
-				megabytes,
-				secondsToInbox: (Date.now() - started) / 1000,
-				inbox: listed.slice(0, 400)
-			};
-		} finally {
-			await tab.close();
-		}
-	},
-
-	// Download the 98 MB model, then check the device probe changes to model-quality segmentation.
 	async model() {
 		const tab = await openTab('about:blank');
 		const console_ = [];

@@ -92,6 +92,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         os.makedirs(path, exist_ok=True)
         return path
 
+    def jobs(self):
+        """Recent downloads, newest first: what the app offers as "New from Termux"."""
+        downloads = os.path.join(self.root, 'downloads')
+        found = []
+        for job in sorted(os.listdir(downloads) if os.path.isdir(downloads) else [], reverse=True)[:30]:
+            folder = os.path.join(downloads, job)
+            bundle = os.path.join(folder, 'bundle.tar')
+            if not os.path.isfile(bundle):
+                continue
+            try:
+                with open(os.path.join(folder, 'meta.json'), encoding='utf-8') as file:
+                    meta = json.load(file)
+            except (OSError, ValueError):
+                meta = {}
+            found.append({
+                'job': job,
+                'title': meta.get('title') or job,
+                'id': meta.get('id'),
+                'bytes': os.path.getsize(bundle),
+                'transcribing': os.path.exists(os.path.join(folder, 'transcribing.json')),
+            })
+        return found
+
     def do_PUT(self):
         if self.path != '/backup':
             return self.reply(404)
@@ -141,6 +164,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except (OSError, ValueError):
                     continue
             return self.reply(404, {'error': 'no bundle for that video'})
+        if path in ('/downloads', '/downloads/'):
+            return self.reply(200, self.jobs())
         if path.startswith('/downloads/'):
             return super().do_GET()
         return self.reply(404)

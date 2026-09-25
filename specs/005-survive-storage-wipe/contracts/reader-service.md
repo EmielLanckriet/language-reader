@@ -10,6 +10,7 @@ by opening Termux if it is not already running. Every response carries
 | `PUT /backup` with a copy | `204`, or `400` if not JSON with a matching `integrity` | Stored as `~/.reader/backups/<createdAt>.json`, written atomically. Keeps the newest 20, plus the newest of each of the last 30 days |
 | `GET /backup/latest` | `200` with the newest copy, `404` if none | Used by restore |
 | `GET /backup` | `200` with a list of `{createdAt, bytes, documents, words}` | Offers a choice of copy when more than one exists |
+| `GET /downloads` | `200` with recent jobs, newest first: `{job, title, id, bytes, transcribing}` | "New from Termux" in the library (ADR-0022) |
 | `GET /downloads/<job>/<file>` | The file | Live transcripts (ADR-0019) and bundles for restoring videos |
 | `GET /media/<youtubeId>` | `200` with `{job}` of the newest bundle whose `meta.json` has that id, `404` if none | Finds a video after a restore (R8) |
 | `GET /health` | `200 {"version": n}` | How the app tells "service down" from "no copy yet" |

@@ -14,9 +14,6 @@
 /** Not versioned by build: this survives deploys, unlike the precache. */
 export const MODEL_CACHE = 'language-reader-model-v1';
 
-/** Files shared to the app from Android's share sheet, waiting to be imported. */
-export const INBOX_CACHE = 'language-reader-inbox';
-
 /** Paths relative to the application base. Served from our own origin, so cacheable properly. */
 export const RUNTIME_PATHS = ['/ort/ort-runtime.js', '/ort/ort-runtime.wasm'] as const;
 
@@ -33,10 +30,8 @@ export const RUNTIME_PREFIX = '/ort/';
  * dropped them back to dictionary segmentation, with nothing on screen to say why.
  *
  * The precache is named for its build, so every other `language-reader-<build>` really is rubbish
- * and should go. Exactly three names are load-bearing, and this is the one place that knows both.
+ * and should go. Exactly two names are load-bearing, and this is the one place that knows both.
  */
 export function cachesToDiscard(present: readonly string[], keepPrecache: string): string[] {
-	return present.filter(
-		(name) => name !== keepPrecache && name !== MODEL_CACHE && name !== INBOX_CACHE
-	);
+	return present.filter((name) => name !== keepPrecache && name !== MODEL_CACHE);
 }

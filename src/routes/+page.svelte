@@ -11,6 +11,8 @@
 	import { codePointLength } from '$lib/domain/offsets';
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import { latest, restore } from '$lib/backup/destination';
+	import { importJob, newFromTermux, type TermuxJob } from '$lib/media/termux';
+	import { goto } from '$app/navigation';
 
 	let documents = $state<DocumentSummary[]>([]);
 	let pasted = $state('');
@@ -57,6 +59,37 @@
 			await record('storage', error);
 		} finally {
 			loading = false;
+		}
+	}
+
+	// New videos waiting in Termux (ADR-0022): looked for on load and whenever the app comes back.
+	let fresh = $state<TermuxJob[]>([]);
+	let opening = $state<string | null>(null);
+	let openProblem = $state<string | null>(null);
+
+	$effect(() => {
+		const look = () =>
+			void newFromTermux().then((jobs) => (fresh = jobs === 'unreachable' ? [] : jobs));
+		look();
+		const onVisible = () => document.visibilityState === 'visible' && look();
+		document.addEventListener('visibilitychange', onVisible);
+		return () => document.removeEventListener('visibilitychange', onVisible);
+	});
+
+	async function openJob(job: TermuxJob) {
+		opening = job.job;
+		openProblem = null;
+		try {
+			const imported = await importJob(job);
+			await goto(
+				'pending' in imported
+					? resolve('/live/[job]', { job: imported.pending })
+					: resolve('/read/[id]', { id: String(imported.documentId) })
+			);
+		} catch (error) {
+			openProblem = error instanceof Error ? error.message : String(error);
+		} finally {
+			opening = null;
 		}
 	}
 
@@ -142,8 +175,8 @@
 
 <h1>Reader</h1>
 <p class="subtitle">
-	Paste Chinese text, then tap words as you read. Videos from Termux arrive in the
-	<a href={resolve('/inbox')}>inbox</a>.
+	Paste Chinese text, then tap words as you read. Videos shared to Termux appear here; a bundle file
+	can also be <a href={resolve('/inbox')}>opened by hand</a>.
 </p>
 
 <!--
@@ -189,6 +222,28 @@
 		That is {(length - MAXIMUM_CHARACTERS).toLocaleString()} characters over the limit. Saving will refuse
 		it until you shorten it.
 	</p>
+{/if}
+
+{#if fresh.length > 0}
+	<section class="fresh" aria-label="New from Termux">
+		<h2>New from Termux</h2>
+		{#if openProblem}<p role="alert">{openProblem}</p>{/if}
+		<ul class="library">
+			{#each fresh as job (job.job)}
+				<li>
+					<button onclick={() => openJob(job)} disabled={opening !== null}>
+						{opening === job.job ? 'Opening…' : 'Open'}
+					</button>
+					{job.title}
+					<small>
+						{Math.round(job.bytes / 1e6)} MB{job.transcribing
+							? ' · subtitles still being made'
+							: ''}
+					</small>
+				</li>
+			{/each}
+		</ul>
+	</section>
 {/if}
 
 {#if loading}

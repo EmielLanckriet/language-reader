@@ -29,19 +29,24 @@ adb forward tcp:9333 localabstract:chrome_devtools_remote  # Chrome's DevTools o
 node scripts/verify-in-browser/harness.mjs lookup --cdp 9333 --app http://localhost:4175
 ```
 
-`media` and `live` need test bundles: `scripts/verify-in-browser/make-fixtures.sh <video> [vtt]`
-cuts a 45 s clip into `build/test-bundle.tar` and `build/test-live.tar` (get a video once with
-`scripts/termux/termux-url-opener` on the laptop). For `live`, forward the transcriber's port with
-`adb reverse tcp:8765 tcp:8765` and start the transcriber the script prints, with
-`WHISPER_FIRST_MODEL=tiny WHISPER_MODEL=tiny`. The check then takes about 20 s. Keep checks short:
-full-length videos are for measuring speed or accuracy, once, not for testing. Termux can fetch the scripts from the laptop too:
-`SOURCE=http://localhost:4175/language-reader/termux` with `scripts/termux/*` copied into `build/termux/`.
+`media`, `live` and `translate` import through "New from Termux", as the reader does:
+`scripts/verify-in-browser/make-fixtures.sh <video> <vtt> <root>` lays out two jobs, and
+`python3 scripts/termux/reader-service.py --root <root>` serves them. Forward its port with
+`adb reverse tcp:8765 tcp:8765`, after stopping the emulator's own service
+(`pkill -f reader-service.py` in its Termux) if setup has started one. Then run the transcriber or
+translator the script prints (`WHISPER_FIRST_MODEL=tiny WHISPER_MODEL=tiny`, `TRANSLATE_STUB=1`).
+Each check takes seconds. Keep checks short: full-length videos are for measuring speed or
+accuracy, once, not for testing.
 
 `wipe` (spec 005) needs the reader service instead of a transcriber:
 `python3 scripts/termux/reader-service.py --root <fresh dir>` and `adb reverse tcp:8765 tcp:8765`.
 It marks two words, waits for the copy, clears the origin's storage, restores, and takes about 10 s.
 
 ## What bit
+
+- **Chrome for Android 154 refuses `/json/new`** ("Could not create new page"); the harness falls
+  back to `Target.createTarget` on the browser connection.
+- **Sharing a file from Termux into Reader fails** (ADR-0022), which is why nothing is shared any more.
 
 - **Typing into Termux with `adb shell input text`** cannot type Chinese, and text typed while a
   script runs goes to that script's stdin. Fetch a script from the laptop and pipe it to `bash`.

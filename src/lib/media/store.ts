@@ -109,3 +109,31 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	}
 	return found;
 }
+
+/**
+ * Termux jobs already imported, from the meta.json kept with each media document and each pending
+ * transcript (termux-url-opener records the job). What "New from Termux" leaves out.
+ */
+export async function importedJobs(): Promise<Set<string>> {
+	const jobs = new Set<string>();
+	const read = async (directory: FileSystemDirectoryHandle) => {
+		try {
+			const meta = await (await directory.getFileHandle('meta.json')).getFile();
+			const job = JSON.parse(await meta.text()).job;
+			if (typeof job === 'string') jobs.add(job);
+		} catch {
+			// Not a media document from Termux.
+		}
+	};
+	const root = await mediaRoot();
+	for await (const entry of root.values()) {
+		if (entry.kind !== 'directory') continue;
+		if (entry.name !== 'pending') await read(entry as FileSystemDirectoryHandle);
+		else {
+			for await (const job of (entry as FileSystemDirectoryHandle).values()) {
+				if (job.kind === 'directory') await read(job as FileSystemDirectoryHandle);
+			}
+		}
+	}
+	return jobs;
+}

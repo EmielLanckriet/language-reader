@@ -1,40 +1,34 @@
 #!/usr/bin/env bash
-# Build the bundles the media and live scenarios fetch, from any downloaded video, in seconds.
+# Lay out two Termux jobs, as termux-url-opener leaves them, for the media, live and translate
+# scenarios, from any downloaded video, in seconds:
 #
-#   scripts/verify-in-browser/make-fixtures.sh <video.mp4> [subtitles.vtt] [serve-root]
+#   scripts/verify-in-browser/make-fixtures.sh <video.mp4> <subtitles.vtt> <serve-root>
 #
-# Writes build/test-bundle.tar (video + subtitles) and build/test-live.tar (video only, with a
-# transcribing.json pointing at 127.0.0.1:8765/fixture-live/). The clip is 45 s: two transcription
-# chunks, so the boundary is exercised, and a run of `live` stays around a minute. For `live`, run
-# the transcriber on <serve-root>/fixture-live as the scenario starts (see android-emulator/).
+#   <serve-root>/downloads/fixture-media/  bundle.tar (45 s clip + subtitles), meta.json, the .vtt
+#   <serve-root>/downloads/fixture-live/   bundle.tar (clip, no subtitles, transcribing.json)
+#
+# Serve them with `python3 scripts/termux/reader-service.py --root <serve-root>`. The clip is 45 s:
+# two transcription chunks, so the boundary is exercised, and each scenario takes seconds.
 set -euo pipefail
 video=$1
-subtitles=${2:-}
-root=${3:-${TMPDIR:-/tmp}/reader-fixtures}
-build=$(cd "$(dirname "$0")/../.." && pwd)/build
-clip=$(mktemp -d)
-ffmpeg -loglevel error -y -i "$video" -t 45 -c copy "$clip/media.mp4"
-echo '{"title":"Test clip, 45 s"}' >"$clip/meta.json"
+subtitles=$2
+root=$3
+downloads="$root/downloads"
+job() { rm -rf "$downloads/$1" && mkdir -p "$downloads/$1" && echo "$downloads/$1"; }
 
-if [ -n "$subtitles" ]; then
-	# Names a Termux job, so the translate scenario can follow its English: run translate.py
-	# (TRANSLATE_STUB=1) on <serve-root>/downloads/fixture-media.
-	media=$(mktemp -d)
-	cp "$clip/media.mp4" "$media/"
-	cp "$subtitles" "$media/media.zh-CN.vtt"
-	echo '{"title":"Test clip, 45 s","job":"fixture-media"}' >"$media/meta.json"
-	tar cf "$build/test-bundle.tar" -C "$media" media.mp4 media.zh-CN.vtt meta.json
-	mkdir -p "$root/downloads/fixture-media"
-	cp "$subtitles" "$root/downloads/fixture-media/media.zh-CN.vtt"
-	rm -f "$root/downloads/fixture-media/media.en.vtt" "$root/downloads/fixture-media/translate.json"
-fi
+media=$(job fixture-media)
+ffmpeg -loglevel error -y -i "$video" -t 45 -c copy "$media/media.mp4"
+cp "$subtitles" "$media/media.zh-CN.vtt"
+echo '{"title":"Test clip, 45 s","job":"fixture-media"}' >"$media/meta.json"
+tar cf "$media/bundle.tar" -C "$media" media.mp4 media.zh-CN.vtt meta.json
 
-mkdir -p "$root/downloads/fixture-live"
-cp "$clip/media.mp4" "$clip/meta.json" "$root/downloads/fixture-live/"
-rm -f "$root/downloads/fixture-live/status.json" "$root/downloads/fixture-live/media.zh.vtt"
+live=$(job fixture-live)
+cp "$media/media.mp4" "$live/"
+echo '{"title":"Test clip without subtitles","job":"fixture-live"}' >"$live/meta.json"
 printf '{"status":"http://127.0.0.1:8765/downloads/fixture-live/status.json","vtt":"http://127.0.0.1:8765/downloads/fixture-live/media.zh.vtt"}' \
-	>"$root/downloads/fixture-live/transcribing.json"
-tar cf "$build/test-live.tar" -C "$root/downloads/fixture-live" media.mp4 meta.json transcribing.json
-ls -la "$build"/test-*.tar
+	>"$live/transcribing.json"
+tar cf "$live/bundle.tar" -C "$live" media.mp4 meta.json transcribing.json
+
 echo "service:     python3 scripts/termux/reader-service.py --root $root"
-echo "transcriber: python3 scripts/termux/transcribe.py $root/downloads/fixture-live $root/downloads/fixture-live/media.mp4"
+echo "transcriber: python3 scripts/termux/transcribe.py $live $live/media.mp4"
+echo "translator:  TRANSLATE_STUB=1 python3 scripts/termux/translate.py $media"
