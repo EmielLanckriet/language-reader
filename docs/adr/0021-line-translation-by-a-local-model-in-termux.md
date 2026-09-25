@@ -1,6 +1,6 @@
 # ADR-0021: Each Line Is Translated By A Small Local Model In Termux
 
-**Status**: Accepted
+**Status**: Accepted; amended by ADR-0023 (opus-mt first, this model behind it)
 **Date**: 2026-09-25
 **Relates to**: ADR-0017, ADR-0019 (the same import-time streaming), the register's "Analysis Is
 Import-Time" and "Local LLM rather than an API"

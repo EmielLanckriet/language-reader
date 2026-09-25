@@ -1,36 +1,23 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.3.0 → 1.4.0
-Bump rationale: MINOR, and the judgement is worth stating. The Technology Stack
-is replaced wholesale — the backend, database server and hosting platform are
-removed — but no principle is removed or redefined incompatibly. Principle I
-keeps its substance (a slice is not done until deployed and used on a phone) and
-loses only the name of a specific host. Principle II's mandatory list is
-unchanged; only its tooling moves language. Semantic versioning here governs the
-constitution as a document, not the size of the engineering change. Recorded in
-ADR-0007.
+Version change: 1.4.0 → 1.5.0
+Bump rationale: MINOR. A principle is added; no principle is removed or redefined. Recorded in
+ADR-0023.
 
-Modified principles:
-  - I. Every Slice Ships To The Phone — no longer names Fly.io; requires the app
-    be deployed to its host and installed on the phone.
-  - II. Test-First On State Transitions — tooling moves from pytest/hypothesis to
-    vitest and a property-based library, following the domain core to TypeScript.
-    The mandatory list and the exemptions are unchanged.
+Modified principles: none
 
-Added sections: none
+Added sections:
+  - VIII. Fast First, Better In The Background — every derived result reaches the reader within
+    seconds, even if rough; a better one may replace it piece by piece in the background, never
+    the other way round, and each piece records its method. Derived data only (ADR-0003).
+
 Removed sections: none
-
-Rewritten:
-  - Additional Constraints → Technology Stack. No server, no backend language, no
-    database server, no hosting subscription. Browser storage, Intl.Segmenter,
-    static hosting. Records the three preserved options (Pyodide, native wrapper,
-    laptop-side import) as available rather than rejected.
 
 Deferred items:
   - TODO(PROJECT_NAME): Working title "Language Reader" is in use throughout.
     Renaming is a PATCH-level amendment and requires no ADR.
 
-Follow-up: none blocking.
+Follow-up: none blocking. Templates read the constitution at runtime; plan checks now include VIII.
 -->
 
 # Language Reader Constitution
@@ -223,6 +210,29 @@ arriving with it, so reading the code is a substantial part of the point rather 
 maintenance overhead. An unwritten preference of this kind gets traded away silently whenever
 something else is locally convenient; written down, it can be argued against. See ADR-0004.
 
+### VIII. Fast First, Better In The Background
+
+Every derived result MUST reach the reader fast enough to be hassle-free: usable within seconds
+of asking, even if rough. A better result MAY then be computed incrementally in the background
+while the reader already uses the rough one, replacing it piece by piece as each piece finishes.
+The reader MUST NOT be made to wait for the best version when a rough one could be shown.
+
+- A better piece MUST never be overwritten by a rougher one, and each piece MUST record which
+  method produced it, so the upgrade can be resumed or redone.
+- When a fast method and a slow good method compete, the answer is both, not a choice: the fast
+  one at once, the slow one behind it.
+- This applies to derived data only (ADR-0003). Earned data is never "rough" and is never
+  replaced by a background process.
+
+Instances: speech-to-text uses whisper `base` for the first chunk and `small` after (ADR-0019);
+line translation by a small dedicated model, replaced by the local LLM's lines as they arrive
+(ADR-0023).
+
+Rationale: Stated by the reader on 2026-09-26, after the local LLM translated three times slower
+than playback on the phone. A long up-front wait is the friction that made Sapling unusable, and
+a result that arrives after the reader has given up is worth nothing, however good. Background
+improvement keeps quality from being traded away for speed. See ADR-0023.
+
 ## Additional Constraints
 
 **Technology Stack.** The following stack is fixed; deviation requires an ADR.
@@ -300,4 +310,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 1.4.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-01
+**Version**: 1.5.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-26
