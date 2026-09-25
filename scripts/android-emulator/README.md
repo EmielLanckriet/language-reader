@@ -51,5 +51,8 @@ full-length videos are for measuring speed or accuracy, once, not for testing. T
   run them one at a time. A 3 s pause between runs failed and 20 s worked; why is not yet known.
 - **Termux picks a random mirror**, and one in China made setup look stuck for minutes. Output
   piped through `curl -T -` is buffered, so a quiet log is not a stopped process.
-- **Installing the app did not work** from `http://localhost`: "Install" produced nothing. Either
-  WebAPK minting refuses localhost or it needs a Google account in the Play Store. Untested which.
+- **Installing the app needs a Google account in the Play Store.** Chrome builds the WebAPK, then
+  Play refuses it: `WebAPK service unknown_account` in logcat. Without one, Chrome falls back to a
+  shortcut, which is not a share target. Note too the second "Install" in a confirmation dialog.
+- **The deployed app can be tested here**: `--app https://emiellanckriet.github.io`, with
+  `--bundle http://127.0.0.1:8765/test-live.tar` for `live` (the transcriber serves it with CORS).

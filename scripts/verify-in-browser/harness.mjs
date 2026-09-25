@@ -143,7 +143,7 @@ const scenarios = {
 				tab.evaluate('return !!navigator.serviceWorker.controller;')
 			);
 			await tab.evaluate(`
-				const response = await fetch('${BASE}/test-live.tar');
+				const response = await fetch('${valueOf('--bundle') ?? `${BASE}/test-live.tar`}');
 				if (!response.ok) throw new Error('copy a bundle to build/test-live.tar first');
 				const tar = await response.blob();
 				${SUBMIT_SHARE}`);
