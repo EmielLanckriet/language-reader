@@ -3,6 +3,7 @@
  * Computed each time it is shown; nothing here is stored.
  */
 
+import { session } from '$lib/storage/session';
 import { lastSent } from './destination';
 import { waitingSince } from './scheduler';
 
@@ -30,7 +31,9 @@ export async function safeguards(): Promise<Safeguards> {
 	const since = waitingSince();
 	return {
 		installed: matchMedia('(display-mode: standalone)').matches,
-		persisted: (await navigator.storage?.persisted?.().catch(() => false)) ?? false,
+		// The app's own request, awaited: asking `persisted()` directly on start raced it, and a
+		// freshly opened install briefly claimed to be a shortcut.
+		persisted: (await session()).persistence === 'granted',
 		copy: !(await serviceUp())
 			? 'unreachable'
 			: since !== null && Date.now() - since > STALE_AFTER

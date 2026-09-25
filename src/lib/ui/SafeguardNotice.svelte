@@ -23,21 +23,21 @@
 {#if current}
 	{#if !current.installed}
 		<p class="notice warning" data-safeguard="installed">
-			<strong>Reader is open in a browser tab</strong>, so the browser may delete its data without
-			warning. Install it: Chrome menu → Add to Home screen → Install, then open it from its icon.
+			<strong>Reader is open in a browser tab.</strong> The browser may delete its data without warning.
+			Install it: Chrome menu → Add to Home screen → Install, then open it from its icon.
 		</p>
 	{:else if !current.persisted}
 		<!-- Measured on the emulator: a home-screen shortcut opens standalone exactly like an
 		     installed app, but storage protection is refused. So this is how a shortcut shows. -->
 		<p class="notice warning" data-safeguard="persisted">
-			<strong>Reader is a shortcut, not an installed app</strong>, so the browser may delete its
-			data without warning. Remove the icon, then in Chrome use Add to Home screen → Install.
+			<strong>Reader is a shortcut, not an installed app.</strong> The browser may delete its data without
+			warning. Remove the icon, then in Chrome use Add to Home screen → Install.
 		</p>
 	{/if}
 	{#if current.copy === 'unreachable'}
 		<p class="notice warning" data-safeguard="copy">
-			<strong>Your work isn't being copied</strong>: Termux's reader service isn't running. Open
-			Termux once, then come back.
+			<strong>Your work isn't being copied.</strong> Termux's reader service isn't running: open Termux
+			once, then come back.
 		</p>
 	{:else if current.copy === 'stale'}
 		<p class="notice warning" data-safeguard="copy">
