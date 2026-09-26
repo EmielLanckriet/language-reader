@@ -143,6 +143,11 @@ def source(job):
         with open(status, encoding='utf-8') as file:
             growing = not json.load(file).get('done', False)
         return os.path.join(job, 'media.zh.vtt'), growing
+    # termux-url-opener writes transcribing.json before starting this and transcribe.py together,
+    # and this one looked first: no status yet, no subtitles, so it finished with nothing, on every
+    # transcribed video until 2026-09-26. The marker means a transcript is on its way.
+    if os.path.exists(os.path.join(job, 'transcribing.json')):
+        return os.path.join(job, 'media.zh.vtt'), True
     tracks = [path for path in glob.glob(os.path.join(job, 'media.*.vtt')) if not path.endswith('.en.vtt')]
     return (min(tracks, key=preference) if tracks else None), False
 

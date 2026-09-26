@@ -58,3 +58,19 @@ ADR-0017's "nothing at read time" becomes: **Termux is needed only while an impo
 - **Harder:** marking waits for the end of the transcript, because a word needs a stored lexeme.
 - **Revisit if** the phone cannot keep ahead with `small` (use `base` throughout), or if an
   on-device Whisper in the browser becomes fast enough to drop the Termux link.
+
+## Amendment, 2026-09-26: lines cut at punctuation
+
+Measured on the phone with a 2½-minute cooking video: the first "line" was the whole first chunk,
+149 characters over 30 s, and 17 lines in all, some of 60–100 characters. The prompt that keeps
+`base` in simplified characters (`以下是普通话的句子。`) is the cause: with any prompt, whisper.cpp
+returns a chunk as one punctuated segment (11 segments without it, same audio), and its `--max-len`
+does nothing then. `transcribe.py` now reads whisper's full JSON (`-ojf`) and cuts each segment at
+clause punctuation, each line starting at its first token's time, or after 24 characters for speech
+whisper did not punctuate: 46 lines of 2–21 characters for the same video, times continuous across
+chunks. Measured on that video, 17 s from the share to a playable video in Reader, first line at
+39 s, quick English on it at 59 s (ADR-0023).
+
+Also found: `translate.py` started a moment before `transcribe.py` wrote its status, saw no Chinese
+at all, and finished with nothing, so no transcribed video had been translated by the LLM. It now
+waits while `transcribing.json` says a transcript is coming.

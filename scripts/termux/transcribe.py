@@ -10,6 +10,10 @@ this runs.
 The first chunk uses the base model so the first lines arrive in seconds; the rest use small, which
 measured four times fewer errors. Each chunk's last line is dropped and redone as the start of the
 next chunk, so no word is cut at a boundary.
+
+Lines are cut from whisper's token timestamps at clause punctuation (`lines`): with the prompt, which
+keeps base in simplified characters, whisper returns a whole 30 s chunk as one punctuated segment
+(measured: 149 characters, against 11 segments without the prompt), too long to read along with.
 """
 
 import json
@@ -27,6 +31,29 @@ MODELS = os.environ.get('WHISPER_MODELS', os.path.expanduser('~/.whisper'))
 FIRST_MODEL = os.environ.get('WHISPER_FIRST_MODEL', 'base')
 MODEL = os.environ.get('WHISPER_MODEL', 'small')
 WHISPER = os.environ.get('WHISPER', 'whisper-cli')
+# Where a line ends: after clause punctuation, or at the next token once it is this long, for speech
+# whisper did not punctuate. Subtitle lines on the videos measured run 10 to 25 characters.
+BREAKS = '，,。？?！!；;'
+LONGEST = 24
+
+
+def lines(segments):
+    """(from ms, to ms, text) per line, from whisper's full JSON segments with token timestamps."""
+    found = []
+    for segment in segments:
+        text, start = '', None
+        for token in segment['tokens']:
+            if token['text'].startswith('[_'):  # [_BEG_], [_TT_...]: timing tokens, not text
+                continue
+            if start is None:
+                start = token['offsets']['from']
+            text += token['text']
+            if text.rstrip()[-1:] in BREAKS or len(text.strip()) >= LONGEST:
+                found.append((start, token['offsets']['to'], text.strip().rstrip('，,')))
+                text, start = '', None
+        if text.strip():
+            found.append((start, segment['offsets']['to'], text.strip().rstrip('，,')))
+    return [line for line in found if line[2]]
 
 
 def stamp(ms):
@@ -64,15 +91,11 @@ def main(job, media):
         subprocess.run(
             [WHISPER, '-m', os.path.join(MODELS, f'ggml-{model}.bin'), '-f', wav, '-l', 'zh',
              '-t', str(THREADS), '--prompt', prompt, '--offset-t', str(offset),
-             '--duration', str(CHUNK_MS), '-oj', '-of', out],
+             '--duration', str(CHUNK_MS), '-ojf', '-of', out],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         with open(out + '.json', encoding='utf-8') as file:
-            segments = [
-                (s['offsets']['from'], s['offsets']['to'], s['text'].strip())
-                for s in json.load(file)['transcription']
-                if s['text'].strip()
-            ]
+            segments = lines(json.load(file)['transcription'])
         last_chunk = offset + CHUNK_MS >= total
         if len(segments) > 1 and not last_chunk:
             offset = segments[-1][0]
