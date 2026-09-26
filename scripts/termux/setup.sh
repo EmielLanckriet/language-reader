@@ -36,6 +36,8 @@ mkdir -p ~/bin
 curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener
 curl -fsSL "$SOURCE/transcribe.py" -o ~/bin/transcribe.py
 curl -fsSL "$SOURCE/reader-service.py" -o ~/bin/reader-service.py
+curl -fsSL "$SOURCE/reader-service-up" -o ~/bin/reader-service-up
+chmod +x ~/bin/reader-service-up
 curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 
 # The service that keeps copies of the reader's work and serves transcripts (ADR-0020). Termux:Boot
@@ -45,11 +47,17 @@ curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 # behind by a task that ended was frozen or killed.
 START='curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || (nohup python3 ~/bin/reader-service.py >/dev/null 2>&1 &)'
 mkdir -p ~/.termux/boot
-printf '#!/data/data/com.termux/files/usr/bin/sh\ntermux-wake-lock\ncurl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || exec python3 ~/bin/reader-service.py\n' >~/.termux/boot/reader-service
+printf '#!/data/data/com.termux/files/usr/bin/sh\nexec ~/bin/reader-service-up\n' >~/.termux/boot/reader-service
 chmod +x ~/.termux/boot/reader-service
 grep -q reader-service ~/.bashrc 2>/dev/null || printf '%s\n' "$START" >>~/.bashrc
 termux-wake-lock
 eval "$START"
+# Reader Start (android/reader-start) runs reader-service-up through Termux's RUN_COMMAND, which
+# Termux refuses unless this is set.
+mkdir -p ~/.termux
+grep -q '^allow-external-apps *= *true' ~/.termux/termux.properties 2>/dev/null ||
+	echo 'allow-external-apps = true' >>~/.termux/termux.properties
+termux-reload-settings 2>/dev/null || true
 chmod +x ~/bin/termux-url-opener
 echo "Done. In YouTube: Share → Termux. For copies at boot, install Termux:Boot from F-Droid and open it once."
 echo "For Reader's Start Termux button: Android settings → Apps → Termux → Display over other apps → allow."

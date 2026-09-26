@@ -2,14 +2,17 @@
  * Termux's reader service: whether it runs, starting it from the app, and noting when Android
  * stopped it.
  *
- * No page can open Termux (none of its activities is BROWSABLE, so Chrome sends an `intent:` link to
- * the Play Store), but a share can: `termux-url-opener` starts the service for the address below and
- * opens `back` again. It needs Termux's "Display over other apps", or the share waits until Termux
- * is next opened (measured on the emulator).
+ * No page can open Termux: Chrome opens only BROWSABLE activities, and Termux has none. Two ways
+ * round that (ADR-0025). Reader Start (android/reader-start), a one-screen app that is BROWSABLE,
+ * asks Termux to run the service and closes: one tap. Without it, a share: `termux-url-opener`
+ * starts the service for the address below and opens `back` again, through Chrome's share panel.
  */
 
 const SERVICE = 'http://127.0.0.1:8765';
 const SEEN = 'reader.service';
+/** Set once Chrome came back from the Reader Start link because the app is not installed. */
+const NO_HELPER = 'reader.noReaderStart';
+const NO_HELPER_HASH = '#no-reader-start';
 
 export interface Health {
 	/** When the service process started; absent from services older than this field. */
@@ -28,7 +31,55 @@ export async function health(): Promise<Health | null> {
 	}
 }
 
-export function canStartTermux(): boolean {
+async function answers(seconds: number): Promise<boolean> {
+	for (let i = 0; i < seconds; i++) {
+		if (await health()) return true;
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
+	return false;
+}
+
+function stored(key: string): string | null {
+	try {
+		return localStorage.getItem(key);
+	} catch {
+		return null;
+	}
+}
+
+/** Whether to try Reader Start; false once Chrome has fallen back from it on this device. */
+export function helperExpected(): boolean {
+	return stored(NO_HELPER) === null;
+}
+
+/**
+ * Open Reader Start and wait for the service. 'missing' when Chrome fell back to this page because
+ * the app is not installed (remembered, so the next tap shares instead); false when the service did
+ * not answer within 20 s.
+ */
+export async function startWithHelper(): Promise<boolean | 'missing'> {
+	const page = location.href.split('#')[0];
+	const missing = new Promise<'missing'>((resolve) => {
+		const onHash = () => {
+			if (location.hash !== NO_HELPER_HASH) return;
+			removeEventListener('hashchange', onHash);
+			history.replaceState(history.state, '', page);
+			try {
+				localStorage.setItem(NO_HELPER, '1');
+			} catch {
+				// Then the next tap tries Reader Start again and falls back again: slower, not wrong.
+			}
+			resolve('missing');
+		};
+		addEventListener('hashchange', onHash);
+	});
+	location.href =
+		'intent://start#Intent;scheme=reader-start;package=io.github.emiellanckriet.readerstart;' +
+		`S.browser_fallback_url=${encodeURIComponent(page + NO_HELPER_HASH)};end`;
+	return Promise.race([missing, answers(20)]);
+}
+
+export function canShareToTermux(): boolean {
 	return typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 }
 
@@ -36,7 +87,7 @@ export function canStartTermux(): boolean {
  * Share the start address to Termux, then wait for the service. False when the reader cancelled
  * the share sheet, or the service did not answer within 30 s of coming back.
  */
-export async function startTermux(): Promise<boolean> {
+export async function startBySharing(): Promise<boolean> {
 	try {
 		await navigator.share({
 			url: `${SERVICE}/start?back=${encodeURIComponent(location.href)}`
@@ -44,11 +95,7 @@ export async function startTermux(): Promise<boolean> {
 	} catch {
 		return false;
 	}
-	for (let i = 0; i < 30; i++) {
-		if (await health()) return true;
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-	}
-	return false;
+	return answers(30);
 }
 
 interface Seen {

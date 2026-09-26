@@ -8,12 +8,8 @@ url="$1"
 # started in the background of a task that then ends is frozen or killed (measured on the emulator:
 # it answered, the task ended, and it was gone). So this task hosts it: the final `wait` below and
 # the one in the start branch outlast the job for as long as the service runs.
-service=
-if ! curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null; then
-	termux-wake-lock
-	python3 ~/bin/reader-service.py >/dev/null 2>&1 &
-	service=$!
-fi
+~/bin/reader-service-up >/dev/null 2>&1 &
+service=$!
 
 # Reader's "Start Termux" button shares this address: no browser page can open Termux directly
 # (none of its activities is BROWSABLE), but a share can. Start the service, then go back.
@@ -22,7 +18,7 @@ case "$url" in http://127.0.0.1:8765/start*)
 	back=$(python3 -c 'import sys, urllib.parse as u; print(u.parse_qs(u.urlsplit(sys.argv[1]).query).get("back", [""])[0])' "$url")
 	case "$back" in https://emiellanckriet.github.io/language-reader/*) ;; *) back=https://emiellanckriet.github.io/language-reader/ ;; esac
 	am start -a android.intent.action.VIEW -d "$back" >/dev/null 2>&1 || true
-	[ -n "$service" ] && wait "$service"
+	wait "$service"
 	exit 0
 	;;
 esac
@@ -102,5 +98,6 @@ command -v llama-completion >/dev/null && python3 ~/bin/translate.py "$work" &
 if [ -n "$transcribe" ]; then
 	python3 ~/bin/transcribe.py "$work" "$work/$(ls media.* | grep -E '\.(mp4|webm|m4a|mp3|opus)$' | head -1)"
 fi
-# Also waits for the service, when this job started it (see the top).
+# Also waits for the service, when this job started it (see the top; if the service was
+# already running, reader-service-up returned at once).
 wait

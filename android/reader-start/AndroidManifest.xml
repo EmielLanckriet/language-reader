@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reader Start: opened by Reader's "Start Termux" link (reader-start://start), asks Termux to run
+     ~/bin/reader-service-up, and closes. The one thing a web page cannot do itself: Chrome opens only
+     BROWSABLE activities, and Termux has none (ADR-0025). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+	package="io.github.emiellanckriet.readerstart"
+	android:versionCode="1"
+	android:versionName="1">
+
+	<uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+	<uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+	<queries>
+		<package android:name="com.termux" />
+	</queries>
+
+	<application android:label="Reader Start" android:allowBackup="false">
+		<!-- Translucent rather than NoDisplay: the first run asks for Termux's permission. -->
+		<activity
+			android:name=".Start"
+			android:exported="true"
+			android:excludeFromRecents="true"
+			android:noHistory="true"
+			android:taskAffinity=""
+			android:theme="@android:style/Theme.Translucent.NoTitleBar">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:scheme="reader-start" />
+			</intent-filter>
+		</activity>
+	</application>
+</manifest>
