@@ -16,6 +16,8 @@ import os
 import time
 
 VERSION = 1
+# When this process started, so Reader can tell a restart (Android killed Termux) from a long run.
+STARTED = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 KEEP_RECENT = 20
 KEEP_DAYS = 30
 
@@ -149,7 +151,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split('?')[0]
         if path == '/health':
-            return self.reply(200, {'version': VERSION})
+            return self.reply(200, {'version': VERSION, 'started': STARTED})
         if path in ('/backup', '/backup/latest'):
             names = sorted((n for n in os.listdir(self.backups()) if n.endswith('.json')), reverse=True)
             if path == '/backup':

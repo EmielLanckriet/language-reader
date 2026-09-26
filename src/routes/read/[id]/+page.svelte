@@ -5,6 +5,7 @@
 	import { session } from '$lib/storage/session';
 	import { codePointsOf } from '$lib/domain/offsets';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
+	import StartTermux from '$lib/ui/StartTermux.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
 	import type { StoredDocument } from '$lib/storage/repository';
@@ -391,10 +392,13 @@
 	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->
 	{#if media && !media.media}
 		<!-- Restored from a copy, which keeps a video's place but not the video (ADR-0020). -->
-		<p class="notice">
-			This video isn't on this device yet, and Termux did not have it just now. Open Termux, then
-			reopen this page to try again; the text and your marks work without it.
-		</p>
+		<div class="notice">
+			<p>
+				This video isn't on this device yet, and Termux did not have it just now. Start Termux, then
+				reopen this page to try again; the text and your marks work without it.
+			</p>
+			<StartTermux />
+		</div>
 	{/if}
 	{#if media?.media}
 		<MediaReader

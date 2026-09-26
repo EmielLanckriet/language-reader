@@ -10,7 +10,8 @@
  */
 
 /** Broad categories, so a reader can say *what kind* of thing broke without reading a stack. */
-export type DiagnosticKind = 'storage' | 'analysis' | 'input' | 'persistence' | 'unexpected';
+export type DiagnosticKind =
+	'storage' | 'analysis' | 'input' | 'persistence' | 'termux' | 'unexpected';
 
 export interface Diagnostic {
 	id: number;

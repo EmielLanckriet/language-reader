@@ -21,6 +21,8 @@
 	--ignored: #9a9a9a;
 	/* Anki's levels (ADR-0024): one blue, apart from the reader's own colours, fading with strength. */
 	--anki: #3f73c4;
+	/* A word never judged, by the reader or Anki: the one that is new to them, so the loudest. */
+	--new: #f5d35a;
 
 	color-scheme: light dark;
 }
@@ -38,6 +40,7 @@
 		--known: #77c077;
 		--ignored: #6f6f6f;
 		--anki: #7aa7ee;
+		--new: #b8962a;
 	}
 }
 
@@ -221,8 +224,14 @@ button.token:hover {
 	background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-/* Untouched words are visually distinct from every chosen state (FR-006b): no underline at all,
-   rather than a fifth colour. Absence of a mark should not look like a kind of mark. */
+/* Untouched words are visually distinct from every chosen state (FR-006b): a background, where
+   every state is an underline, so absence of a mark does not look like a kind of mark. It is the
+   loudest treatment on the page because an unjudged word is the one the reader has not met
+   (2026-09-27: with most of a page from Anki, the new words have to stand out). */
+button.token.state-none {
+	background: color-mix(in srgb, var(--new) 45%, transparent);
+	border-radius: 0.2em;
+}
 button.token.state-unknown {
 	border-bottom-color: var(--unknown);
 }

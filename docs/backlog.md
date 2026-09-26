@@ -19,6 +19,10 @@ than its estimate) and say "Termux stopped: open it to continue"; transcribe.py 
 its last chunk instead of starting over; and the reader service, which Termux:Boot starts only at
 boot, is gone with it until Termux is opened again.
 
+2026-09-27: part of it is done (ADR-0020's amendment): the likely cause, a wake lock released at the
+end of every job and a service orphaned by its script, is fixed, and Reader's Start Termux restarts
+the service. Resuming a transcript from its last chunk is not.
+
 ## The installed Chrome Reader did not offer its update
 
 2026-09-26: a new build was waiting (its worker answered `which-version` with the new version) but

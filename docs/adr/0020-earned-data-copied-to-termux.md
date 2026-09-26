@@ -50,3 +50,24 @@ steps, so SQL migrations never have to know about it.
   transcripts. It is untested until the emulator has a Google account.
 - **Revisit if** the service proves unreliable on the phone: add the manual export behind the same
   seam.
+
+## Amendment 2026-09-27: keeping the service alive, and starting it from Reader
+
+Measured on the Android 15 emulator. Termux keeps its foreground service, and with it the wake lock,
+only while a terminal session or task runs. A service started in the background by a script that then
+ended was frozen with Termux (`isFrozen=true`, connections never accepted) or killed with the
+session. And every video job ended with `termux-wake-unlock`, releasing the one wake lock the service
+relied on. So the script that starts the service now hosts it: the boot script runs it in the
+foreground, `termux-url-opener` waits for it, and nothing releases the wake lock.
+
+No page can open Termux: none of its activities is BROWSABLE, so an `intent:` link goes to the Play
+Store. A share can. Reader's **Start Termux** shares `http://127.0.0.1:8765/start?back=<page>`;
+`termux-url-opener` starts the service (up in 4 s from a force-stopped Termux), and `am start` opens
+the page again, which the installed app handles. Termux runs a shared URL as a terminal session,
+which it may start from the background only with **Display over other apps**; without it the share
+waits until Termux is next opened. The reader grants it once (or `adb shell appops set com.termux
+SYSTEM_ALERT_WINDOW allow`).
+
+The warning is quieter: Termux away with a copy under a day old says nothing. Diagnostics notes each
+time the service is found not running, and each restart (from `/health`'s new `started`), to measure
+how often Android stops it.

@@ -40,12 +40,16 @@ curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 
 # The service that keeps copies of the reader's work and serves transcripts (ADR-0020). Termux:Boot
 # (F-Droid, next to Termux; open it once after installing) starts it at boot; opening Termux starts
-# it again if Android stopped it.
+# it again if Android stopped it. The boot task runs the service in the foreground and so lasts as
+# long as it does: Termux keeps its wake lock only while a task or session runs, and a service left
+# behind by a task that ended was frozen or killed.
 START='curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || (nohup python3 ~/bin/reader-service.py >/dev/null 2>&1 &)'
 mkdir -p ~/.termux/boot
-printf '#!/data/data/com.termux/files/usr/bin/sh\ntermux-wake-lock\n%s\n' "$START" >~/.termux/boot/reader-service
+printf '#!/data/data/com.termux/files/usr/bin/sh\ntermux-wake-lock\ncurl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || exec python3 ~/bin/reader-service.py\n' >~/.termux/boot/reader-service
 chmod +x ~/.termux/boot/reader-service
 grep -q reader-service ~/.bashrc 2>/dev/null || printf '%s\n' "$START" >>~/.bashrc
-sh ~/.termux/boot/reader-service
+termux-wake-lock
+eval "$START"
 chmod +x ~/bin/termux-url-opener
 echo "Done. In YouTube: Share → Termux. For copies at boot, install Termux:Boot from F-Droid and open it once."
+echo "For Reader's Start Termux button: Android settings → Apps → Termux → Display over other apps → allow."

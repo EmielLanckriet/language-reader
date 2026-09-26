@@ -11,6 +11,7 @@
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import Progress from '$lib/ui/Progress.svelte';
+	import StartTermux from '$lib/ui/StartTermux.svelte';
 	import { followTranslation } from '$lib/media/translation';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import {
@@ -206,7 +207,8 @@
 		{#snippet status()}
 			<div class="progress">
 				{#if !reachable}
-					<Progress label="Waiting for Termux… keep it open until the transcript is done." />
+					<Progress label="Termux isn't running." />
+					<StartTermux />
 				{:else if !chunk && cues.length === 0}
 					<Progress label="Starting speech-to-text…" />
 				{:else if cues.length === 0}

@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { safeguards, type Safeguards } from '$lib/backup/safeguards';
 	import { latest, restore } from '$lib/backup/destination';
+	import StartTermux from '$lib/ui/StartTermux.svelte';
 
 	let guards = $state<Safeguards | null>(null);
 	let restoring = $state(false);
@@ -283,7 +284,10 @@
 				? 'up to date'
 				: guards.copy === 'stale'
 					? 'behind'
-					: 'service not reachable'}
+					: "Termux's reader service isn't running"}
+			{#if guards.copy === 'away' || guards.copy === 'unreachable'}
+				<br /><StartTermux onstarted={() => void safeguards().then((found) => (guards = found))} />
+			{/if}
 			<br />
 			<small>
 				Last copy: {guards.lastCopy

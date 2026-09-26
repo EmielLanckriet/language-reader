@@ -6,6 +6,7 @@
 	import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 	import { RejectedInput } from '$lib/content/types';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import StartTermux from '$lib/ui/StartTermux.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
 	import { MAXIMUM_CHARACTERS } from '$lib/content/paste';
 	import { codePointLength } from '$lib/domain/offsets';
@@ -297,10 +298,13 @@
 			</button>
 		</div>
 	{:else if found === 'unreachable'}
-		<p class="empty">
-			Nothing saved yet. If you had work here before, open Termux once so the app can look for your
-			copy, then come back.
-		</p>
+		<div class="empty">
+			<p>
+				Nothing saved yet. If you had work here before, start Termux so the app can look for your
+				copy.
+			</p>
+			<StartTermux onstarted={() => location.reload()} />
+		</div>
 	{:else}
 		<p class="empty">Nothing saved yet.</p>
 	{/if}

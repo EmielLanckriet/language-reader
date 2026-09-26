@@ -353,6 +353,12 @@
 		min-width: 0;
 		min-height: 0;
 	}
+	/* On video, an unjudged word is coloured like a subtitle highlight rather than tinted: a tint
+	   under white text on black turned muddy. */
+	.chinese .token.state-none {
+		color: #ffd75e;
+		background: none;
+	}
 	.english-line {
 		font-size: 1rem;
 		color: #fff;
