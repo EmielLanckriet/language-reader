@@ -33,6 +33,24 @@ export const AVAILABLE_STATES: StateDefinition[] = [
 	{ name: 'ignored', label: 'Ignored' }
 ];
 
+/**
+ * Anki's own levels for a word imported from the reader's collection (ADR-0024), kept apart from the
+ * four the reader chooses: `learning` already means the reader's own judgment. Not offered in the
+ * word sheet; only an import writes them.
+ */
+export const ANKI_LEVELS: StateDefinition[] = [
+	{ name: 'anki-learning', label: 'Anki: learning' },
+	{ name: 'anki-young', label: 'Anki: young' },
+	{ name: 'anki-mature', label: 'Anki: mature' },
+	{ name: 'anki-long-term', label: 'Anki: long-term' }
+];
+
+/**
+ * The one assertion that is not a state: "never judged" again. Undoing an import writes it for a
+ * word the import marked from nothing, since the history is append-only and cannot lose the event.
+ */
+export const RETRACTED = '(none)';
+
 export function stateNames(): string[] {
 	return AVAILABLE_STATES.map((state) => state.name);
 }
@@ -60,6 +78,10 @@ export function projectStates(entries: readonly HistoryEntry[]): Map<LexemeId, W
 	const states = new Map<LexemeId, WordState>();
 
 	for (const entry of inHistoryOrder(entries)) {
+		if (entry.asserted === RETRACTED) {
+			states.delete(entry.lexemeId);
+			continue;
+		}
 		states.set(entry.lexemeId, {
 			lexemeId: entry.lexemeId,
 			state: entry.asserted,

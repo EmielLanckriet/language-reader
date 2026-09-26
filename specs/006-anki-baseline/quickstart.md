@@ -3,7 +3,7 @@
 ## On the laptop
 
 ```sh
-python3 scripts/anki/export-words.py --push
+python3 scripts/anki/export_words.py --push
 ```
 
 Expect: `User 2, last changed <date>: 52 learning, 137 young, 1,039 mature, 900 long-term`, and the

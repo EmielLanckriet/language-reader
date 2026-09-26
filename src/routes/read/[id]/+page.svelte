@@ -427,6 +427,9 @@
 			word={textOf(chosen)}
 			sentence={sentenceAround(chosen)}
 			current={stateOf(chosen)}
+			provenance={chosen.lexemeId === undefined
+				? undefined
+				: states.get(chosen.lexemeId)?.provenance}
 			onchoose={choose}
 			onclose={menuClosed}
 		/>

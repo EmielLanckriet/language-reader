@@ -18,7 +18,7 @@ import type {
 import { checkTiling } from '../domain/tiling';
 import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
-import { projectStates } from '../domain/state';
+import { projectStates, RETRACTED } from '../domain/state';
 import {
 	type Database,
 	deviceIdOf,
@@ -89,6 +89,7 @@ export interface StoredDocument {
 export { StorageFailure } from './failures';
 import { StorageFailure } from './failures';
 import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
+import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
 
 export class Repository {
 	constructor(private readonly db: Database) {}
@@ -497,7 +498,111 @@ export class Repository {
 			});
 
 			this.appendEvent(entry);
-			this.writeProjectedState(projectStates([entry]).get(lexemeId)!);
+			this.projectEntry(entry);
+		});
+	}
+
+	/**
+	 * Update the stored state for one new event, which is all the log's fold does for one entry: the
+	 * event's state, or none at all after a retraction (ADR-0024).
+	 */
+	private projectEntry(entry: HistoryEntry): void {
+		const state = projectStates([entry]).get(entry.lexemeId);
+		if (state) this.writeProjectedState(state);
+		else run(this.db, 'DELETE FROM word_state WHERE lexeme_id = ?', [entry.lexemeId]);
+	}
+
+	/**
+	 * Bring the reader's Anki words in (spec 006, ADR-0024): each word's Anki level as an ordinary
+	 * judgment tagged with its import, in one transaction. What to write for each word is decided by
+	 * `planImport`: never over the reader's own judgment, nothing for a word Anki has not changed.
+	 */
+	importAnki(file: AnkiExport): { set: number; keptOwn: string[]; unchanged: number } {
+		return transact(this.db, () => {
+			const plan = this.planAnki(file);
+			const deviceId = deviceIdOf(this.db);
+			const assertedAt = new Date().toISOString();
+			for (const { word, level, provenance } of plan.set) {
+				const entry = assertion({
+					lexemeId: this.findOrCreateLexeme('zh', word),
+					asserted: level,
+					deviceId,
+					deviceSeq: nextDeviceSeq(this.db, deviceId),
+					assertedAt,
+					provenance
+				});
+				this.appendEvent(entry);
+				this.projectEntry(entry);
+			}
+			return { set: plan.set.length, keptOwn: plan.keptOwn, unchanged: plan.unchanged };
+		});
+	}
+
+	/** What `importAnki` would do, writing nothing: the preview the reader checks first (FR-010). */
+	previewAnki(file: AnkiExport): { set: number; keptOwn: string[]; unchanged: number } {
+		const plan = this.planAnki(file);
+		return { set: plan.set.length, keptOwn: plan.keptOwn, unchanged: plan.unchanged };
+	}
+
+	/** Anki imports that still decide some word's state, newest first, with how many words each. */
+	ankiImports(): { id: string; words: number }[] {
+		const counts = new Map<string, number>();
+		for (const row of queryRows(
+			this.db,
+			"SELECT provenance FROM word_state WHERE provenance LIKE 'anki %'"
+		)) {
+			const id = ankiImportOf(String(row.provenance))!;
+			counts.set(id, (counts.get(id) ?? 0) + 1);
+		}
+		return [...counts].map(([id, words]) => ({ id, words })).sort((a, b) => (a.id < b.id ? 1 : -1));
+	}
+
+	private planAnki(file: AnkiExport) {
+		const current = new Map(
+			queryRows(
+				this.db,
+				`SELECT l.surface, s.state, s.provenance
+             FROM word_state s JOIN lexeme l ON l.id = s.lexeme_id
+            WHERE l.language = 'zh'`
+			).map((row) => [
+				String(row.surface),
+				{ state: String(row.state), provenance: String(row.provenance) }
+			])
+		);
+		return planImport(file, (word) => current.get(word));
+	}
+
+	/**
+	 * Take an Anki import back (spec 006, FR-008): each word whose state is from that import gets the
+	 * state it had just before the import, with that state's provenance, or a retraction if it had
+	 * none. Appended, never deleted. Words the reader or a later import has changed since are left.
+	 * Returns how many words it changed.
+	 */
+	undoAnkiImport(importId: string): number {
+		return transact(this.db, () => {
+			const history = inHistoryOrder(this.readHistory());
+			const current = projectStates(history);
+			const deviceId = deviceIdOf(this.db);
+			const assertedAt = new Date().toISOString();
+			let changed = 0;
+			for (const [lexemeId, state] of current) {
+				if (ankiImportOf(state.provenance) !== importId) continue;
+				const own = history.filter((entry) => entry.lexemeId === lexemeId);
+				const first = own.findIndex((entry) => ankiImportOf(entry.provenance) === importId);
+				const before = projectStates(own.slice(0, first)).get(lexemeId);
+				const entry = assertion({
+					lexemeId,
+					asserted: before?.state ?? RETRACTED,
+					deviceId,
+					deviceSeq: nextDeviceSeq(this.db, deviceId),
+					assertedAt,
+					provenance: before?.provenance ?? `anki ${importId} undo`
+				});
+				this.appendEvent(entry);
+				this.projectEntry(entry);
+				changed++;
+			}
+			return changed;
 		});
 	}
 

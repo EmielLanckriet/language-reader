@@ -19,6 +19,8 @@
 	--learning: #c98a2f;
 	--known: #4f8a4f;
 	--ignored: #9a9a9a;
+	/* Anki's levels (ADR-0024): one blue, apart from the reader's own colours, fading with strength. */
+	--anki: #3f73c4;
 
 	color-scheme: light dark;
 }
@@ -35,6 +37,7 @@
 		--learning: #e0aa55;
 		--known: #77c077;
 		--ignored: #6f6f6f;
+		--anki: #7aa7ee;
 	}
 }
 
@@ -232,6 +235,19 @@ button.token.state-known {
 button.token.state-ignored {
 	border-bottom-color: var(--ignored);
 	opacity: 0.55;
+}
+/* The weaker Anki holds a word, the more it shows; a long-term word barely does. */
+button.token.state-anki-learning {
+	border-bottom-color: var(--anki);
+}
+button.token.state-anki-young {
+	border-bottom-color: color-mix(in srgb, var(--anki) 65%, transparent);
+}
+button.token.state-anki-mature {
+	border-bottom-color: color-mix(in srgb, var(--anki) 35%, transparent);
+}
+button.token.state-anki-long-term {
+	border-bottom-color: color-mix(in srgb, var(--anki) 15%, transparent);
 }
 
 .loading {

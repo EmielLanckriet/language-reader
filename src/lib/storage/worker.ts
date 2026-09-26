@@ -15,6 +15,7 @@
  * here.
  */
 
+import type { AnkiExport } from '../domain/anki';
 import { type Database } from './db';
 import { Repository, type UpgradeBatch } from './repository';
 import { CopyRejected, type CopyBody } from '../backup/format';
@@ -36,7 +37,13 @@ import type { Request, Response, ToWorker } from './protocol';
 // and raising the read-only notice for background work would tell them something is wrong when
 // nothing is. Without the lease it simply fails, the sweep moves on, and the document stays stale
 // until a copy that can write picks it up (FR-019, FR-027).
-const READER_CHANGES = new Set(['saveDocument', 'assertState', 'deleteUnmarkedDocument']);
+const READER_CHANGES = new Set([
+	'saveDocument',
+	'assertState',
+	'deleteUnmarkedDocument',
+	'importAnki',
+	'undoAnkiImport'
+]);
 
 let state: Availability = { kind: 'paused' };
 let db: Database | undefined;
@@ -235,6 +242,14 @@ function run(request: Request): unknown {
 			return repository.rebuildProjection();
 		case 'deleteUnmarkedDocument':
 			return repository.deleteUnmarkedDocument(request.args[0]);
+		case 'importAnki':
+			return repository.importAnki(request.args[0] as AnkiExport);
+		case 'previewAnki':
+			return repository.previewAnki(request.args[0] as AnkiExport);
+		case 'undoAnkiImport':
+			return repository.undoAnkiImport(request.args[0]);
+		case 'ankiImports':
+			return repository.ankiImports();
 		case 'exportBody':
 			return repository.exportBody(request.args[0], request.args[1]);
 		case 'restoreCopy':

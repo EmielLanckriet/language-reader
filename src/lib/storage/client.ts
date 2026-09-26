@@ -6,6 +6,8 @@
  * this file adds is only the crossing.
  */
 
+import type { AnkiExport } from '../domain/anki';
+
 import { RejectedInput } from '../content/types';
 import type { CopyBody } from '../backup/format';
 
@@ -24,6 +26,13 @@ import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/ty
 import type { Diagnostic, DiagnosticKind } from '../diagnostics/log';
 import { explain, type Availability, type Explanation } from './availability';
 import type { Call, Failure, Request, Response, ToWorker } from './protocol';
+
+/** What an Anki import did, or would do (previewAnki). */
+export interface AnkiResult {
+	set: number;
+	keptOwn: string[];
+	unchanged: number;
+}
 
 export class RepositoryClient {
 	private worker!: Worker;
@@ -218,6 +227,22 @@ export class RepositoryClient {
 
 	exportBody(app: string, createdAt: string): Promise<CopyBody> {
 		return this.call({ method: 'exportBody', args: [app, createdAt] });
+	}
+
+	importAnki(file: AnkiExport): Promise<AnkiResult> {
+		return this.call<AnkiResult>({ method: 'importAnki', args: [file] }).then(earned);
+	}
+
+	previewAnki(file: AnkiExport): Promise<AnkiResult> {
+		return this.call({ method: 'previewAnki', args: [file] });
+	}
+
+	undoAnkiImport(id: string): Promise<number> {
+		return this.call<number>({ method: 'undoAnkiImport', args: [id] }).then(earned);
+	}
+
+	ankiImports(): Promise<{ id: string; words: number }[]> {
+		return this.call({ method: 'ankiImports', args: [] });
 	}
 
 	/** Refused (rejects) when a judgment was made in it; see Repository.deleteUnmarkedDocument. */

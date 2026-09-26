@@ -1,6 +1,6 @@
 # Contract: `anki-words.json`
 
-Written on the laptop by `scripts/anki/export-words.py`, read on the phone by Reader. UTF-8 JSON.
+Written on the laptop by `scripts/anki/export_words.py`, read on the phone by Reader. UTF-8 JSON.
 
 ```json
 {
@@ -23,7 +23,7 @@ Written on the laptop by `scripts/anki/export-words.py`, read on the phone by Re
 ## Script
 
 ```text
-python3 scripts/anki/export-words.py [--profile "User 2"] [--out anki-words.json] [--push]
+python3 scripts/anki/export_words.py [--profile "User 2"] [--out anki-words.json] [--push]
 ```
 
 - Copies `collection.anki2` (and `-wal` if present) to a temporary directory and reads the copy

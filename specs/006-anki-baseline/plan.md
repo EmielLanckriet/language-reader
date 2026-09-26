@@ -58,7 +58,7 @@ specs/006-anki-baseline/
 
 ```text
 scripts/anki/
-├── export-words.py        # copy, read-only read, levels, --push (the only code that sees Anki)
+├── export_words.py        # copy, read-only read, levels, --push (the only code that sees Anki)
 └── test_export_words.py   # the level rules
 src/lib/domain/
 ├── state.ts               # + the four Anki levels, + RETRACTED; projectStates drops a retracted word

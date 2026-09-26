@@ -217,6 +217,83 @@ const scenarios = {
 		}
 	},
 
+	// Anki words (spec 006), plumbing only: the Diagnostics picker takes the fixture export, the
+	// preview counts it, Import applies it, and a word in the fixture video shows its Anki level.
+	async anki() {
+		const { resolve: absolute } = await import('node:path');
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			const video = await until(
+				'the video document',
+				() =>
+					tab.evaluate(`return location.pathname.includes('/read/') ? location.pathname : null;`),
+				30000
+			);
+			await tab.goto('/diagnostics');
+			await until('the Anki picker', () =>
+				tab.evaluate(`return !!document.querySelector('input[aria-label="Anki export"]');`)
+			);
+			const { root } = await tab.send('DOM.getDocument');
+			const { nodeId } = await tab.send('DOM.querySelector', {
+				nodeId: root.nodeId,
+				selector: 'input[aria-label="Anki export"]'
+			});
+			await tab.send('DOM.setFileInputFiles', {
+				nodeId,
+				files: [absolute('tests/fixtures/anki/anki-words.json')]
+			});
+			const preview = await until(
+				'the preview',
+				() =>
+					tab.evaluate(
+						`return [...document.querySelectorAll('dd p')].find((p) => p.textContent.includes('This sets'))?.textContent.replace(/\\s+/g, ' ') ?? null;`
+					),
+				30000
+			).catch(async (error) => {
+				const note = await tab.evaluate(
+					`return { note: document.querySelector('[role=status]')?.textContent ?? null, files: document.querySelector('input[aria-label="Anki export"]').files.length };`
+				);
+				throw new Error(`${error.message}; ${JSON.stringify(note)}`);
+			});
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Import').click(); return true;`
+			);
+			const done = await until(
+				'the import to finish',
+				() =>
+					tab.evaluate(
+						`return [...document.querySelectorAll('[role=status]')].map((n) => n.textContent).find((t) => t.startsWith('Imported')) ?? null;`
+					),
+				30000
+			).catch(async (error) => {
+				const notes = await tab.evaluate(
+					`return [...document.querySelectorAll('[role=status], [role=alert], .notices *')].map((n) => n.textContent.trim().slice(0, 120)).filter(Boolean);`
+				);
+				throw new Error(`${error.message}; ${JSON.stringify(notes)}`);
+			});
+			await tab.goto(video.replace(BASE, ''));
+			const shaded = await until(
+				'关税 in its Anki level',
+				() =>
+					tab.evaluate(
+						`return [...document.querySelectorAll('.lines .token.state-anki-mature')].map((t) => t.textContent).join(' ') || null;`
+					),
+				15000,
+				250
+			);
+			return {
+				pass:
+					/This sets 5 words/.test(preview) && /5 words set/.test(done) && shaded.includes('关税'),
+				preview,
+				done,
+				shaded
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// The Language Reactor layout: on a phone-sized screen the video fills it, with the current line
 	// on it and its English blurred until tapped. Saves stage-blurred.png and stage-shown.png in the
 	// working directory, because a layout is checked by looking at it.

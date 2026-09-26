@@ -23,7 +23,7 @@ Anki desktop may hold the collection open with a write-ahead log. Copying `colle
 `-wal` together into a temporary directory and opening the copy read-only (`mode=ro`) reads the
 latest committed state, without taking Anki's lock or writing a byte of the original.
 
-**Decision**: a laptop script, `scripts/anki/export-words.py`, standard library only. **Rejected**:
+**Decision**: a laptop script, `scripts/anki/export_words.py`, standard library only. **Rejected**:
 the `anki` Python library (a dependency to read five fields); AnkiConnect (needs Anki running, and
 writes are one call away).
 

@@ -22,6 +22,10 @@ export type Call =
 	| { method: 'exportBody'; args: [string, string] }
 	| { method: 'restoreCopy'; args: [unknown] }
 	| { method: 'deleteUnmarkedDocument'; args: [number] }
+	| { method: 'importAnki'; args: [unknown] }
+	| { method: 'previewAnki'; args: [unknown] }
+	| { method: 'undoAnkiImport'; args: [string] }
+	| { method: 'ankiImports'; args: [] }
 	| { method: 'readDiagnostics'; args: [number?] }
 	| { method: 'clearDiagnostics'; args: [] }
 	| { method: 'recordDiagnostic'; args: [string, string] };

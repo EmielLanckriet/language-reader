@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { AVAILABLE_STATES } from '$lib/domain/state';
+	import { ankiImportOf } from '$lib/domain/anki';
+	import { ANKI_LEVELS, AVAILABLE_STATES } from '$lib/domain/state';
 	import { lookUp } from '$lib/analyzer/lookup';
 
 	/**
@@ -15,6 +16,7 @@
 		sentence,
 		marking = true,
 		current,
+		provenance,
 		onchoose,
 		onclose
 	}: {
@@ -23,11 +25,20 @@
 		/** False while a transcript is still arriving: there is no stored word to mark yet. */
 		marking?: boolean;
 		current: string | null;
+		/** How the current state was acquired: shown when it came from Anki (FR-012). */
+		provenance?: string;
 		onchoose: (state: string) => void;
 		onclose: () => void;
 	} = $props();
 
 	const looked = $derived(lookUp(word));
+	const fromAnki = $derived.by(() => {
+		const id = provenance && ankiImportOf(provenance);
+		const level = ANKI_LEVELS.find((level) => level.name === current);
+		return id && level
+			? `${level.label}, from the import of ${new Date(id).toLocaleDateString()}`
+			: null;
+	});
 	const translateUrl = $derived(
 		sentence &&
 			`https://translate.google.com/?sl=zh-CN&tl=en&op=translate&text=${encodeURIComponent(sentence)}`
@@ -71,6 +82,8 @@
 				>Translate sentence ↗</a
 			>
 		{/if}
+
+		{#if fromAnki}<p class="muted anki">{fromAnki}</p>{/if}
 
 		{#if marking}
 			<div class="choices">

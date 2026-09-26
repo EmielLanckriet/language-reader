@@ -11,6 +11,92 @@
 	});
 
 	/** Available at any time (FR-012); the repository refuses a library that already has marks. */
+	// Anki words (spec 006): pick the laptop's export, see what it will do, then import or undo.
+	let ankiFile = $state<AnkiExport | null>(null);
+	let ankiPreview = $state<AnkiResult | null>(null);
+	let ankiNote = $state<string | null>(null);
+	let ankiBusy = $state(false);
+	let ankiImportsList = $state<{ id: string; words: number }[]>([]);
+
+	/**
+	 * Picking a file hides the app behind the system picker, and coming back replaces the storage
+	 * worker, which rejects a call made at that moment with "Reconnecting…" (seen in the anki
+	 * scenario). Preview, import and undo can all be repeated safely: a second import finds nothing
+	 * left to change, a second undo nothing left to revert.
+	 */
+	async function retrying<T>(work: () => Promise<T>): Promise<T> {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				return await work();
+			} catch (error) {
+				const reconnecting = error instanceof Error && error.message.startsWith('Reconnecting');
+				if (!reconnecting || attempt === 5) throw error;
+				await new Promise((settle) => setTimeout(settle, 1000));
+			}
+		}
+	}
+
+	async function refreshAnkiImports() {
+		ankiImportsList = await retrying(async () => (await session()).repository.ankiImports());
+	}
+
+	async function pickAnki(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		ankiNote = null;
+		ankiPreview = null;
+		try {
+			const file = parseAnkiExport(await input.files![0].text());
+			ankiPreview = await retrying(async () => (await session()).repository.previewAnki(file));
+			ankiFile = file;
+		} catch (error) {
+			ankiFile = null;
+			ankiNote = error instanceof Error ? error.message : String(error);
+		}
+	}
+
+	function levelCounts(file: AnkiExport): string {
+		return ANKI_LEVELS.map(
+			(level) =>
+				`${file.words.filter((word) => word.level === level.name).length} ${level.label.replace('Anki: ', '')}`
+		).join(', ');
+	}
+
+	async function importAnki() {
+		if (!ankiFile) return;
+		ankiBusy = true;
+		try {
+			// A plain copy: $state's proxy cannot be posted to the storage worker.
+			const file = $state.snapshot(ankiFile) as AnkiExport;
+			const done = await retrying(async () => (await session()).repository.importAnki(file));
+			ankiNote = `Imported: ${done.set} words set, ${done.unchanged} already as Anki has them, ${done.keptOwn.length} kept as you marked them.`;
+			ankiFile = null;
+			ankiPreview = null;
+			await refreshAnkiImports();
+		} catch (error) {
+			ankiNote = error instanceof Error ? error.message : String(error);
+		} finally {
+			ankiBusy = false;
+		}
+	}
+
+	async function undoAnki(id: string) {
+		if (!confirm('Undo this Anki import? Your own marks are not touched.')) return;
+		ankiBusy = true;
+		try {
+			const changed = await retrying(async () => (await session()).repository.undoAnkiImport(id));
+			ankiNote = `Undone: ${changed} words back to what they were before.`;
+			await refreshAnkiImports();
+		} catch (error) {
+			ankiNote = error instanceof Error ? error.message : String(error);
+		} finally {
+			ankiBusy = false;
+		}
+	}
+
+	$effect(() => {
+		void refreshAnkiImports().catch(() => {});
+	});
+
 	async function restoreLatest() {
 		restoring = true;
 		restoreNote = null;
@@ -26,6 +112,9 @@
 		}
 	}
 	import { session } from '$lib/storage/session';
+	import { parseAnkiExport, type AnkiExport } from '$lib/domain/anki';
+	import { ANKI_LEVELS } from '$lib/domain/state';
+	import type { AnkiResult } from '$lib/storage/client';
 	import { explain, type Availability } from '$lib/storage/availability';
 	import type { Diagnostic } from '$lib/diagnostics/describe';
 	import { runningVersion, describeVersion } from '$lib/ui/version';
@@ -209,6 +298,38 @@
 		{:else}
 			…
 		{/if}
+	</dd>
+	<dt>Anki words</dt>
+	<dd>
+		Bring in the words you study in Anki, at Anki's own level for each. On the laptop, run
+		<code>python3 scripts/anki/export_words.py --push</code>, then pick the file here.
+		<br />
+		<input
+			type="file"
+			accept=".json,application/json"
+			aria-label="Anki export"
+			onchange={pickAnki}
+		/>
+		{#if ankiFile && ankiPreview}
+			<p>
+				<strong>{ankiFile.profile}</strong>, last changed {new Date(
+					ankiFile.collectionModified
+				).toLocaleString()}: {levelCounts(ankiFile)}.
+				<br />
+				This sets {ankiPreview.set} words, leaves {ankiPreview.unchanged} already as Anki has them, and
+				keeps {ankiPreview.keptOwn.length} you marked yourself.
+			</p>
+			<button onclick={importAnki} disabled={ankiBusy}>{ankiBusy ? 'Importing…' : 'Import'}</button>
+		{/if}
+		{#each ankiImportsList as entry (entry.id)}
+			<p>
+				<small>Import of {new Date(entry.id).toLocaleString()}: {entry.words} words</small>
+				<button class="secondary" onclick={() => undoAnki(entry.id)} disabled={ankiBusy}>
+					Undo this import
+				</button>
+			</p>
+		{/each}
+		{#if ankiNote}<small role="status">{ankiNote}</small>{/if}
 	</dd>
 	<dt>Version</dt>
 	<dd>

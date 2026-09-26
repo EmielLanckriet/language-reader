@@ -1,0 +1,48 @@
+{
+	"format": 1,
+	"profile": "User 2",
+	"collectionModified": "2026-09-26T05:13:00Z",
+	"exportedAt": "2026-09-26T21:04:11Z",
+	"words": [
+		{
+			"word": "将来",
+			"level": "anki-long-term",
+			"stability": 983.7,
+			"type": 2,
+			"lapses": 0,
+			"suspended": false
+		},
+		{
+			"word": "关税",
+			"level": "anki-mature",
+			"stability": 64.2,
+			"type": 2,
+			"lapses": 1,
+			"suspended": false
+		},
+		{
+			"word": "政策",
+			"level": "anki-young",
+			"stability": 12.5,
+			"type": 2,
+			"lapses": 0,
+			"suspended": false
+		},
+		{
+			"word": "违法",
+			"level": "anki-learning",
+			"stability": 2.1,
+			"type": 3,
+			"lapses": 4,
+			"suspended": false
+		},
+		{
+			"word": "朋友",
+			"level": "anki-mature",
+			"stability": 120.0,
+			"type": 2,
+			"lapses": 0,
+			"suspended": true
+		}
+	]
+}
