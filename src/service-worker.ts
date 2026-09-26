@@ -61,7 +61,19 @@ worker.addEventListener('install', (event) => {
 			// the installation, so a half-cached version never becomes the live one. FR-007 asks
 			// for exactly this — say so, rather than appear to succeed and fail later somewhere
 			// unpredictable.
-			await cache.addAll(paths.map((path) => `${base}${path}`));
+			//
+			// Past the HTTP cache too, like the manifest. Through it, a phone precached a fresh
+			// build's scripts beside an index.html from the deployment three minutes before
+			// (2026-09-27): the shell named scripts no cache and no server had, and the app never
+			// started, online or off.
+			await cache.addAll(paths.map((path) => new Request(`${base}${path}`, { cache: 'reload' })));
+			// And checked, because a CDN edge can still hand out the previous shell during a
+			// deployment: a shell whose entry script is not in this precache fails the install,
+			// which the browser retries later, instead of becoming a version that cannot start.
+			const shell = await (await cache.match(SHELL))?.text();
+			const entry = shell?.match(/_app\/immutable\/entry\/start\.[^"']+\.js/)?.[0];
+			if (!entry || !paths.some((path) => path.endsWith(entry)))
+				throw new Error(`precached shell is from another build (${entry ?? 'no entry script'})`);
 		})()
 	);
 });
