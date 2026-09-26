@@ -63,8 +63,8 @@ their levels, the hand-marked word keeps its mark, and a word in no document has
 
 ## Phase 6: Polish
 
-- [ ] T015 Run the real export on the laptop (checksum of `collection.anki2` before and after, SC-005) and the import on the reader's phone (SC-001, SC-002); record the counts in quickstart.md
-- [ ] T016 Update `docs/backlog.md` (a card reset in Anki keeps its last level; a live-recall display) and mark this spec's tasks done
+- [X] T015 Run the real export on the laptop (checksum of `collection.anki2` before and after, SC-005) and the import on the reader's phone (SC-001, SC-002); record the counts in quickstart.md
+- [X] T016 Update `docs/backlog.md` (a card reset in Anki keeps its last level; a live-recall display) and mark this spec's tasks done
 
 ## Dependencies
 

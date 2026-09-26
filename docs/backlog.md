@@ -2,6 +2,14 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## Anki: a card reset keeps its last level; live recall
+
+2026-09-26 (spec 006): a word reset or deleted in Anki keeps the level of its last import, since
+an export only lists studied cards and a missing word is not a judgment. If that matters, the export
+could list reset cards and the import retract them. Separately, the levels are a snapshot: a display
+of Anki's *current* recall probability (from stability and the days since the last review) would fade
+words as they are forgotten, instead of only at the next import.
+
 ## A transcript whose Termux died stays stuck
 
 2026-09-26: Android stopped Termux (battery optimisation was already off) during the street
