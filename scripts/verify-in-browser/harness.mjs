@@ -188,15 +188,18 @@ const scenarios = {
 				`return document.querySelectorAll('.lines .english').length;`
 			);
 			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
+			// Every line offers English from the start now (quick English, ADR-0023), so the button
+			// is no sign Termux's has arrived: wait for Termux's own text, which replaces the quick one.
 			const shown = await until(
-				'the English to show on tap',
+				'Termux’s English to show on tap',
 				() =>
 					tab.evaluate(`
 						const line = document.querySelector('.lines p');
 						const english = line.querySelector('.english')?.textContent;
-						return english ? { chinese: line.querySelector('.token')?.textContent, english } : null;
+						return english?.startsWith('EN: ') ? { chinese: line.querySelector('.token')?.textContent, english } : null;
 					`),
-				3000
+				30000,
+				500
 			).catch(async (error) => ({
 				error: error.message,
 				pressed: await tab.evaluate(

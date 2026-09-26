@@ -2,14 +2,6 @@
 
 Things decided but not yet scheduled. Newest first.
 
-## A real alignment check for the LLM's lines
-
-`translate.py` only counts the lines that come back. Qwen3-0.6B shifted lines 16–19 by one, Q4 at
-5 lines per prompt did the same, and Q4 on the phone gave line 12 its neighbour's content, all under
-a matching count (ADR-0023). Now that an LLM line replaces a quick one, a shifted line silently makes
-things worse. Candidates: compare each LLM line against the quick line for the same cue (cheap, both
-are English), or ask the model to echo each line's Chinese.
-
 ## Quick English on the live page
 
 A transcript still being written (ADR-0019) gets only the LLM's lines. The quick translator takes a

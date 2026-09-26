@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { englishFor } from '../../src/lib/translation/lines';
+import { englishFor, llmByLine } from '../../src/lib/translation/lines';
 
 /**
  * Principle VIII's one hard rule for translation: the LLM's English is never shown under, or
@@ -23,5 +23,23 @@ describe('choosing each line’s English', () => {
 				});
 			})
 		);
+	});
+});
+
+describe('matching the LLM’s English to Chinese lines', () => {
+	it('by start time, so a line without English leaves the lines after it where they are', () => {
+		const chinese = [0, 1.5, 3.2, 4.8].map((start) => ({ start }));
+		// translate.py writes no cue for the line it could not place (the second).
+		const english = [
+			{ start: 0, text: 'Friends' },
+			{ start: 3.2, text: 'the global trade war' },
+			{ start: 4.8, text: 'was it all for nothing?' }
+		];
+		expect(llmByLine(chinese, english)).toEqual([
+			'Friends',
+			undefined,
+			'the global trade war',
+			'was it all for nothing?'
+		]);
 	});
 });

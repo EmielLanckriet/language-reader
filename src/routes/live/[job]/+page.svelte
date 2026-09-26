@@ -10,7 +10,7 @@
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import { followTranslation } from '$lib/media/translation';
-	import { englishFor } from '$lib/translation/lines';
+	import { englishFor, llmByLine } from '$lib/translation/lines';
 
 	/**
 	 * A video whose transcript Termux is still producing (ADR-0019). Lines are fetched from Termux
@@ -30,7 +30,7 @@
 	let chosen = $state<{ line: number; word: LineWord } | null>(null);
 	let player = $state<HTMLMediaElement | null>(null);
 	let finishing = false;
-	let translations = $state<string[]>([]);
+	let translations = $state<Cue[]>([]);
 	let translated = $state<{ done: boolean; vtt: string } | null>(null);
 
 	const media = $derived(files.find((file) => isPlayable(file.name)));
@@ -95,8 +95,8 @@
 				if (termuxJob) {
 					stopTranslation = followTranslation(
 						decodeURIComponent(termuxJob),
-						(lines, done, text) => {
-							translations = lines;
+						(english, done, text) => {
+							translations = english;
 							translated = { done, vtt: text };
 						}
 					);
@@ -133,7 +133,7 @@
 		file={media}
 		{cues}
 		{lines}
-		translations={englishFor(cues.length, translations, [])}
+		translations={englishFor(cues.length, llmByLine(cues, translations), [])}
 		bind:player
 		onword={(line, word) => (chosen = { line, word })}
 	/>

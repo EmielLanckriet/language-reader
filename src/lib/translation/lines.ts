@@ -23,3 +23,18 @@ export function englishFor(
 		return rough ? { text: rough, source: 'quick' } : undefined;
 	});
 }
+
+/**
+ * The LLM's English for each Chinese line, matched by start time rather than position.
+ *
+ * translate.py copies each Chinese cue's timing onto its English, and writes no cue for a line it
+ * could not place. By position, one missing cue moved every later line's English onto the line
+ * before it, measured on the tariff video; by time, it only leaves that line to the quick model.
+ */
+export function llmByLine(
+	chinese: readonly { start: number }[],
+	english: readonly { start: number; text: string }[]
+): (string | undefined)[] {
+	const at = new Map(english.map((cue) => [Math.round(cue.start * 1000), cue.text]));
+	return chinese.map((cue) => at.get(Math.round(cue.start * 1000)));
+}

@@ -77,6 +77,24 @@ incremental background operation to improve while using it already."
    about 0.6 GB. So the upgrade starts when the quick pass is done or Reader is closed, and the two
    do not compete for the memory that froze the phone.
 
+5. **Each LLM line is placed by the Chinese it echoes, and matched to its video line by time.**
+   The count check could not see a misalignment: on the tariff lines Qwen3-1.7B Q4 merged lines 8
+   and 9 and kept counting, so lines 9–20 each got their neighbour's English under a count of 20.
+   Now the model writes `N. <the Chinese> => <English>` (its answer is started with the first line
+   in that form, because the 1.7B ignores the format when only asked for it), and `place()` in
+   `translate.py` puts each answer on the line whose Chinese it echoes. Measured on the same 20
+   lines: 18 placed correctly, 2 (the merged pair) left to the quick English, none on a wrong line;
+   20 s against 14 s, the price of echoing. The earlier chunk-wide retry, one model load per line,
+   is gone.
+
+   A line that could not be placed gets no cue in `media.en.vtt`, and Reader matches English to
+   Chinese by start time (`llmByLine`). By position, which both subtitle parsers drop empty cues
+   under, one missing line moved every later line's English onto the line before it; that was the
+   case for any empty answer before this, too.
+
+   Not caught: a line that echoes its own Chinese but whose English also covers its neighbour's
+   (line 16 took some of 17's). It is on the right line, only wordier.
+
 ## Alternatives Rejected
 
 - **Qwen alone, translated ahead**: the best English, but the reader waits half an hour or reads
@@ -88,6 +106,9 @@ incremental background operation to improve while using it already."
 - **Qwen3-0.6B**: fast enough, but it shifted lines while passing the count check. A translation
   beside the wrong line is worse than none.
 - **Joined lines for opus-mt**: better English, but unalignable and lossy.
+- **Checking LLM lines against the quick lines by word overlap**: free, but on the known runs it
+  flagged good lines (8, 11, 16) and missed a shifted one (18). The two models choose different
+  words ("customs duties", "tariffs") too often for overlap to mean alignment.
 
 ## Consequences
 
@@ -95,8 +116,6 @@ incremental background operation to improve while using it already."
   The same shape covers future upgrades (a better model is one more layer behind the others).
 - **Harder**: two translators to ship, and the app must merge line sources without letting a
   rougher one win.
-- **Open**: the count check in `translate.py` does not catch shifted lines; Qwen's lines need a
-  stronger check before they replace opus-mt's.
 - **Open**: a transcript still being written (the live page, ADR-0019) gets only the LLM's lines
   so far; quick English for growing lines is the next step.
 - **Open**: the model's own settings ask for a 6-way beam search; greedy decoding is what was

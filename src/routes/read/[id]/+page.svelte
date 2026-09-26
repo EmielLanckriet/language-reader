@@ -17,7 +17,8 @@
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
 	import { saveMedia, QUICK_ENGLISH } from '$lib/media/store';
-	import { englishFor } from '$lib/translation/lines';
+	import { englishFor, llmByLine } from '$lib/translation/lines';
+	import type { Cue } from '$lib/media/subtitles';
 	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
 
 	let document = $state<StoredDocument | null>(null);
@@ -30,8 +31,9 @@
 	/** Derived, so marking a word (which replaces `document`) does not restart the translators. */
 	const documentId = $derived(document?.id);
 
-	/** English per line from the local LLM: kept once complete, followed from Termux until then. */
-	let llmLines = $state<string[]>([]);
+	/** The local LLM's English cues: kept once complete, followed from Termux until then. */
+	let llmCues = $state<Cue[]>([]);
+	const llmLines = $derived(media ? llmByLine(media.cues, llmCues) : []);
 	/** The quick model's English, there within seconds and replaced by the LLM's (ADR-0023). */
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
@@ -42,11 +44,11 @@
 		const current = media;
 		const id = documentId;
 		if (!current || id === undefined) return;
-		llmLines = current.translation.map((cue) => cue.text);
+		llmCues = current.translation;
 		const job = jobOf(current.meta);
 		if (current.translation.length > 0 || !job) return;
-		return followTranslation(job, (lines, done, vtt) => {
-			llmLines = lines;
+		return followTranslation(job, (cues, done, vtt) => {
+			llmCues = cues;
 			if (done) void saveMedia(id, [{ name: 'media.en.vtt', blob: new Blob([vtt]) }]);
 		});
 	});
@@ -56,8 +58,9 @@
 		const id = documentId;
 		if (!current || id === undefined) return;
 		quickLines = [...current.quick];
-		// The LLM has every line already: nothing for the quick model to add.
-		if (current.translation.length > 0) return;
+		// The LLM has every line already: nothing for the quick model to add. Its finished file can
+		// still have gaps, lines it could not place, and those are the quick model's.
+		if (llmByLine(current.cues, current.translation).every(Boolean)) return;
 
 		let unsaved = 0;
 		const save = () => {

@@ -4,14 +4,14 @@
  * then it is simply shown as it arrives.
  */
 
-import { parseSubtitles } from './subtitles';
+import { parseSubtitles, type Cue } from './subtitles';
 
 const SERVICE = 'http://127.0.0.1:8765';
 const POLL_MS = 3000;
 
 export function followTranslation(
 	job: string,
-	update: (lines: string[], done: boolean, vtt: string) => void
+	update: (cues: Cue[], done: boolean, vtt: string) => void
 ): () => void {
 	let stopped = false;
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -23,11 +23,7 @@ export function followTranslation(
 			if (status.ok) {
 				const { done } = await status.json();
 				const vtt = await (await fetch(`${base}/media.en.vtt`, { cache: 'no-store' })).text();
-				update(
-					parseSubtitles(vtt).map((cue) => cue.text),
-					done,
-					vtt
-				);
+				update(parseSubtitles(vtt), done, vtt);
 				if (done) return;
 			}
 		} catch {
