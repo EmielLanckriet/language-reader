@@ -102,7 +102,8 @@ def main():
           + f' ({len(words)} words) -> {args.out}')
     if args.push:
         adb = shutil.which('adb') or os.path.expanduser('~/Android/Sdk/platform-tools/adb')
-        subprocess.run([adb, 'push', args.out, '/sdcard/Download/anki-words.json'], check=True)
+        # -d: the phone on USB, not an emulator that may also be running.
+        subprocess.run([adb, '-d', 'push', args.out, '/sdcard/Download/anki-words.json'], check=True)
         print('On the phone: Reader → Storage and diagnostics → Anki words → pick anki-words.json')
 
 
