@@ -21,6 +21,7 @@ export type Call =
 	| { method: 'rebuildProjection'; args: [] }
 	| { method: 'exportBody'; args: [string, string] }
 	| { method: 'restoreCopy'; args: [unknown] }
+	| { method: 'deleteUnmarkedDocument'; args: [number] }
 	| { method: 'readDiagnostics'; args: [number?] }
 	| { method: 'clearDiagnostics'; args: [] }
 	| { method: 'recordDiagnostic'; args: [string, string] };

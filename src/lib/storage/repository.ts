@@ -399,6 +399,29 @@ export class Repository {
 		).map((row) => Number(row.id));
 	}
 
+	/**
+	 * Delete a document no judgment was made in, with its tokens.
+	 *
+	 * Refused when any event points at it: the event log is earned data, and an event's document is
+	 * the evidence of where a judgment was made. Lexemes are never deleted here, because marks point
+	 * at them whichever document they came from. Its media files are the caller's (media/store.ts).
+	 */
+	deleteUnmarkedDocument(id: DocumentId): void {
+		transact(this.db, () => {
+			const judged = queryRows(
+				this.db,
+				'SELECT COUNT(*) AS n FROM status_event WHERE document_id = ?',
+				[id]
+			)[0];
+			if (Number(judged.n) > 0)
+				throw new StorageFailure(
+					`Document ${id} has ${judged.n} judgment(s) made in it, so it is kept.`
+				);
+			run(this.db, 'DELETE FROM token WHERE document_id = ?', [id]);
+			run(this.db, 'DELETE FROM document WHERE id = ?', [id]);
+		});
+	}
+
 	listDocuments(): DocumentSummary[] {
 		return queryRows(
 			this.db,

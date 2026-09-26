@@ -36,7 +36,7 @@ import type { Request, Response, ToWorker } from './protocol';
 // and raising the read-only notice for background work would tell them something is wrong when
 // nothing is. Without the lease it simply fails, the sweep moves on, and the document stays stale
 // until a copy that can write picks it up (FR-019, FR-027).
-const READER_CHANGES = new Set(['saveDocument', 'assertState']);
+const READER_CHANGES = new Set(['saveDocument', 'assertState', 'deleteUnmarkedDocument']);
 
 let state: Availability = { kind: 'paused' };
 let db: Database | undefined;
@@ -233,6 +233,8 @@ function run(request: Request): unknown {
 			return repository.staleDocumentIds(request.args[0], request.args[1]);
 		case 'rebuildProjection':
 			return repository.rebuildProjection();
+		case 'deleteUnmarkedDocument':
+			return repository.deleteUnmarkedDocument(request.args[0]);
 		case 'exportBody':
 			return repository.exportBody(request.args[0], request.args[1]);
 		case 'restoreCopy':

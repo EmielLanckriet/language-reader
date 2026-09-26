@@ -17,7 +17,8 @@
 	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
-	import { saveMedia, QUICK_ENGLISH } from '$lib/media/store';
+	import { saveMedia, removeMedia, QUICK_ENGLISH } from '$lib/media/store';
+	import { goto } from '$app/navigation';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
@@ -96,6 +97,22 @@
 			if (unsaved > 0) void save();
 		};
 	});
+
+	let deleteProblem = $state<string | null>(null);
+
+	/** Only a document no word was marked in can go: the marks are kept (Repository). */
+	async function deleteDocument() {
+		if (!document || !confirm(`Delete “${document.title}”? This cannot be undone.`)) return;
+		deleteProblem = null;
+		try {
+			const { repository } = await session();
+			await repository.deleteUnmarkedDocument(document.id);
+			await removeMedia(document.id);
+			await goto(resolve('/'));
+		} catch (error) {
+			deleteProblem = error instanceof Error ? error.message : String(error);
+		}
+	}
 
 	/** Where to start playing, when arriving from a transcript that just finished. */
 	const startAt = Number(page.url.searchParams.get('t') ?? 0);
@@ -410,9 +427,21 @@
 			onclose={menuClosed}
 		/>
 	{/if}
+
+	<p class="delete">
+		<button onclick={deleteDocument}>Delete this document</button>
+		{#if deleteProblem}<span role="alert">{deleteProblem}</span>{/if}
+	</p>
 {/if}
 
 <style>
+	.delete {
+		margin-top: 3rem;
+		font-size: 0.85rem;
+	}
+	.delete button {
+		color: var(--muted);
+	}
 	h1.compact {
 		font-size: 1rem;
 		margin: 0.25rem 0;

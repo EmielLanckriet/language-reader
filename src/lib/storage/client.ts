@@ -220,6 +220,11 @@ export class RepositoryClient {
 		return this.call({ method: 'exportBody', args: [app, createdAt] });
 	}
 
+	/** Refused (rejects) when a judgment was made in it; see Repository.deleteUnmarkedDocument. */
+	deleteUnmarkedDocument(id: number): Promise<void> {
+		return this.call<void>({ method: 'deleteUnmarkedDocument', args: [id] }).then(earned);
+	}
+
 	restoreCopy(
 		body: CopyBody
 	): Promise<{ restored: Map<number, number> } | { rejected: string; message: string }> {

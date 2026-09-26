@@ -76,6 +76,15 @@ export async function mediaFiles(documentId: number): Promise<File[]> {
 	}
 }
 
+/** A deleted document's files; nothing to do when it had none. */
+export async function removeMedia(documentId: number): Promise<void> {
+	try {
+		await (await mediaRoot()).removeEntry(String(documentId), { recursive: true });
+	} catch {
+		// Not a media document, or already gone.
+	}
+}
+
 export async function removePending(job: string): Promise<void> {
 	await (await directoryAt(['pending'], false)).removeEntry(job, { recursive: true });
 }
