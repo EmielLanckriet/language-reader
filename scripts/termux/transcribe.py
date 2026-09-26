@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 CHUNK_MS = 30_000  # Whisper's own window: shorter chunks cost the same and do less.
 PROMPT = '以下是普通话的句子。'  # Without it, base drifts into traditional characters.
@@ -33,6 +34,12 @@ MODEL = os.environ.get('WHISPER_MODEL', 'small')
 WHISPER = os.environ.get('WHISPER', 'whisper-cli')
 # Where a line ends: after clause punctuation, or at the next token once it is this long, for speech
 # whisper did not punctuate. Subtitle lines on the videos measured run 10 to 25 characters.
+# How long a chunk takes on this device, per model, for the bar Reader shows until its lines arrive:
+# whisper-cli reports progress per 30 s window, so for one chunk only 100% at the end. Starts from
+# the phone's measurements (2026-09-26) and then follows this device.
+TIMINGS = os.path.join(MODELS, 'chunk-seconds.json')
+EXPECTED = {'base': 20.0, 'small': 45.0}
+
 BREAKS = '，,。？?！!；;'
 LONGEST = 24
 
@@ -73,7 +80,19 @@ def duration_ms(wav):
     return (os.path.getsize(wav) - 44) * 1000 // (16_000 * 2)
 
 
+def expected_seconds():
+    try:
+        with open(TIMINGS, encoding='utf-8') as file:
+            return {**EXPECTED, **json.load(file)}
+    except (OSError, ValueError):
+        return dict(EXPECTED)
+
+
 def main(job, media):
+    status = os.path.join(job, 'status.json')
+    timings = expected_seconds()
+    # Before the audio is extracted, so Reader can say something from the first second.
+    write_atomically(status, json.dumps({'through': 0, 'done': False, 'total': None}))
     wav = os.path.join(job, 'audio.wav')
     subprocess.run(
         ['ffmpeg', '-loglevel', 'error', '-y', '-i', media, '-ar', '16000', '-ac', '1', wav],
@@ -81,19 +100,26 @@ def main(job, media):
     )
     total = duration_ms(wav)
     cues, offset, first = [], 0, True
-    status = os.path.join(job, 'status.json')
-    write_atomically(status, json.dumps({'through': 0, 'done': False}))
 
     while offset < total:
         model = FIRST_MODEL if first else MODEL
         prompt = PROMPT + (cues[-1][2] if cues else '')
         out = os.path.join(job, 'chunk')
+        started = time.time()
+        write_atomically(status, json.dumps({
+            'through': offset / 1000, 'done': False, 'total': total / 1000,
+            'chunk': {'started': started, 'expected': timings.get(model, 30.0)},
+        }))
         subprocess.run(
             [WHISPER, '-m', os.path.join(MODELS, f'ggml-{model}.bin'), '-f', wav, '-l', 'zh',
              '-t', str(THREADS), '--prompt', prompt, '--offset-t', str(offset),
              '--duration', str(CHUNK_MS), '-ojf', '-of', out],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
+        # Half the last measurement, half the one before: a single slow chunk moves the estimate
+        # without taking it over.
+        timings[model] = round((timings.get(model, 30.0) + time.time() - started) / 2, 1)
+        write_atomically(TIMINGS, json.dumps(timings))
         with open(out + '.json', encoding='utf-8') as file:
             segments = lines(json.load(file)['transcription'])
         last_chunk = offset + CHUNK_MS >= total
@@ -109,11 +135,12 @@ def main(job, media):
             os.path.join(job, 'media.zh.vtt'),
             'WEBVTT\n\n' + ''.join(f'{stamp(a)} --> {stamp(b)}\n{t}\n\n' for a, b, t in cues),
         )
-        write_atomically(status, json.dumps({'through': min(offset, total) / 1000, 'done': False}))
+        write_atomically(status, json.dumps({'through': min(offset, total) / 1000, 'done': False,
+                                             'total': total / 1000}))
         print(f'transcribed through {min(offset, total) / 1000:.0f} s of {total / 1000:.0f} s', flush=True)
 
     os.remove(wav)
-    write_atomically(status, json.dumps({'through': total / 1000, 'done': True}))
+    write_atomically(status, json.dumps({'through': total / 1000, 'done': True, 'total': total / 1000}))
     print('transcript complete', flush=True)
 
 

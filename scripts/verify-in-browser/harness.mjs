@@ -217,6 +217,62 @@ const scenarios = {
 		}
 	},
 
+	// A share shows up while it is still downloading, and a tap on it opens it once it is done.
+	// DOWNLOADS is the served fixtures' downloads folder (make-fixtures.sh); this adds a job there
+	// with only a progress file, then gives it fixture-media's finished bundle.
+	async downloading() {
+		const { cpSync, mkdirSync, rmSync, writeFileSync } = await import('node:fs');
+		const downloads = process.env.DOWNLOADS;
+		if (!downloads) throw new Error('set DOWNLOADS to the served downloads folder');
+		const job = `${downloads}/99999999-downloading`;
+		rmSync(job, { recursive: true, force: true });
+		mkdirSync(job);
+		writeFileSync(
+			`${job}/progress.json`,
+			JSON.stringify({
+				stage: 'downloading',
+				title: 'Still downloading',
+				part: 'video',
+				percent: 40
+			})
+		);
+		const tab = await openTab(`${appOrigin}${BASE}/`);
+		try {
+			const bar = await until(
+				'the download with its bar',
+				() =>
+					tab.evaluate(`
+						const item = [...document.querySelectorAll('.fresh li')].find((li) => li.textContent.includes('Still downloading'));
+						const bar = item?.querySelector('progress');
+						return bar ? { value: bar.value, label: item.querySelector('.progress-bar span')?.textContent } : null;
+					`),
+				20000,
+				250
+			);
+			await tab.evaluate(`
+				[...document.querySelectorAll('.fresh li')].find((li) => li.textContent.includes('Still downloading')).querySelector('button').click();
+				return true;
+			`);
+			const waiting = await tab.evaluate(
+				`return [...document.querySelectorAll('.fresh li button')].some((b) => b.textContent.includes('Opens when ready'));`
+			);
+			for (const file of ['bundle.tar', 'meta.json'])
+				cpSync(`${downloads}/fixture-media/${file}`, `${job}/${file}`);
+			rmSync(`${job}/progress.json`);
+			const opened = await until(
+				'the video to open by itself',
+				() =>
+					tab.evaluate(`return location.pathname.includes('/read/') ? location.pathname : null;`),
+				20000,
+				250
+			);
+			return { pass: bar.value === 0.4 && waiting && !!opened, bar, waiting, opened };
+		} finally {
+			await tab.close();
+			rmSync(job, { recursive: true, force: true });
+		}
+	},
+
 	// A new version is offered: load the build being served, let its worker take control, then swap
 	// in another build (UPDATE_TO, a second `npm run build` copied aside) and reload. The installed
 	// app on the phone once showed no offer with a newer worker waiting.
@@ -458,6 +514,16 @@ const scenarios = {
 				30000
 			);
 			const opened = Date.now();
+			// What the page says before there is anything to read: a bar, not a blank.
+			const waitingLabel = await until(
+				'something to show before the first lines',
+				() =>
+					tab.evaluate(
+						`return document.querySelector('.progress .progress-bar span')?.textContent ?? null;`
+					),
+				10000,
+				100
+			).catch(() => null);
 			const firstLines = await until(
 				'the first transcribed lines',
 				() => tab.evaluate(`return document.querySelectorAll('.lines p').length || null;`),
@@ -523,7 +589,9 @@ const scenarios = {
 					markingHidden &&
 					stored.lines >= firstLines &&
 					typeof quickWhileLive === 'string' &&
-					quickKept === quickWhileLive,
+					quickKept === quickWhileLive &&
+					!!waitingLabel,
+				waitingLabel,
 				quickWhileLive,
 				quickKept,
 				secondsToFirstLines,

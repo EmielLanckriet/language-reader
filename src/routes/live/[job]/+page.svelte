@@ -10,9 +10,14 @@
 	import { createMediaDocument, titleIn } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
+	import Progress from '$lib/ui/Progress.svelte';
 	import { followTranslation } from '$lib/media/translation';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
-	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
+	import {
+		quickTranslation,
+		type QuickStatus,
+		type QuickTranslation
+	} from '$lib/translation/quick';
 
 	/**
 	 * A video whose transcript Termux is still producing (ADR-0019). Lines are fetched from Termux
@@ -27,6 +32,11 @@
 	let cues = $state<Cue[]>([]);
 	let lines = $state<LineWord[][]>([]);
 	let through = $state(0);
+	/** The video's length, and the chunk whisper is on: when it started and how long it usually takes. */
+	let total = $state<number | null>(null);
+	let chunk = $state<{ started: number; expected: number } | null>(null);
+	/** Ticks while waiting for the first lines, so the estimated bar moves. */
+	let now = $state(Date.now() / 1000);
 	let problem = $state<string | null>(null);
 	let reachable = $state(true);
 	let chosen = $state<{ line: number; word: LineWord } | null>(null);
@@ -40,7 +50,7 @@
 	/** Quick English as lines arrive (ADR-0023), carried into the document when the transcript ends. */
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
-	let quickStatus = $state<string | undefined>();
+	let quickStatus = $state<QuickStatus | undefined>();
 	let transcribed = false;
 	const llmLines = $derived(llmByLine(cues, translations));
 	const english = $derived(englishFor(cues.length, llmLines, quickLines));
@@ -88,6 +98,8 @@
 			cues = fresh;
 			lines = [...lines, ...added];
 			through = status.through;
+			total = status.total ?? null;
+			chunk = status.chunk ?? null;
 			transcribed = Boolean(status.done);
 			if (added.length > 0 || transcribed) quick?.more();
 			if (status.done) await finish(vtt);
@@ -148,6 +160,16 @@
 		};
 	});
 
+	$effect(() => {
+		const timer = setInterval(() => (now = Date.now() / 1000), 500);
+		return () => clearInterval(timer);
+	});
+
+	/** An estimate from this device's own timings, held short of full until the lines are there. */
+	const firstLines = $derived(
+		chunk ? Math.min(0.95, (now - chunk.started) / chunk.expected) : undefined
+	);
+
 	function sentenceOf(line: number): string {
 		return cues[line]?.text ?? '';
 	}
@@ -159,14 +181,19 @@
 	<p role="alert">{problem}</p>
 {:else if media}
 	<h1 class="compact">{title}</h1>
-	<p class="progress">
+	<div class="progress">
 		{#if !reachable}
-			Waiting for Termux… keep it open until the transcript is done.
+			<Progress label="Waiting for Termux… keep it open until the transcript is done." />
+		{:else if cues.length === 0}
+			<Progress label="Listening to the first 30 seconds…" fraction={firstLines} />
 		{:else}
-			Transcribing: {Math.round(through)} s so far.
+			<Progress
+				label={`Transcribing: ${Math.round(through)}${total ? ` of ${Math.round(total)}` : ''} s`}
+				fraction={total ? through / total : undefined}
+			/>
 		{/if}
-		{#if quickStatus}<br />{quickStatus}{/if}
-	</p>
+		{#if quickStatus}<Progress {...quickStatus} />{/if}
+	</div>
 	<MediaReader
 		file={media}
 		{cues}

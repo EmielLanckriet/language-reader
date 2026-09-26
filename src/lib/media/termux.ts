@@ -13,6 +13,25 @@ export interface TermuxJob {
 	title: string;
 	bytes: number;
 	transcribing: boolean;
+	/** False while Termux is still downloading; absent from services older than this field. */
+	ready?: boolean;
+	progress?: {
+		stage: 'starting' | 'downloading' | 'packing';
+		part?: 'video' | 'audio';
+		percent?: number;
+	};
+}
+
+/** What to show for a download still in progress, and how far it is (0–1, or undefined). */
+export function downloadState(job: TermuxJob): { label: string; fraction?: number } {
+	const progress = job.progress;
+	if (progress?.stage === 'downloading' && progress.percent !== undefined)
+		return {
+			label: `Downloading the ${progress.part ?? 'video'}…`,
+			fraction: progress.percent / 100
+		};
+	if (progress?.stage === 'packing') return { label: 'Almost ready…' };
+	return { label: 'Starting the download…' };
 }
 
 /** Downloads not yet in the library, newest first; 'unreachable' when the service is not running. */

@@ -14,12 +14,17 @@
 	import { upgradeOf } from '$lib/storage/upgrades';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
+	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
 	import { saveMedia, QUICK_ENGLISH } from '$lib/media/store';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
-	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
+	import {
+		quickTranslation,
+		type QuickStatus,
+		type QuickTranslation
+	} from '$lib/translation/quick';
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
@@ -37,7 +42,7 @@
 	/** The quick model's English, there within seconds and replaced by the LLM's (ADR-0023). */
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
-	let quickStatus = $state<string | undefined>();
+	let quickStatus = $state<QuickStatus | undefined>();
 	const english = $derived(media ? englishFor(media.cues.length, llmLines, quickLines) : []);
 
 	$effect(() => {
@@ -372,7 +377,7 @@
 		</p>
 	{/if}
 	{#if media?.media && quickStatus}
-		<p class="quick-status">{quickStatus}</p>
+		<Progress {...quickStatus} />
 	{/if}
 	{#if media?.media}
 		<MediaReader
@@ -408,11 +413,6 @@
 {/if}
 
 <style>
-	.quick-status {
-		font-size: 0.85rem;
-		color: var(--muted);
-		margin: 0.3rem 0;
-	}
 	h1.compact {
 		font-size: 1rem;
 		margin: 0.25rem 0;

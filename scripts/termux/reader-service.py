@@ -99,7 +99,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         for job in sorted(os.listdir(downloads) if os.path.isdir(downloads) else [], reverse=True)[:30]:
             folder = os.path.join(downloads, job)
             bundle = os.path.join(folder, 'bundle.tar')
+            progress = os.path.join(folder, 'progress.json')
             if not os.path.isfile(bundle):
+                # Still downloading, so Reader can show it from the moment of the share. A progress
+                # file nobody has touched for ten minutes is a download that died, not one to wait for.
+                try:
+                    if time.time() - os.path.getmtime(progress) > 600:
+                        continue
+                    with open(progress, encoding='utf-8') as file:
+                        state = json.load(file)
+                except (OSError, ValueError):
+                    continue
+                found.append({'job': job, 'title': state.get('title') or 'A new video', 'id': None,
+                              'bytes': 0, 'transcribing': False, 'ready': False, 'progress': state})
                 continue
             try:
                 with open(os.path.join(folder, 'meta.json'), encoding='utf-8') as file:
@@ -112,6 +124,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 'id': meta.get('id'),
                 'bytes': os.path.getsize(bundle),
                 'transcribing': os.path.exists(os.path.join(folder, 'transcribing.json')),
+                'ready': True,
             })
         return found
 

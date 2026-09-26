@@ -56,6 +56,11 @@
 		if (!translations[line]) onask?.(line);
 		revealed = revealed.includes(line) ? revealed.filter((i) => i !== line) : [...revealed, line];
 	}
+	/** How much English there is: every line with some, and those the LLM has improved. */
+	const english = $derived({
+		have: translations.filter(Boolean).length,
+		improved: translations.filter((line) => line?.source === 'llm').length
+	});
 	const isAudio = $derived(/\.(m4a|mp3|ogg|opus|wav)$/i.test(file.name));
 
 	$effect(() => {
@@ -119,6 +124,11 @@
 {#if askable || translations.some(Boolean)}
 	<label class="all-english">
 		<input type="checkbox" bind:checked={showAll} /> Show all English
+		<small>
+			· {english.have} of {lines.length} lines{english.improved > 0
+				? `, ${english.improved} improved`
+				: ''}
+		</small>
 	</label>
 {/if}
 
@@ -142,7 +152,7 @@
 						class:quick={translations[i]?.source === 'quick'}
 						title={translations[i]?.source === 'quick' ? 'Quick translation' : undefined}
 						lang="en">{translations[i]?.text}</span
-					>{:else if askable && cues[i]}<span class="english pending">…</span>{/if}{/if}
+					>{:else if askable && cues[i]}<span class="english pending">translating…</span>{/if}{/if}
 		</p>
 	{/each}
 </div>

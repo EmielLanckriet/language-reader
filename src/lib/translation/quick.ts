@@ -39,6 +39,15 @@ async function ensureDownloaded(onProgress: (megabytes: number) => void): Promis
 	);
 }
 
+/** What to tell the reader, as a bar when there is something to measure. */
+export interface QuickStatus {
+	label: string;
+	fraction?: number;
+}
+
+/** The runtime (13 MB), tokenizer (6 MB), encoder (53 MB) and decoder (60 MB), measured. */
+const DOWNLOAD_MB = 133;
+
 export interface QuickTranslation {
 	/** Move the queue's front to this line: where playback is, or a line the reader asked about. */
 	focus(index: number, urgent?: boolean): void;
@@ -56,7 +65,7 @@ export function quickTranslation(
 	linesNow: () => readonly string[],
 	have: (index: number) => boolean,
 	onLine: (index: number, english: string) => void,
-	onStatus: (status: string | undefined) => void,
+	onStatus: (status: QuickStatus | undefined) => void,
 	finished: () => boolean = () => true
 ): QuickTranslation {
 	let stopped = false;
@@ -100,8 +109,14 @@ export function quickTranslation(
 			await Promise.resolve();
 			// Nothing left to translate (a video reopened after its quick pass): no model, no memory.
 			if (next() === undefined && finished()) return;
-			onStatus('Quick English: getting ready…');
-			await ensureDownloaded((mb) => onStatus(`Quick English: downloading, ${mb} of ~120 MB…`));
+			onStatus({ label: 'Getting English ready…' });
+			await ensureDownloaded((mb) =>
+				onStatus({
+					label: `Downloading the translator, once: ${mb} of ${DOWNLOAD_MB} MB`,
+					fraction: mb / DOWNLOAD_MB
+				})
+			);
+			onStatus({ label: 'Getting English ready…' });
 			if (stopped) return;
 			worker = new Worker(new URL('./quick-worker.ts', import.meta.url), { type: 'module' });
 			worker.onmessage = ({ data }: MessageEvent<QuickReply>) => {
@@ -112,14 +127,16 @@ export function quickTranslation(
 					onLine(data.index, data.english);
 				} else {
 					busy = false;
-					onStatus(`Quick English is unavailable: ${data.message}`);
+					onStatus({ label: `Quick English is unavailable: ${data.message}` });
 					return;
 				}
 				pump();
 			};
 			worker.postMessage({ kind: 'open', base, ...FILES } satisfies QuickRequest);
 		} catch (error) {
-			onStatus(`Quick English is unavailable: ${error instanceof Error ? error.message : error}`);
+			onStatus({
+				label: `Quick English is unavailable: ${error instanceof Error ? error.message : error}`
+			});
 		}
 	}
 

@@ -11,7 +11,8 @@
 	import { codePointLength } from '$lib/domain/offsets';
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import { latest, restore } from '$lib/backup/destination';
-	import { importJob, newFromTermux, type TermuxJob } from '$lib/media/termux';
+	import { downloadState, importJob, newFromTermux, type TermuxJob } from '$lib/media/termux';
+	import Progress from '$lib/ui/Progress.svelte';
 	import { goto } from '$app/navigation';
 
 	let documents = $state<DocumentSummary[]>([]);
@@ -67,13 +68,29 @@
 	let opening = $state<string | null>(null);
 	let openProblem = $state<string | null>(null);
 
+	/** A download the reader tapped before it finished: opened the moment it is ready. */
+	let waitingFor = $state<string | null>(null);
+
+	// Every few seconds while visible, so a share shows up here within moments, with its progress.
 	$effect(() => {
-		const look = () =>
-			void newFromTermux().then((jobs) => (fresh = jobs === 'unreachable' ? [] : jobs));
-		look();
-		const onVisible = () => document.visibilityState === 'visible' && look();
+		const look = async () => {
+			if (document.visibilityState !== 'visible') return;
+			const jobs = await newFromTermux();
+			fresh = jobs === 'unreachable' ? [] : jobs;
+			const wanted = fresh.find((job) => job.job === waitingFor && job.ready !== false);
+			if (wanted && opening === null) {
+				waitingFor = null;
+				void openJob(wanted);
+			}
+		};
+		void look();
+		const timer = setInterval(() => void look(), 2000);
+		const onVisible = () => void look();
 		document.addEventListener('visibilitychange', onVisible);
-		return () => document.removeEventListener('visibilitychange', onVisible);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', onVisible);
+		};
 	});
 
 	async function openJob(job: TermuxJob) {
@@ -231,15 +248,23 @@
 		<ul class="library">
 			{#each fresh as job (job.job)}
 				<li>
-					<button onclick={() => openJob(job)} disabled={opening !== null}>
-						{opening === job.job ? 'Opening…' : 'Open'}
-					</button>
-					{job.title}
-					<small>
-						{Math.round(job.bytes / 1e6)} MB{job.transcribing
-							? ' · subtitles still being made'
-							: ''}
-					</small>
+					{#if job.ready === false}
+						<button onclick={() => (waitingFor = job.job)} disabled={waitingFor === job.job}>
+							{waitingFor === job.job ? 'Opens when ready' : 'Open'}
+						</button>
+						{job.title}
+						<Progress {...downloadState(job)} />
+					{:else}
+						<button onclick={() => openJob(job)} disabled={opening !== null}>
+							{opening === job.job ? 'Opening…' : 'Open'}
+						</button>
+						{job.title}
+						<small>
+							{Math.round(job.bytes / 1e6)} MB{job.transcribing
+								? ' · subtitles still being made'
+								: ''}
+						</small>
+					{/if}
 				</li>
 			{/each}
 		</ul>

@@ -15,7 +15,11 @@ cd "$work"
 # sees human and automatic tracks and prefers human; nothing is decided here.
 # --ignore-errors: a failed subtitle must not cost the video.
 # Through python3: the zipapp's /usr/bin/env shebang fails when Termux starts this from a share.
+# progress.json while downloading, so Reader can show a bar from the moment of the share; it goes
+# once the bundle exists. Written by Python, because a title can hold anything JSON must escape.
+printf '{"stage": "starting"}' >progress.json
 python3 "$(command -v yt-dlp)" \
+	--newline --progress-template 'download:%(info.title)s	%(info.vcodec)s	%(progress._percent_str)s' \
 	--js-runtimes node \
 	-f 'bv*[height<=480][ext=mp4]+ba[ext=m4a]/b[height<=480]/b' \
 	--merge-output-format mp4 \
@@ -23,7 +27,19 @@ python3 "$(command -v yt-dlp)" \
 	--sleep-subtitles 2 --ignore-errors \
 	--write-info-json --no-write-playlist-metafiles --no-playlist \
 	-o 'media.%(ext)s' \
-	"$url" || echo "yt-dlp reported an error; packing whatever arrived."
+	"$url" | python3 -u -c '
+import json, os, re, sys
+for line in sys.stdin:
+    print(line, end="", flush=True)
+    fields = line.rstrip("\n").split("\t")
+    if len(fields) == 3 and (percent := re.search(r"[\d.]+", fields[2])):
+        part = "audio" if fields[1] == "none" else "video"
+        with open("progress.json.part", "w") as file:
+            json.dump({"stage": "downloading", "title": fields[0], "part": part,
+                       "percent": float(percent.group())}, file, ensure_ascii=False)
+        os.replace("progress.json.part", "progress.json")
+' || echo "yt-dlp reported an error; packing whatever arrived."
+printf '{"stage": "packing"}' >progress.json
 
 # The info json is large and mostly noise; keep only what the app shows.
 if [ -f media.info.json ]; then
@@ -49,6 +65,7 @@ fi
 
 # Written aside and renamed: the reader service lists a bundle as ready the moment it exists.
 part="../$(basename "$work").tar.part"
+rm -f progress.json
 tar cf "$part" ./* && mv "$part" bundle.tar
 echo "Packed:"; tar tvf bundle.tar
 # Reader fetches the bundle from the reader service (ADR-0022); nothing is handed over here.
