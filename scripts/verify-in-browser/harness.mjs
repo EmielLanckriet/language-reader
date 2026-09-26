@@ -238,9 +238,21 @@ const scenarios = {
 							? { text: english.textContent, quick: english.classList.contains('quick') }
 							: null;
 					`),
-				300000,
+				120000,
 				1000
-			);
+			).catch(async (error) => {
+				// What Reader told the reader is the first thing to know when this times out.
+				const status = await tab.evaluate(
+					`return document.querySelector('.quick-status')?.textContent ?? 'no status line';`
+				);
+				const cached = await tab.evaluate(`
+					const cache = await caches.open('language-reader-model-v1');
+					return (await cache.keys()).map((r) => r.url.split('/').slice(-2).join('/'));
+				`);
+				throw new Error(
+					`${error.message}; Reader said: ${status}; in the model cache: ${JSON.stringify(cached)}`
+				);
+			});
 			const seconds = Math.round((Date.now() - started) / 1000);
 			const later = await until(
 				'more lines translated in the background',

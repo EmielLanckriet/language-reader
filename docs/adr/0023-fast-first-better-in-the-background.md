@@ -55,12 +55,36 @@ incremental background operation to improve while using it already."
    videos, not pasted text; **transformers.js**, because it brings a second runtime (1.31-dev),
    loaded from a CDN unless copied and cached like `/ort/`, for code we can own in 150 lines.
 
+4. **The LLM behind it is Qwen3-1.7B at Q4_K_M, run with `--no-repack`** (was Q8, ADR-0021).
+   Measured after the quick English existed, which changed the question from "the best English" to
+   "the best English that can run beside Reader":
+
+   | On the phone, 20 lines | Q8 | Q4_K_M, `--no-repack` |
+   |---|---|---|
+   | llama-completion peak | 2.45 GB | 1.38 GB |
+   | Lowest free memory, Reader's quick translator loaded | 1.04 GB (Reader closed) | 1.43 GB |
+   | Time (the lines are 22 s of video) | 77 s | ~65 s |
+
+   **Repacking** is why Q4 first looked no smaller: llama.cpp keeps a rearranged copy of Q4 weights
+   for speed, 2.0 GB peak on the laptop against 1.4 GB without, and the phone was no slower
+   without it. Q4 at 20 lines kept 20/20 lines aligned on the tariff lines, with English close to
+   Q8's; on the phone one line (12) repeated its neighbour's content under a matching count. At
+   5 lines per prompt it shifted lines 16–19, so the chunk stays at 20.
+
+   `translate.py` waits before each chunk until 2.0 GB is free (the 1.1 GB model, which must stay
+   resident, 0.55 GB of buffers, and a margin, because Android counts the model's own file pages as
+   available), and Reader unloads its quick translator once every line has English, which frees
+   about 0.6 GB. So the upgrade starts when the quick pass is done or Reader is closed, and the two
+   do not compete for the memory that froze the phone.
+
 ## Alternatives Rejected
 
 - **Qwen alone, translated ahead**: the best English, but the reader waits half an hour or reads
   without English. That is the friction Principle VIII exists to remove.
 - **opus-mt alone**: fast and small, but its English on subtitle fragments is too often wrong to be
   the final answer.
+- **Qwen3-1.7B at Q8, and Q4 with repacking**: both about 2 GB or more, which with Reader open
+  leaves the phone too little; the Q8 froze it twice.
 - **Qwen3-0.6B**: fast enough, but it shifted lines while passing the count check. A translation
   beside the wrong line is worse than none.
 - **Joined lines for opus-mt**: better English, but unalignable and lossy.

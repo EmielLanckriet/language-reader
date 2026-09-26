@@ -26,9 +26,11 @@ mkdir -p ~/.whisper
 for model in base small; do
 	[ -f ~/.whisper/ggml-$model.bin ] || curl -fL "$MODELS/ggml-$model.bin" -o ~/.whisper/ggml-$model.bin
 done
-# Translation into English (translate.py): Qwen3-1.7B at Q8, 1.8 GB. Q4 merged lines, so not smaller.
-[ -f ~/.whisper/qwen3-1.7b-q8.gguf ] ||
-	curl -fL https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf -o ~/.whisper/qwen3-1.7b-q8.gguf
+# Translation into English (translate.py): Qwen3-1.7B at Q4_K_M, 1.1 GB, run with --no-repack
+# (1.4 GB peak on the phone, against 2.45 GB for the Q8 it replaces; ADR-0023).
+[ -f ~/.whisper/qwen3-1.7b-q4.gguf ] ||
+	curl -fL https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf -o ~/.whisper/qwen3-1.7b-q4.gguf
+rm -f ~/.whisper/qwen3-1.7b-q8.gguf
 
 mkdir -p ~/bin
 curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener

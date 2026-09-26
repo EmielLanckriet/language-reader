@@ -73,7 +73,13 @@ export function quickTranslation(
 	function pump() {
 		if (stopped || busy || !worker) return;
 		const index = next();
-		if (index === undefined) return;
+		if (index === undefined) {
+			// Every line has English. Unloading frees ~0.6 GB, which is what lets Termux's LLM start
+			// its upgrade: translate.py waits for that much memory (ADR-0023).
+			worker.terminate();
+			worker = undefined;
+			return;
+		}
 		busy = true;
 		worker.postMessage({ kind: 'translate', index, text: lines[index] } satisfies QuickRequest);
 	}
@@ -81,6 +87,12 @@ export function quickTranslation(
 	async function begin() {
 		try {
 			if (!('caches' in globalThis)) return;
+			// After an await, not before: begin() starts inside the page's effect, and reading the
+			// page's lines synchronously there made the effect re-run and restart this, 1001 times
+			// in one load, measured.
+			await Promise.resolve();
+			// Nothing left to translate (a video reopened after its quick pass): no model, no memory.
+			if (next() === undefined) return;
 			onStatus('Quick English: getting ready…');
 			await ensureDownloaded((mb) => onStatus(`Quick English: downloading, ${mb} of ~120 MB…`));
 			if (stopped) return;
