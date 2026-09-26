@@ -54,8 +54,26 @@
 		});
 	}
 
+	/** True while a worker holding this very build is being activated, which needs no reload. */
+	let quietly = false;
+
+	/**
+	 * Offer a waiting worker with a different build; activate one with this build without asking.
+	 *
+	 * The second case is the usual one, found 2026-09-26 when the installed app never offered an
+	 * update: the start address is not in the precache under its own name, so an online start loads
+	 * the newest page from the network, and the reader is already on the waiting worker's build. With
+	 * nothing offered, that worker waited for every window to close, which an installed app on Android
+	 * rarely does, and the old one kept serving the offline copy. Activating it changes nothing the
+	 * reader sees, so FR-010's "only when the reader says so" is kept: they are already on it.
+	 */
 	async function offerIfNew(waiting: ServiceWorker) {
-		if (await isDifferentBuild(waiting)) ready = waiting;
+		if (await isDifferentBuild(waiting)) {
+			ready = waiting;
+		} else {
+			quietly = true;
+			waiting.postMessage({ type: 'skip-waiting' });
+		}
 	}
 
 	$effect(() => {
@@ -103,7 +121,7 @@
 			// If it was not, this is the first install and the page is already current.
 			const wasControlled = navigator.serviceWorker.controller !== null;
 			const took = () => {
-				if (wasControlled) window.location.reload();
+				if (wasControlled && !quietly) window.location.reload();
 			};
 			navigator.serviceWorker.addEventListener('controllerchange', took);
 

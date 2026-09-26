@@ -217,6 +217,48 @@ const scenarios = {
 		}
 	},
 
+	// A new version is offered: load the build being served, let its worker take control, then swap
+	// in another build (UPDATE_TO, a second `npm run build` copied aside) and reload. The installed
+	// app on the phone once showed no offer with a newer worker waiting.
+	async update() {
+		const { cpSync, readFileSync } = await import('node:fs');
+		if (!process.env.UPDATE_TO) throw new Error('set UPDATE_TO to a second build directory');
+		const tab = await openTab(`${appOrigin}${BASE}/`);
+		try {
+			await until(
+				'the first worker to control the page',
+				() => tab.evaluate(`return !!navigator.serviceWorker.controller;`),
+				30000
+			);
+			const before = await tab.evaluate(
+				`return (await (await fetch('${BASE}/_app/version.json', { cache: 'no-store' })).json()).version;`
+			);
+			cpSync(process.env.UPDATE_TO, 'build', { recursive: true });
+			const to = JSON.parse(
+				readFileSync(`${process.env.UPDATE_TO}/_app/version.json`, 'utf8')
+			).version;
+			await tab.evaluate(`location.reload(); return true;`);
+			// Either outcome is right, depending on which build the reload got. An older page is offered
+			// the new version; a page that is already the new build (an online start fetches it from the
+			// network) has the waiting worker activated quietly, and nothing is left waiting.
+			const outcome = await until(
+				'an offer, or the waiting worker activated',
+				() =>
+					tab.evaluate(`
+						if (document.body.innerText.includes('A new version is ready')) return 'offered';
+						const r = await navigator.serviceWorker.getRegistration();
+						const ask = (w) => new Promise((done) => { const c = new MessageChannel(); c.port1.onmessage = (e) => done(e.data); w.postMessage({ type: 'which-version' }, [c.port2]); setTimeout(() => done(null), 1000); });
+						return !r.waiting && r.active && (await ask(r.active)) === '${to}' ? 'activated quietly' : null;
+					`),
+				30000,
+				500
+			);
+			return { pass: !!outcome, outcome, before, to };
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Quick English (ADR-0023): with no English from Termux at all, tapping a line's EN still shows
 	// English, from opus-mt running in the browser. Serve a fixture-media job that has no
 	// media.en.vtt (make-fixtures.sh, without running translate.py). The first run downloads the
