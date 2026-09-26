@@ -81,3 +81,11 @@ transcript is complete (Reader's quick English covers the lines meanwhile, ADR-0
 the phone with that change, from the share: the video playable in Reader at 20 s, the first 11 lines
 at 34 s, quick English on the first at 34.4 s, the transcript a stored document at 4:26, and the
 LLM's first 20 lines 90 s after that. Free memory never below 1.77 GB.
+
+Later the same day, a street interview (several speakers, pauses) showed the prompt did worse than
+lengthen lines: with any prompt, whisper.cpp returns a chunk as its first sentence only, and the
+rest of the chunk is lost. 11–38 s of the interview, 13 lines, came back as one line; without a
+prompt, 16. The prompt is gone. It had kept `base` in simplified characters, but on both videos
+measured, `base` and `small` without it wrote none (checked with OpenCC's t2s, which changed
+nothing), and Reader's dictionary has the traditional forms too. Revisit if traditional characters
+appear. The whole interview now gives 122 lines, none over 21 characters, no gap over 5 s.

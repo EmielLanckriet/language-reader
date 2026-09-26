@@ -11,9 +11,10 @@ The first chunk uses the base model so the first lines arrive in seconds; the re
 measured four times fewer errors. Each chunk's last line is dropped and redone as the start of the
 next chunk, so no word is cut at a boundary.
 
-Lines are cut from whisper's token timestamps at clause punctuation (`lines`): with the prompt, which
-keeps base in simplified characters, whisper returns a whole 30 s chunk as one punctuated segment
-(measured: 149 characters, against 11 segments without the prompt), too long to read along with.
+No prompt. One was used to keep base in simplified characters, and with any prompt whisper.cpp
+returns a chunk as its first sentence only: a street interview lost 11-38 s (13 lines) that way, and
+a monologue came back as one 149-character line. Without it, measured on both videos, base and small
+wrote no traditional characters. Long segments are still cut at clause punctuation (`lines`).
 """
 
 import json
@@ -23,7 +24,6 @@ import sys
 import time
 
 CHUNK_MS = 30_000  # Whisper's own window: shorter chunks cost the same and do less.
-PROMPT = '以下是普通话的句子。'  # Without it, base drifts into traditional characters.
 # Four, not every core: 16 threads beside other load measured 44 s against 6 s for 4, and phones pair
 # four fast cores with slow ones that the rest would wait on.
 THREADS = min(4, os.cpu_count() or 4)
@@ -103,7 +103,6 @@ def main(job, media):
 
     while offset < total:
         model = FIRST_MODEL if first else MODEL
-        prompt = PROMPT + (cues[-1][2] if cues else '')
         out = os.path.join(job, 'chunk')
         started = time.time()
         write_atomically(status, json.dumps({
@@ -112,7 +111,7 @@ def main(job, media):
         }))
         subprocess.run(
             [WHISPER, '-m', os.path.join(MODELS, f'ggml-{model}.bin'), '-f', wav, '-l', 'zh',
-             '-t', str(THREADS), '--prompt', prompt, '--offset-t', str(offset),
+             '-t', str(THREADS), '--offset-t', str(offset),
              '--duration', str(CHUNK_MS), '-ojf', '-of', out],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )

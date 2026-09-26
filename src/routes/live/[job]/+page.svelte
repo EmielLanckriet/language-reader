@@ -89,7 +89,13 @@
 
 	async function poll(where: { status: string; vtt: string }) {
 		try {
-			const status = await (await fetch(where.status, { cache: 'no-store' })).json();
+			const answer = await fetch(where.status, { cache: 'no-store' });
+			// Termux answered, but the transcriber has not written anything yet: starting, not lost.
+			if (answer.status === 404) {
+				reachable = true;
+				return;
+			}
+			const status = await answer.json();
 			const vtt = await (await fetch(where.vtt, { cache: 'no-store' })).text();
 			reachable = true;
 			const fresh = parseSubtitles(vtt);
@@ -165,10 +171,15 @@
 		return () => clearInterval(timer);
 	});
 
-	/** An estimate from this device's own timings, held short of full until the lines are there. */
-	const firstLines = $derived(
+	/**
+	 * How far into its chunk whisper probably is, from this device's own timings (transcribe.py),
+	 * held short of full until the lines are there. It keeps the bar moving between chunks too.
+	 */
+	const inChunk = $derived(
 		chunk ? Math.min(0.95, (now - chunk.started) / chunk.expected) : undefined
 	);
+	/** The transcript's progress: what is done, plus the estimate for the chunk under way. */
+	const heard = $derived(Math.min(total ?? Infinity, through + (inChunk ?? 0) * 30));
 
 	function sentenceOf(line: number): string {
 		return cues[line]?.text ?? '';
@@ -184,12 +195,14 @@
 	<div class="progress">
 		{#if !reachable}
 			<Progress label="Waiting for Termux… keep it open until the transcript is done." />
+		{:else if !chunk && cues.length === 0}
+			<Progress label="Starting speech-to-text…" />
 		{:else if cues.length === 0}
-			<Progress label="Listening to the first 30 seconds…" fraction={firstLines} />
+			<Progress label="Listening to the first 30 seconds…" fraction={inChunk} />
 		{:else}
 			<Progress
-				label={`Transcribing: ${Math.round(through)}${total ? ` of ${Math.round(total)}` : ''} s`}
-				fraction={total ? through / total : undefined}
+				label={`Transcribing: ${Math.round(heard)}${total ? ` of ${Math.round(total)}` : ''} s`}
+				fraction={total ? heard / total : undefined}
 			/>
 		{/if}
 		{#if quickStatus}<Progress {...quickStatus} />{/if}
