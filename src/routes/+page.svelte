@@ -12,6 +12,7 @@
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import { latest, restore } from '$lib/backup/destination';
 	import { downloadState, importJob, newFromTermux, type TermuxJob } from '$lib/media/termux';
+	import { dismissJob } from '$lib/media/store';
 	import Progress from '$lib/ui/Progress.svelte';
 	import { goto } from '$app/navigation';
 
@@ -92,6 +93,11 @@
 			document.removeEventListener('visibilitychange', onVisible);
 		};
 	});
+
+	async function dismiss(job: TermuxJob) {
+		await dismissJob(job.job);
+		fresh = fresh.filter((other) => other.job !== job.job);
+	}
 
 	async function openJob(job: TermuxJob) {
 		opening = job.job;
@@ -264,6 +270,9 @@
 								? ' · subtitles still being made'
 								: ''}
 						</small>
+						<button class="dismiss" aria-label="Don't offer this again" onclick={() => dismiss(job)}
+							>✕</button
+						>
 					{/if}
 				</li>
 			{/each}

@@ -17,7 +17,7 @@
 	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
-	import { saveMedia, removeMedia, QUICK_ENGLISH } from '$lib/media/store';
+	import { saveMedia, removeMedia, dismissJob, QUICK_ENGLISH } from '$lib/media/store';
 	import { goto } from '$app/navigation';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
@@ -107,6 +107,9 @@
 		try {
 			const { repository } = await session();
 			await repository.deleteUnmarkedDocument(document.id);
+			// Its Termux download stays in Termux; without this it would be offered as new again.
+			const job = media && jobOf(media.meta);
+			if (job) await dismissJob(job);
 			await removeMedia(document.id);
 			await goto(resolve('/'));
 		} catch (error) {

@@ -129,8 +129,32 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
  * Termux jobs already imported, from the meta.json kept with each media document and each pending
  * transcript (termux-url-opener records the job). What "New from Termux" leaves out.
  */
+/**
+ * Termux jobs the reader does not want offered again: a video they deleted, or one they dismissed
+ * from New from Termux. Deleting a document removes the meta.json that marked its job as imported,
+ * so without this list it came back as new.
+ */
+const DISMISSED = 'dismissed.json';
+
+async function dismissedJobs(): Promise<string[]> {
+	try {
+		const file = await (await (await mediaRoot()).getFileHandle(DISMISSED)).getFile();
+		return JSON.parse(await file.text());
+	} catch {
+		return [];
+	}
+}
+
+export async function dismissJob(job: string): Promise<void> {
+	const jobs = await dismissedJobs();
+	if (jobs.includes(job)) return;
+	await writeFiles(await mediaRoot(), [
+		{ name: DISMISSED, blob: new Blob([JSON.stringify([...jobs, job])]) }
+	]);
+}
+
 export async function importedJobs(): Promise<Set<string>> {
-	const jobs = new Set<string>();
+	const jobs = new Set<string>(await dismissedJobs());
 	const read = async (directory: FileSystemDirectoryHandle) => {
 		try {
 			const meta = await (await directory.getFileHandle('meta.json')).getFile();

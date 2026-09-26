@@ -2,6 +2,15 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## A transcript whose Termux died stays stuck
+
+2026-09-26: Android stopped Termux (battery optimisation was already off) during the street
+interview's last chunk. The transcriber died with status "228 of 231 s, not done", and the live page
+showed "Transcribing: 231 of 231 s" forever. Reader could tell (a chunk running three times longer
+than its estimate) and say "Termux stopped: open it to continue"; transcribe.py could resume from
+its last chunk instead of starting over; and the reader service, which Termux:Boot starts only at
+boot, is gone with it until Termux is opened again.
+
 ## The installed Chrome Reader did not offer its update
 
 2026-09-26: a new build was waiting (its worker answered `which-version` with the new version) but
