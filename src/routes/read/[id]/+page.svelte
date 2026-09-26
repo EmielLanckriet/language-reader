@@ -68,11 +68,12 @@
 			const blob = new Blob([JSON.stringify(quickLines)]);
 			return saveMedia(id, [{ name: QUICK_ENGLISH, blob }]);
 		};
+		const chinese = current.cues.map((cue) => cue.text);
 		// Untracked: starting it reads the lines, and this effect must not re-run (and restart the
 		// translator) each time a line arrives. It did, and never translated anything.
 		const translator = untrack(() =>
 			quickTranslation(
-				current.cues.map((cue) => cue.text),
+				() => chinese,
 				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
 				(i, text) => {
 					const next = [...quickLines];

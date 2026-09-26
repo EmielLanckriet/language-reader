@@ -436,6 +436,21 @@ const scenarios = {
 			);
 			const markingHidden = await tab.evaluate(`return !document.querySelector('.choices');`);
 			await tab.evaluate(`document.querySelector('.cancel')?.click(); return true;`);
+			// Quick English while the transcript is still arriving (ADR-0023). The first run in a
+			// fresh profile downloads the model, so this allows two minutes.
+			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
+			const quickWhileLive = await until(
+				'quick English while transcribing',
+				() =>
+					tab.evaluate(`
+						const english = document.querySelector('.lines p .english');
+						return english && !english.classList.contains('pending') && location.pathname.includes('/live/')
+							? english.textContent
+							: null;
+					`),
+				120000,
+				1000
+			).catch((error) => ({ error: error.message }));
 			const stored = await until(
 				'the finished transcript to become a stored document',
 				() =>
@@ -447,8 +462,28 @@ const scenarios = {
 				120000,
 				500
 			);
+			// The live page's quick lines go with the document, so the first line needs no second pass.
+			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
+			const quickKept = await until(
+				'the first line’s quick English in the stored document',
+				() =>
+					tab.evaluate(`
+						const english = document.querySelector('.lines p .english');
+						return english && !english.classList.contains('pending') ? english.textContent : null;
+					`),
+				5000,
+				250
+			).catch(() => null);
 			return {
-				pass: secondsToFirstLines < 20 && !!meaning && markingHidden && stored.lines >= firstLines,
+				pass:
+					secondsToFirstLines < 20 &&
+					!!meaning &&
+					markingHidden &&
+					stored.lines >= firstLines &&
+					typeof quickWhileLive === 'string' &&
+					quickKept === quickWhileLive,
+				quickWhileLive,
+				quickKept,
 				secondsToFirstLines,
 				firstLines,
 				word,

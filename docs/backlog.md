@@ -2,12 +2,6 @@
 
 Things decided but not yet scheduled. Newest first.
 
-## Quick English on the live page
-
-A transcript still being written (ADR-0019) gets only the LLM's lines. The quick translator takes a
-fixed list of lines; the live page needs it to follow lines as they arrive, and to keep them with the
-pending job until it becomes a document.
-
 ## The installed Chrome Reader did not offer its update
 
 2026-09-26: a new build was waiting (its worker answered `which-version` with the new version) but

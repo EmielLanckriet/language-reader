@@ -42,18 +42,22 @@ async function ensureDownloaded(onProgress: (megabytes: number) => void): Promis
 export interface QuickTranslation {
 	/** Move the queue's front to this line: where playback is, or a line the reader asked about. */
 	focus(index: number, urgent?: boolean): void;
+	/** New lines have arrived (a transcript still being written). */
+	more(): void;
 	stop(): void;
 }
 
 /**
- * Translates `lines` except those `have` already covers, calling `onLine` as each arrives and
- * `onStatus` with what to tell the reader (undefined once it is simply working).
+ * Translates the lines `linesNow` returns, except those `have` already covers, calling `onLine` as
+ * each arrives and `onStatus` with what to tell the reader (undefined once it is simply working).
+ * `finished` says no more lines will come; until then the model stays loaded between lines.
  */
 export function quickTranslation(
-	lines: string[],
+	linesNow: () => readonly string[],
 	have: (index: number) => boolean,
 	onLine: (index: number, english: string) => void,
-	onStatus: (status: string | undefined) => void
+	onStatus: (status: string | undefined) => void,
+	finished: () => boolean = () => true
 ): QuickTranslation {
 	let stopped = false;
 	let worker: Worker | undefined;
@@ -62,7 +66,8 @@ export function quickTranslation(
 	let asked: number | undefined;
 
 	function next(): number | undefined {
-		if (asked !== undefined && !have(asked)) return asked;
+		const lines = linesNow();
+		if (asked !== undefined && asked < lines.length && !have(asked)) return asked;
 		for (let offset = 0; offset < lines.length; offset++) {
 			const index = (front + offset) % lines.length;
 			if (!have(index) && lines[index].trim()) return index;
@@ -74,6 +79,7 @@ export function quickTranslation(
 		if (stopped || busy || !worker) return;
 		const index = next();
 		if (index === undefined) {
+			if (!finished()) return;
 			// Every line has English. Unloading frees ~0.6 GB, which is what lets Termux's LLM start
 			// its upgrade: translate.py waits for that much memory (ADR-0023).
 			worker.terminate();
@@ -81,7 +87,8 @@ export function quickTranslation(
 			return;
 		}
 		busy = true;
-		worker.postMessage({ kind: 'translate', index, text: lines[index] } satisfies QuickRequest);
+		const text = linesNow()[index];
+		worker.postMessage({ kind: 'translate', index, text } satisfies QuickRequest);
 	}
 
 	async function begin() {
@@ -92,7 +99,7 @@ export function quickTranslation(
 			// in one load, measured.
 			await Promise.resolve();
 			// Nothing left to translate (a video reopened after its quick pass): no model, no memory.
-			if (next() === undefined) return;
+			if (next() === undefined && finished()) return;
 			onStatus('Quick English: getting ready…');
 			await ensureDownloaded((mb) => onStatus(`Quick English: downloading, ${mb} of ~120 MB…`));
 			if (stopped) return;
@@ -123,6 +130,7 @@ export function quickTranslation(
 			if (urgent) asked = index;
 			pump();
 		},
+		more: () => pump(),
 		stop() {
 			stopped = true;
 			worker?.terminate();

@@ -1,16 +1,18 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { fallbackAnalyzer } from '$lib/analyzer/active';
 	import { codePointsOf } from '$lib/domain/offsets';
 	import { parseSubtitles, type Cue } from '$lib/media/subtitles';
-	import { isPlayable, loadPending, removePending } from '$lib/media/store';
+	import { isPlayable, loadPending, removePending, QUICK_ENGLISH } from '$lib/media/store';
 	import { createMediaDocument, titleIn } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import { followTranslation } from '$lib/media/translation';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
+	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
 
 	/**
 	 * A video whose transcript Termux is still producing (ADR-0019). Lines are fetched from Termux
@@ -35,6 +37,37 @@
 
 	const media = $derived(files.find((file) => isPlayable(file.name)));
 
+	/** Quick English as lines arrive (ADR-0023), carried into the document when the transcript ends. */
+	let quickLines = $state<(string | null)[]>([]);
+	let quick = $state<QuickTranslation | undefined>();
+	let quickStatus = $state<string | undefined>();
+	let transcribed = false;
+	const llmLines = $derived(llmByLine(cues, translations));
+	const english = $derived(englishFor(cues.length, llmLines, quickLines));
+
+	$effect(() => {
+		if (!media) return;
+		// Untracked, as on the reader page: starting it must not make this effect depend on the lines.
+		const translator = untrack(() =>
+			quickTranslation(
+				() => cues.map((cue) => cue.text),
+				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
+				(i, text) => {
+					const next = [...quickLines];
+					next[i] = text;
+					quickLines = next;
+				},
+				(status) => (quickStatus = status),
+				() => transcribed
+			)
+		);
+		quick = translator;
+		return () => {
+			translator.stop();
+			quick = undefined;
+		};
+	});
+
 	async function segment(text: string): Promise<LineWord[]> {
 		const characters = codePointsOf(text);
 		return (await fallbackAnalyzer.analyze(text)).map((token) => ({
@@ -55,6 +88,8 @@
 			cues = fresh;
 			lines = [...lines, ...added];
 			through = status.through;
+			transcribed = Boolean(status.done);
+			if (added.length > 0 || transcribed) quick?.more();
 			if (status.done) await finish(vtt);
 		} catch {
 			reachable = false;
@@ -69,7 +104,9 @@
 			...kept.map((file) => ({ name: file.name, blob: file })),
 			{ name: 'media.zh.vtt', blob: new Blob([vtt], { type: 'text/vtt' }) },
 			// A finished translation goes with it; an unfinished one is followed on by the reader page.
-			...(translated?.done ? [{ name: 'media.en.vtt', blob: new Blob([translated.vtt]) }] : [])
+			...(translated?.done ? [{ name: 'media.en.vtt', blob: new Blob([translated.vtt]) }] : []),
+			// Quick lines so far; the reader page translates whatever is still missing.
+			{ name: QUICK_ENGLISH, blob: new Blob([JSON.stringify(quickLines)]) }
 		]);
 		await removePending(job);
 		const at = Math.floor(player?.currentTime ?? 0);
@@ -128,12 +165,16 @@
 		{:else}
 			Transcribing: {Math.round(through)} s so far.
 		{/if}
+		{#if quickStatus}<br />{quickStatus}{/if}
 	</p>
 	<MediaReader
 		file={media}
 		{cues}
 		{lines}
-		translations={englishFor(cues.length, llmByLine(cues, translations), [])}
+		translations={english}
+		askable={quick !== undefined}
+		onask={(line) => quick?.focus(line, true)}
+		online={(line) => quick?.focus(line)}
 		bind:player
 		onword={(line, word) => (chosen = { line, word })}
 	/>

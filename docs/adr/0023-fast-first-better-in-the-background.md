@@ -116,8 +116,9 @@ incremental background operation to improve while using it already."
   The same shape covers future upgrades (a better model is one more layer behind the others).
 - **Harder**: two translators to ship, and the app must merge line sources without letting a
   rougher one win.
-- **Open**: a transcript still being written (the live page, ADR-0019) gets only the LLM's lines
-  so far; quick English for growing lines is the next step.
+- A transcript still being written (the live page, ADR-0019) gets quick English as its lines
+  arrive; the model stays loaded until the transcript is complete, and the quick lines go into the
+  document it becomes, so the reader page only translates what is still missing.
 - **Open**: the model's own settings ask for a 6-way beam search; greedy decoding is what was
   measured and shipped, as the fast first. Beams would cost about 6× per line.
 - The diagnostics page's "discard" frees the whole model cache, so it frees this model too.
