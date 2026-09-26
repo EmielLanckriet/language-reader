@@ -217,6 +217,67 @@ const scenarios = {
 		}
 	},
 
+	// The Language Reactor layout: on a phone-sized screen the video fills it, with the current line
+	// on it and its English blurred until tapped. Saves stage-blurred.png and stage-shown.png in the
+	// working directory, because a layout is checked by looking at it.
+	async stage() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		const shot = async (name) => {
+			const { data } = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync(name, Buffer.from(data, 'base64'));
+		};
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 412,
+				height: 915,
+				deviceScaleFactor: 2,
+				mobile: true
+			});
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the video to be playable',
+				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				30000,
+				250
+			);
+			await tab.evaluate(`
+				const video = document.querySelector('video');
+				video.muted = true;
+				video.currentTime = 5;
+				await video.play();
+				await new Promise((r) => setTimeout(r, 700));
+				video.pause();
+				return true;
+			`);
+			const before = await until(
+				'the current line on the video',
+				() =>
+					tab.evaluate(`
+						const line = document.querySelector('.media.stage .subtitles .chinese');
+						const english = document.querySelector('.media.stage .english-line');
+						return line && english ? { chinese: line.textContent, blurred: english.classList.contains('blurred'), listHidden: getComputedStyle(document.querySelector('.lines')).display === 'none' } : null;
+					`),
+				10000,
+				250
+			);
+			await shot('stage-blurred.png');
+			await tab.evaluate(`document.querySelector('.english-line').click(); return true;`);
+			await new Promise((r) => setTimeout(r, 400));
+			const after = await tab.evaluate(
+				`return !document.querySelector('.english-line').classList.contains('blurred');`
+			);
+			await shot('stage-shown.png');
+			return {
+				pass: before.blurred && before.listHidden && after,
+				...before,
+				unblurredOnTap: after
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// A share shows up while it is still downloading, and a tap on it opens it once it is done.
 	// DOWNLOADS is the served fixtures' downloads folder (make-fixtures.sh); this adds a job there
 	// with only a progress file, then gives it fixture-media's finished bundle.

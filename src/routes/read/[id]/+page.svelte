@@ -393,9 +393,6 @@
 			reopen this page to try again; the text and your marks work without it.
 		</p>
 	{/if}
-	{#if media?.media && quickStatus}
-		<Progress {...quickStatus} />
-	{/if}
 	{#if media?.media}
 		<MediaReader
 			file={media.media}
@@ -408,7 +405,11 @@
 			onask={(line) => quick?.focus(line, true)}
 			online={(line) => quick?.focus(line)}
 			onword={chooseWord}
-		/>
+		>
+			{#snippet status()}
+				{#if quickStatus}<Progress {...quickStatus} />{/if}
+			{/snippet}
+		</MediaReader>
 	{:else}
 		<div class="reading" lang={document.language}>
 			{#each document.tokens as token (token.start)}{#if token.isWord}<button

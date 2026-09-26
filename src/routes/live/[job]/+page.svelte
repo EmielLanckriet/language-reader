@@ -192,21 +192,6 @@
 	<p role="alert">{problem}</p>
 {:else if media}
 	<h1 class="compact">{title}</h1>
-	<div class="progress">
-		{#if !reachable}
-			<Progress label="Waiting for Termux… keep it open until the transcript is done." />
-		{:else if !chunk && cues.length === 0}
-			<Progress label="Starting speech-to-text…" />
-		{:else if cues.length === 0}
-			<Progress label="Listening to the first 30 seconds…" fraction={inChunk} />
-		{:else}
-			<Progress
-				label={`Transcribing: ${Math.round(heard)}${total ? ` of ${Math.round(total)}` : ''} s`}
-				fraction={total ? heard / total : undefined}
-			/>
-		{/if}
-		{#if quickStatus}<Progress {...quickStatus} />{/if}
-	</div>
 	<MediaReader
 		file={media}
 		{cues}
@@ -217,7 +202,25 @@
 		online={(line) => quick?.focus(line)}
 		bind:player
 		onword={(line, word) => (chosen = { line, word })}
-	/>
+	>
+		{#snippet status()}
+			<div class="progress">
+				{#if !reachable}
+					<Progress label="Waiting for Termux… keep it open until the transcript is done." />
+				{:else if !chunk && cues.length === 0}
+					<Progress label="Starting speech-to-text…" />
+				{:else if cues.length === 0}
+					<Progress label="Listening to the first 30 seconds…" fraction={inChunk} />
+				{:else}
+					<Progress
+						label={`Transcribing: ${Math.round(heard)}${total ? ` of ${Math.round(total)}` : ''} s`}
+						fraction={total ? heard / total : undefined}
+					/>
+				{/if}
+				{#if quickStatus}<Progress {...quickStatus} />{/if}
+			</div>
+		{/snippet}
+	</MediaReader>
 	{#if chosen}
 		<StateMenu
 			word={chosen.word.text}
