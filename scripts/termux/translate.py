@@ -24,8 +24,6 @@ import sys
 import time
 
 CHUNK = 20
-# While a transcript is still being written, start sooner: its first English should not wait 90 s.
-GROWING_CHUNK = 8
 LLAMA = os.environ.get('LLAMA', 'llama-completion')
 MODEL = os.environ.get('TRANSLATE_MODEL', os.path.expanduser('~/.whisper/qwen3-1.7b-q4.gguf'))
 # What a chunk needs free before it starts: the 1.1 GB model, which must stay resident while it runs,
@@ -174,7 +172,10 @@ def main(job):
         track, growing = source(job)
         available = cues(track) if track and os.path.exists(track) else []
         pending = available[len(done):]
-        if pending and (len(pending) >= (GROWING_CHUNK if growing else CHUNK) or not growing):
+        # Not while a transcript is still being written: the two shared the phone's four cores, and the
+        # transcript, which the reader is waiting for, took 6:50 against 4:20 without this beside it.
+        # Reader's quick English covers those lines meanwhile (ADR-0023).
+        if pending and not growing:
             chunk = pending[:CHUNK]
             done.extend(zip((timing for timing, _ in chunk), translate([text for _, text in chunk])))
             write(os.path.join(job, 'media.en.vtt'),
@@ -187,7 +188,7 @@ def main(job):
         if finished:
             print(f'translated {len(done)} lines', flush=True)
             return
-        if not pending or (growing and len(pending) < GROWING_CHUNK):
+        if not pending or growing:
             time.sleep(2)
 
 

@@ -74,3 +74,10 @@ chunks. Measured on that video, 17 s from the share to a playable video in Reade
 Also found: `translate.py` started a moment before `transcribe.py` wrote its status, saw no Chinese
 at all, and finished with nothing, so no transcribed video had been translated by the LLM. It now
 waits while `transcribing.json` says a transcript is coming.
+
+With that fixed, the LLM ran beside the transcriber, and the two shared the phone's four cores: the
+same video's transcript took 6:50 from the share against 4:20 before. It now waits until the
+transcript is complete (Reader's quick English covers the lines meanwhile, ADR-0023). Measured on
+the phone with that change, from the share: the video playable in Reader at 20 s, the first 11 lines
+at 34 s, quick English on the first at 34.4 s, the transcript a stored document at 4:26, and the
+LLM's first 20 lines 90 s after that. Free memory never below 1.77 GB.
