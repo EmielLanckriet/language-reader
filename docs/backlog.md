@@ -27,15 +27,6 @@ tab. Moved over by hand with the worker's `skip-waiting` message.
 "Your work can be restored … 0 documents and 0 marked words", from a copy a fresh browser tab had
 just sent. A copy with nothing in it should not be offered.
 
-## Is Qwen3-1.7B overkill for subtitle translation?
-
-It is 1.83 GB of the ~3.2 GB Termux footprint (ADR-0021), more than everything else combined. Check
-whether something smaller translates subtitle lines about as well: a dedicated zh→en model (e.g.
-opus-mt-zh-en through CTranslate2, ~80 MB), Qwen3-0.6B, or a Q4/Q5 build with one line per prompt
-(the Q4 1.7B merged lines at 20 per prompt, so the failure may be the batching, not the model).
-Compare on the same few minutes of real subtitles: alignment kept, English a learner can use, and
-speed on the phone.
-
 ## Test install and share-into-the-app on the emulator — needs a Google sign-in
 
 Blocked on 2026-09-25: installing needs a Google account in the emulator's Play Store (logcat:
