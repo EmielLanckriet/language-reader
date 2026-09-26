@@ -2,6 +2,31 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## A real alignment check for the LLM's lines
+
+`translate.py` only counts the lines that come back. Qwen3-0.6B shifted lines 16–19 by one, Q4 at
+5 lines per prompt did the same, and Q4 on the phone gave line 12 its neighbour's content, all under
+a matching count (ADR-0023). Now that an LLM line replaces a quick one, a shifted line silently makes
+things worse. Candidates: compare each LLM line against the quick line for the same cue (cheap, both
+are English), or ask the model to echo each line's Chinese.
+
+## Quick English on the live page
+
+A transcript still being written (ADR-0019) gets only the LLM's lines. The quick translator takes a
+fixed list of lines; the live page needs it to follow lines as they arrive, and to keep them with the
+pending job until it becomes a document.
+
+## The installed Chrome Reader did not offer its update
+
+2026-09-26: a new build was waiting (its worker answered `which-version` with the new version) but
+no "A new version is ready" banner appeared, on reload either. It did appear in a Samsung Internet
+tab. Moved over by hand with the worker's `skip-waiting` message.
+
+## The library offers to restore an empty copy
+
+"Your work can be restored … 0 documents and 0 marked words", from a copy a fresh browser tab had
+just sent. A copy with nothing in it should not be offered.
+
 ## Is Qwen3-1.7B overkill for subtitle translation?
 
 It is 1.83 GB of the ~3.2 GB Termux footprint (ADR-0021), more than everything else combined. Check
