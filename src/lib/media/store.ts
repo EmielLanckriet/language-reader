@@ -145,12 +145,18 @@ async function dismissedJobs(): Promise<string[]> {
 	}
 }
 
-export async function dismissJob(job: string): Promise<void> {
-	const jobs = await dismissedJobs();
-	if (jobs.includes(job)) return;
-	await writeFiles(await mediaRoot(), [
-		{ name: DISMISSED, blob: new Blob([JSON.stringify([...jobs, job])]) }
-	]);
+/** One at a time: two quick taps each read the list before the other wrote it, and one was lost. */
+let dismissing: Promise<void> = Promise.resolve();
+
+export function dismissJob(job: string): Promise<void> {
+	dismissing = dismissing.then(async () => {
+		const jobs = await dismissedJobs();
+		if (jobs.includes(job)) return;
+		await writeFiles(await mediaRoot(), [
+			{ name: DISMISSED, blob: new Blob([JSON.stringify([...jobs, job])]) }
+		]);
+	});
+	return dismissing;
 }
 
 export async function importedJobs(): Promise<Set<string>> {
