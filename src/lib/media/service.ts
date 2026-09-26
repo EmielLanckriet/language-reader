@@ -53,30 +53,28 @@ export function helperExpected(): boolean {
 }
 
 /**
- * Open Reader Start and wait for the service. 'missing' when Chrome fell back to this page because
- * the app is not installed (remembered, so the next tap shares instead); false when the service did
- * not answer within 20 s.
+ * Whether this page was opened as Chrome's fallback from the Reader Start link, meaning the app is
+ * not installed. Chrome loads the fallback as a new page, not a hash change (measured on the
+ * emulator), so this is checked on load. Remembered, so the next tap shares instead.
  */
-export async function startWithHelper(): Promise<boolean | 'missing'> {
+export function cameBackWithoutHelper(): boolean {
+	if (typeof location === 'undefined' || location.hash !== NO_HELPER_HASH) return false;
+	history.replaceState(history.state, '', location.href.split('#')[0]);
+	try {
+		localStorage.setItem(NO_HELPER, '1');
+	} catch {
+		// Then the next tap tries Reader Start again and falls back again: slower, not wrong.
+	}
+	return true;
+}
+
+/** Open Reader Start and wait for the service; false when it did not answer within 20 s. */
+export async function startWithHelper(): Promise<boolean> {
 	const page = location.href.split('#')[0];
-	const missing = new Promise<'missing'>((resolve) => {
-		const onHash = () => {
-			if (location.hash !== NO_HELPER_HASH) return;
-			removeEventListener('hashchange', onHash);
-			history.replaceState(history.state, '', page);
-			try {
-				localStorage.setItem(NO_HELPER, '1');
-			} catch {
-				// Then the next tap tries Reader Start again and falls back again: slower, not wrong.
-			}
-			resolve('missing');
-		};
-		addEventListener('hashchange', onHash);
-	});
 	location.href =
 		'intent://start#Intent;scheme=reader-start;package=io.github.emiellanckriet.readerstart;' +
 		`S.browser_fallback_url=${encodeURIComponent(page + NO_HELPER_HASH)};end`;
-	return Promise.race([missing, answers(20)]);
+	return answers(20);
 }
 
 export function canShareToTermux(): boolean {

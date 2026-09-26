@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		cameBackWithoutHelper,
 		canShareToTermux,
 		helperExpected,
 		startBySharing,
@@ -9,16 +10,18 @@
 	/** Called once the service answers. */
 	let { onstarted }: { onstarted?: () => void } = $props();
 
-	let state = $state<'idle' | 'starting' | 'failed' | 'no-helper'>('idle');
+	let state = $state<'idle' | 'starting' | 'failed' | 'no-helper'>(
+		cameBackWithoutHelper() ? 'no-helper' : 'idle'
+	);
 
 	async function start() {
 		state = 'starting';
 		// Reader Start is one tap; the share sheet is the fallback on a phone without it.
 		const started = helperExpected() ? await startWithHelper() : await startBySharing();
-		if (started === true) {
+		if (started) {
 			state = 'idle';
 			onstarted?.();
-		} else state = started === 'missing' ? 'no-helper' : 'failed';
+		} else state = 'failed';
 	}
 </script>
 
