@@ -6,6 +6,9 @@
 
 **Status**: Draft
 
+**Superseded in part** by spec 007 (2026-09-27): words are shown by today's recall (007 FR-016)
+rather than by the four Anki levels of FR-012, and an import now seeds the Reader's own scheduler.
+
 **Input**: User description: "Import the reader's Anki vocabulary as a baseline of word states, so the Reader already knows which words they know before they start reading. Source: the reader's live Anki profile ("User 2" on the laptop, synced nightly), note type "HSK", the Chinese word in the "Simplified" field, 5,000 notes with one card each, in decks "Mandarin: Vocabulary::HSK" and "Try hard". The collection uses FSRS: 2,128 cards store stability (days until recall drops to 90%) and difficulty; 2,872 cards were never studied; 4 are in (re)learning; 2 are suspended; 169 have lapsed 3+ times; review intervals: <7 d 44, 7-20 d 133, 21-89 d 612, 90-364 d 448, 365+ d 887. The reader explicitly does NOT want a plain known/learning split: the Reader's word states should reflect the way Anki already represents the card (its strength), not collapse it. […] Imported judgments must be told apart from the reader's own (provenance "anki") and must never overwrite a judgment the reader made themselves in Reader; a later re-import must be possible without duplicating or losing anything, and it must be possible to undo an import. […] Words in Anki that do not occur in any document yet must still get a state. This touches earned data (the event log and word states), the project's irreversible surface."
 
 ## Why This Slice Exists

@@ -139,10 +139,10 @@ long-term word changes its shade everywhere.
 ## Phase 6: Polish & Cross-Cutting
 
 - [X] T032 [P] Measured (research R14) with a throwaway vitest harness over the real Anki export; not kept in scripts/measure, since the phone numbers are the ones that decide
-- [ ] T033 [P] `docs/backlog.md`: listening cards need a brainstorm (sentence as the test, word as the memory, a new clip each review, creator as source difficulty); the register's rows for creator and speed as covariates and for fitting `evidence-*` to review outcomes
-- [ ] T034 [P] Update `specs/006-anki-baseline` references where display by Anki level is now superseded (FR-012 of 006 → spec 007 FR-016), in one line in its spec's header
+- [X] T033 [P] `docs/backlog.md`: listening cards need a brainstorm (sentence as the test, word as the memory, a new clip each review, creator as source difficulty); the register's rows for creator and speed as covariates and for fitting `evidence-*` to review outcomes
+- [X] T034 [P] Update `specs/006-anki-baseline` references where display by Anki level is now superseded (FR-012 of 006 → spec 007 FR-016), in one line in its spec's header
 - [ ] T035 Run the test-auditor agent over the new tests (tests that cannot fail, properties true by construction)
-- [ ] T036 `npm run check`, `npm run lint`, `npm test`, and only the `verify:browser` scenarios `encounters` and `cards` plus the existing media and reading scenarios
+- [X] T036 `npm run check`, `npm run lint`, `npm test`, and only the `verify:browser` scenarios `encounters` and `cards` plus the existing media and reading scenarios
 - [ ] T037 Phone, one deploy (quickstart phone steps 1–6): export Anki format 2 and import it, then check SC-001 to SC-006 and the delete behaviour. Record the measured numbers in `specs/007-fsrs-flashcards/quickstart.md`
 
 ---

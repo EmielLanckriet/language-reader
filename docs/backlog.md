@@ -2,6 +2,32 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## Listening cards: brainstorm first
+
+2026-09-27 (spec 007): left out of 007 on purpose; the reader wants a brainstorm before specifying.
+The shape so far: the word is the memory, a sentence is the test. A listening card plays a clip of
+the reader's own media containing the word, a different clip each review (one clip would be
+memorised), and the reveal shows the line's text, pinyin and English. The creator (already in each
+video's meta.json as `uploader`) and the playback speed are recorded on every encounter, as foreseen
+covariates: a source's difficulty, for reading evidence (a miss in fast accented speech counts less)
+and for picking clips easy first. Listening memory is already kept from lookups and from words
+heard with the text hidden, so the history will be there when the cards arrive.
+
+## Fit the evidence rule to review outcomes
+
+2026-09-27 (spec 007): `evidence-1`'s weights are guesses (research R5): a lookup is Again in both
+skills, a check or a word met under "I tapped everything" is Hard. Once months of in-app reviews
+exist, whether a passive encounter predicts recall can be measured against them, and a fitted
+`evidence-2` replaces it by a background recompute. Candidates then: creator and speed as
+covariates, context diversity (distinct documents) and library frequency as difficulty priors.
+
+## The attention answer recomputes a session's words while saving waits
+
+2026-09-27 (spec 007, research R14): answering "I tapped everything" recomputes every word of the
+session that has a memory, in the same transaction: 0.7 s on the laptop for a heavy synthetic year
+(about 250 words a session, 20,000 encounters). If the phone makes this several seconds, move that
+recompute into the background sweep: write the answer at once, refresh the words just after.
+
 ## A page loaded during a slow storage handover waits about 4 s
 
 2026-09-27 (spec 007): when a new page loads while the previous page's worker is still closing,
