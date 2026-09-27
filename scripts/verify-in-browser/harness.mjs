@@ -843,6 +843,19 @@ const scenarios = {
 				`);
 			const checked = await until('a word checked', () => tapWord('I knew it'));
 			const looked = await until('a word looked up', () => tapWord('Cancel'));
+			// US2: the word now has a memory, so it is coloured by recall, and its sheet says so.
+			const coloured = await until('the looked-up word coloured by recall', () =>
+				tab.evaluate(`
+					const word = document.querySelector('.media.stage .subtitles button.token');
+					// Just looked up: still being learned, so fragile (colourBand).
+					if (!word || !/recall-4/.test(word.className)) return null;
+					word.click();
+					await new Promise((r) => setTimeout(r, 300));
+					const said = [...document.querySelectorAll('.sheet .memory')].map((p) => p.textContent).join(' | ');
+					[...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Cancel').click();
+					return { className: word.className, said };
+				`)
+			);
 			await tab.evaluate(`
 				document.querySelector('button[aria-label^="Replay"]').click();
 				await new Promise((r) => setTimeout(r, 1200));
@@ -881,7 +894,9 @@ const scenarios = {
 					recorded.some((line) => line.startsWith('check') && line.includes(checked)) &&
 					recorded.some((line) => line.startsWith('lookup') && line.includes('2×')) &&
 					recorded.some((line) => line.includes('"answer":"some"')) &&
-					recorded.some((line) => /^seek.*"fromMs":3\d{4},"toMs":40\d{3}/.test(line)),
+					recorded.some((line) => /^seek.*"fromMs":3\d{4},"toMs":40\d{3}/.test(line)) &&
+					/^Reading: \d+% today/.test(coloured.said),
+				coloured,
 				checked,
 				looked,
 				recorded

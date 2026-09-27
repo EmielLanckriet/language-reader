@@ -1,0 +1,71 @@
+{
+	"format": 2,
+	"profile": "User 2",
+	"collectionModified": "2026-09-26T05:13:00Z",
+	"exportedAt": "2026-09-27T20:00:00Z",
+	"parameters": {
+		"preset": "Default",
+		"retention": 0.9,
+		"weights": [
+			0.1171, 2.677, 4.5017, 23.0332, 6.4299, 0.6978, 2.6018, 0.0167, 2.1238, 0.2581, 1.0861, 1.462,
+			0.0331, 0.1444, 1.6717, 0.2341, 2.4564, 0.8208, 0.3059, 0.2683, 0.2641
+		]
+	},
+	"words": [
+		{
+			"word": "将来",
+			"level": "anki-long-term",
+			"stability": 983.7,
+			"type": 2,
+			"lapses": 0,
+			"suspended": false,
+			"difficulty": 6.708,
+			"lastReview": "2026-08-18T14:55:20Z",
+			"decay": 0.264
+		},
+		{
+			"word": "关税",
+			"level": "anki-mature",
+			"stability": 64.2,
+			"type": 2,
+			"lapses": 1,
+			"suspended": false,
+			"difficulty": 5.2,
+			"lastReview": "2026-09-20T08:00:00Z",
+			"decay": 0.264
+		},
+		{
+			"word": "政策",
+			"level": "anki-young",
+			"stability": 12.5,
+			"type": 2,
+			"lapses": 0,
+			"suspended": false,
+			"difficulty": null,
+			"lastReview": null,
+			"decay": null
+		},
+		{
+			"word": "违法",
+			"level": "anki-learning",
+			"stability": 2.1,
+			"type": 3,
+			"lapses": 4,
+			"suspended": false,
+			"difficulty": 4.1,
+			"lastReview": "2026-09-25T07:30:00Z",
+			"decay": 0.264
+		},
+		{
+			"word": "朋友",
+			"level": "anki-mature",
+			"stability": 120.0,
+			"type": 2,
+			"lapses": 0,
+			"suspended": true,
+			"difficulty": 4.1,
+			"lastReview": "2026-09-25T07:30:00Z",
+			"decay": 0.264
+		}
+	]
+}

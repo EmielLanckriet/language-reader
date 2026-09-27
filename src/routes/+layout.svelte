@@ -12,7 +12,7 @@
 	import { attention } from '$lib/ui/attention.svelte';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
-	import { sweepStaleDocuments } from '$lib/storage/sweep';
+	import { sweepStaleDocuments, sweepStaleMemory } from '$lib/storage/sweep';
 	import { noteUpgraded } from '$lib/storage/upgrades';
 	import { activeAnalyzer } from '$lib/analyzer/active';
 	import { startCopying } from '$lib/backup/scheduler';
@@ -55,6 +55,8 @@
 
 		try {
 			const { repository } = await session();
+			// Memory first: a batch takes milliseconds, where a document's re-segmentation takes seconds.
+			await sweepStaleMemory(repository, () => document.visibilityState === 'visible');
 			await sweepStaleDocuments(
 				repository,
 				await activeAnalyzer(),

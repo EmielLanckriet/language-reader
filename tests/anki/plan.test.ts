@@ -43,6 +43,6 @@ describe('planning an Anki import', () => {
 	});
 
 	it('refuses a file of another format, saying so', () => {
-		expect(() => parseAnkiExport(JSON.stringify({ ...file, format: 2 }))).toThrow(/format 2/);
+		expect(() => parseAnkiExport(JSON.stringify({ ...file, format: 3 }))).toThrow(/format 3/);
 	});
 });

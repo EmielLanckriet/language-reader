@@ -14,6 +14,7 @@ export type Call =
 	| { method: 'saveDocument'; args: [unknown, unknown, unknown] }
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
+	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'readHistory'; args: [] }
 	| { method: 'replaceTokens'; args: [number, unknown, unknown] }
 	| { method: 'advanceUpgrade'; args: [number, unknown, unknown] }
@@ -25,6 +26,8 @@ export type Call =
 	| { method: 'startSession'; args: [number, string] }
 	| { method: 'recordEncounters'; args: [number, unknown[]] }
 	| { method: 'recentEncounters'; args: [] }
+	| { method: 'staleMemory'; args: [number] }
+	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }
 	| { method: 'undoAnkiImport'; args: [string] }

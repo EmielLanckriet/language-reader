@@ -1,0 +1,218 @@
+import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
+import { readFileSync } from 'node:fs';
+import { Repository } from '../../src/lib/storage/repository';
+import { queryRows, type Database } from '../../src/lib/storage/db';
+import { parseAnkiExport } from '../../src/lib/domain/anki';
+import { ruleKey } from '../../src/lib/domain/memory';
+import { freshDatabase } from './support';
+import { sweepStaleMemory } from '../../src/lib/storage/sweep';
+import { run } from '../../src/lib/storage/db';
+import { buildHistory } from '../backup/support';
+
+// Memory is derived (ADR-0027): every event that touches a word recomputes that word's rows in the
+// same transaction, and rebuilding from nothing gives exactly the rows built up that way (SC-007).
+
+const anki = parseAnkiExport(readFileSync('tests/fixtures/anki/anki-words-v2.json', 'utf8'));
+const day = (n: number, hour = 10) => new Date(Date.UTC(2026, 9, n, hour)).toISOString();
+
+async function library() {
+	const db = await freshDatabase();
+	const repository = new Repository(db);
+	const [documentId] = await buildHistory(repository, ['我看书你好将来'], []);
+	const words = repository.getDocument(documentId).tokens.filter((token) => token.isWord);
+	const lookup = (i: number, at: string) => ({
+		kind: 'lookup',
+		at,
+		lexemeId: words[i].lexemeId,
+		documentId,
+		fromOffset: words[i].start,
+		toOffset: words[i].end
+	});
+	const read = (at: string) => ({ kind: 'read', at, documentId, fromOffset: 0, toOffset: 7 });
+	return { db, repository, documentId, words, lookup, read };
+}
+
+const rows = (db: Database) =>
+	queryRows(db, 'SELECT * FROM memory ORDER BY lexeme_id, skill').map((row) => JSON.stringify(row));
+
+describe('memory kept with the history', () => {
+	it('is made by a lookup, in the same write, as a card in both skills', async () => {
+		const { db, repository, documentId, words, lookup } = await library();
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(0, day(1))
+		]);
+
+		const memory = queryRows(db, 'SELECT * FROM memory ORDER BY skill');
+		expect(memory.map((row) => [row.lexeme_id, row.skill, row.card, row.rule])).toEqual([
+			[words[0].lexemeId!, 'listening', 0, ruleKey()],
+			[words[0].lexemeId!, 'reading', 1, ruleKey()]
+		]);
+	});
+
+	it('is recomputed for the words of a session when its attention answer arrives', async () => {
+		const { db, repository, documentId, words, lookup, read } = await library();
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(0, day(1))
+		]);
+		const before = queryRows(db, `SELECT reps FROM memory WHERE skill = 'reading'`)[0].reps;
+
+		const later = repository.startSession(documentId, 'reading');
+		repository.recordEncounters(later, [read(day(5))]);
+		expect(queryRows(db, `SELECT reps FROM memory WHERE skill = 'reading'`)[0].reps).toBe(before);
+		repository.recordEncounters(later, [
+			{ kind: 'attention', at: day(5, 11), detail: { answer: 'all' } }
+		]);
+
+		expect(queryRows(db, `SELECT reps FROM memory WHERE skill = 'reading'`)[0].reps).toBe(
+			Number(before) + 1
+		);
+		// Words read past with no memory yet get none (evidence-1).
+		expect(queryRows(db, 'SELECT DISTINCT lexeme_id FROM memory')).toEqual([
+			{ lexeme_id: words[0].lexemeId! }
+		]);
+	});
+
+	it('is made by an Anki import, under the parameters it brought', async () => {
+		const { db, repository } = await library();
+		repository.importAnki(anki);
+		const seeded = queryRows(db, `SELECT seeded, rule FROM memory WHERE skill = 'reading'`);
+		expect(seeded).toHaveLength(5);
+		expect(new Set(seeded.map((row) => row.rule))).toEqual(new Set([ruleKey(anki.parameters!)]));
+		// 政策 came without a review date in the fixture.
+		expect(seeded.map((row) => row.seeded).sort()).toEqual([
+			'anki',
+			'anki',
+			'anki',
+			'anki',
+			'anki-undated'
+		]);
+	});
+
+	it('is removed when the word is marked ignored', async () => {
+		const { db, repository, documentId, words, lookup } = await library();
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(0, day(1))
+		]);
+		repository.assertState(words[0].lexemeId!, 'ignored');
+		expect(queryRows(db, 'SELECT * FROM memory')).toEqual([]);
+	});
+
+	it('rebuilt from nothing, is exactly what was built up event by event', async () => {
+		const step = fc.oneof(
+			fc.record({
+				kind: fc.constant('lookup'),
+				word: fc.nat(6),
+				day: fc.integer({ min: 1, max: 28 })
+			}),
+			fc.record({
+				kind: fc.constant('check'),
+				word: fc.nat(6),
+				day: fc.integer({ min: 1, max: 28 })
+			}),
+			fc.record({
+				kind: fc.constant('read'),
+				answer: fc.constantFrom('all', 'some', null),
+				day: fc.integer({ min: 1, max: 28 })
+			}),
+			fc.record({
+				kind: fc.constant('mark'),
+				word: fc.nat(6),
+				state: fc.constantFrom('known', 'learning', 'ignored')
+			}),
+			fc.record({
+				kind: fc.constant('review'),
+				word: fc.nat(6),
+				grade: fc.integer({ min: 1, max: 4 }),
+				day: fc.integer({ min: 1, max: 28 })
+			}),
+			fc.constant({ kind: 'anki' })
+		);
+		await fc.assert(
+			fc.asyncProperty(fc.array(step, { minLength: 1, maxLength: 12 }), async (steps) => {
+				const { db, repository, documentId, words, lookup, read } = await library();
+				for (const s of steps as unknown as Record<string, never>[]) {
+					const word = words[s.word % words.length];
+					const session = repository.startSession(documentId, 'reading');
+					if (s.kind === 'lookup')
+						repository.recordEncounters(session, [lookup(s.word % words.length, day(s.day))]);
+					if (s.kind === 'check')
+						repository.recordEncounters(session, [
+							{ ...lookup(s.word % words.length, day(s.day)), kind: 'check' }
+						]);
+					if (s.kind === 'read')
+						repository.recordEncounters(session, [
+							read(day(s.day)),
+							{ kind: 'attention', at: day(s.day, 11), detail: { answer: s.answer } }
+						]);
+					if (s.kind === 'mark') repository.assertState(word.lexemeId!, s.state);
+					if (s.kind === 'review')
+						repository.recordReview(
+							word.lexemeId!,
+							s.grade,
+							{ documentId, fromOffset: word.start, toOffset: word.end },
+							day(s.day)
+						);
+					if (s.kind === 'anki') repository.importAnki(anki);
+				}
+				const incremental = rows(db);
+				repository.rebuildMemory();
+				expect(rows(db)).toEqual(incremental);
+			}),
+			{ numRuns: 40 }
+		);
+	});
+
+	it('left under an older rule, is shown until the sweep recomputes it', async () => {
+		const { db, repository, documentId, lookup } = await library();
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(0, day(1)),
+			lookup(1, day(1))
+		]);
+		const current = rows(db);
+		run(db, `UPDATE memory SET rule = 'evidence-0/default', stability = 99`);
+		const client = {
+			staleMemory: async (limit: number) => repository.staleMemory(limit),
+			refreshMemory: async (ids: number[]) => repository.refreshMemory(ids)
+		};
+
+		expect(await sweepStaleMemory(client, () => false)).toBe(0);
+		expect(queryRows(db, 'SELECT DISTINCT stability FROM memory')).toEqual([{ stability: 99 }]);
+		expect(await sweepStaleMemory(client, () => true, 1)).toBe(2);
+		expect(rows(db)).toEqual(current);
+	});
+
+	it('is read back per skill with the parameters recall needs', async () => {
+		const { repository, documentId, words, lookup } = await library();
+		repository.importAnki(anki);
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(0, day(1))
+		]);
+
+		const { memory, parameters } = repository.getMemory([
+			words[0].lexemeId!,
+			words[0].lexemeId!,
+			999
+		]);
+		expect(parameters).toEqual({
+			preset: 'Default',
+			weights: anki.parameters!.weights,
+			retention: 0.9
+		});
+		expect([...memory.keys()]).toEqual([words[0].lexemeId!]);
+		expect(memory.get(words[0].lexemeId!)).toMatchObject({
+			reading: { card: true, reviewed: false, reps: 1, lapses: 0 },
+			listening: { card: false }
+		});
+	});
+
+	it('is built for a library from before it existed', async () => {
+		const { db, repository } = await library();
+		repository.importAnki(anki);
+		const built = rows(db);
+		run(db, 'DELETE FROM memory');
+
+		repository.ensureMemory();
+		expect(rows(db)).toEqual(built);
+	});
+});

@@ -177,3 +177,26 @@ async function upgradeOneDocument(
 
 	return false;
 }
+
+/**
+ * Bring memory computed under an older evidence rule up to the current one (spec 007, research R6),
+ * a batch at a time and only while `shouldContinue`. The old rows are shown until then (Principle
+ * VIII).
+ */
+export async function sweepStaleMemory(
+	client: {
+		staleMemory(limit: number): Promise<number[]>;
+		refreshMemory(ids: number[]): Promise<void>;
+	},
+	shouldContinue: () => boolean,
+	batch = 200
+): Promise<number> {
+	let refreshed = 0;
+	while (shouldContinue()) {
+		const stale = await client.staleMemory(batch);
+		if (stale.length === 0) break;
+		await client.refreshMemory(stale);
+		refreshed += stale.length;
+	}
+	return refreshed;
+}

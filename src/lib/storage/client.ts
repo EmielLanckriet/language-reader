@@ -23,7 +23,15 @@ import type { DocumentSummary, RecentSession, StoredDocument, UpgradeBatch } fro
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
-import type { Encounter, Modality } from '../domain/encounter';
+import type { Encounter, Modality, Skill } from '../domain/encounter';
+import type { Memory } from '../domain/memory';
+import type { FsrsParameters } from '../domain/anki';
+
+/** Words' memory per skill, and the parameters their recall is computed with. */
+export interface WordMemory {
+	memory: Map<LexemeId, Partial<Record<Skill, Memory>>>;
+	parameters?: FsrsParameters;
+}
 import type { Diagnostic, DiagnosticKind } from '../diagnostics/log';
 import { explain, type Availability, type Explanation } from './availability';
 import type { Call, Failure, Request, Response, ToWorker } from './protocol';
@@ -230,6 +238,10 @@ export class RepositoryClient {
 		return this.call({ method: 'getStates', args: [lexemeIds] });
 	}
 
+	getMemory(lexemeIds: LexemeId[]): Promise<WordMemory> {
+		return this.call({ method: 'getMemory', args: [lexemeIds] });
+	}
+
 	readHistory(): Promise<HistoryEntry[]> {
 		return this.call({ method: 'readHistory', args: [] });
 	}
@@ -254,6 +266,15 @@ export class RepositoryClient {
 		return this.call<void>({ method: 'recordEncounters', args: [sessionId, encounters] }).then(
 			earned
 		);
+	}
+
+	staleMemory(limit: number): Promise<number[]> {
+		return this.call({ method: 'staleMemory', args: [limit] });
+	}
+
+	/** Derived data catching up, like replaceTokens: not a reader change. */
+	refreshMemory(lexemeIds: number[]): Promise<void> {
+		return this.call({ method: 'refreshMemory', args: [lexemeIds] });
 	}
 
 	recentEncounters(): Promise<RecentSession[]> {

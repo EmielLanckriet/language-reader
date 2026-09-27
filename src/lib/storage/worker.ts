@@ -132,6 +132,7 @@ async function take(): Promise<void> {
 	if (result.ok) {
 		db = result.db;
 		repository = new Repository(db);
+		repository.ensureMemory();
 		apply({ kind: 'acquire-succeeded' });
 	} else {
 		apply({ kind: 'acquire-failed', cause: result.cause });
@@ -221,6 +222,8 @@ function run(request: Request): unknown {
 				request.args[1],
 				request.args[2] as Occurrence | undefined
 			);
+		case 'getMemory':
+			return repository.getMemory(request.args[0]);
 		case 'getStates':
 			return repository.getStates(request.args[0]);
 		case 'readHistory':
@@ -247,6 +250,10 @@ function run(request: Request): unknown {
 			return repository.startSession(request.args[0], request.args[1] as Modality);
 		case 'recordEncounters':
 			return repository.recordEncounters(request.args[0], request.args[1] as Encounter[]);
+		case 'staleMemory':
+			return repository.staleMemory(request.args[0]);
+		case 'refreshMemory':
+			return repository.refreshMemory(request.args[0]);
 		case 'recentEncounters':
 			return repository.recentEncounters();
 		case 'importAnki':

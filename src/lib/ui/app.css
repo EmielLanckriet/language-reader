@@ -264,6 +264,21 @@ button.token.state-anki-long-term {
 	border-bottom-color: color-mix(in srgb, var(--anki) 15%, transparent);
 }
 
+/* Today's chance of recall (spec 007, research R7): strong where a word is fading, faint where it
+   is solid, on the same ramp as the Anki levels it replaces. */
+button.token.recall-4 {
+	border-bottom-color: var(--anki);
+}
+button.token.recall-3 {
+	border-bottom-color: color-mix(in srgb, var(--anki) 65%, transparent);
+}
+button.token.recall-2 {
+	border-bottom-color: color-mix(in srgb, var(--anki) 35%, transparent);
+}
+button.token.recall-1 {
+	border-bottom-color: color-mix(in srgb, var(--anki) 15%, transparent);
+}
+
 .loading {
 	color: var(--muted);
 }

@@ -2,8 +2,14 @@
 
 ## R1 — Scheduler library: ts-fsrs 5.4.2, FSRS-6 defaults
 
-**Decision**: `ts-fsrs` 5.4.2 (MIT, pure TypeScript, no dependencies), FSRS-6 default parameters
-(21 weights, target recall 0.9), `enable_fuzz: false`, `enable_short_term: true`.
+**Decision**: `ts-fsrs` 5.4.2 (MIT, pure TypeScript, no dependencies), `enable_fuzz: false`,
+`enable_short_term: true`. **Parameters: the reader's own, fitted by Anki** (the reader's choice,
+2026-09-27): the 21 FSRS-6 weights and target recall of the preset their cards were scheduled with,
+read from the collection by the export and kept in the history as an `anki-parameters` encounter.
+ts-fsrs's defaults only when no import has brought any. Measured: the "Default" preset holds 21
+weights with w20 = 0.2641, which is the `decay` all 2,128 studied cards carry, against the default's
+0.154 — so the defaults would have given Anki words different recall and due dates than Anki does.
+Reading fitted parameters is not fitting them, which stays out of scope.
 
 **Measured** (scratchpad, 2026-09-27, not trusted from docs): `fsrs().parameters.w.length` is 21; a
 card built from `{stability: 400, difficulty: 5, state: Review, last_review: 2026-03-01}` gives
@@ -123,6 +129,11 @@ display; the events that carry them stay.
 
 **Why compute at draw time**: recall changes with the clock, not with events, so storing it would be
 stale by tomorrow.
+
+**A word still being learned is band 4 whatever its recall** (found in the browser, 2026-09-27): right
+after a lookup FSRS puts recall at 100 %, because the answer was just shown, and it falls within
+hours at a stability of 0.2 days. Coloured by recall alone, a word the reader did not know looked
+solid. `colourBand` shows Learning and Relearning cards as fragile; recall decides from Review on.
 
 ## R8 — Cards and the queue: derived, nothing stored but reviews
 

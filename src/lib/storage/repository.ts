@@ -20,8 +20,20 @@ import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { projectStates, RETRACTED } from '../domain/state';
 import { validateEncounter, type Encounter, type Modality } from '../domain/encounter';
+import type { FsrsParameters } from '../domain/anki';
+import {
+	memoryOf,
+	ruleKey,
+	type Exposure,
+	type HistoryEvent,
+	type Mark,
+	type Memory,
+	type WordHistory
+} from '../domain/memory';
+import type { AttentionAnswer, Skill } from '../domain/encounter';
 import {
 	type Database,
+	type Row,
 	deviceIdOf,
 	lastInsertId,
 	nextDeviceSeq,
@@ -535,6 +547,7 @@ export class Repository {
 		const state = projectStates([entry]).get(entry.lexemeId);
 		if (state) this.writeProjectedState(state);
 		else run(this.db, 'DELETE FROM word_state WHERE lexeme_id = ?', [entry.lexemeId]);
+		this.recomputeMemory([entry.lexemeId]);
 	}
 
 	/**
@@ -563,7 +576,204 @@ export class Repository {
 			const exists = queryRows(this.db, 'SELECT 1 FROM session WHERE id = ?', [sessionId]);
 			if (exists.length === 0) throw new StorageFailure(`There is no session ${sessionId}.`);
 			for (const encounter of encounters) this.appendEncounter(sessionId, encounter);
+			this.recomputeMemory(this.touchedBy(sessionId, encounters));
 		});
+	}
+
+	/**
+	 * Record a flashcard grade (FR-007) and recompute the word's memory with it. `shown` is the
+	 * sentence the card showed, so a later review can show another.
+	 */
+	recordReview(
+		lexemeId: LexemeId,
+		grade: number,
+		shown: Occurrence,
+		at: string = new Date().toISOString()
+	): void {
+		transact(this.db, () => {
+			this.appendEncounter(null, {
+				kind: 'review',
+				at,
+				lexemeId,
+				documentId: shown.documentId,
+				fromOffset: shown.fromOffset,
+				toOffset: shown.toOffset,
+				detail: { skill: 'reading', grade }
+			});
+			this.recomputeMemory([lexemeId]);
+		});
+	}
+
+	/**
+	 * The words whose memory a batch of encounters can change (research R6): the word of a lookup,
+	 * check or review, and for an attention answer every word the session's stretches covered that
+	 * already has a memory, since only those can gain evidence from it.
+	 */
+	private touchedBy(sessionId: number, encounters: Encounter[]): Set<LexemeId> {
+		const touched = new Set<LexemeId>();
+		for (const encounter of encounters) {
+			if (encounter.lexemeId !== undefined) touched.add(encounter.lexemeId);
+			if (encounter.kind !== 'attention') continue;
+			for (const row of queryRows(
+				this.db,
+				`SELECT DISTINCT t.lexeme_id FROM encounter e
+         JOIN token t ON t.document_id = e.document_id
+                     AND t.start < e.to_offset AND t.end > e.from_offset
+         WHERE e.session_id = ? AND e.kind IN ('read', 'played')
+           AND t.lexeme_id IN (SELECT lexeme_id FROM memory)`,
+				[sessionId]
+			))
+				touched.add(Number(row.lexeme_id));
+		}
+		return touched;
+	}
+
+	/** The parameters the latest Anki import brought, or none (then ts-fsrs's defaults). */
+	private currentParameters(): FsrsParameters | undefined {
+		const latest = queryRows(
+			this.db,
+			`SELECT detail FROM encounter WHERE kind = 'anki-parameters'
+       ORDER BY device_id, device_seq DESC LIMIT 1`
+		)[0];
+		if (!latest) return undefined;
+		const { preset, weights, retention } = JSON.parse(String(latest.detail));
+		return { preset, weights, retention };
+	}
+
+	/** Everything in the history that bears on one word (contracts/evidence-rule.md). */
+	private wordHistory(lexemeId: LexemeId): WordHistory {
+		const ordered = (row: Row) => ({
+			deviceId: String(row.device_id),
+			deviceSeq: Number(row.device_seq),
+			at: String(row.at)
+		});
+		const marks: Mark[] = queryRows(
+			this.db,
+			`SELECT asserted, provenance, asserted_at AS at, device_id, device_seq
+       FROM status_event WHERE lexeme_id = ?`,
+			[lexemeId]
+		).map((row) => ({
+			...ordered(row),
+			asserted: String(row.asserted),
+			provenance: String(row.provenance)
+		}));
+		const optional = (row: Row) => ({
+			...(row.session_id === null ? {} : { sessionId: Number(row.session_id) }),
+			...(row.modality === null ? {} : { modality: String(row.modality) as Modality }),
+			...(row.text_visible === null ? {} : { textVisible: row.text_visible === 1 })
+		});
+		const events: HistoryEvent[] = queryRows(
+			this.db,
+			`SELECT e.kind, e.session_id, s.modality, e.text_visible, e.detail, e.at, e.device_id, e.device_seq
+       FROM encounter e LEFT JOIN session s ON s.id = e.session_id
+       WHERE e.lexeme_id = ? AND e.kind IN ('lookup', 'check', 'review')`,
+			[lexemeId]
+		).map((row) => ({
+			...ordered(row),
+			...optional(row),
+			kind: String(row.kind),
+			detail: JSON.parse(String(row.detail))
+		}));
+		const exposures = queryRows(
+			this.db,
+			`SELECT DISTINCT e.id, e.session_id, s.modality, e.text_visible, e.at, e.device_id, e.device_seq
+       FROM encounter e JOIN session s ON s.id = e.session_id
+       JOIN token t ON t.document_id = e.document_id
+                   AND t.start < e.to_offset AND t.end > e.from_offset
+       WHERE t.lexeme_id = ? AND e.kind IN ('read', 'played')`,
+			[lexemeId]
+		).map((row) => ({ ...ordered(row), ...optional(row) }) as Exposure);
+		const answers = new Map<number, AttentionAnswer>();
+		const sessions = [...new Set(exposures.map((exposure) => exposure.sessionId))];
+		if (sessions.length > 0) {
+			for (const row of queryRows(
+				this.db,
+				`SELECT session_id, detail FROM encounter
+         WHERE kind = 'attention' AND session_id IN (${sessions.map(() => '?').join(',')})
+         ORDER BY device_id, device_seq`,
+				sessions
+			))
+				answers.set(Number(row.session_id), JSON.parse(String(row.detail)).answer);
+		}
+		return { marks, events, exposures, answers };
+	}
+
+	/** Recompute these words' memory rows from their history, under the current rule (R6). */
+	private recomputeMemory(lexemeIds: Iterable<LexemeId>): void {
+		const parameters = this.currentParameters();
+		const rule = ruleKey(parameters);
+		for (const lexemeId of lexemeIds) {
+			run(this.db, 'DELETE FROM memory WHERE lexeme_id = ?', [lexemeId]);
+			const memory = memoryOf(this.wordHistory(lexemeId), parameters);
+			for (const [skill, m] of Object.entries(memory) as [Skill, Memory][]) {
+				run(
+					this.db,
+					`INSERT INTO memory (lexeme_id, skill, stability, difficulty, state, last_at, due, reps,
+             lapses, card, reviewed, seeded, rule)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					[
+						lexemeId,
+						skill,
+						m.stability,
+						m.difficulty,
+						m.state,
+						m.lastAt,
+						m.due,
+						m.reps,
+						m.lapses,
+						m.card ? 1 : 0,
+						m.reviewed ? 1 : 0,
+						m.seeded ?? null,
+						rule
+					]
+				);
+			}
+		}
+	}
+
+	/**
+	 * Build memory for a history that has none, as a library from before spec 007 does: its marks
+	 * and Anki imports were written before there was a memory table to keep in step.
+	 */
+	ensureMemory(): void {
+		const counts = queryRows(
+			this.db,
+			'SELECT (SELECT COUNT(*) FROM memory) AS memory, (SELECT COUNT(*) FROM status_event) AS marks'
+		)[0];
+		if (Number(counts.memory) === 0 && Number(counts.marks) > 0) this.rebuildMemory();
+	}
+
+	/** Every word's memory from nothing (SC-007): after a restore, or to check the incremental rows. */
+	rebuildMemory(): void {
+		transact(this.db, () => {
+			run(this.db, 'DELETE FROM memory');
+			this.recomputeMemory(this.wordsWithHistory());
+		});
+	}
+
+	/**
+	 * Words whose memory was computed under another rule than the current one (Principle VIII): kept
+	 * and shown until the sweep recomputes them, a batch at a time.
+	 */
+	staleMemory(limit: number): LexemeId[] {
+		return queryRows(this.db, 'SELECT DISTINCT lexeme_id FROM memory WHERE rule != ? LIMIT ?', [
+			ruleKey(this.currentParameters()),
+			limit
+		]).map((row) => Number(row.lexeme_id));
+	}
+
+	/** Recompute these words' memory: one batch of the sweep. */
+	refreshMemory(lexemeIds: LexemeId[]): void {
+		transact(this.db, () => this.recomputeMemory(lexemeIds));
+	}
+
+	/** Every word the history says anything about: the only ones that can have a memory. */
+	private wordsWithHistory(): LexemeId[] {
+		return queryRows(
+			this.db,
+			`SELECT lexeme_id FROM status_event UNION
+       SELECT lexeme_id FROM encounter WHERE lexeme_id IS NOT NULL`
+		).map((row) => Number(row.lexeme_id));
 	}
 
 	private appendEncounter(sessionId: number | null, encounter: Encounter): void {
@@ -624,6 +834,31 @@ export class Repository {
 	}
 
 	/**
+	 * Keep the FSRS parameters an Anki import brought, unless they are the ones kept already. They
+	 * live in the history, not in a setting, because every memory is recomputed from the history.
+	 */
+	private recordParameters(parameters: FsrsParameters, importId: string): boolean {
+		const latest = queryRows(
+			this.db,
+			`SELECT detail FROM encounter WHERE kind = 'anki-parameters'
+       ORDER BY device_id, device_seq DESC LIMIT 1`
+		)[0];
+		const kept = latest && (JSON.parse(String(latest.detail)) as FsrsParameters);
+		const same =
+			kept &&
+			kept.preset === parameters.preset &&
+			kept.retention === parameters.retention &&
+			JSON.stringify(kept.weights) === JSON.stringify(parameters.weights);
+		if (same) return false;
+		this.appendEncounter(null, {
+			kind: 'anki-parameters',
+			at: new Date().toISOString(),
+			detail: { ...parameters, importId }
+		});
+		return true;
+	}
+
+	/**
 	 * Bring the reader's Anki words in (spec 006, ADR-0024): each word's Anki level as an ordinary
 	 * judgment tagged with its import, in one transaction. What to write for each word is decided by
 	 * `planImport`: never over the reader's own judgment, nothing for a word Anki has not changed.
@@ -631,6 +866,10 @@ export class Repository {
 	importAnki(file: AnkiExport): { set: number; keptOwn: string[]; unchanged: number } {
 		return transact(this.db, () => {
 			const plan = this.planAnki(file);
+			// First, so the words below are computed under the parameters this import brought.
+			const refitted = file.parameters
+				? this.recordParameters(file.parameters, file.exportedAt)
+				: false;
 			const deviceId = deviceIdOf(this.db);
 			const assertedAt = new Date().toISOString();
 			for (const { word, level, provenance } of plan.set) {
@@ -645,6 +884,8 @@ export class Repository {
 				this.appendEvent(entry);
 				this.projectEntry(entry);
 			}
+			// New parameters change every word's memory, not only the words this import set.
+			if (refitted) this.recomputeMemory(this.wordsWithHistory());
 			return { set: plan.set.length, keptOwn: plan.keptOwn, unchanged: plan.unchanged };
 		});
 	}
@@ -740,6 +981,43 @@ export class Repository {
 				}
 			])
 		);
+	}
+
+	/**
+	 * These words' memory in each skill, and the parameters today's recall is computed with
+	 * (spec 007, research R7). Recall itself is not stored: it changes with the clock.
+	 */
+	getMemory(lexemeIds: LexemeId[]): {
+		memory: Map<LexemeId, Partial<Record<Skill, Memory>>>;
+		parameters?: FsrsParameters;
+	} {
+		const memory = new Map<LexemeId, Partial<Record<Skill, Memory>>>();
+		const unique = [...new Set(lexemeIds)];
+		if (unique.length > 0) {
+			const rows = queryRows(
+				this.db,
+				`SELECT * FROM memory WHERE lexeme_id IN (${unique.map(() => '?').join(', ')})`,
+				unique
+			);
+			for (const row of rows) {
+				const id = Number(row.lexeme_id);
+				const skills = memory.get(id) ?? {};
+				skills[String(row.skill) as Skill] = {
+					stability: Number(row.stability),
+					difficulty: Number(row.difficulty),
+					state: Number(row.state),
+					lastAt: String(row.last_at),
+					due: String(row.due),
+					reps: Number(row.reps),
+					lapses: Number(row.lapses),
+					card: row.card === 1,
+					reviewed: row.reviewed === 1,
+					...(row.seeded === null ? {} : { seeded: String(row.seeded) })
+				};
+				memory.set(id, skills);
+			}
+		}
+		return { memory, parameters: this.currentParameters() };
 	}
 
 	/**
@@ -1112,6 +1390,9 @@ export class Repository {
 					'The copy is inconsistent: its marks do not match its history.'
 				);
 			}
+			// Memory is derived and never copied: rebuilt from what was just restored.
+			run(this.db, 'DELETE FROM memory');
+			this.recomputeMemory(this.wordsWithHistory());
 			return renumbered;
 		});
 	}

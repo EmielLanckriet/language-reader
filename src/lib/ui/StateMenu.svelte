@@ -2,6 +2,9 @@
 	import { ankiImportOf } from '$lib/domain/anki';
 	import { ANKI_LEVELS, AVAILABLE_STATES } from '$lib/domain/state';
 	import { lookUp } from '$lib/analyzer/lookup';
+	import { recall, type Memory } from '$lib/domain/memory';
+	import type { FsrsParameters } from '$lib/domain/anki';
+	import type { Skill } from '$lib/domain/encounter';
 
 	/**
 	 * The menu a tap opens (FR-006).
@@ -19,7 +22,9 @@
 		provenance,
 		onchoose,
 		onknew,
-		onclose
+		onclose,
+		memory,
+		parameters
 	}: {
 		word: string;
 		sentence?: string;
@@ -32,7 +37,41 @@
 		/** The reader only checked a word they knew: a check, not a lookup (spec 007). */
 		onknew?: () => void;
 		onclose: () => void;
+		/** The word's memory per skill (spec 007, FR-018), shown in plain words. */
+		memory?: Partial<Record<Skill, Memory>>;
+		parameters?: FsrsParameters;
 	} = $props();
+
+	const DAY_MS = 86_400_000;
+
+	function describeSkill(name: string, m: Memory | undefined): string {
+		if (!m) return `${name}: —`;
+		const chance = Math.round(recall(m, new Date(), parameters) * 100);
+		const days = Math.round((new Date(m.due).getTime() - Date.now()) / DAY_MS);
+		const next =
+			new Date(m.due).getTime() <= Date.now()
+				? 'due now'
+				: days < 1
+					? 'next review today'
+					: days === 1
+						? 'next review tomorrow'
+						: `next review in ${days} days`;
+		return `${name}: ${chance}% today, ${next}`;
+	}
+
+	const remembered = $derived.by(() => {
+		if (!memory?.reading && !memory?.listening) return null;
+		const reading = memory.reading;
+		const origin = reading?.reviewed
+			? 'Reviewed in the Reader'
+			: reading?.seeded
+				? 'Started from Anki'
+				: 'From your lookups';
+		return {
+			skills: `${describeSkill('Reading', memory.reading)} · ${describeSkill('Listening', memory.listening)}`,
+			origin
+		};
+	});
 
 	const looked = $derived(lookUp(word));
 	const fromAnki = $derived.by(() => {
@@ -86,7 +125,13 @@
 			>
 		{/if}
 
-		{#if fromAnki}<p class="muted anki">{fromAnki}</p>{/if}
+		{#if remembered}
+			<p class="muted memory">{remembered.skills}</p>
+			<p class="muted memory">
+				{remembered.origin}{#if fromAnki}
+					· {fromAnki}{/if}
+			</p>
+		{:else if fromAnki}<p class="muted anki">{fromAnki}</p>{/if}
 
 		{#if marking}
 			<div class="choices">

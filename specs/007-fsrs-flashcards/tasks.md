@@ -84,24 +84,24 @@ today's recall everywhere.
 **Independent test**: spec story 2. After a seed, three words show three shades. A lookup of the
 long-term word changes its shade everywhere.
 
-- [ ] T017 [P] [US2] Test first in `scripts/anki/test_export_words.py`, then change `scripts/anki/export_words.py`: format 2 adds `difficulty` (card `data.d`, else null) and `lastReview` (newest `revlog.id` of the card, ISO, else null); still read-only from a copy (contracts/formats.md)
-- [ ] T018 [P] [US2] Test first in `tests/anki/plan.test.ts`, then change `src/lib/domain/anki.ts`:
+- [X] T017 [P] [US2] Test first in `scripts/anki/test_export_words.py`, then change `scripts/anki/export_words.py`: format 2 adds `difficulty` (card `data.d`, else null) and `lastReview` (newest `revlog.id` of the card, ISO, else null); still read-only from a copy (contracts/formats.md)
+- [X] T018 [P] [US2] Test first in `tests/anki/plan.test.ts`, then change `src/lib/domain/anki.ts`:
   - `parseAnkiExport` accepts formats 1 and 2;
   - `ankiProvenance` writes `s= d= r=`;
   - a new `ankiSeedOf(provenance)` reads both provenance forms (format 1 → difficulty 5, date unknown);
   - an unchanged re-import still writes nothing.
-- [ ] T019 [US2] Test first in `tests/domain/memory.test.ts`, per contracts/evidence-rule.md obligations 1, 3, 4, 5, 6 and research R5: one example test per row and per limit of the evidence table, plus fast-check that the fold is deterministic and depends on history order, not on the order the list arrives in
-- [ ] T020 [US2] Implement `src/lib/domain/memory.ts` (`evidenceFor`, `foldMemory`, `recall`, `RULE = 'evidence-1'`) over ts-fsrs with fuzz off and short-term on (research R1), until T019 passes. Mutate each limit once
-- [ ] T021 [US2] Test first in `tests/storage/memory.test.ts`: every event that touches a word recomputes that word's `memory` rows in the same transaction as the event:
+- [X] T019 [US2] Test first in `tests/domain/memory.test.ts`, per contracts/evidence-rule.md obligations 1, 3, 4, 5, 6 and research R5: one example test per row and per limit of the evidence table, plus fast-check that the fold is deterministic and depends on history order, not on the order the list arrives in
+- [X] T020 [US2] Implement `src/lib/domain/memory.ts` (`evidenceFor`, `foldMemory`, `recall`, `RULE = 'evidence-1'`) over ts-fsrs with fuzz off and short-term on (research R1), until T019 passes. Mutate each limit once
+- [X] T021 [US2] Test first in `tests/storage/memory.test.ts`: every event that touches a word recomputes that word's `memory` rows in the same transaction as the event:
   - a lookup, check or review touches its word;
   - an attention answer touches the words in its session's ranges that have memory;
   - an Anki import touches its words.
 
   `rebuildMemory()` from an empty table gives exactly the incrementally built rows (SC-007, fast-check over random histories). Then implement it in `src/lib/storage/repository.ts`, reading a word's history with its range intersections (research R4, R6)
-- [ ] T022 [US2] Rule change without a wait (Principle VIII): the sweep in `src/lib/storage/sweep.ts` recomputes rows whose `rule` ≠ `RULE` a batch at a time, while old rows stay readable. Run it after a restore too
-- [ ] T023 [US2] `getStates` also returns each word's memory (stability, difficulty, last_at, due, card, per skill), across `protocol.ts`, `worker.ts` and `client.ts`
-- [ ] T024 [US2] Colours by recall (research R7): compute the band per word at draw time with `recall()`, and add classes `recall-1`…`recall-4` in `src/lib/ui/app.css` for texts and in `src/lib/ui/MediaReader.svelte` for the stage. Hand-mark classes remain for words with no memory, and the Anki-level classes are no longer applied. The page refreshes the tapped word's memory after a lookup (SC-004)
-- [ ] T025 [P] [US2] Plain words in `src/lib/ui/StateMenu.svelte` (FR-018): "Reading: 92% today, next review in 12 days · Listening: —", and where it came from (Anki <date>, n reviews, n lookups)
+- [X] T022 [US2] Rule change without a wait (Principle VIII): the sweep in `src/lib/storage/sweep.ts` recomputes rows whose `rule` ≠ `RULE` a batch at a time, while old rows stay readable. Run it after a restore too
+- [X] T023 [US2] `getStates` also returns each word's memory (stability, difficulty, last_at, due, card, per skill), across `protocol.ts`, `worker.ts` and `client.ts`
+- [X] T024 [US2] Colours by recall (research R7): compute the band per word at draw time with `recall()`, and add classes `recall-1`…`recall-4` in `src/lib/ui/app.css` for texts and in `src/lib/ui/MediaReader.svelte` for the stage. Hand-mark classes remain for words with no memory, and the Anki-level classes are no longer applied. The page refreshes the tapped word's memory after a lookup (SC-004)
+- [X] T025 [P] [US2] Plain words in `src/lib/ui/StateMenu.svelte` (FR-018): "Reading: 92% today, next review in 12 days · Listening: —", and where it came from (Anki <date>, n reviews, n lookups)
 
 **Checkpoint**: the scheduler's view is visible on every page. Batch with US3 for the phone.
 

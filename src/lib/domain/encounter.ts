@@ -18,7 +18,9 @@ export type EncounterKind =
 	| 'translation'
 	| 'setting'
 	| 'attention'
-	| 'review';
+	| 'review'
+	/** Not something the reader did: the parameters an Anki import brought, kept with the history. */
+	| 'anki-parameters';
 
 export type Modality = 'reading' | 'media';
 export type Skill = 'reading' | 'listening';
@@ -86,6 +88,14 @@ export function validateEncounter(encounter: Encounter): void {
 			if (detail.skill !== 'reading' && detail.skill !== 'listening') fail('names no skill');
 			if (![1, 2, 3, 4].includes(detail.grade as number)) fail('has no grade from 1 to 4');
 			break;
+		case 'anki-parameters': {
+			const weights = detail.weights;
+			if (!Array.isArray(weights) || weights.length !== 21 || !weights.every(Number.isFinite))
+				fail('does not have 21 FSRS-6 weights');
+			if (typeof detail.retention !== 'number' || detail.retention <= 0 || detail.retention >= 1)
+				fail('has no target recall between 0 and 1');
+			break;
+		}
 		case 'attention':
 			if (!('answer' in detail) || !ATTENTION_ANSWERS.includes(detail.answer as string | null))
 				fail('has no answer the reader was offered');

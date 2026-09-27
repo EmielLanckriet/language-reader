@@ -22,6 +22,8 @@
 	import { goto } from '$app/navigation';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { attention } from '$lib/ui/attention.svelte';
+	import { colourBand } from '$lib/domain/memory';
+	import type { WordMemory } from '$lib/storage/client';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
@@ -32,6 +34,10 @@
 
 	let document = $state<StoredDocument | null>(null);
 	let states = $state<Map<LexemeId, WordState>>(new Map());
+	/** Each word's memory (spec 007): what it is coloured by, when it has one. */
+	let memory = $state<WordMemory>({ memory: new Map() });
+	/** The moment recall is shown for: when the page last read its words. */
+	let now = $state(new Date());
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
 	let chosen = $state<Token | null>(null);
@@ -141,7 +147,7 @@
 				key: token.start,
 				text: textOf(token).replace(/\n/g, ''),
 				isWord: token.isWord,
-				mark: `state-${stateOf(token) ?? 'none'}`
+				mark: markOf(token)
 			});
 		}
 		return grouped;
@@ -286,6 +292,7 @@
 			const loaded = await repository.getDocument(id);
 			document = await bringUpToDate(repository, loaded);
 			states = await repository.getStates(lexemesIn(document));
+			await readMemory(lexemesIn(document));
 			media = await loadMedia(id);
 			if (media && !media.media && (await findVideo(id))) media = await loadMedia(id);
 		} catch (error) {
@@ -379,6 +386,7 @@
 			const fresh = await repository.getDocument(document.id);
 			document = fresh;
 			states = await repository.getStates(lexemesIn(fresh));
+			await readMemory(lexemesIn(fresh));
 			refreshWhenFree = false;
 		} catch {
 			// The words on screen are still correct words, just not the newest ones, and the next
@@ -389,6 +397,7 @@
 	/** The reader has finished with the menu, so a refresh that was waiting for them can happen. */
 	function menuClosed() {
 		recorder?.closed();
+		void afterSheet();
 		chosen = null;
 		if (refreshWhenFree) void showLatestWords();
 	}
@@ -414,7 +423,9 @@
 				fromOffset: token.start,
 				toOffset: token.end
 			});
+			await recorder?.flush();
 			states = await repository.getStates(lexemesIn(document));
+			await readMemory(lexemesIn(document));
 		} catch (error) {
 			problem = error;
 			await record(error);
@@ -449,6 +460,30 @@
 
 	function textOf(token: Token): string {
 		return characters.slice(token.start, token.end).join('');
+	}
+
+	async function readMemory(lexemes: LexemeId[]) {
+		const { repository } = await session();
+		memory = await repository.getMemory(lexemes);
+		now = new Date();
+	}
+
+	/**
+	 * A word's colour: its recall band where it has a memory (FR-016), its hand mark otherwise.
+	 * Computed as the page is drawn, since recall changes with the clock rather than with events.
+	 */
+	function markOf(token: Token): string {
+		const reading =
+			token.lexemeId === undefined ? undefined : memory.memory.get(token.lexemeId)?.reading;
+		if (reading) return `recall-${colourBand(reading, now, memory.parameters)}`;
+		return `state-${stateOf(token) ?? 'none'}`;
+	}
+
+	/** The sheet closed on a lookup or a check: write it now, so the word's colour follows at once. */
+	async function afterSheet() {
+		if (!recorder || !document) return;
+		await recorder.flush();
+		await readMemory(lexemesIn(document));
 	}
 
 	/** The state name, or null where the reader has never judged this word (FR-006b). */
@@ -517,7 +552,7 @@
 	{:else}
 		<div class="reading" lang={document.language}>
 			{#each document.tokens as token (token.start)}{#if token.isWord}<button
-						class="token state-{stateOf(token) ?? 'none'}"
+						class="token {markOf(token)}"
 						data-start={token.start}
 						data-end={token.end}
 						onclick={() => open(token)}>{textOf(token)}</button
@@ -533,6 +568,8 @@
 			provenance={chosen.lexemeId === undefined
 				? undefined
 				: states.get(chosen.lexemeId)?.provenance}
+			memory={chosen.lexemeId === undefined ? undefined : memory.memory.get(chosen.lexemeId)}
+			parameters={memory.parameters}
 			onchoose={choose}
 			onknew={() => {
 				recorder?.closed({ knew: 'knew' });
