@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-04
 
-**Status**: Draft
+**Status**: Built (2026-09-27); phone check pending
 
 **Input**: User description: "The reader can correct how a document is segmented, and the correction is kept. Slice 2 shipped a contextual model that resolves 你是哪国人 correctly but over-splits closed-class words (一个, 这个, 不是), and no segmenter will ever be right about every boundary. A correction is EARNED data under ADR-0003 — it is the reader's judgment about their own language, it cannot be recomputed from anything, and it must survive every future analyzer change, which is precisely what tokens do not do."
 

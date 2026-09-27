@@ -32,6 +32,7 @@ import type { IngestedDocument } from '../content/types';
 import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
 import type { Encounter, Modality, Skill } from '../domain/encounter';
 import type { Memory } from '../domain/memory';
+import type { Part } from '../domain/corrections';
 import type { FsrsParameters } from '../domain/anki';
 
 /** Words' memory per skill, and the parameters their recall is computed with. */
@@ -311,6 +312,17 @@ export class RepositoryClient {
 
 	undoAnkiImport(id: string): Promise<number> {
 		return this.call<number>({ method: 'undoAnkiImport', args: [id] }).then(earned);
+	}
+
+	/** How the reader says a form divides, or with `parts` null that they take it back (spec 004). */
+	correct(language: string, form: string, parts: Part[] | null, occurrence?: Occurrence) {
+		return this.call<void>({ method: 'correct', args: [language, form, parts, occurrence] }).then(
+			earned
+		);
+	}
+
+	corrections(): Promise<{ language: string; form: string; parts: string[]; madeAt: string }[]> {
+		return this.call({ method: 'corrections', args: [] });
 	}
 
 	ankiImports(): Promise<{ id: string; words: number }[]> {

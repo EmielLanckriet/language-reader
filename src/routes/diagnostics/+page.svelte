@@ -18,6 +18,25 @@
 	let ankiBusy = $state(false);
 	let ankiImportsList = $state<{ id: string; words: number }[]>([]);
 	let recent = $state<RecentSession[]>([]);
+	let corrections = $state<{ language: string; form: string; parts: string[]; madeAt: string }[]>(
+		[]
+	);
+	let correctionNote = $state<string | null>(null);
+
+	async function refreshCorrections() {
+		corrections = await retrying(async () => (await session()).repository.corrections());
+	}
+
+	/** Undoing is a further decision, recorded like the first (spec 004, FR-008). */
+	async function undoCorrection(language: string, form: string) {
+		try {
+			await retrying(async () => (await session()).repository.correct(language, form, null));
+			correctionNote = `${form} is back to how the segmenter reads it.`;
+			await refreshCorrections();
+		} catch (error) {
+			correctionNote = error instanceof Error ? error.message : String(error);
+		}
+	}
 
 	/**
 	 * Picking a file hides the app behind the system picker, and coming back replaces the storage
@@ -93,6 +112,10 @@
 			ankiBusy = false;
 		}
 	}
+
+	$effect(() => {
+		void refreshCorrections().catch(() => {});
+	});
 
 	$effect(() => {
 		void refreshAnkiImports().catch(() => {});
@@ -335,6 +358,27 @@
 			</p>
 		{/each}
 		{#if ankiNote}<small role="status">{ankiNote}</small>{/if}
+	</dd>
+	<dt>Corrections</dt>
+	<dd>
+		{#each corrections as correction (correction.language + correction.form)}
+			<p>
+				<span lang="zh">{correction.form}</span> →
+				<span lang="zh">{correction.parts.join(' · ')}</span>
+				<small
+					>{correction.parts.length === 1 ? 'joined' : 'split'}, {new Date(
+						correction.madeAt
+					).toLocaleDateString()}</small
+				>
+				<button
+					class="secondary"
+					onclick={() => undoCorrection(correction.language, correction.form)}>Undo</button
+				>
+			</p>
+		{:else}
+			None. Tap a word while reading to join it with the next one or split it.
+		{/each}
+		{#if correctionNote}<small role="status">{correctionNote}</small>{/if}
 	</dd>
 	<dt>Version</dt>
 	<dd>

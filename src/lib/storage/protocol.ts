@@ -35,6 +35,8 @@ export type Call =
 	| { method: 'previewAnki'; args: [unknown] }
 	| { method: 'undoAnkiImport'; args: [string] }
 	| { method: 'ankiImports'; args: [] }
+	| { method: 'correct'; args: [string, string, unknown, unknown?] }
+	| { method: 'corrections'; args: [] }
 	| { method: 'readDiagnostics'; args: [number?] }
 	| { method: 'clearDiagnostics'; args: [] }
 	| { method: 'recordDiagnostic'; args: [string, string] };

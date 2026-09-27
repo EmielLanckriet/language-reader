@@ -24,7 +24,10 @@
 		onknew,
 		onclose,
 		memory,
-		parameters
+		parameters,
+		joinRefused,
+		onjoin,
+		onsplit
 	}: {
 		word: string;
 		sentence?: string;
@@ -40,7 +43,21 @@
 		/** The word's memory per skill (spec 007, FR-018), shown in plain words. */
 		memory?: Partial<Record<Skill, Memory>>;
 		parameters?: FsrsParameters;
+		/** Why this word cannot be joined with the next, shown when the reader asks (FR-003). */
+		joinRefused?: string;
+		/** Correcting the segmentation (spec 004); absent where there is nothing stored to correct. */
+		onjoin?: () => void;
+		onsplit?: (at: number) => void;
 	} = $props();
+
+	let refusal = $state<string | null>(null);
+	const splits = $derived.by(() => {
+		const cs = [...word];
+		return cs.slice(1).map((_, i) => ({
+			at: i + 1,
+			label: `${cs.slice(0, i + 1).join('')} · ${cs.slice(i + 1).join('')}`
+		}));
+	});
 
 	const DAY_MS = 86_400_000;
 
@@ -150,6 +167,26 @@
 			<p class="muted">You can mark words once the transcript is complete.</p>
 		{/if}
 
+		{#if onjoin || onsplit}
+			<div class="segmenting">
+				{#if onjoin}
+					<button
+						class="secondary"
+						onclick={() => (joinRefused ? (refusal = joinRefused) : onjoin())}
+						>Join with next</button
+					>
+				{/if}
+				{#if onsplit}
+					{#each splits as split (split.at)}
+						<button class="secondary" lang="zh" onclick={() => onsplit(split.at)}
+							>Split {split.label}</button
+						>
+					{/each}
+				{/if}
+			</div>
+			{#if refusal}<p class="muted" role="alert">{refusal}</p>{/if}
+		{/if}
+
 		<div class="closing">
 			{#if onknew}<button class="secondary" onclick={onknew}>I knew it</button>{/if}
 			<button class="secondary cancel" onclick={onclose}>Cancel</button>
@@ -158,6 +195,15 @@
 </div>
 
 <style>
+	.segmenting {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 0.75rem;
+	}
+	.segmenting > button {
+		flex: 1 1 auto;
+	}
 	.closing {
 		display: flex;
 		gap: 0.5rem;

@@ -1,0 +1,94 @@
+{
+	"format": 3,
+	"app": "language-reader",
+	"createdAt": "2026-09-27T00:00:00.000Z",
+	"writer": "09d6607d-0e9e-4f28-aa1b-d6c066c016aa",
+	"devices": [
+		{
+			"id": "09d6607d-0e9e-4f28-aa1b-d6c066c016aa",
+			"nextSeq": 5
+		}
+	],
+	"documents": [
+		{
+			"id": 1,
+			"title": "我有一个国人。",
+			"language": "zh",
+			"contentType": "text/plain",
+			"rawContent": "我有一个国人。",
+			"createdAt": "2026-09-27T19:11:35.556Z"
+		}
+	],
+	"events": [
+		{
+			"deviceId": "09d6607d-0e9e-4f28-aa1b-d6c066c016aa",
+			"deviceSeq": 1,
+			"language": "zh",
+			"surface": "一",
+			"asserted": "known",
+			"assertedAt": "2026-09-27T19:11:35.567Z",
+			"provenance": "manual",
+			"userId": 1,
+			"documentId": 1,
+			"from": 2,
+			"to": 3
+		}
+	],
+	"states": [
+		{
+			"language": "zh",
+			"surface": "一",
+			"state": "known",
+			"provenance": "manual",
+			"userId": 1
+		}
+	],
+	"sessions": [],
+	"encounters": [],
+	"corrections": [
+		{
+			"deviceId": "09d6607d-0e9e-4f28-aa1b-d6c066c016aa",
+			"deviceSeq": 2,
+			"language": "zh",
+			"form": "一个",
+			"parts": [
+				{
+					"surface": "一个",
+					"key": "一个"
+				}
+			],
+			"madeAt": "2026-09-27T19:11:35.573Z",
+			"userId": 1,
+			"documentId": 1,
+			"from": 2,
+			"to": 4
+		},
+		{
+			"deviceId": "09d6607d-0e9e-4f28-aa1b-d6c066c016aa",
+			"deviceSeq": 3,
+			"language": "zh",
+			"form": "国人",
+			"parts": [
+				{
+					"surface": "国",
+					"key": "国"
+				},
+				{
+					"surface": "人",
+					"key": "人"
+				}
+			],
+			"madeAt": "2026-09-27T19:11:35.577Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "09d6607d-0e9e-4f28-aa1b-d6c066c016aa",
+			"deviceSeq": 4,
+			"language": "zh",
+			"form": "国人",
+			"madeAt": "2026-09-27T19:11:35.580Z",
+			"userId": 1
+		}
+	],
+	"integrity": "f0c2b67b4dd091d05f5116c410974958c8a55f63508791795479af1ce3d6d893"
+}

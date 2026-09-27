@@ -16,6 +16,13 @@ import type {
 	WordState
 } from '../domain/types';
 import { checkTiling } from '../domain/tiling';
+import {
+	applyCorrections,
+	problemWith,
+	rulesInForce,
+	type Correction,
+	type Part
+} from '../domain/corrections';
 import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { projectStates, RETRACTED } from '../domain/state';
@@ -198,20 +205,7 @@ export class Repository {
 				]
 			);
 			const documentId = lastInsertId(this.db);
-
-			for (const token of tokens) {
-				const lexemeId =
-					token.isWord && token.lexemeKey !== undefined
-						? this.findOrCreateLexeme(document.language, token.lexemeKey)
-						: null;
-
-				run(
-					this.db,
-					'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
-					[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
-				);
-			}
-
+			this.storeTokens(documentId, document.language, document.rawContent, tokens, 0, Infinity);
 			return documentId;
 		});
 	}
@@ -251,20 +245,7 @@ export class Repository {
 
 		transact(this.db, () => {
 			const remembered = this.memoryWordsIn(documentId, 0, Infinity);
-			run(this.db, 'DELETE FROM token WHERE document_id = ?', [documentId]);
-
-			for (const token of tokens) {
-				const lexemeId =
-					token.isWord && token.lexemeKey !== undefined
-						? this.findOrCreateLexeme(language, token.lexemeKey)
-						: null;
-
-				run(
-					this.db,
-					'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
-					[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
-				);
-			}
+			this.storeTokens(documentId, language, rawContent, tokens, 0, Infinity);
 
 			// Every token in the document now came from this analyzer, so any partial upgrade that
 			// was under way is not merely finished — it never happened, as far as what is stored is
@@ -395,24 +376,7 @@ export class Repository {
 			}
 
 			const remembered = this.memoryWordsIn(documentId, batch.from, batch.through);
-			run(this.db, 'DELETE FROM token WHERE document_id = ? AND start >= ? AND start < ?', [
-				documentId,
-				batch.from,
-				batch.through
-			]);
-
-			for (const token of batch.tokens) {
-				const lexemeId =
-					token.isWord && token.lexemeKey !== undefined
-						? this.findOrCreateLexeme(language, token.lexemeKey)
-						: null;
-
-				run(
-					this.db,
-					'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
-					[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
-				);
-			}
+			this.storeTokens(documentId, language, rawContent, batch.tokens, batch.from, batch.through);
 
 			// Read back rather than reasoned about. `saveDocument` and `replaceTokens` can check the
 			// tokens they were handed, because those are all the tokens there will be; a batch is
@@ -491,8 +455,9 @@ export class Repository {
 				this.db,
 				`SELECT (SELECT COUNT(*) FROM status_event WHERE document_id = ?)
               + (SELECT COUNT(*) FROM session WHERE document_id = ?)
-              + (SELECT COUNT(*) FROM encounter WHERE document_id = ?) AS n`,
-				[id, id, id]
+              + (SELECT COUNT(*) FROM encounter WHERE document_id = ?)
+              + (SELECT COUNT(*) FROM correction_event WHERE document_id = ?) AS n`,
+				[id, id, id, id]
 			)[0];
 			if (Number(pointing.n) > 0) {
 				run(this.db, 'UPDATE document SET removed_at = ? WHERE id = ? AND removed_at IS NULL', [
@@ -502,6 +467,7 @@ export class Repository {
 				return 'hidden';
 			}
 			run(this.db, 'DELETE FROM token WHERE document_id = ?', [id]);
+			run(this.db, 'DELETE FROM analyzed_token WHERE document_id = ?', [id]);
 			run(this.db, 'DELETE FROM document WHERE id = ?', [id]);
 			return 'deleted';
 		});
@@ -596,6 +562,159 @@ export class Repository {
 		if (state) this.writeProjectedState(state);
 		else run(this.db, 'DELETE FROM word_state WHERE lexeme_id = ?', [entry.lexemeId]);
 		this.recomputeMemory([entry.lexemeId]);
+	}
+
+	/**
+	 * Record how the reader says a form divides, or with `parts` null that they take it back
+	 * (spec 004), and show it in every document that contains the form.
+	 *
+	 * Appended first and applied second, in one transaction, as with a mark. The rewrite reads the
+	 * analyzer's own tokens rather than the corrected ones, so undoing a join finds the analyzer's
+	 * split again without running the analyzer (FR-011).
+	 */
+	correct(language: string, form: string, parts: Part[] | null, occurrence?: Occurrence): void {
+		const problem = problemWith(form, parts ?? undefined);
+		if (problem) throw new StorageFailure(`Cannot record that correction: ${problem}.`);
+
+		transact(this.db, () => {
+			const deviceId = deviceIdOf(this.db);
+			run(
+				this.db,
+				`INSERT INTO correction_event
+           (language, form, parts, made_at, device_id, device_seq, document_id, from_offset, to_offset)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				[
+					language,
+					form,
+					parts ? JSON.stringify(parts) : null,
+					new Date().toISOString(),
+					deviceId,
+					nextDeviceSeq(this.db, deviceId),
+					occurrence?.documentId ?? null,
+					occurrence?.fromOffset ?? null,
+					occurrence?.toOffset ?? null
+				]
+			);
+
+			const documents = queryRows(
+				this.db,
+				'SELECT id, raw_content FROM document WHERE language = ? AND instr(raw_content, ?) > 0',
+				[language, form]
+			);
+			for (const row of documents) {
+				const documentId = Number(row.id);
+				const analyzed = queryRows(
+					this.db,
+					'SELECT start, end, is_word, lexeme_key FROM analyzed_token WHERE document_id = ? ORDER BY start',
+					[documentId]
+				).map((token) => ({
+					start: Number(token.start),
+					end: Number(token.end),
+					isWord: Number(token.is_word) === 1,
+					...(token.lexeme_key === null ? {} : { lexemeKey: String(token.lexeme_key) })
+				}));
+				const remembered = this.memoryWordsIn(documentId, 0, Infinity);
+				this.writeCorrected(documentId, language, String(row.raw_content), analyzed, 0, Infinity);
+				for (const id of this.memoryWordsIn(documentId, 0, Infinity)) remembered.add(id);
+				this.recomputeMemory(remembered);
+			}
+		});
+	}
+
+	/** Every correction and undo, in the order the reader made them. */
+	readCorrections(): Correction[] {
+		return queryRows(this.db, 'SELECT * FROM correction_event ORDER BY device_id, device_seq').map(
+			(row) => ({
+				language: String(row.language),
+				form: String(row.form),
+				...(row.parts === null ? {} : { parts: JSON.parse(String(row.parts)) as Part[] }),
+				madeAt: String(row.made_at),
+				deviceId: String(row.device_id),
+				deviceSeq: Number(row.device_seq),
+				userId: Number(row.user_id),
+				...(row.document_id === null
+					? {}
+					: {
+							occurrence: {
+								documentId: Number(row.document_id),
+								fromOffset: Number(row.from_offset),
+								toOffset: Number(row.to_offset)
+							}
+						})
+			})
+		);
+	}
+
+	/** The corrections in force, most recent first, whether or not any document shows them (US3). */
+	corrections(): { language: string; form: string; parts: string[]; madeAt: string }[] {
+		const history = this.readCorrections();
+		const inForce = new Map<string, Correction>();
+		for (const correction of history) {
+			const key = `${correction.language}\u0000${correction.form}`;
+			inForce.delete(key);
+			if (correction.parts) inForce.set(key, correction);
+		}
+		return [...inForce.values()].reverse().map((correction) => ({
+			language: correction.language,
+			form: correction.form,
+			parts: correction.parts!.map((part) => part.surface),
+			madeAt: correction.madeAt
+		}));
+	}
+
+	/**
+	 * Store an analyzer's tokens for `[from, through)` of a document, and beside them the tokens
+	 * the reader sees: the same ones with the corrections in force applied. The one place tokens
+	 * are written, so no path can store the one without the other.
+	 */
+	private storeTokens(
+		documentId: DocumentId,
+		language: string,
+		rawContent: string,
+		tokens: ResolvedToken[],
+		from: number,
+		through: number
+	): void {
+		run(this.db, 'DELETE FROM analyzed_token WHERE document_id = ? AND start >= ? AND start < ?', [
+			documentId,
+			from,
+			Number.isFinite(through) ? through : Number.MAX_SAFE_INTEGER
+		]);
+		for (const token of tokens) {
+			run(
+				this.db,
+				'INSERT INTO analyzed_token (document_id, start, end, is_word, lexeme_key) VALUES (?, ?, ?, ?, ?)',
+				[documentId, token.start, token.end, token.isWord ? 1 : 0, token.lexemeKey ?? null]
+			);
+		}
+		this.writeCorrected(documentId, language, rawContent, tokens, from, through);
+	}
+
+	private writeCorrected(
+		documentId: DocumentId,
+		language: string,
+		rawContent: string,
+		analyzed: ResolvedToken[],
+		from: number,
+		through: number
+	): void {
+		run(this.db, 'DELETE FROM token WHERE document_id = ? AND start >= ? AND start < ?', [
+			documentId,
+			from,
+			Number.isFinite(through) ? through : Number.MAX_SAFE_INTEGER
+		]);
+		const rules = rulesInForce(this.readCorrections(), language);
+		for (const token of applyCorrections(codePointsOf(rawContent), analyzed, rules)) {
+			const lexemeId =
+				token.isWord && token.lexemeKey !== undefined
+					? this.findOrCreateLexeme(language, token.lexemeKey)
+					: null;
+			run(
+				this.db,
+				'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
+				[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
+			);
+		}
 	}
 
 	/**
@@ -1373,7 +1492,22 @@ export class Repository {
 								: 1
 					),
 				...this.exportEncounters(word),
-				corrections: []
+				corrections: this.readCorrections().map((correction) => ({
+					deviceId: correction.deviceId,
+					deviceSeq: correction.deviceSeq,
+					language: correction.language,
+					form: correction.form,
+					...(correction.parts ? { parts: correction.parts } : {}),
+					madeAt: correction.madeAt,
+					userId: correction.userId,
+					...(correction.occurrence
+						? {
+								documentId: correction.occurrence.documentId,
+								from: correction.occurrence.fromOffset,
+								to: correction.occurrence.toOffset
+							}
+						: {})
+				}))
 			};
 		});
 	}
@@ -1435,7 +1569,7 @@ export class Repository {
 		const earned = queryRows(
 			this.db,
 			`SELECT (SELECT COUNT(*) FROM word_state) + (SELECT COUNT(*) FROM status_event)
-            + (SELECT COUNT(*) FROM session) AS n`
+            + (SELECT COUNT(*) FROM session) + (SELECT COUNT(*) FROM correction_event) AS n`
 		);
 		if (Number(earned[0].n) > 0) {
 			throw new CopyRejected(
@@ -1463,6 +1597,11 @@ export class Repository {
 					(encounter.documentId !== undefined && !documentIds.has(encounter.documentId)) ||
 					(encounter.session !== undefined &&
 						!sessionKeys.has(`${encounter.session.deviceId}#${encounter.session.deviceSeq}`))
+			) ||
+			copy.corrections.some(
+				(correction) =>
+					!deviceIds.has(correction.deviceId) ||
+					(correction.documentId !== undefined && !documentIds.has(correction.documentId))
 			);
 		if (dangling || danglingEncounter) {
 			throw new CopyRejected('references', 'The copy is inconsistent: a mark points at nothing.');
@@ -1504,6 +1643,28 @@ export class Repository {
 			}
 
 			this.restoreEncounters(copy, renumbered);
+
+			for (const correction of copy.corrections) {
+				run(
+					this.db,
+					`INSERT INTO correction_event
+             (language, form, parts, made_at, device_id, device_seq, document_id, from_offset,
+              to_offset, user_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					[
+						correction.language,
+						correction.form,
+						correction.parts ? JSON.stringify(correction.parts) : null,
+						correction.madeAt,
+						correction.deviceId,
+						correction.deviceSeq,
+						correction.documentId === undefined ? null : renumbered.get(correction.documentId)!,
+						correction.from ?? null,
+						correction.to ?? null,
+						correction.userId
+					]
+				);
+			}
 
 			for (const event of copy.events) {
 				this.appendEvent(

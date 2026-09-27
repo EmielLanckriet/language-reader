@@ -107,7 +107,8 @@ Chrome makes a shortcut whenever the real install fails. On the phone: see what 
 says; if it says "shortcut", remove the icon and install properly. Also still to do on the phone:
 Termux:Boot, a reboot, and a first copy arriving.
 
-## Segmentation corrections (spec 004) — on hold
+## Segmentation corrections (spec 004) — built, phone check pending
 
-`specs/004-segmentation-corrections/` is specified but not planned or built. Paused on 2026-09-25 to
-get to a usable product first (meanings, translation, video and audio). Pick it back up after that.
+Built on 2026-09-27 (plan.md, ADR-0028): join and split from the word sheet, the list with undo
+under More. Still to do on the phone: join 一 · 个 under the model, and see that it holds after the
+sweep re-derives.

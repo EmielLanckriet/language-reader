@@ -6,7 +6,7 @@
  * here touches storage.
  */
 
-export const FORMAT = 2;
+export const FORMAT = 3;
 
 export interface CopyDocument {
 	id: number;
@@ -73,6 +73,20 @@ export interface CopyState {
 	userId: number;
 }
 
+/** Format 3 (spec 004): one segmentation correction, or with no `parts` an undo of one. */
+export interface CopyCorrection {
+	deviceId: string;
+	deviceSeq: number;
+	language: string;
+	form: string;
+	parts?: { surface: string; key: string }[];
+	madeAt: string;
+	userId: number;
+	documentId?: number;
+	from?: number;
+	to?: number;
+}
+
 export interface CopyBody {
 	format: number;
 	app: string;
@@ -85,8 +99,8 @@ export interface CopyBody {
 	states: CopyState[];
 	sessions: CopySession[];
 	encounters: CopyEncounter[];
-	/** Spec 004's segmentation corrections, once they exist. */
-	corrections: unknown[];
+	/** Spec 004's segmentation corrections; always empty before format 3. */
+	corrections: CopyCorrection[];
 }
 
 export interface Copy extends CopyBody {
@@ -160,5 +174,8 @@ export function upgrade(body: CopyBody): CopyBody {
 	let current = body;
 	// 1 → 2: sessions and encounters did not exist yet.
 	if (current.format === 1) current = { ...current, format: 2, sessions: [], encounters: [] };
+	// 2 → 3: corrections were reserved and always empty.
+	if (current.format === 2)
+		current = { ...current, format: 3, corrections: current.corrections ?? [] };
 	return current;
 }

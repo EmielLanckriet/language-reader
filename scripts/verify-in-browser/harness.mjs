@@ -520,6 +520,113 @@ const scenarios = {
 		}
 	},
 
+	// Correcting the segmentation (spec 004), plumbing only: join two words from the word sheet,
+	// split them back, be refused across punctuation, then undo from More. Words are found by their
+	// offsets, not their text, because each button also carries its pinyin.
+	async corrections() {
+		const tab = await openTab('about:blank');
+		const spans = () =>
+			tab.evaluate(
+				`return [...document.querySelectorAll('.reading [data-start]')].map((b) => [+b.dataset.start, +b.dataset.end]);`
+			);
+		const tap = (start) =>
+			until(`the word at ${start}`, () =>
+				tab.evaluate(
+					`const b = document.querySelector('.reading [data-start="${start}"]'); if (!b) return null; b.click(); return true;`
+				)
+			);
+		const press = (label) =>
+			until(`the ${label} button`, () =>
+				tab.evaluate(
+					`const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return null; b.click(); return true;`
+				)
+			);
+		try {
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+			await tab.goto('/add');
+			await until('the paste box', () =>
+				tab.evaluate('return !!document.querySelector("textarea");')
+			);
+			await tab.evaluate(`
+				const box = document.querySelector('textarea');
+				box.value = '我们学习中文。你是哪国人？';
+				box.dispatchEvent(new Event('input', { bubbles: true }));
+				return true;`);
+			await until('Save to be enabled', () =>
+				tab.evaluate(`return ${SAVE_BUTTON} && !${SAVE_BUTTON}.disabled;`)
+			);
+			await tab.evaluate(`${SAVE_BUTTON}.click(); return true;`);
+			const link = await until('the saved document', () => tab.evaluate(`return ${READ_LINK};`));
+			await tab.evaluate(`location.href = ${JSON.stringify(link)}; return true;`);
+
+			const before = await until('words', async () =>
+				(await spans()).length > 2 ? spans() : null
+			);
+			const [a, b] = before; // 我们 and 学习, or however the analyzer cut them: adjacent words
+			await tap(a[0]);
+			await press('Join with next');
+			const t0 = Date.now();
+			await until('the joined word', async () =>
+				(await spans()).some(([s, e]) => s === a[0] && e === b[1]) ? true : null
+			);
+			const joinMs = Date.now() - t0;
+
+			await tap(a[0]);
+			const cut = a[1] - a[0];
+			await until('the split option', () =>
+				tab.evaluate(
+					`const bs = [...document.querySelectorAll('.segmenting button')].filter((b) => b.textContent.startsWith('Split')); const b = bs[${cut - 1}]; if (!b) return null; b.click(); return true;`
+				)
+			);
+			const splitBack = await until('the split to show', async () =>
+				(await spans()).some(([s, e]) => s === a[0] && e === a[1]) ? true : null
+			);
+
+			// The word just before 。 cannot join what follows it.
+			const last = (await spans()).find(([, e]) => e === 6);
+			await tap(last[0]);
+			await press('Join with next');
+			const refusal = await until('the refusal', () =>
+				tab.evaluate(`return document.querySelector('.sheet [role="alert"]')?.textContent ?? null;`)
+			);
+			await press('Cancel');
+
+			await tap(a[0]);
+			await press('Join with next');
+			await until('joined again', async () =>
+				(await spans()).some(([s, e]) => s === a[0] && e === b[1]) ? true : null
+			);
+			await tab.goto('/diagnostics');
+			const listed = await until('the corrections list', () =>
+				tab.evaluate(
+					`const dd = [...document.querySelectorAll('dt')].find((d) => d.textContent === 'Corrections')?.nextElementSibling; return dd && dd.querySelector('button') ? dd.textContent : null;`
+				)
+			);
+			// The newest correction is first: the join just made.
+			await tab.evaluate(
+				`[...document.querySelectorAll('dt')].find((d) => d.textContent === 'Corrections').nextElementSibling.querySelector('button').click(); return true;`
+			);
+			await until('the undo note', () =>
+				tab.evaluate(`return /back to how the segmenter/.test(document.body.textContent) || null;`)
+			);
+			await tab.goto(link.replace(BASE, ''));
+			const after = await until('words again', async () =>
+				(await spans()).length > 2 ? spans() : null
+			);
+			const restored = JSON.stringify(after) === JSON.stringify(before);
+
+			return {
+				pass: joinMs < 1000 && splitBack && /boundary/.test(refusal) && restored,
+				joinMs,
+				listed: listed.trim().slice(0, 80),
+				refusal,
+				restored
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// The reader's work survives the site's storage being wiped (spec 005): mark two words, let the
 	// copy reach the reader service, clear everything the origin stores, and restore. Needs
 	// scripts/termux/reader-service.py on 127.0.0.1:8765, reachable from the browser (adb reverse

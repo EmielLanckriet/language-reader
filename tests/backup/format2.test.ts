@@ -61,7 +61,7 @@ describe('copy format 2', () => {
 			corrections: []
 		};
 		expect(upgrade(one as unknown as CopyBody)).toMatchObject({
-			format: 2,
+			format: 3,
 			sessions: [],
 			encounters: []
 		});

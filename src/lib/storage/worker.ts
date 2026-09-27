@@ -27,6 +27,7 @@ import type { DiagnosticKind } from '../diagnostics/log';
 import type { IngestedDocument } from '../content/types';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { Occurrence } from '../domain/types';
+import type { Part } from '../domain/corrections';
 import type { Request, Response, ToWorker } from './protocol';
 
 /**
@@ -44,7 +45,8 @@ const READER_CHANGES = new Set([
 	'removeDocument',
 	'importAnki',
 	'undoAnkiImport',
-	'recordReview'
+	'recordReview',
+	'correct'
 ]);
 
 let state: Availability = { kind: 'paused' };
@@ -275,6 +277,15 @@ function run(request: Request): unknown {
 			return repository.undoAnkiImport(request.args[0]);
 		case 'ankiImports':
 			return repository.ankiImports();
+		case 'correct':
+			return repository.correct(
+				request.args[0],
+				request.args[1],
+				request.args[2] as Part[] | null,
+				request.args[3] as Occurrence | undefined
+			);
+		case 'corrections':
+			return repository.corrections();
 		case 'exportBody':
 			return repository.exportBody(request.args[0], request.args[1]);
 		case 'restoreCopy':

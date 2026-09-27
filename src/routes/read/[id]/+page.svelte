@@ -11,6 +11,7 @@
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
 	import { activeAnalyzer, fallbackAnalyzer } from '$lib/analyzer/active';
+	import { joinWithNext, splitAt } from '$lib/domain/corrections';
 	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 	import { upgradeOf } from '$lib/storage/upgrades';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
@@ -480,6 +481,40 @@
 		}
 	}
 
+	/** The chosen word joined with the next, or why it cannot be (spec 004, FR-003). */
+	const joining = $derived.by(() => {
+		if (!chosen || !document) return undefined;
+		const start = chosen.start;
+		const index = document.tokens.findIndex((token) => token.start === start);
+		return joinWithNext(characters, document.tokens, index);
+	});
+
+	/**
+	 * Record how the reader says a form divides, and show it (spec 004). Applied to every document
+	 * at once by the repository; this one is re-read in place, like a batch of the upgrade.
+	 */
+	async function correct(
+		change: ReturnType<typeof joinWithNext>,
+		occurrence: { fromOffset: number; toOffset: number }
+	) {
+		if (!document || 'refused' in change) return;
+		recorder?.closed();
+		chosen = null;
+		try {
+			const { repository } = await session();
+			await repository.correct(
+				document.language,
+				change.form,
+				change.parts.map((surface) => ({ surface, key: fallbackAnalyzer.lexemeKey(surface) })),
+				{ documentId: document.id, ...occurrence }
+			);
+			await showLatestWords();
+		} catch (error) {
+			problem = error;
+			await record(error);
+		}
+	}
+
 	/** Failures go to the on-device record as well as to the screen (FR-021). */
 	async function record(error: unknown) {
 		try {
@@ -627,6 +662,23 @@
 			memory={chosen.lexemeId === undefined ? undefined : memory.memory.get(chosen.lexemeId)}
 			parameters={memory.parameters}
 			onchoose={choose}
+			joinRefused={joining && 'refused' in joining ? joining.refused : undefined}
+			onjoin={chosen.lexemeId === undefined || !joining
+				? undefined
+				: () => {
+						const token = chosen!;
+						const next = document!.tokens.find((t) => t.start === token.end);
+						void correct(joining, { fromOffset: token.start, toOffset: next?.end ?? token.end });
+					}}
+			onsplit={chosen.lexemeId === undefined || chosen.end - chosen.start < 2
+				? undefined
+				: (at) => {
+						const token = chosen!;
+						void correct(splitAt(textOf(token), at), {
+							fromOffset: token.start,
+							toOffset: token.end
+						});
+					}}
 			onknew={() => {
 				recorder?.closed({ knew: 'knew' });
 				menuClosed();
