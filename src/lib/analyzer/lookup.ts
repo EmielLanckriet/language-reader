@@ -1,11 +1,9 @@
 /** Word lookup against CC-CEDICT, loaded the first time a word is looked up. */
 
 import { base } from '$app/paths';
+import { explain, type Entry, type Part } from './gloss';
 
-export interface Entry {
-	pinyin: string;
-	meaning: string;
-}
+export type { Entry, Part };
 
 let loading: Promise<Map<string, Entry[]>> | undefined;
 
@@ -23,16 +21,11 @@ async function load(): Promise<Map<string, Entry[]>> {
 	return entries;
 }
 
-/** Entries for the word; for a word the dictionary lacks, entries for each of its characters. */
-export async function lookUp(word: string): Promise<{ text: string; entries: Entry[] }[]> {
+/** What the word means: see gloss.ts for how a word the dictionary lacks is explained. */
+export async function lookUp(word: string, readings?: string[]): Promise<Part[]> {
 	loading ??= load().catch((error) => {
 		loading = undefined;
 		throw error;
 	});
-	const dictionary = await loading;
-	const whole = dictionary.get(word);
-	if (whole) return [{ text: word, entries: whole }];
-	return [...word]
-		.map((character) => ({ text: character, entries: dictionary.get(character) ?? [] }))
-		.filter((part) => part.entries.length > 0);
+	return explain(await loading, word, readings);
 }

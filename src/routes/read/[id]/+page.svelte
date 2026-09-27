@@ -662,6 +662,7 @@
 			memory={chosen.lexemeId === undefined ? undefined : memory.memory.get(chosen.lexemeId)}
 			parameters={memory.parameters}
 			onchoose={choose}
+			readings={readings.slice(chosen.start, chosen.end)}
 			joinRefused={joining && 'refused' in joining ? joining.refused : undefined}
 			onjoin={chosen.lexemeId === undefined || !joining
 				? undefined

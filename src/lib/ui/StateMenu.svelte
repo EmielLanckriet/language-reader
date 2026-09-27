@@ -25,6 +25,7 @@
 		onclose,
 		memory,
 		parameters,
+		readings,
 		joinRefused,
 		onjoin,
 		onsplit
@@ -43,6 +44,8 @@
 		/** The word's memory per skill (spec 007, FR-018), shown in plain words. */
 		memory?: Partial<Record<Skill, Memory>>;
 		parameters?: FsrsParameters;
+		/** The pinyin shown above each character, which picks the dictionary sense heard here. */
+		readings?: string[];
 		/** Why this word cannot be joined with the next, shown when the reader asks (FR-003). */
 		joinRefused?: string;
 		/** Correcting the segmentation (spec 004); absent where there is nothing stored to correct. */
@@ -90,7 +93,7 @@
 		};
 	});
 
-	const looked = $derived(lookUp(word));
+	const looked = $derived(lookUp(word, readings));
 	const fromAnki = $derived.by(() => {
 		const id = provenance && ankiImportOf(provenance);
 		const level = ANKI_LEVELS.find((level) => level.name === current);
@@ -123,6 +126,9 @@
 				{#await looked}
 					<p class="muted">Looking up…</p>
 				{:then parts}
+					{#if parts.length > 1}
+						<p class="muted">Not in the dictionary as one word. Its parts:</p>
+					{/if}
 					{#each parts as part (part.text)}
 						{#if parts.length > 1}<p class="part" lang="zh">{part.text}</p>{/if}
 						{#each part.entries.slice(0, 4) as entry, i (i)}
