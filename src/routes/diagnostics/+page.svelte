@@ -17,6 +17,7 @@
 	let ankiNote = $state<string | null>(null);
 	let ankiBusy = $state(false);
 	let ankiImportsList = $state<{ id: string; words: number }[]>([]);
+	let recent = $state<RecentSession[]>([]);
 
 	/**
 	 * Picking a file hides the app behind the system picker, and coming back replaces the storage
@@ -115,6 +116,7 @@
 	import { parseAnkiExport, type AnkiExport } from '$lib/domain/anki';
 	import { ANKI_LEVELS } from '$lib/domain/state';
 	import type { AnkiResult } from '$lib/storage/client';
+	import type { RecentSession } from '$lib/storage/repository';
 	import { explain, type Availability } from '$lib/storage/availability';
 	import type { Diagnostic } from '$lib/diagnostics/describe';
 	import { runningVersion, describeVersion } from '$lib/ui/version';
@@ -235,6 +237,7 @@
 			stop = s.repository.watch((state) => (availability = state));
 			persistence = s.persistence;
 			entries = await s.repository.readDiagnostics();
+			recent = await s.repository.recentEncounters();
 			const analyzer = await activeAnalyzer();
 			stale = (await s.repository.staleDocumentIds(analyzer.name, analyzer.version)).length;
 			loading = false;
@@ -434,6 +437,32 @@
 	</dd>
 </dl>
 
+<h2 class="section">What you read and watched</h2>
+<p class="subtitle">The latest sessions, as recorded for your flashcards: newest first.</p>
+{#each recent as sitting (sitting.startedAt)}
+	<details class="sitting">
+		<summary>
+			{sitting.title} · {sitting.modality} · {new Date(sitting.startedAt).toLocaleString()} · {sitting
+				.encounters.length} events
+		</summary>
+		<ol class="encounters">
+			{#each sitting.encounters as encounter, i (i)}
+				<li>
+					<strong>{encounter.kind}</strong>{#if encounter.word}&nbsp;<span lang="zh"
+							>{encounter.word}</span
+						>{/if}{#if encounter.mediaMs !== undefined}
+						· {(encounter.mediaMs / 1000).toFixed(1)} s{/if}{#if encounter.speed !== undefined}
+						· {encounter.speed}×{/if}{#if encounter.textVisible !== undefined}
+						· text {encounter.textVisible ? 'shown' : 'hidden'}{/if}{#if encounter.detail !== '{}'}
+						· <code>{encounter.detail}</code>{/if}
+				</li>
+			{/each}
+		</ol>
+	</details>
+{:else}
+	<p class="empty">Nothing recorded yet.</p>
+{/each}
+
 <h2 class="section">What has happened before</h2>
 <p class="subtitle">
 	A record of past failures, each with the time it happened. These describe moments that have
@@ -459,6 +488,13 @@
 {/if}
 
 <style>
+	.sitting summary {
+		font-size: 0.9rem;
+	}
+	.encounters {
+		font-size: 0.85rem;
+		margin: 0.25rem 0 0.75rem;
+	}
 	.section {
 		font-size: 0.95rem;
 		margin: 1.5rem 0 0.5rem;

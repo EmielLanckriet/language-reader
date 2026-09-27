@@ -19,6 +19,7 @@ import { checkTiling } from '../domain/tiling';
 import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { projectStates, RETRACTED } from '../domain/state';
+import { validateEncounter, type Encounter, type Modality } from '../domain/encounter';
 import {
 	type Database,
 	deviceIdOf,
@@ -28,6 +29,21 @@ import {
 	run,
 	transact
 } from './db';
+
+export interface RecentSession {
+	title: string;
+	modality: string;
+	startedAt: string;
+	encounters: {
+		kind: string;
+		word?: string;
+		mediaMs?: number;
+		speed?: number;
+		textVisible?: boolean;
+		detail: string;
+		at: string;
+	}[];
+}
 
 /** Enough to list a document without loading it. */
 export interface DocumentSummary {
@@ -401,25 +417,33 @@ export class Repository {
 	}
 
 	/**
-	 * Delete a document no judgment was made in, with its tokens.
+	 * Delete a document, or hide it when any history points into it (spec 007, research R11).
 	 *
-	 * Refused when any event points at it: the event log is earned data, and an event's document is
-	 * the evidence of where a judgment was made. Lexemes are never deleted here, because marks point
-	 * at them whichever document they came from. Its media files are the caller's (media/store.ts).
+	 * A mark, a session or an encounter made in a document is earned data, and its offsets mean
+	 * something only while the text is there. Such a document is hidden from the library and kept,
+	 * text and tokens alike; one nothing points at is deleted outright. Lexemes are never deleted
+	 * here, because marks point at them whichever document they came from. Its media files are the
+	 * caller's (media/store.ts).
 	 */
-	deleteUnmarkedDocument(id: DocumentId): void {
-		transact(this.db, () => {
-			const judged = queryRows(
+	removeDocument(id: DocumentId): 'deleted' | 'hidden' {
+		return transact(this.db, () => {
+			const pointing = queryRows(
 				this.db,
-				'SELECT COUNT(*) AS n FROM status_event WHERE document_id = ?',
-				[id]
+				`SELECT (SELECT COUNT(*) FROM status_event WHERE document_id = ?)
+              + (SELECT COUNT(*) FROM session WHERE document_id = ?)
+              + (SELECT COUNT(*) FROM encounter WHERE document_id = ?) AS n`,
+				[id, id, id]
 			)[0];
-			if (Number(judged.n) > 0)
-				throw new StorageFailure(
-					`Document ${id} has ${judged.n} judgment(s) made in it, so it is kept.`
-				);
+			if (Number(pointing.n) > 0) {
+				run(this.db, 'UPDATE document SET removed_at = ? WHERE id = ? AND removed_at IS NULL', [
+					new Date().toISOString(),
+					id
+				]);
+				return 'hidden';
+			}
 			run(this.db, 'DELETE FROM token WHERE document_id = ?', [id]);
 			run(this.db, 'DELETE FROM document WHERE id = ?', [id]);
+			return 'deleted';
 		});
 	}
 
@@ -428,6 +452,7 @@ export class Repository {
 			this.db,
 			`SELECT id, title, created_at, LENGTH(raw_content) AS approximate_length
          FROM document
+        WHERE removed_at IS NULL
         ORDER BY created_at DESC, id DESC`
 		).map((row) => ({
 			id: Number(row.id),
@@ -510,6 +535,92 @@ export class Repository {
 		const state = projectStates([entry]).get(entry.lexemeId);
 		if (state) this.writeProjectedState(state);
 		else run(this.db, 'DELETE FROM word_state WHERE lexeme_id = ?', [entry.lexemeId]);
+	}
+
+	/**
+	 * Begin a sitting with one document (spec 007). The session row is written once and never
+	 * changed: its end is its last encounter, and the attention answer is an encounter of its own.
+	 */
+	startSession(documentId: DocumentId, modality: Modality): number {
+		return transact(this.db, () => {
+			const deviceId = deviceIdOf(this.db);
+			run(
+				this.db,
+				`INSERT INTO session (document_id, modality, started_at, device_id, device_seq)
+         VALUES (?, ?, ?, ?, ?)`,
+				[documentId, modality, new Date().toISOString(), deviceId, nextDeviceSeq(this.db, deviceId)]
+			);
+			return lastInsertId(this.db);
+		});
+	}
+
+	/**
+	 * Append a batch of encounters to a session: all of them or none (ADR-0027). Each takes its
+	 * place on the device counter status events use, so the whole history has one order.
+	 */
+	recordEncounters(sessionId: number, encounters: Encounter[]): void {
+		transact(this.db, () => {
+			const exists = queryRows(this.db, 'SELECT 1 FROM session WHERE id = ?', [sessionId]);
+			if (exists.length === 0) throw new StorageFailure(`There is no session ${sessionId}.`);
+			for (const encounter of encounters) this.appendEncounter(sessionId, encounter);
+		});
+	}
+
+	private appendEncounter(sessionId: number | null, encounter: Encounter): void {
+		validateEncounter(encounter);
+		const deviceId = deviceIdOf(this.db);
+		run(
+			this.db,
+			`INSERT INTO encounter
+         (session_id, kind, lexeme_id, document_id, from_offset, to_offset, media_ms, speed,
+          text_visible, detail, at, device_id, device_seq)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			[
+				sessionId,
+				encounter.kind,
+				encounter.lexemeId ?? null,
+				encounter.documentId ?? null,
+				encounter.fromOffset ?? null,
+				encounter.toOffset ?? null,
+				encounter.mediaMs ?? null,
+				encounter.speed ?? null,
+				encounter.textVisible === undefined ? null : encounter.textVisible ? 1 : 0,
+				JSON.stringify(encounter.detail ?? {}),
+				encounter.at,
+				deviceId,
+				nextDeviceSeq(this.db, deviceId)
+			]
+		);
+	}
+
+	/** The latest sessions and what happened in them, newest first, for Diagnostics. */
+	recentEncounters(sessions = 3): RecentSession[] {
+		return queryRows(
+			this.db,
+			`SELECT s.id, s.modality, s.started_at, d.title FROM session s
+       JOIN document d ON d.id = s.document_id
+       ORDER BY s.device_seq DESC LIMIT ?`,
+			[sessions]
+		).map((session) => ({
+			title: String(session.title),
+			modality: String(session.modality),
+			startedAt: String(session.started_at),
+			encounters: queryRows(
+				this.db,
+				`SELECT e.kind, l.surface, e.media_ms, e.speed, e.text_visible, e.detail, e.at
+         FROM encounter e LEFT JOIN lexeme l ON l.id = e.lexeme_id
+         WHERE e.session_id = ? ORDER BY e.device_seq`,
+				[session.id]
+			).map((row) => ({
+				kind: String(row.kind),
+				word: row.surface === null ? undefined : String(row.surface),
+				mediaMs: row.media_ms === null ? undefined : Number(row.media_ms),
+				speed: row.speed === null ? undefined : Number(row.speed),
+				textVisible: row.text_visible === null ? undefined : row.text_visible === 1,
+				detail: String(row.detail),
+				at: String(row.at)
+			}))
+		}));
 	}
 
 	/**
@@ -773,14 +884,16 @@ export class Repository {
 				devices,
 				documents: queryRows(
 					this.db,
-					'SELECT id, title, language, content_type, raw_content, created_at FROM document ORDER BY id'
+					`SELECT id, title, language, content_type, raw_content, created_at, removed_at
+           FROM document ORDER BY id`
 				).map((row) => ({
 					id: Number(row.id),
 					title: String(row.title),
 					language: String(row.language),
 					contentType: String(row.content_type),
 					rawContent: String(row.raw_content),
-					createdAt: String(row.created_at)
+					createdAt: String(row.created_at),
+					...(row.removed_at === null ? {} : { removedAt: String(row.removed_at) })
 				})),
 				events: history.map((entry) => ({
 					deviceId: entry.deviceId,
@@ -819,9 +932,52 @@ export class Repository {
 								? -1
 								: 1
 					),
+				...this.exportEncounters(word),
 				corrections: []
 			};
 		});
+	}
+
+	/** Sessions and encounters for a copy (format 2), in history order, words by surface. */
+	private exportEncounters(word: (lexemeId: LexemeId) => { language: string; surface: string }) {
+		const optional = <T>(key: string, value: T | null | undefined) =>
+			value === null || value === undefined ? {} : { [key]: value };
+		const sessions = queryRows(
+			this.db,
+			`SELECT device_id, device_seq, document_id, modality, started_at, user_id
+       FROM session ORDER BY device_id, device_seq`
+		).map((row) => ({
+			deviceId: String(row.device_id),
+			deviceSeq: Number(row.device_seq),
+			documentId: Number(row.document_id),
+			modality: String(row.modality),
+			startedAt: String(row.started_at),
+			userId: Number(row.user_id)
+		}));
+		const encounters = queryRows(
+			this.db,
+			`SELECT e.*, s.device_id AS s_device, s.device_seq AS s_seq
+       FROM encounter e LEFT JOIN session s ON s.id = e.session_id
+       ORDER BY e.device_id, e.device_seq`
+		).map((row) => ({
+			deviceId: String(row.device_id),
+			deviceSeq: Number(row.device_seq),
+			...(row.s_device === null
+				? {}
+				: { session: { deviceId: String(row.s_device), deviceSeq: Number(row.s_seq) } }),
+			kind: String(row.kind),
+			...(row.lexeme_id === null ? {} : word(Number(row.lexeme_id))),
+			...optional('documentId', row.document_id === null ? null : Number(row.document_id)),
+			...optional('from', row.from_offset === null ? null : Number(row.from_offset)),
+			...optional('to', row.to_offset === null ? null : Number(row.to_offset)),
+			...optional('mediaMs', row.media_ms === null ? null : Number(row.media_ms)),
+			...optional('speed', row.speed === null ? null : Number(row.speed)),
+			...optional('textVisible', row.text_visible === null ? null : row.text_visible === 1),
+			detail: JSON.parse(String(row.detail)),
+			at: String(row.at),
+			userId: Number(row.user_id)
+		}));
+		return { sessions, encounters };
 	}
 
 	/**
@@ -838,12 +994,13 @@ export class Repository {
 	restoreCopy(copy: CopyBody): Map<DocumentId, DocumentId> {
 		const earned = queryRows(
 			this.db,
-			'SELECT (SELECT COUNT(*) FROM word_state) + (SELECT COUNT(*) FROM status_event) AS n'
+			`SELECT (SELECT COUNT(*) FROM word_state) + (SELECT COUNT(*) FROM status_event)
+            + (SELECT COUNT(*) FROM session) AS n`
 		);
 		if (Number(earned[0].n) > 0) {
 			throw new CopyRejected(
 				'not-empty',
-				'This library already has marked words, so restoring could overwrite newer work.'
+				'This library already has marked words or reading history, so restoring could overwrite newer work.'
 			);
 		}
 		const documentIds = new Set(copy.documents.map((document) => document.id));
@@ -853,7 +1010,21 @@ export class Repository {
 				!deviceIds.has(event.deviceId) ||
 				(event.documentId !== undefined && !documentIds.has(event.documentId))
 		);
-		if (dangling) {
+		const sessionKeys = new Set(
+			copy.sessions.map((session) => `${session.deviceId}#${session.deviceSeq}`)
+		);
+		const danglingEncounter =
+			copy.sessions.some(
+				(session) => !deviceIds.has(session.deviceId) || !documentIds.has(session.documentId)
+			) ||
+			copy.encounters.some(
+				(encounter) =>
+					!deviceIds.has(encounter.deviceId) ||
+					(encounter.documentId !== undefined && !documentIds.has(encounter.documentId)) ||
+					(encounter.session !== undefined &&
+						!sessionKeys.has(`${encounter.session.deviceId}#${encounter.session.deviceSeq}`))
+			);
+		if (dangling || danglingEncounter) {
 			throw new CopyRejected('references', 'The copy is inconsistent: a mark points at nothing.');
 		}
 
@@ -885,7 +1056,14 @@ export class Repository {
 					]
 				);
 				renumbered.set(document.id, lastInsertId(this.db));
+				if (document.removedAt !== undefined)
+					run(this.db, 'UPDATE document SET removed_at = ? WHERE id = ?', [
+						document.removedAt,
+						lastInsertId(this.db)
+					]);
 			}
+
+			this.restoreEncounters(copy, renumbered);
 
 			for (const event of copy.events) {
 				this.appendEvent(
@@ -936,6 +1114,56 @@ export class Repository {
 			}
 			return renumbered;
 		});
+	}
+
+	/** Put a copy's sessions and encounters back exactly, sequence numbers included (format 2). */
+	private restoreEncounters(copy: CopyBody, renumbered: Map<DocumentId, DocumentId>): void {
+		const sessions = new Map<string, number>();
+		for (const session of copy.sessions) {
+			run(
+				this.db,
+				`INSERT INTO session (document_id, modality, started_at, device_id, device_seq, user_id)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+				[
+					renumbered.get(session.documentId)!,
+					session.modality,
+					session.startedAt,
+					session.deviceId,
+					session.deviceSeq,
+					session.userId
+				]
+			);
+			sessions.set(`${session.deviceId}#${session.deviceSeq}`, lastInsertId(this.db));
+		}
+		for (const encounter of copy.encounters) {
+			run(
+				this.db,
+				`INSERT INTO encounter
+           (session_id, kind, lexeme_id, document_id, from_offset, to_offset, media_ms, speed,
+            text_visible, detail, at, device_id, device_seq, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				[
+					encounter.session
+						? sessions.get(`${encounter.session.deviceId}#${encounter.session.deviceSeq}`)!
+						: null,
+					encounter.kind,
+					encounter.surface === undefined
+						? null
+						: this.findOrCreateLexeme(encounter.language!, encounter.surface),
+					encounter.documentId === undefined ? null : renumbered.get(encounter.documentId)!,
+					encounter.from ?? null,
+					encounter.to ?? null,
+					encounter.mediaMs ?? null,
+					encounter.speed ?? null,
+					encounter.textVisible === undefined ? null : encounter.textVisible ? 1 : 0,
+					JSON.stringify(encounter.detail),
+					encounter.at,
+					encounter.deviceId,
+					encounter.deviceSeq,
+					encounter.userId
+				]
+			);
+		}
 	}
 
 	/**

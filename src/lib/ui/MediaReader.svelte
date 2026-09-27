@@ -13,6 +13,7 @@
 	import type { English } from '$lib/translation/lines';
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
+	import type { Recorder } from './recorder';
 
 	/**
 	 * A player with its subtitle lines underneath: the current line follows playback, ▸ seeks to a
@@ -31,6 +32,7 @@
 		online,
 		status,
 		onword,
+		recorder,
 		player = $bindable(null)
 	}: {
 		file: File;
@@ -49,6 +51,8 @@
 		/** What the page is waiting on (progress bars), shown on the stage as well as above the list. */
 		status?: Snippet;
 		onword: (line: number, word: LineWord) => void;
+		/** Where what happens during playback is written down (spec 007). */
+		recorder?: Recorder;
 		player?: HTMLMediaElement | null;
 	} = $props();
 
@@ -60,6 +64,7 @@
 	function reveal(line: number) {
 		if (!translations[line]) onask?.(line);
 		revealed = revealed.includes(line) ? revealed.filter((i) => i !== line) : [...revealed, line];
+		if (revealed.includes(line)) recorder?.translation(line, translations[line]?.source);
 	}
 	/** How much English there is: every line with some, and those the LLM has improved. */
 	const english = $derived({
@@ -85,6 +90,7 @@
 	function follow() {
 		if (!player) return;
 		const time = player.currentTime;
+		if (!player.paused) recorder?.playing(lineAt(time), moment());
 		let at = -1;
 		for (let i = 0; i < cues.length && cues[i].start <= time; i++) at = i;
 		if (at === currentLine) return;
@@ -94,6 +100,32 @@
 			document
 				.getElementById(`line-${at}`)
 				?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}
+
+	/** The line playing at `time`: the last one started, as follow() decides. */
+	function lineAt(time: number): number {
+		let at = -1;
+		for (let i = 0; i < cues.length && cues[i].start <= time; i++) at = i;
+		return at;
+	}
+
+	/** Every line's text is on screen today: on the stage and in the list alike. */
+	function moment() {
+		return {
+			mediaMs: Math.round((player?.currentTime ?? 0) * 1000),
+			speed: player?.playbackRate ?? speed,
+			textVisible: true
+		};
+	}
+
+	/**
+	 * Where playback was before a seek. By `seeking`, currentTime is already the target, and by
+	 * `seeked` a timeupdate has passed, so the last timeupdate's time is kept and taken at `seeking`.
+	 */
+	let playedTo = 0;
+	let seekFrom = 0;
+	function noteTime() {
+		if (player && !player.seeking) playedTo = player.currentTime;
 	}
 
 	function seek(line: number) {
@@ -145,6 +177,7 @@
 	function nextSpeed() {
 		speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
 		if (player) player.playbackRate = speed;
+		recorder?.setting('speed', speed);
 		try {
 			localStorage.setItem('reader.speed', String(speed));
 		} catch {
@@ -155,6 +188,7 @@
 	function togglePauseEachLine() {
 		pauseEachLine = !pauseEachLine;
 		keep('reader.pauseEachLine', pauseEachLine);
+		recorder?.setting('stopAfterLine', pauseEachLine);
 		stoppedAt = -1;
 	}
 
@@ -199,6 +233,7 @@
 	function toggleBlur() {
 		blurEnglish = !blurEnglish;
 		keep('reader.blurEnglish', blurEnglish);
+		recorder?.setting('blurEnglish', blurEnglish);
 	}
 
 	/** The whole app, not the video element: the word sheet has to show on top of it. */
@@ -218,6 +253,8 @@
 		if (currentLine < 0) return;
 		if (!translations[currentLine]) onask?.(currentLine);
 		unblurred = unblurred === currentLine ? -1 : currentLine;
+		if (unblurred === currentLine)
+			recorder?.translation(currentLine, translations[currentLine]?.source);
 	}
 
 	/** ◀ goes to the start of this line when more than a second in, as Language Reactor does. */
@@ -232,6 +269,7 @@
 	function replay() {
 		const again = performance.now() - replayedAt < 1500;
 		replayedAt = performance.now();
+		recorder?.replay(currentLine, again && currentLine > 0, moment().mediaMs);
 		seek(again && currentLine > 0 ? currentLine - 1 : currentLine);
 	}
 
@@ -248,8 +286,11 @@
 			controls
 			src={url}
 			bind:this={player}
-			ontimeupdate={follow}
+			ontimeupdate={() => (noteTime(), follow())}
 			onloadedmetadata={started}
+			onpause={() => recorder?.paused()}
+			onseeking={() => (seekFrom = playedTo)}
+			onseeked={() => recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
 		></audio>
 	{:else}
 		<div class="media" class:stage>
@@ -266,9 +307,12 @@
 				playsinline
 				src={url}
 				bind:this={player}
-				ontimeupdate={follow}
+				ontimeupdate={() => (noteTime(), follow())}
 				onplay={watchLineEnd}
 				onloadedmetadata={started}
+				onpause={() => recorder?.paused()}
+				onseeking={() => (seekFrom = playedTo)}
+				onseeked={() => recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
 			></video>
 			{#if stage}
 				{#if bare}
@@ -337,7 +381,12 @@
 
 {#if askable || translations.some(Boolean)}
 	<label class="all-english" class:hidden={stage && !isAudio}>
-		<input type="checkbox" bind:checked={showAll} /> Show all English
+		<input
+			type="checkbox"
+			bind:checked={showAll}
+			onchange={() => recorder?.setting('showAllEnglish', showAll)}
+		/>
+		Show all English
 		<small>
 			· {english.have} of {lines.length} lines{english.improved > 0
 				? `, ${english.improved} improved`

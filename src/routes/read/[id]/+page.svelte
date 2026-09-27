@@ -20,6 +20,8 @@
 	import { followTranslation, jobOf } from '$lib/media/translation';
 	import { saveMedia, removeMedia, dismissJob, QUICK_ENGLISH } from '$lib/media/store';
 	import { goto } from '$app/navigation';
+	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
+	import { attention } from '$lib/ui/attention.svelte';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
@@ -101,13 +103,19 @@
 
 	let deleteProblem = $state<string | null>(null);
 
-	/** Only a document no word was marked in can go: the marks are kept (Repository). */
+	/**
+	 * The video file goes; the text stays, hidden, when marks or reading history point into it
+	 * (Repository.removeDocument), so that history keeps its context.
+	 */
 	async function deleteDocument() {
-		if (!document || !confirm(`Delete “${document.title}”? This cannot be undone.`)) return;
+		if (!document || !confirm(`Delete “${document.title}”? Your marks and history in it are kept.`))
+			return;
 		deleteProblem = null;
+		deleting = true;
 		try {
 			const { repository } = await session();
-			await repository.deleteUnmarkedDocument(document.id);
+			await recorder?.close();
+			await repository.removeDocument(document.id);
 			// Its Termux download stays in Termux; without this it would be offered as new again.
 			const job = media && jobOf(media.meta);
 			if (job) await dismissJob(job);
@@ -140,8 +148,87 @@
 	});
 
 	function chooseWord(_line: number, word: LineWord) {
-		chosen = document?.tokens.find((token) => token.start === word.key) ?? null;
+		open(document?.tokens.find((token) => token.start === word.key) ?? null);
 	}
+
+	/** A word's sheet opens and shows its meaning: recorded when it closes (recorder.ts). */
+	function open(token: Token | null) {
+		chosen = token;
+		if (!token || token.lexemeId === undefined) return;
+		const word: WordAt = { lexemeId: token.lexemeId, fromOffset: token.start, toOffset: token.end };
+		const moment = player
+			? {
+					mediaMs: Math.round(player.currentTime * 1000),
+					speed: player.playbackRate,
+					textVisible: true
+				}
+			: undefined;
+		recorder?.opened(word, moment);
+	}
+
+	// --- Encounters (spec 007) ---
+
+	let recorder = $state<Recorder | undefined>();
+	let player = $state<HTMLMediaElement | null>(null);
+	/** Set when the document is deleted: then there is nothing to ask about. */
+	let deleting = false;
+
+	const sink: EncounterSink = {
+		startSession: async (id, modality) => (await session()).repository.startSession(id, modality),
+		recordEncounters: async (id, encounters) =>
+			(await session()).repository.recordEncounters(id, encounters)
+	};
+
+	/** One recorder per opened document; replacing `document` after a mark does not restart it. */
+	$effect(() => {
+		const id = documentId;
+		const playable = Boolean(media?.media);
+		if (id === undefined || loading) return;
+		const made = untrack(
+			() => new Recorder(sink, id, playable ? 'media' : 'reading', lineRanges())
+		);
+		recorder = made;
+		deleting = false;
+		return () => {
+			if (!deleting) attention.ended(made);
+			void made.close();
+		};
+	});
+
+	/** Line i's code-point range: media lines are the raw content's lines, one per cue. */
+	function lineRanges(): [number, number][] {
+		const ranges: [number, number][] = [];
+		let start = 0;
+		for (let i = 0; i <= characters.length; i++) {
+			if (i === characters.length || characters[i] === '\n') {
+				ranges.push([start, i]);
+				start = i + 1;
+			}
+		}
+		return ranges;
+	}
+
+	/** In a text, what stays on screen for two seconds counts as read (research R3). */
+	let settling: ReturnType<typeof setTimeout> | undefined;
+	function noteScroll() {
+		clearTimeout(settling);
+		settling = setTimeout(noteOnScreen, 2000);
+	}
+
+	function noteOnScreen() {
+		if (media?.media || !recorder || globalThis.document.visibilityState !== 'visible') return;
+		const tokens = [...globalThis.document.querySelectorAll<HTMLElement>('.reading [data-start]')];
+		const shown = tokens.filter((element) => {
+			const box = element.getBoundingClientRect();
+			return box.bottom > 0 && box.top < window.innerHeight;
+		});
+		if (shown.length === 0) return;
+		recorder.read(Number(shown[0].dataset.start), Number(shown.at(-1)!.dataset.end));
+	}
+
+	$effect(() => {
+		if (recorder && !media?.media) untrack(() => noteScroll());
+	});
 
 	/** True while a stale document is being brought up to date, which the reader waits for. */
 	let resegmenting = $state(false);
@@ -301,6 +388,7 @@
 
 	/** The reader has finished with the menu, so a refresh that was waiting for them can happen. */
 	function menuClosed() {
+		recorder?.closed();
 		chosen = null;
 		if (refreshWhenFree) void showLatestWords();
 	}
@@ -314,6 +402,7 @@
 	async function choose(state: string) {
 		const token = chosen;
 		if (token?.lexemeId === undefined || !document) return;
+		recorder?.closed({ chose: state, knew: state === 'known' ? 'known' : undefined });
 		chosen = null;
 		try {
 			const { repository } = await session();
@@ -369,6 +458,8 @@
 	}
 </script>
 
+<svelte:window onscroll={noteScroll} />
+
 {#if media}
 	<a class="back" href={resolve('/')}>← Videos</a>
 {:else}
@@ -416,6 +507,8 @@
 			onask={(line) => quick?.focus(line, true)}
 			online={(line) => quick?.focus(line)}
 			onword={chooseWord}
+			{recorder}
+			bind:player
 		>
 			{#snippet status()}
 				{#if quickStatus}<Progress {...quickStatus} />{/if}
@@ -425,7 +518,9 @@
 		<div class="reading" lang={document.language}>
 			{#each document.tokens as token (token.start)}{#if token.isWord}<button
 						class="token state-{stateOf(token) ?? 'none'}"
-						onclick={() => (chosen = token)}>{textOf(token)}</button
+						data-start={token.start}
+						data-end={token.end}
+						onclick={() => open(token)}>{textOf(token)}</button
 					>{:else}<span class="token">{textOf(token)}</span>{/if}{/each}
 		</div>
 	{/if}
@@ -439,6 +534,10 @@
 				? undefined
 				: states.get(chosen.lexemeId)?.provenance}
 			onchoose={choose}
+			onknew={() => {
+				recorder?.closed({ knew: 'knew' });
+				menuClosed();
+			}}
 			onclose={menuClosed}
 		/>
 	{/if}

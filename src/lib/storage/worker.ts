@@ -21,6 +21,7 @@ import { Repository, type UpgradeBatch } from './repository';
 import { CopyRejected, type CopyBody } from '../backup/format';
 import { acquire, release } from './lease';
 import { next, acceptsWrites, type Availability, type Event } from './availability';
+import type { Encounter, Modality } from '../domain/encounter';
 import { clearDiagnostics, readDiagnostics, recordDiagnostic } from '../diagnostics/log';
 import type { DiagnosticKind } from '../diagnostics/log';
 import type { IngestedDocument } from '../content/types';
@@ -40,7 +41,7 @@ import type { Request, Response, ToWorker } from './protocol';
 const READER_CHANGES = new Set([
 	'saveDocument',
 	'assertState',
-	'deleteUnmarkedDocument',
+	'removeDocument',
 	'importAnki',
 	'undoAnkiImport'
 ]);
@@ -240,8 +241,14 @@ function run(request: Request): unknown {
 			return repository.staleDocumentIds(request.args[0], request.args[1]);
 		case 'rebuildProjection':
 			return repository.rebuildProjection();
-		case 'deleteUnmarkedDocument':
-			return repository.deleteUnmarkedDocument(request.args[0]);
+		case 'removeDocument':
+			return repository.removeDocument(request.args[0]);
+		case 'startSession':
+			return repository.startSession(request.args[0], request.args[1] as Modality);
+		case 'recordEncounters':
+			return repository.recordEncounters(request.args[0], request.args[1] as Encounter[]);
+		case 'recentEncounters':
+			return repository.recentEncounters();
 		case 'importAnki':
 			return repository.importAnki(request.args[0] as AnkiExport);
 		case 'previewAnki':

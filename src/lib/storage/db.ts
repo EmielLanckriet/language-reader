@@ -19,6 +19,7 @@ import sqlite3InitModule, {
 
 import initialSql from './migrations/001-initial.sql?raw';
 import partialUpgradeSql from './migrations/002-partial-upgrade.sql?raw';
+import encountersSql from './migrations/003-encounters.sql?raw';
 
 export type { Database, SqlValue };
 
@@ -79,7 +80,8 @@ export function lastInsertId(db: Database): number {
  */
 const MIGRATIONS: { version: number; name: string; sql: string }[] = [
 	{ version: 1, name: '001-initial', sql: initialSql },
-	{ version: 2, name: '002-partial-upgrade', sql: partialUpgradeSql }
+	{ version: 2, name: '002-partial-upgrade', sql: partialUpgradeSql },
+	{ version: 3, name: '003-encounters', sql: encountersSql }
 ];
 
 /** The database file, inside the origin-private file system. Invisible to the reader. */

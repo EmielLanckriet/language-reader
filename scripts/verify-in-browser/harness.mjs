@@ -808,6 +808,89 @@ const scenarios = {
 		}
 	},
 
+	// Spec 007: what happens on the stage is recorded as encounters, and the attention question is
+	// asked over the next page after leaving. Needs the fixture-media job served, as for `media`.
+	async encounters() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the video to be playable',
+				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				60000,
+				250
+			);
+			// Play 2 s → 34 s at double speed: past the 30 s that makes the question worth asking.
+			await tab.evaluate(`
+				const video = document.querySelector('video');
+				video.muted = true;
+				video.currentTime = 2;
+				video.playbackRate = 2;
+				await video.play();
+				await new Promise((r) => { const t = setInterval(() => { if (video.currentTime >= 34) { clearInterval(t); r(); } }, 100); });
+				return true;
+			`);
+			const tapWord = (then) =>
+				tab.evaluate(`
+					const word = document.querySelector('.media.stage .subtitles button.token');
+					if (!word) return null;
+					word.click();
+					await new Promise((r) => setTimeout(r, 300));
+					const button = [...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === ${JSON.stringify(then)});
+					if (!button) return null;
+					button.click();
+					return word.textContent;
+				`);
+			const checked = await until('a word checked', () => tapWord('I knew it'));
+			const looked = await until('a word looked up', () => tapWord('Cancel'));
+			await tab.evaluate(`
+				document.querySelector('button[aria-label^="Replay"]').click();
+				await new Promise((r) => setTimeout(r, 1200));
+				const video = document.querySelector('video');
+				video.currentTime = 40;
+				await new Promise((r) => setTimeout(r, 800));
+				video.pause();
+				document.querySelector('.back-to-videos').click();
+				return true;
+			`);
+			const asked = await until('the attention question', () =>
+				tab.evaluate(`
+					const choice = [...document.querySelectorAll('.sheet .choice')].find((b) => b.textContent.startsWith('Some'));
+					if (!choice) return null;
+					choice.click();
+					return true;
+				`)
+			);
+			await until('leaving for the library', () =>
+				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+			);
+			await tab.goto('/diagnostics');
+			const recorded = await until('the session on Diagnostics', () =>
+				tab.evaluate(`
+					const sitting = document.querySelector('.sitting');
+					if (!sitting) return null;
+					return [...sitting.querySelectorAll('.encounters li')].map((li) => li.textContent.replace(/\\s+/g, ' ').trim());
+				`)
+			);
+			const kinds = recorded.map((line) => line.split(/[ ·]/)[0]);
+			const want = ['played', 'check', 'lookup', 'replay', 'seek', 'attention'];
+			return {
+				pass:
+					asked &&
+					want.every((kind) => kinds.includes(kind)) &&
+					recorded.some((line) => line.startsWith('check') && line.includes(checked)) &&
+					recorded.some((line) => line.startsWith('lookup') && line.includes('2×')) &&
+					recorded.some((line) => line.includes('"answer":"some"')) &&
+					recorded.some((line) => /^seek.*"fromMs":3\d{4},"toMs":40\d{3}/.test(line)),
+				checked,
+				looked,
+				recorded
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// A Termux job with subtitles, imported from New from Termux and played. Needs make-fixtures.sh's
 	// fixture-media job served by reader-service.py on 127.0.0.1:8765.
 	async media() {

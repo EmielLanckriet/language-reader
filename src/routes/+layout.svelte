@@ -8,6 +8,8 @@
 	import SafeguardNotice from '$lib/ui/SafeguardNotice.svelte';
 	import TabBar from '$lib/ui/TabBar.svelte';
 	import TermuxStatus from '$lib/ui/TermuxStatus.svelte';
+	import AttentionSheet from '$lib/ui/AttentionSheet.svelte';
+	import { attention } from '$lib/ui/attention.svelte';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
 	import { sweepStaleDocuments } from '$lib/storage/sweep';
@@ -129,3 +131,6 @@
 	{@render children()}
 </main>
 {#if tabbed}<TabBar />{/if}
+{#if attention.pending}
+	<AttentionSheet onanswer={(answer) => void attention.answered()?.attention(answer)} />
+{/if}

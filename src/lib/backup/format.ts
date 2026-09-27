@@ -6,7 +6,7 @@
  * here touches storage.
  */
 
-export const FORMAT = 1;
+export const FORMAT = 2;
 
 export interface CopyDocument {
 	id: number;
@@ -17,6 +17,37 @@ export interface CopyDocument {
 	createdAt: string;
 	/** A media document's subtitles and metadata; the video itself is found again, not copied. */
 	media?: { subtitles: { name: string; text: string }; meta: Record<string, unknown> };
+	/** Hidden from the library, its media gone; kept because encounters point into it (format 2). */
+	removedAt?: string;
+}
+
+/** Format 2 (spec 007): a sitting with one document. */
+export interface CopySession {
+	deviceId: string;
+	deviceSeq: number;
+	documentId: number;
+	modality: string;
+	startedAt: string;
+	userId: number;
+}
+
+/** Format 2: one encounter; its word, like an event's, as `(language, surface)`. */
+export interface CopyEncounter {
+	deviceId: string;
+	deviceSeq: number;
+	session?: { deviceId: string; deviceSeq: number };
+	kind: string;
+	language?: string;
+	surface?: string;
+	documentId?: number;
+	from?: number;
+	to?: number;
+	mediaMs?: number;
+	speed?: number;
+	textVisible?: boolean;
+	detail: Record<string, unknown>;
+	at: string;
+	userId: number;
 }
 
 export interface CopyEvent {
@@ -52,6 +83,8 @@ export interface CopyBody {
 	documents: CopyDocument[];
 	events: CopyEvent[];
 	states: CopyState[];
+	sessions: CopySession[];
+	encounters: CopyEncounter[];
 	/** Spec 004's segmentation corrections, once they exist. */
 	corrections: unknown[];
 }
@@ -122,7 +155,10 @@ export async function open(text: string): Promise<CopyBody> {
 	return upgrade(body);
 }
 
-/** Bring an older format up to the current one, one step at a time. There are no older formats yet. */
+/** Bring an older format up to the current one, one step at a time. */
 export function upgrade(body: CopyBody): CopyBody {
-	return body;
+	let current = body;
+	// 1 → 2: sessions and encounters did not exist yet.
+	if (current.format === 1) current = { ...current, format: 2, sessions: [], encounters: [] };
+	return current;
 }

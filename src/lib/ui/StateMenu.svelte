@@ -18,6 +18,7 @@
 		current,
 		provenance,
 		onchoose,
+		onknew,
 		onclose
 	}: {
 		word: string;
@@ -28,6 +29,8 @@
 		/** How the current state was acquired: shown when it came from Anki (FR-012). */
 		provenance?: string;
 		onchoose: (state: string) => void;
+		/** The reader only checked a word they knew: a check, not a lookup (spec 007). */
+		onknew?: () => void;
 		onclose: () => void;
 	} = $props();
 
@@ -102,11 +105,21 @@
 			<p class="muted">You can mark words once the transcript is complete.</p>
 		{/if}
 
-		<button class="secondary cancel" onclick={onclose}>Cancel</button>
+		<div class="closing">
+			{#if onknew}<button class="secondary" onclick={onknew}>I knew it</button>{/if}
+			<button class="secondary cancel" onclick={onclose}>Cancel</button>
+		</div>
 	</div>
 </div>
 
 <style>
+	.closing {
+		display: flex;
+		gap: 0.5rem;
+	}
+	.closing > button {
+		flex: 1;
+	}
 	.meanings {
 		max-height: 30vh;
 		overflow-y: auto;

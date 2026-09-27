@@ -20,22 +20,22 @@ full-library recompute run only on the phone (T037).
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `ts-fsrs@5.4.2` to `dependencies` in `package.json`; check `npm run build` passes `scripts/check-bundle.mjs` with it
-- [ ] T002 [P] Fixtures: `tests/fixtures/encounters/` (a two-document library with tokens, one media and one text) and `tests/fixtures/anki/anki-words-v2.json` (five words with `difficulty` and `lastReview`, one without FSRS data)
+- [X] T001 Add `ts-fsrs@5.4.2` to `dependencies` in `package.json`; check `npm run build` passes `scripts/check-bundle.mjs` with it
+- [X] T002 [P] Fixtures: US1 builds its library with `buildHistory` (tests/backup/support.ts) rather than a fixture directory; the Anki v2 fixture comes with T018
 
 ---
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T003 Migration `src/lib/storage/migrations/003-encounters.sql` per data-model.md: `session`, `encounter` (indexes and unique `(device_id, device_seq)`), `memory`, `document.removed_at`; register it in `MIGRATIONS` in `src/lib/storage/db.ts`
-- [ ] T004 [P] Test first in `tests/domain/encounter.test.ts`: `validateEncounter` in `src/lib/domain/encounter.ts` accepts each kind of data-model.md with its required fields; refuses a `lookup`/`check` without lexeme or offsets, a `review` without `detail.skill` and a grade 1–4, a `played` without `toMs`, and an `attention` whose answer is not `all`/`some`/`none`/`null`; accepts an unknown kind. Then implement the types and the validator
-- [ ] T005 Test first in `tests/storage/encounters.test.ts`: `Repository.startSession(documentId, modality)` and `Repository.recordEncounters(sessionId, encounters[])`:
+- [X] T003 Migration `src/lib/storage/migrations/003-encounters.sql` per data-model.md: `session`, `encounter` (indexes and unique `(device_id, device_seq)`), `memory`, `document.removed_at`; register it in `MIGRATIONS` in `src/lib/storage/db.ts`
+- [X] T004 [P] Test first in `tests/domain/encounter.test.ts`: `validateEncounter` in `src/lib/domain/encounter.ts` accepts each kind of data-model.md with its required fields; refuses a `lookup`/`check` without lexeme or offsets, a `review` without `detail.skill` and a grade 1–4, a `played` without `toMs`, and an `attention` whose answer is not `all`/`some`/`none`/`null`; accepts an unknown kind. Then implement the types and the validator
+- [X] T005 Test first in `tests/storage/encounters.test.ts`: `Repository.startSession(documentId, modality)` and `Repository.recordEncounters(sessionId, encounters[])`:
   - append in one transaction: a refused encounter in a batch writes none of the batch;
   - take `device_seq` from the counter `status_event` uses, so a mark and an encounter never share a number;
   - never update or delete a row (fast-check over interleaved marks and batches: the table only grows, and orders exactly by `(device_id, device_seq)`).
 
   Then implement them in `src/lib/storage/repository.ts`
-- [ ] T006 Carry `startSession` and `recordEncounters` across `src/lib/storage/protocol.ts`, `worker.ts` and `client.ts`
+- [X] T006 Carry `startSession` and `recordEncounters` across `src/lib/storage/protocol.ts`, `worker.ts` and `client.ts`
 
 **Checkpoint**: encounters can be written and are ordered with the rest of the history.
 
@@ -48,29 +48,29 @@ full-library recompute run only on the phone (T037).
 **Independent test**: quickstart phone step 1. The session's encounters on Diagnostics are exactly
 what was done, in order, and nothing else in the app changed.
 
-- [ ] T007 [US1] `src/lib/ui/recorder.ts`: one recorder per open document. It starts the session on the first range, buffers encounters, and flushes every 5 s, on pause, seek, `visibilitychange` to hidden and `pagehide` (research R3). It exposes `lookup`, `check`, `replay`, `translation`, `setting`, `seek`, `attention`, `rangeFrom/rangeTo`
-- [ ] T008 [US1] `src/lib/ui/MediaReader.svelte` reports to the recorder:
+- [X] T007 [US1] `src/lib/ui/recorder.ts`: one recorder per open document. It starts the session on the first range, buffers encounters, and flushes every 5 s, on pause, seek, `visibilitychange` to hidden and `pagehide` (research R3). It exposes `lookup`, `check`, `replay`, `translation`, `setting`, `seek`, `attention`, `rangeFrom/rangeTo`
+- [X] T008 [US1] `src/lib/ui/MediaReader.svelte` reports to the recorder:
   - played chunks with media time, speed and whether the line's text is showing;
   - seeks with from/to;
   - `replay()` with `toPrevious`;
   - a translation opened (line, source);
   - speed and stop-after-line changes.
-- [ ] T009 [US1] `src/routes/read/[id]/+page.svelte`:
+- [X] T009 [US1] `src/routes/read/[id]/+page.svelte`:
   - start a recorder per document (modality `media` or `reading`);
   - a tap that shows a word's meaning records `lookup` (lexeme, offsets, and media time, speed and text visibility on video);
   - in texts, record the lines on screen ≥ 2 s as `read` ranges.
-- [ ] T010 [P] [US1] "I knew it" in `src/lib/ui/StateMenu.svelte`: it turns that lookup into a `check` via the recorder, and closes the sheet
-- [ ] T011 [P] [US1] `src/lib/ui/AttentionSheet.svelte`: shown on leaving a session with ≥ 30 s read or played (the back link, tab changes, `beforeNavigate`), with three answers and a dismiss, recorded as `attention` (research R13)
-- [ ] T012 [US1] One plumbing test in `tests/storage/recorder.test.ts`: a recorder driven through a lookup, a replay and 12 s of played ranges against an in-memory repository writes those encounters in order, and flushing twice writes nothing twice. Break the flush once to see it go red
-- [ ] T013 [US1] Test first in `tests/backup/format2.test.ts`: copy format 2 per contracts/formats.md:
+- [X] T010 [P] [US1] "I knew it" in `src/lib/ui/StateMenu.svelte`: it turns that lookup into a `check` via the recorder, and closes the sheet
+- [X] T011 [P] [US1] `src/lib/ui/AttentionSheet.svelte`: shown on leaving a session with ≥ 30 s read or played (the back link, tab changes, `beforeNavigate`), with three answers and a dismiss, recorded as `attention` (research R13)
+- [X] T012 [US1] One plumbing test in `tests/storage/recorder.test.ts`: a recorder driven through a lookup, a replay and 12 s of played ranges against an in-memory repository writes those encounters in order, and flushing twice writes nothing twice. Break the flush once to see it go red
+- [X] T013 [US1] Test first in `tests/backup/format2.test.ts`: copy format 2 per contracts/formats.md:
   - `upgrade()` turns a format-1 body into 2 with empty arrays;
   - `exportBody` then `restoreCopy` into an empty database reproduces every session and encounter (words as `(language, surface)`, sessions re-linked);
   - restoring twice duplicates nothing.
 
   Then implement it in `src/lib/backup/format.ts` and `src/lib/storage/repository.ts`
-- [ ] T014 [US1] Delete keeps history (research R11): `Repository.removeDocument(id)` sets `removed_at` when any status event or encounter points at the document, and deletes outright otherwise. `listDocuments` hides removed documents. The delete button in `src/routes/read/[id]/+page.svelte` removes the media files in both cases. Add one test to `tests/storage/encounters.test.ts`
-- [ ] T015 [P] [US1] Diagnostics lists the latest sessions and their encounters (kind, word, line, media time, speed, text visible, answer), for quickstart step 1: `src/routes/diagnostics/+page.svelte`, plus a `recentEncounters` read call across the worker
-- [ ] T016 [US1] Browser scenario `encounters` in `scripts/verify-in-browser/harness.mjs`: open the fixture clip, look up a word, replay, seek, leave and answer. Diagnostics shows the five encounters
+- [X] T014 [US1] Delete keeps history (research R11): `Repository.removeDocument(id)` sets `removed_at` when any status event or encounter points at the document, and deletes outright otherwise. `listDocuments` hides removed documents. The delete button in `src/routes/read/[id]/+page.svelte` removes the media files in both cases. Add one test to `tests/storage/encounters.test.ts`
+- [X] T015 [P] [US1] Diagnostics lists the latest sessions and their encounters (kind, word, line, media time, speed, text visible, answer), for quickstart step 1: `src/routes/diagnostics/+page.svelte`, plus a `recentEncounters` read call across the worker
+- [X] T016 [US1] Browser scenario `encounters` in `scripts/verify-in-browser/harness.mjs`: open the fixture clip, look up a word, replay, seek, leave and answer. Diagnostics shows the five encounters
 
 **Checkpoint**: US1 alone stops the data loss. Deploy it to the phone as soon as it passes (Principle I).
 

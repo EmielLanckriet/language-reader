@@ -73,12 +73,12 @@ describe('the initial migration', () => {
 
 	it('records which migrations have been applied', () => {
 		expect(tableNames(db)).toContain('schema_migration');
-		expect(appliedVersions(db)).toEqual([1, 2]);
+		expect(appliedVersions(db)).toEqual([1, 2, 3]);
 	});
 
 	it('is idempotent — applying it twice changes nothing', () => {
 		expect(() => applyMigrations(db)).not.toThrow();
-		expect(appliedVersions(db)).toEqual([1, 2]);
+		expect(appliedVersions(db)).toEqual([1, 2, 3]);
 	});
 
 	it('lets a document say it is part-way through an upgrade, and defaults to saying it is not', () => {
@@ -234,7 +234,7 @@ describe('upgrading a database that already has a reader in it', () => {
 
 			applyMigrations(db);
 
-			expect(appliedVersions(db)).toEqual([1, 2]);
+			expect(appliedVersions(db)).toEqual([1, 2, 3]);
 
 			// The document is untouched, and reads as what it is: not mid-upgrade, every token from
 			// its own stamp. Nothing had to visit it to make that true.
@@ -276,7 +276,7 @@ describe('upgrading a database that already has a reader in it', () => {
 			withAReaderInIt(db);
 			applyMigrations(db);
 			applyMigrations(db);
-			expect(appliedVersions(db)).toEqual([1, 2]);
+			expect(appliedVersions(db)).toEqual([1, 2, 3]);
 		} finally {
 			db.close();
 		}

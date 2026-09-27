@@ -21,7 +21,10 @@ export type Call =
 	| { method: 'rebuildProjection'; args: [] }
 	| { method: 'exportBody'; args: [string, string] }
 	| { method: 'restoreCopy'; args: [unknown] }
-	| { method: 'deleteUnmarkedDocument'; args: [number] }
+	| { method: 'removeDocument'; args: [number] }
+	| { method: 'startSession'; args: [number, string] }
+	| { method: 'recordEncounters'; args: [number, unknown[]] }
+	| { method: 'recentEncounters'; args: [] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }
 	| { method: 'undoAnkiImport'; args: [string] }
