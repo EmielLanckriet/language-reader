@@ -187,7 +187,7 @@
 	}
 </script>
 
-<a class="back" href={resolve('/')}>← Library</a>
+<a class="back" href={resolve('/')}>← Videos</a>
 
 {#if problem}
 	<p role="alert">{problem}</p>

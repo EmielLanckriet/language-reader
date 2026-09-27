@@ -182,3 +182,12 @@ export async function importedJobs(): Promise<Set<string>> {
 	}
 	return jobs;
 }
+
+/** The documents that are videos: those with a media folder, which a restored video keeps too. */
+export async function mediaDocuments(): Promise<Set<number>> {
+	const ids = new Set<number>();
+	for await (const entry of (await mediaRoot()).values()) {
+		if (entry.kind === 'directory' && /^\d+$/.test(entry.name)) ids.add(Number(entry.name));
+	}
+	return ids;
+}

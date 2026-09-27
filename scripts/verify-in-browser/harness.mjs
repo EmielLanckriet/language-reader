@@ -281,7 +281,12 @@ const scenarios = {
 					),
 				15000,
 				250
-			);
+			).catch(async (error) => {
+				const seen = await tab.evaluate(
+					`return { at: location.pathname, tokens: document.querySelectorAll('.token').length, 关税: [...document.querySelectorAll('.token')].filter((t) => t.textContent === '关税').map((t) => t.className + ' in ' + (t.closest('[class]')?.parentElement?.className ?? '')) };`
+				);
+				throw new Error(`${error.message}; ${JSON.stringify(seen)}`);
+			});
 			return {
 				pass:
 					/This sets 5 words/.test(preview) && /5 words set/.test(done) && shaded.includes('关税'),
@@ -534,7 +539,7 @@ const scenarios = {
 			await tab.evaluate(
 				`localStorage.setItem('reader.copyDelays', JSON.stringify({ quiet: 500, every: 3000 })); return true;`
 			);
-			await tab.goto('/');
+			await tab.goto('/add');
 			await until('the paste box', () =>
 				tab.evaluate('return !!document.querySelector("textarea");')
 			);
@@ -610,6 +615,16 @@ const scenarios = {
 			await tab.evaluate(
 				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Restore').click(); return true;`
 			);
+			// A restored text is listed under Texts: wait for the restore to finish, then look there.
+			await until(
+				'the restore to finish',
+				() =>
+					tab.evaluate(
+						`return ![...document.querySelectorAll('button')].some((b) => /^Restor/.test(b.textContent.trim()));`
+					),
+				30000
+			);
+			await tab.goto('/texts');
 			const restoredLink = await until(
 				'the restored document',
 				() => tab.evaluate(`return ${READ_LINK};`),
@@ -749,7 +764,7 @@ const scenarios = {
 	async lookup() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/');
+			await tab.goto('/texts');
 			const link = await until('a document in the library', () =>
 				tab.evaluate(`return ${READ_LINK};`)
 			);
@@ -929,7 +944,7 @@ const scenarios = {
 			// green line be read as the stronger claim.
 			const modelPresent = /bert-ws/.test(hasModel);
 
-			await tab.goto('/');
+			await tab.goto('/add');
 			await until('the paste box', () =>
 				tab.evaluate('return !!document.querySelector("main textarea")')
 			);
@@ -1067,7 +1082,7 @@ const scenarios = {
 	async words() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/');
+			await tab.goto('/add');
 			await until('textarea', () => tab.evaluate('return !!document.querySelector("textarea")'));
 
 			await tab.evaluate(`
@@ -1151,7 +1166,7 @@ const scenarios = {
 	async offline() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/');
+			await tab.goto('/texts');
 			const link = await until('library rendered', () =>
 				tab.evaluate(`return ${READ_LINK} ?? null;`)
 			);
@@ -1175,7 +1190,7 @@ const scenarios = {
 	async firstload() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/');
+			await tab.goto('/add');
 			await until('the paste box to render', () =>
 				tab.evaluate('return !!document.querySelector("textarea");')
 			);
@@ -1246,19 +1261,19 @@ const scenarios = {
 					console_.push('ERR: ' + params.entry.text);
 			});
 
-			await first.goto('/');
+			await first.goto('/add');
 			await until('first copy ready', () =>
 				first.evaluate(`return ${SAVE_BUTTON} ? true : false;`)
 			);
 
-			await second.goto('/');
+			await second.goto('/texts');
 			// Wait for the foreground copy to have actually TOUCHED storage, not merely rendered.
 			// `session()` is lazy, so a copy that has only painted its controls has not yet asked
 			// for the lease — and attempting the save before then would test nothing but a race.
 			// "Opening your library…" disappearing is the observable end of that acquisition.
 			await until('foreground copy to have acquired storage', () =>
 				second.evaluate(
-					'return !document.body.innerText.includes("Opening your library") && !!document.querySelector("main button");'
+					'return !document.body.innerText.includes("Opening your library") && !!document.querySelector("main h1");'
 				)
 			);
 

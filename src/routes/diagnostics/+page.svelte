@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { safeguards, type Safeguards } from '$lib/backup/safeguards';
 	import { latest, restore } from '$lib/backup/destination';
 	import StartTermux from '$lib/ui/StartTermux.svelte';
@@ -265,11 +264,10 @@
 	}
 </script>
 
-<a class="back" href={resolve('/')}>← Library</a>
-
-<h1>Diagnostics</h1>
+<h1>More</h1>
 <p class="subtitle">
-	Everything that has gone wrong on this device. Nothing here is sent anywhere.
+	Your Anki words, the copy in Termux, and what has gone wrong on this device. Nothing here is sent
+	anywhere.
 </p>
 
 <h2 class="section">Right now</h2>

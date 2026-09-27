@@ -163,7 +163,7 @@ process.on('exit', stopChildren);
 process.on('SIGINT', () => process.exit(130));
 
 /** Scenarios that need something to have happened first, and what produces it. */
-const WARM_UP = { offline: 'words', bigimport: 'model' };
+const WARM_UP = { offline: 'words', lookup: 'words', bigimport: 'model' };
 
 function runScenario(name) {
 	const harness = run(

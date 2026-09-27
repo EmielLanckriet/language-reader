@@ -12,6 +12,7 @@
 	import type { Cue } from '$lib/media/subtitles';
 	import type { English } from '$lib/translation/lines';
 	import type { Snippet } from 'svelte';
+	import { resolve } from '$app/paths';
 
 	/**
 	 * A player with its subtitle lines underneath: the current line follows playback, ▸ seeks to a
@@ -192,6 +193,9 @@
 			></video>
 			{#if stage}
 				<div class="bar">
+					<!-- The stage covers the page, its back link too: without this, a video had no way out
+					     but Android's back gesture. -->
+					<a class="back-to-videos" href={resolve('/')} aria-label="Back to videos">←</a>
 					<button onclick={() => setStage(false)}>☰ Lines</button>
 					<button onclick={toggleBlur} aria-pressed={!blurEnglish}
 						>{blurEnglish ? 'English blurred' : 'English shown'}</button
@@ -298,6 +302,7 @@
 		justify-content: space-between;
 	}
 	.bar button,
+	.bar .back-to-videos,
 	.steps button {
 		background: rgb(0 0 0 / 55%);
 		color: #fff;
@@ -305,6 +310,12 @@
 		border-radius: 999px;
 		padding: 0.3rem 0.8rem;
 		min-height: 0;
+	}
+	.bar .back-to-videos {
+		display: inline-flex;
+		align-items: center;
+		text-decoration: none;
+		font-size: 1.1rem;
 	}
 	.stage-status {
 		position: absolute;

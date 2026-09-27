@@ -6,6 +6,8 @@
 	import UpdateOffer from '$lib/ui/UpdateOffer.svelte';
 	import ReadOnlyNotice from '$lib/ui/ReadOnlyNotice.svelte';
 	import SafeguardNotice from '$lib/ui/SafeguardNotice.svelte';
+	import TabBar from '$lib/ui/TabBar.svelte';
+	import TermuxStatus from '$lib/ui/TermuxStatus.svelte';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
 	import { sweepStaleDocuments } from '$lib/storage/sweep';
@@ -15,6 +17,10 @@
 	import { describeError } from '$lib/diagnostics/describe';
 
 	let { children } = $props();
+
+	// The library's four sections get the tab bar and Termux's status; reading a document or a
+	// video does not, so nothing sits over the text or the stage.
+	const tabbed = $derived(['/', '/texts', '/add', '/diagnostics'].includes(page.route.id ?? ''));
 
 	$effect(() => {
 		if (!browser) return;
@@ -118,6 +124,8 @@
 	<SafeguardNotice />
 </div>
 
-<main>
+<main class:tabbed>
+	{#if tabbed}<TermuxStatus />{/if}
 	{@render children()}
 </main>
+{#if tabbed}<TabBar />{/if}

@@ -369,7 +369,11 @@
 	}
 </script>
 
-<a class="back" href={resolve('/')}>← Library</a>
+{#if media}
+	<a class="back" href={resolve('/')}>← Videos</a>
+{:else}
+	<a class="back" href={resolve('/texts')}>← Texts</a>
+{/if}
 
 {#if loading}
 	<p class="loading">{resegmenting ? 'Finding the words…' : 'Opening…'}</p>
