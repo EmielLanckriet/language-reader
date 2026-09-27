@@ -7,8 +7,11 @@ Writes <job>/media.zh.vtt after every chunk, and <job>/status.json as {"through"
 The reader service (reader-service.py) serves them from ~/downloads, so the app can poll both while
 this runs.
 
-The first chunk uses the base model so the first lines arrive in seconds; the rest use small, which
-measured four times fewer errors. Each chunk's last line is dropped and redone as the start of the
+The first chunk uses the base model so the first lines arrive in seconds; the rest use
+large-v3-turbo (q5_0). On a street interview (2026-09-27) small misheard ten words that turbo got
+right in nine, at 118 s per 30 s chunk on the phone against small's 55 s: slower than playback, but
+small already was, and a transcript right the first time never has to be replaced under the marks
+made on it. Each chunk's last line is dropped and redone as the start of the
 next chunk, so no word is cut at a boundary.
 
 No prompt. One was used to keep base in simplified characters, and with any prompt whisper.cpp
@@ -30,7 +33,7 @@ THREADS = min(4, os.cpu_count() or 4)
 MODELS = os.environ.get('WHISPER_MODELS', os.path.expanduser('~/.whisper'))
 # Overridable so tests can use tiny: they check the plumbing, not the transcript.
 FIRST_MODEL = os.environ.get('WHISPER_FIRST_MODEL', 'base')
-MODEL = os.environ.get('WHISPER_MODEL', 'small')
+MODEL = os.environ.get('WHISPER_MODEL', 'large-v3-turbo-q5_0')
 WHISPER = os.environ.get('WHISPER', 'whisper-cli')
 # Where a line ends: after clause punctuation, or at the next token once it is this long, for speech
 # whisper did not punctuate. Subtitle lines on the videos measured run 10 to 25 characters.
@@ -38,7 +41,7 @@ WHISPER = os.environ.get('WHISPER', 'whisper-cli')
 # whisper-cli reports progress per 30 s window, so for one chunk only 100% at the end. Starts from
 # the phone's measurements (2026-09-26) and then follows this device.
 TIMINGS = os.path.join(MODELS, 'chunk-seconds.json')
-EXPECTED = {'base': 20.0, 'small': 45.0}
+EXPECTED = {'base': 20.0, 'small': 55.0, 'large-v3-turbo-q5_0': 118.0}
 
 BREAKS = '，,。？?！!；;'
 LONGEST = 24

@@ -89,3 +89,21 @@ prompt, 16. The prompt is gone. It had kept `base` in simplified characters, but
 measured, `base` and `small` without it wrote none (checked with OpenCC's t2s, which changed
 nothing), and Reader's dictionary has the traditional forms too. Revisit if traditional characters
 appear. The whole interview now gives 122 lines, none over 21 characters, no gap over 5 s.
+
+## Amendment, 2026-09-27: large-v3-turbo instead of small
+
+Measured on the reader's street interview (231 s), on the reader's phone for the first time: a
+30 s chunk takes 55 s with `small` and 118 s with `large-v3-turbo` (q5_0, 574 MB), 4 threads; the
+phone has 5.6 GB, 2.4 GB free. So `small` was already 1.8× slower than playback, not ahead of it.
+Of ten words the phone's transcript misheard (新资 for 薪资, 画妆, 講學金, 大级, 悬台, …), `turbo`
+got nine right; `small` on the laptop, whole file, still made four of them. The rest now use
+`turbo`, the first chunk still `base`, so lines arrive about as fast as before and the transcript
+then trails playback at about 3.9×. A transcript right the first time avoids replacing text that
+marks and encounters point into.
+
+Chunk boundaries cost less than suspected. With `turbo` throughout, 30 s chunks, 2-minute chunks and
+one whole-file run made the same one error of the ten and agreed 92–94%; the 30 s run lost one
+phrase at one of seven boundaries (33–38 s swallowed into one segment), the 2-minute run invented a
+repeat. Chunks stay 30 s. `base` in the first chunk wrote traditional 採访 and 新资 on the phone, so
+"revisit if traditional characters appear" has happened; it is limited to the first 30 s.
+

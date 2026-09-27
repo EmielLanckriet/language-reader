@@ -11,7 +11,8 @@ pkg install -y --no-install-recommends python ffmpeg nodejs curl
 curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "$PREFIX/bin/yt-dlp"
 chmod +x "$PREFIX/bin/yt-dlp"
 # Speech-to-text for videos without Chinese subtitles: whisper-cli from this repository's release
-# (scripts/termux/build-binaries.sh), and the base and small models (148 + 488 MB).
+# (scripts/termux/build-binaries.sh), and the base and large-v3-turbo q5_0 models (148 + 574 MB).
+# small (488 MB) is no longer used (ADR-0019, 2026-09-27) and is removed.
 RELEASE="${RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-d09f61a-d81aef1}"
 case "$(uname -m)" in
 x86_64) variant=x86_64-avx2 ;;
@@ -23,9 +24,10 @@ for tool in whisper-cli llama-completion; do
 done
 MODELS="${MODELS:-https://huggingface.co/ggerganov/whisper.cpp/resolve/main}"
 mkdir -p ~/.whisper
-for model in base small; do
+for model in base large-v3-turbo-q5_0; do
 	[ -f ~/.whisper/ggml-$model.bin ] || curl -fL "$MODELS/ggml-$model.bin" -o ~/.whisper/ggml-$model.bin
 done
+rm -f ~/.whisper/ggml-small.bin
 # Translation into English (translate.py): Qwen3-1.7B at Q4_K_M, 1.1 GB, run with --no-repack
 # (1.4 GB peak on the phone, against 2.45 GB for the Q8 it replaces; ADR-0023).
 [ -f ~/.whisper/qwen3-1.7b-q4.gguf ] ||
