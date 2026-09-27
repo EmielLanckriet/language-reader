@@ -261,4 +261,16 @@ describe('evidence-1', () => {
 		const solid = memoryOf(history({ marks: [seed(at(1))] })).reading!;
 		expect(colourBand(solid, new Date(at(2)))).toBe(1);
 	});
+
+	it('never counts time backwards when the clock went back', () => {
+		// The review comes later in the history but carries an earlier clock (a clock set back).
+		const first = lookup(1, at(5));
+		const skewed = memoryOf(
+			history({ events: [first, { ...review(GOOD, at(3)), deviceSeq: first.deviceSeq + 1 }] })
+		);
+		const same = memoryOf(
+			history({ events: [first, { ...review(GOOD, at(5)), deviceSeq: first.deviceSeq + 1 }] })
+		);
+		expect(skewed).toEqual(same);
+	});
 });

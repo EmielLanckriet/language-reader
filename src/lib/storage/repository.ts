@@ -250,6 +250,7 @@ export class Repository {
 		}
 
 		transact(this.db, () => {
+			const remembered = this.memoryWordsIn(documentId, 0, Infinity);
 			run(this.db, 'DELETE FROM token WHERE document_id = ?', [documentId]);
 
 			for (const token of tokens) {
@@ -277,6 +278,9 @@ export class Repository {
           WHERE id = ?`,
 				[analyzer.name, analyzer.version, documentId]
 			);
+			// The words its stretches covered are its tokens, which just changed (research R4).
+			for (const id of this.memoryWordsIn(documentId, 0, Infinity)) remembered.add(id);
+			this.recomputeMemory(remembered);
 		});
 	}
 
@@ -390,6 +394,7 @@ export class Repository {
 				);
 			}
 
+			const remembered = this.memoryWordsIn(documentId, batch.from, batch.through);
 			run(this.db, 'DELETE FROM token WHERE document_id = ? AND start >= ? AND start < ?', [
 				documentId,
 				batch.from,
@@ -426,6 +431,10 @@ export class Repository {
 						`left tokens that do not tile it: ${problems.join('; ')}`
 				);
 			}
+
+			for (const id of this.memoryWordsIn(documentId, batch.from, batch.through))
+				remembered.add(id);
+			this.recomputeMemory(remembered);
 
 			if (batch.through === documentLength) {
 				run(
@@ -811,6 +820,18 @@ export class Repository {
 	/** Recompute these words' memory: one batch of the sweep. */
 	refreshMemory(lexemeIds: LexemeId[]): void {
 		transact(this.db, () => this.recomputeMemory(lexemeIds));
+	}
+
+	/** The words with a memory among a document's tokens starting in [from, to). */
+	private memoryWordsIn(documentId: DocumentId, from: number, to: number): Set<LexemeId> {
+		return new Set(
+			queryRows(
+				this.db,
+				`SELECT DISTINCT t.lexeme_id FROM token t JOIN memory m ON m.lexeme_id = t.lexeme_id
+         WHERE t.document_id = ? AND t.start >= ? AND t.start < ?`,
+				[documentId, from, Number.isFinite(to) ? to : Number.MAX_SAFE_INTEGER]
+			).map((row) => Number(row.lexeme_id))
+		);
 	}
 
 	/** Every word the history says anything about: the only ones that can have a memory. */

@@ -10,7 +10,9 @@ async function library() {
 	const repository = new Repository(await freshDatabase());
 	const [first, second] = await buildHistory(repository, ['我看书。他看你。', '你看我'], []);
 	const tokens = repository.getDocument(first).tokens;
-	const kan = tokens.find((token) => token.isWord && token.start === 5)!; // 看 in 他看你
+	const text = [...repository.getDocument(first).rawContent];
+	// The 看 of 他看你, found by its text and its neighbour rather than by an offset.
+	const kan = tokens.find((t) => t.isWord && text[t.start] === '看' && text[t.start - 1] === '他')!;
 	return { repository, first, second, kan };
 }
 

@@ -5,7 +5,8 @@ import { Repository } from '../../src/lib/storage/repository';
 import { queryRows, type Database } from '../../src/lib/storage/db';
 import { parseAnkiExport } from '../../src/lib/domain/anki';
 import { ruleKey } from '../../src/lib/domain/memory';
-import { freshDatabase } from './support';
+import { freshDatabase, pairwiseAnalyzer } from './support';
+import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { sweepStaleMemory } from '../../src/lib/storage/sweep';
 import { run } from '../../src/lib/storage/db';
 import { buildHistory } from '../backup/support';
@@ -214,5 +215,28 @@ describe('memory kept with the history', () => {
 
 		repository.ensureMemory();
 		expect(rows(db)).toEqual(built);
+	});
+
+	it('follows a re-segmentation, since the words a stretch covered are its current tokens', async () => {
+		const { db, repository, documentId, lookup, read } = await library();
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(1, day(1))
+		]);
+		const later = repository.startSession(documentId, 'reading');
+		repository.recordEncounters(later, [
+			read(day(5)),
+			{ kind: 'attention', at: day(5, 11), detail: { answer: 'all' } }
+		]);
+		const before = rows(db);
+
+		const text = repository.getDocument(documentId).rawContent;
+		const pairs = resolveTokens(text, await pairwiseAnalyzer.analyze(text), pairwiseAnalyzer);
+		repository.replaceTokens(documentId, pairs, stampOf(pairwiseAnalyzer));
+		const kept = rows(db);
+		repository.rebuildMemory();
+
+		// 看 is now inside 我看: the read stretch no longer covers it, so its passive success goes.
+		expect(kept).not.toEqual(before);
+		expect(kept).toEqual(rows(db));
 	});
 });
