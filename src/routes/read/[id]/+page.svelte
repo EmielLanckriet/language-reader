@@ -136,9 +136,11 @@
 	$effect(() => {
 		const video = media?.media;
 		const id = documentId;
-		soundFile = untrack(() => media?.sound);
-		if (!video || id === undefined || soundFile || /\.(m4a|mp3|ogg|opus|wav)$/i.test(video.name))
-			return;
+		// Read without tracking: this effect sets soundFile, and must not re-run (and cancel
+		// itself) because it did.
+		const kept = untrack(() => media?.sound);
+		soundFile = kept;
+		if (!video || id === undefined || kept || /\.(m4a|mp3|ogg|opus|wav)$/i.test(video.name)) return;
 		let current = true;
 		void audioOnly(video)
 			.then(async (blob) => {
