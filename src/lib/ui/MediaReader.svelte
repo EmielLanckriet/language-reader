@@ -37,6 +37,7 @@
 		recorder,
 		title,
 		artist,
+		soundFile,
 		player = $bindable(null)
 	}: {
 		file: File;
@@ -60,6 +61,8 @@
 		/** What the lock screen and headphones' controls say is playing. */
 		title?: string;
 		artist?: string;
+		/** The video's sound alone (media/audio-track.ts): what plays while the screen is locked. */
+		soundFile?: File;
 		player?: HTMLMediaElement | null;
 	} = $props();
 
@@ -84,6 +87,17 @@
 		const made = URL.createObjectURL(file);
 		url = made;
 		return () => URL.revokeObjectURL(made);
+	});
+
+	let soundUrl = $state<string | null>(null);
+	$effect(() => {
+		if (!soundFile) return;
+		const made = URL.createObjectURL(soundFile);
+		soundUrl = made;
+		return () => {
+			URL.revokeObjectURL(made);
+			soundUrl = null;
+		};
 	});
 
 	function started() {
@@ -135,9 +149,11 @@
 	// --- Listening with the screen locked (asked for 2026-09-27: audio on the bike) ---
 
 	/**
-	 * Chrome pauses a hidden video within seconds (measured on the phone: ~14 s after locking), but
-	 * not an audio element. So while the page is hidden, the same file plays in `sound`, from where
-	 * the video was, and hands back to the video on return. An audio file needs none of this.
+	 * Chrome pauses a hidden video within seconds (measured on the phone: ~14 s after locking), and
+	 * will neither start nor keep playing anything with a video track while hidden, but an
+	 * audio-only file plays on. So while the page is hidden the video's sound alone (`soundFile`)
+	 * plays in `sound`, from where the video was, and hands back on return. Until that file has
+	 * been made, a video simply pauses when the screen locks. An audio file needs none of this.
 	 */
 	let sound = $state<HTMLAudioElement | null>(null);
 	let away = $state(false);
@@ -429,15 +445,15 @@
 				onseeked={() => recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
 			></video>
 			<!-- The video's own sound, for while the screen is locked (handOff). Never shown. -->
-			<audio
-				src={url}
-				preload="auto"
-				bind:this={sound}
-				ontimeupdate={() => away && (noteTime(), follow())}
-				onpause={() => away && recorder?.paused()}
-				onseeking={() => away && (seekFrom = playedTo)}
-				onseeked={() => away && recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
-			></audio>
+			{#if soundUrl}<audio
+					src={soundUrl}
+					preload="auto"
+					bind:this={sound}
+					ontimeupdate={() => away && (noteTime(), follow())}
+					onpause={() => away && recorder?.paused()}
+					onseeking={() => away && (seekFrom = playedTo)}
+					onseeked={() => away && recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
+				></audio>{/if}
 			{#if stage}
 				{#if bare}
 					<button class="unbare" onclick={() => (bare = false)} aria-label="Show the buttons"

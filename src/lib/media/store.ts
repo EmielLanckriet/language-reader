@@ -16,6 +16,8 @@ export interface StoredMedia {
 	/** The quick model's English per cue, null where not yet translated (ADR-0023). Derived. */
 	quick: (string | null)[];
 	meta: Record<string, unknown>;
+	/** The video's sound as an audio-only file, once made (SOUND_ONLY). */
+	sound?: File;
 }
 
 async function mediaRoot(): Promise<FileSystemDirectoryHandle> {
@@ -101,6 +103,9 @@ export function isTranslation(name: string): boolean {
 /** Kept apart from the LLM's media.en.vtt, so neither translator can overwrite the other. */
 export const QUICK_ENGLISH = 'quick-english.json';
 
+/** The video's sound alone, for listening with the screen locked (media/audio-track.ts). Derived. */
+export const SOUND_ONLY = 'sound-only.m4a';
+
 export function isPlayable(name: string): boolean {
 	return /\.(mp4|webm|m4a|mp3|ogg|opus|wav)$/i.test(name);
 }
@@ -116,7 +121,8 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	for await (const handle of directory.values()) {
 		if (handle.kind !== 'file') continue;
 		const file = await (handle as FileSystemFileHandle).getFile();
-		if (isPlayable(file.name)) found.media = file;
+		if (file.name === SOUND_ONLY) found.sound = file;
+		else if (isPlayable(file.name)) found.media = file;
 		else if (isSubtitle(file.name)) found.cues = parseSubtitles(await file.text());
 		else if (isTranslation(file.name)) found.translation = parseSubtitles(await file.text());
 		else if (file.name === 'meta.json') found.meta = JSON.parse(await file.text());

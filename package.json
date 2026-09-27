@@ -39,6 +39,7 @@
 	},
 	"dependencies": {
 		"@sqlite.org/sqlite-wasm": "^3.53.0-build1",
+		"mp4box": "2.4.1",
 		"onnxruntime-web": "^1.29.0",
 		"pinyin-pro": "3.29.4",
 		"ts-fsrs": "5.4.2"

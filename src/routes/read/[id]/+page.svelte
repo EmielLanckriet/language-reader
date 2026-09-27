@@ -18,7 +18,8 @@
 	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
-	import { saveMedia, removeMedia, dismissJob, QUICK_ENGLISH } from '$lib/media/store';
+	import { saveMedia, removeMedia, dismissJob, QUICK_ENGLISH, SOUND_ONLY } from '$lib/media/store';
+	import { audioOnly } from '$lib/media/audio-track';
 	import { goto } from '$app/navigation';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { attention } from '$lib/ui/attention.svelte';
@@ -124,6 +125,31 @@
 			quick = undefined;
 			if (unsaved > 0) void save();
 		};
+	});
+
+	/**
+	 * The video's sound alone, for listening with the screen locked: made from the video the first
+	 * time it is opened, in the background, and kept beside it. Its own state, not part of `media`,
+	 * so that making it restarts neither the recorder nor the translators.
+	 */
+	let soundFile = $state<File | undefined>();
+	$effect(() => {
+		const video = media?.media;
+		const id = documentId;
+		soundFile = untrack(() => media?.sound);
+		if (!video || id === undefined || soundFile || /\.(m4a|mp3|ogg|opus|wav)$/i.test(video.name))
+			return;
+		let current = true;
+		void audioOnly(video)
+			.then(async (blob) => {
+				if (!blob || !current) return;
+				await saveMedia(id, [{ name: SOUND_ONLY, blob }]);
+				if (current) soundFile = new File([blob], SOUND_ONLY, { type: 'audio/mp4' });
+			})
+			.catch(() => {
+				// No sound track mp4box can read: the video pauses when the screen locks, as before.
+			});
+		return () => (current = false);
 	});
 
 	let deleteProblem = $state<string | null>(null);
@@ -570,6 +596,7 @@
 			{recorder}
 			title={document.title}
 			artist={typeof media.meta.uploader === 'string' ? media.meta.uploader : undefined}
+			{soundFile}
 			bind:player
 		>
 			{#snippet status()}
