@@ -43,3 +43,4 @@ chrome*.log
 # Python bytecode from the Termux scripts
 __pycache__/
 android/reader-start/build/
+anki-words.json
