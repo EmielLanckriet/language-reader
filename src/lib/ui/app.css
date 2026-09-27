@@ -362,3 +362,13 @@ button.token.recall-1 {
 	line-height: 1.9;
 	word-break: break-word;
 }
+
+/* Pinyin above each character (asked for 2026-09-27), smaller and quieter than the character. */
+ruby rt {
+	font-size: 0.5em;
+	/* A reading wider than its character would otherwise run into the next one. */
+	padding: 0 0.15em;
+	color: var(--muted);
+	font-weight: normal;
+	user-select: none;
+}

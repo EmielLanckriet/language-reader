@@ -23,6 +23,7 @@
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { attention } from '$lib/ui/attention.svelte';
 	import { colourBand } from '$lib/domain/memory';
+	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { WordMemory } from '$lib/storage/client';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
@@ -36,6 +37,24 @@
 	let states = $state<Map<LexemeId, WordState>>(new Map());
 	/** Each word's memory (spec 007): what it is coloured by, when it has one. */
 	let memory = $state<WordMemory>({ memory: new Map() });
+	/** Pinyin per character, shown above it; empty until the library has read the text. */
+	let readings = $state<string[]>([]);
+	$effect(() => {
+		const text = document?.rawContent;
+		if (text === undefined) return;
+		let current = true;
+		void readingsOf(text).then((found) => current && (readings = found));
+		return () => (current = false);
+	});
+
+	/** The characters of [from, to) with their pinyin, line breaks left out. */
+	function charsOf(from: number, to: number): { c: string; py: string }[] {
+		const out: { c: string; py: string }[] = [];
+		for (let i = from; i < to; i++)
+			if (characters[i] !== '\n') out.push({ c: characters[i], py: readings[i] ?? '' });
+		return out;
+	}
+
 	/** The moment recall is shown for: when the page last read its words. */
 	let now = $state(new Date());
 	let loading = $state(true);
@@ -146,6 +165,7 @@
 			grouped[line].push({
 				key: token.start,
 				text: textOf(token).replace(/\n/g, ''),
+				chars: charsOf(token.start, token.end),
 				isWord: token.isWord,
 				mark: markOf(token)
 			});
@@ -495,6 +515,11 @@
 
 <svelte:window onscroll={noteScroll} />
 
+<!-- No whitespace inside: this is Chinese, and any gap in the markup would show between characters. -->
+{#snippet rubied(token: Token)}{#each charsOf(token.start, token.end) as ch, i (i)}{#if ch.py}<ruby
+				>{ch.c}<rt>{ch.py}</rt></ruby
+			>{:else}{ch.c}{/if}{/each}{/snippet}
+
 {#if media}
 	<a class="back" href={resolve('/')}>← Videos</a>
 {:else}
@@ -555,7 +580,7 @@
 						class="token {markOf(token)}"
 						data-start={token.start}
 						data-end={token.end}
-						onclick={() => open(token)}>{textOf(token)}</button
+						onclick={() => open(token)}>{@render rubied(token)}</button
 					>{:else}<span class="token">{textOf(token)}</span>{/if}{/each}
 		</div>
 	{/if}

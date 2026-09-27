@@ -839,7 +839,7 @@ const scenarios = {
 					const button = [...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === ${JSON.stringify(then)});
 					if (!button) return null;
 					button.click();
-					return word.textContent;
+					const plain = word.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;
 				`);
 			const checked = await until('a word checked', () => tapWord('I knew it'));
 			const looked = await until('a word looked up', () => tapWord('Cancel'));
@@ -929,7 +929,7 @@ const scenarios = {
 					word.click();
 					await new Promise((r) => setTimeout(r, 300));
 					[...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Cancel').click();
-					return word.textContent;
+					const plain = word.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;
 				`)
 			);
 			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
@@ -945,7 +945,9 @@ const scenarios = {
 			const card = await until('a card', () =>
 				tab.evaluate(`
 					const mark = document.querySelector('.card .sentence mark');
-					return mark ? { counts: document.querySelector('.subtitle')?.textContent.trim(), word: mark.textContent, sentence: mark.parentElement.textContent } : null;
+					const plain = (el) => { const c = el.cloneNode(true); c.querySelectorAll('rt').forEach((rt) => rt.remove()); return c.textContent.trim(); };
+					// The target word hides its pinyin until the reveal; its context shows it.
+					return mark ? { counts: document.querySelector('.subtitle')?.textContent.trim(), word: mark.textContent, wordPinyin: mark.querySelectorAll('rt').length, contextPinyin: mark.parentElement.querySelectorAll('rt').length, sentence: plain(mark.parentElement) } : null;
 				`)
 			);
 			const started = Date.now();
@@ -983,6 +985,8 @@ const scenarios = {
 			return {
 				pass:
 					card.word === word &&
+					card.wordPinyin === 0 &&
+					card.contextPinyin > 0 &&
 					back === word &&
 					/pinyin|[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(shown) &&
 					done.startsWith('Done'),

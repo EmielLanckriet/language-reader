@@ -5,6 +5,8 @@
 		isWord: boolean;
 		/** A class for the word's marking, e.g. `state-known`. */
 		mark?: string;
+		/** Its characters with their pinyin, once known, shown above them. */
+		chars?: { c: string; py: string }[];
 	}
 </script>
 
@@ -279,6 +281,11 @@
 	}
 </script>
 
+<!-- No whitespace inside: this is Chinese, and any gap in the markup would show between characters. -->
+{#snippet rubied(word: LineWord)}{#if word.chars}{#each word.chars as ch, i (i)}{#if ch.py}<ruby
+					>{ch.c}<rt>{ch.py}</rt></ruby
+				>{:else}{ch.c}{/if}{/each}{:else}{word.text}{/if}{/snippet}
+
 {#if url}
 	{#if isAudio}
 		<audio
@@ -336,7 +343,7 @@
 						<p class="chinese" lang={language}>
 							{#each lines[currentLine] as word (word.key)}{#if word.isWord}<button
 										class="token {word.mark ?? 'state-none'}"
-										onclick={() => tap(currentLine, word)}>{word.text}</button
+										onclick={() => tap(currentLine, word)}>{@render rubied(word)}</button
 									>{:else}<span class="token">{word.text}</span>{/if}{/each}
 						</p>
 						<button
@@ -403,7 +410,7 @@
 					>▸</button
 				>{/if}{#each line as word (word.key)}{#if word.isWord}<button
 						class="token {word.mark ?? 'state-none'}"
-						onclick={() => tap(i, word)}>{word.text}</button
+						onclick={() => tap(i, word)}>{@render rubied(word)}</button
 					>{:else}<span class="token">{word.text}</span
 					>{/if}{/each}{#if translations[i] || (askable && cues[i])}<button
 					class="reveal"
@@ -516,6 +523,10 @@
 		margin: 0;
 		min-width: 0;
 		min-height: 0;
+	}
+	/* Pinyin on the video: light on the dark band, like the line itself. */
+	.chinese rt {
+		color: rgb(255 255 255 / 75%);
 	}
 	/* On video, an unjudged word is coloured like a subtitle highlight rather than tinted: a tint
 	   under white text on black turned muddy. */

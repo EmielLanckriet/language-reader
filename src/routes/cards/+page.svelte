@@ -5,6 +5,7 @@
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { CardSentence, CardsToday } from '$lib/storage/repository';
 
 	/**
@@ -24,6 +25,28 @@
 		english?: string;
 	} | null>(null);
 	let revealed = $state(false);
+	/** Pinyin per character of the card's sentence; the card's own word shows it only when revealed. */
+	let readings = $state<string[]>([]);
+	$effect(() => {
+		const text = current?.sentence?.text ?? current?.word;
+		readings = [];
+		if (text === undefined) return;
+		let still = true;
+		void readingsOf(text).then((found) => still && (readings = found));
+		return () => (still = false);
+	});
+	/** The sentence's characters, each with its pinyin where it may be shown. */
+	const characters = $derived.by(() => {
+		if (!current) return [];
+		const text = current.sentence?.text ?? current.word;
+		const from = current.sentence?.wordFrom ?? 0;
+		const to = current.sentence?.wordTo ?? [...current.word].length;
+		return [...text].map((c, i) => ({
+			c,
+			part: i < from ? 'before' : i < to ? 'word' : 'after',
+			py: i >= from && i < to && !revealed ? '' : (readings[i] ?? '')
+		}));
+	});
 	let reviewed = $state(0);
 	let grading = $state(false);
 	let problem = $state<unknown>(null);
@@ -149,6 +172,10 @@
 	] as const;
 </script>
 
+{#snippet rubied(chars: { c: string; py: string }[])}{#each chars as ch, i (i)}{#if ch.py}<ruby
+				>{ch.c}<rt>{ch.py}</rt></ruby
+			>{:else}{ch.c}{/if}{/each}{/snippet}
+
 <h1>Cards</h1>
 
 {#if problem}
@@ -163,15 +190,12 @@
 
 	{#if current}
 		<section class="card" aria-live="polite">
-			{#if current.sentence}
-				<p class="sentence" lang="zh">
-					{current.sentence.text.slice(0, current.sentence.wordFrom)}<mark
-						>{current.sentence.text.slice(current.sentence.wordFrom, current.sentence.wordTo)}</mark
-					>{current.sentence.text.slice(current.sentence.wordTo)}
-				</p>
-			{:else}
-				<p class="sentence" lang="zh"><mark>{current.word}</mark></p>
-			{/if}
+			<!-- No whitespace inside: this is Chinese, and any gap in the markup would show. -->
+			<p class="sentence" lang="zh">
+				{@render rubied(characters.filter((ch) => ch.part === 'before'))}<mark
+					>{@render rubied(characters.filter((ch) => ch.part === 'word'))}</mark
+				>{@render rubied(characters.filter((ch) => ch.part === 'after'))}
+			</p>
 
 			{#if revealed}
 				<div class="answer">

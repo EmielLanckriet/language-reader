@@ -2,6 +2,17 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## Pinyin for heteronyms (多音字), and the homograph problem
+
+2026-09-27: pinyin is now shown above every character, from pinyin-pro reading a whole text at a
+time, so context decides most readings (银行 háng, 长大 zhǎng, 重要 zhòng, 着急 zháo). Measured wrong
+on common words: 长得 cháng (zhǎng), 还钱 hái (huán), 得去 dé (děi), 跑得快 dé (de), 说服 shuō (shuì).
+The register's two rows still stand and neither was settled with the segmenter: splitting
+heteronyms into lexemes by reading is deferred (anticipated-changes.md, "Split heteronyms"), and
+same-reading homographs (花 flower / to spend) are an open problem. For the display alone, a
+correction layer (the reader fixing a reading once, remembered per word or per occurrence) or the
+contextual model already on the device could improve it.
+
 ## Listening cards: brainstorm first
 
 2026-09-27 (spec 007): left out of 007 on purpose; the reader wants a brainstorm before specifying.
