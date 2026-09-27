@@ -19,10 +19,11 @@ function earned<T>(result: T): T {
 	return result;
 }
 import { StorageFailure } from './failures';
-import type { DocumentSummary, StoredDocument, UpgradeBatch } from './repository';
+import type { DocumentSummary, RecentSession, StoredDocument, UpgradeBatch } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
+import type { Encounter, Modality } from '../domain/encounter';
 import type { Diagnostic, DiagnosticKind } from '../diagnostics/log';
 import { explain, type Availability, type Explanation } from './availability';
 import type { Call, Failure, Request, Response, ToWorker } from './protocol';
@@ -38,7 +39,7 @@ export class RepositoryClient {
 	private worker!: Worker;
 	private readonly pending = new Map<
 		number,
-		{ resolve: (value: unknown) => void; reject: (error: unknown) => void }
+		{ call: Call; resolve: (value: unknown) => void; reject: (error: unknown) => void }
 	>();
 	private nextId = 1;
 	private readonly watchers = new Set<(state: Availability) => void>();
@@ -79,9 +80,12 @@ export class RepositoryClient {
 	 * competing, and poisons the pool when something is.
 	 */
 	private begin(): void {
-		this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+		const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+		this.worker = worker;
 
 		this.worker.onmessage = (event: MessageEvent<Response>) => {
+			// A replaced worker's last replies would otherwise settle the calls resent to its successor.
+			if (worker !== this.worker) return;
 			const message = event.data;
 			if (message.kind === 'availability') {
 				this.availability = message.state;
@@ -110,11 +114,20 @@ export class RepositoryClient {
 		};
 	}
 
+	/**
+	 * Swap in a fresh worker, and hand it the calls the old one was still holding.
+	 *
+	 * Sent again rather than failed: a worker is replaced only after it was refused the storage, so
+	 * it never ran them, and resending cannot do anything twice. Failing them left a page that had
+	 * loaded during a slow handover on "Reading…" until it was reloaded (2026-09-27).
+	 */
 	private replace(): void {
 		this.replacedOnce = true;
 		this.worker.terminate();
-		this.abandonPending(new StorageFailure('Reconnecting to your library.'));
 		this.begin();
+		for (const [id, { call }] of this.pending) {
+			this.worker.postMessage({ id, ...call } satisfies Request);
+		}
 	}
 
 	/**
@@ -157,7 +170,7 @@ export class RepositoryClient {
 	private call<T>(call: Call): Promise<T> {
 		const id = this.nextId++;
 		return new Promise<T>((resolve, reject) => {
-			this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
+			this.pending.set(id, { call, resolve: resolve as (value: unknown) => void, reject });
 			this.worker.postMessage({ id, ...call } satisfies Request);
 		});
 	}
@@ -229,6 +242,24 @@ export class RepositoryClient {
 		return this.call({ method: 'exportBody', args: [app, createdAt] });
 	}
 
+	startSession(documentId: number, modality: Modality): Promise<number> {
+		return this.call({ method: 'startSession', args: [documentId, modality] });
+	}
+
+	/**
+	 * Encounters wait their turn like any read rather than taking READER_CHANGES' single retry slot:
+	 * the recorder flushes every few seconds and keeps what failed for its next flush.
+	 */
+	recordEncounters(sessionId: number, encounters: Encounter[]): Promise<void> {
+		return this.call<void>({ method: 'recordEncounters', args: [sessionId, encounters] }).then(
+			earned
+		);
+	}
+
+	recentEncounters(): Promise<RecentSession[]> {
+		return this.call({ method: 'recentEncounters', args: [] });
+	}
+
 	importAnki(file: AnkiExport): Promise<AnkiResult> {
 		return this.call<AnkiResult>({ method: 'importAnki', args: [file] }).then(earned);
 	}
@@ -245,9 +276,9 @@ export class RepositoryClient {
 		return this.call({ method: 'ankiImports', args: [] });
 	}
 
-	/** Refused (rejects) when a judgment was made in it; see Repository.deleteUnmarkedDocument. */
-	deleteUnmarkedDocument(id: number): Promise<void> {
-		return this.call<void>({ method: 'deleteUnmarkedDocument', args: [id] }).then(earned);
+	/** Hidden rather than deleted when history points into it; see Repository.removeDocument. */
+	removeDocument(id: number): Promise<'deleted' | 'hidden'> {
+		return this.call<'deleted' | 'hidden'>({ method: 'removeDocument', args: [id] }).then(earned);
 	}
 
 	restoreCopy(

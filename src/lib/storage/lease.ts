@@ -149,13 +149,15 @@ function giveBackLock(): void {
 /**
  * Whether the failure means the files are still held by another copy.
  *
- * "no such vfs" is the giveaway: the VFS could not register because it could not take back its
- * access handles, which happens for exactly one reason -- something else still has them. Matching
- * on a message is unpleasant and is done because the library reports this as a generic SQLite
- * error rather than as a distinct type.
+ * Two giveaways, one reason: something else still has the access handles. "no such vfs" is the VFS
+ * failing to register because it could not take them back; NoModificationAllowedError is
+ * `createSyncAccessHandle` refusing outright, seen when a new page loads while the previous page's
+ * worker is still closing (2026-09-27: it kept them for over 4 s). Matching on a message is
+ * unpleasant and is done because the library reports the first as a generic SQLite error.
  */
 function isStillHeldElsewhere(error: unknown): boolean {
-	return error instanceof Error && /no such vfs/i.test(error.message);
+	if (!(error instanceof Error)) return false;
+	return /no such vfs/i.test(error.message) || error.name === 'NoModificationAllowedError';
 }
 
 function isStorageRefusal(error: unknown): boolean {

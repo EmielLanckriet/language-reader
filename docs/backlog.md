@@ -2,6 +2,16 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## A page loaded during a slow storage handover waits about 4 s
+
+2026-09-27 (spec 007): when a new page loads while the previous page's worker is still closing,
+`createSyncAccessHandle` refuses (`NoModificationAllowedError`) for over 4 s, the new worker gives up
+after its 4 s window, and the client replaces it; the fresh worker then opens at once. Measured in
+2 of 3 browser runs, on the build before 007 as well. Pages no longer stay on "Reading…" after it
+(the client resends waiting calls), but the ~4.3 s wait remains. Not yet known: whether it happens
+on the phone (after an update reload or a share opening a new page), and whether retrying inside
+the first worker could ever succeed, which would make the wait shorter than a replacement.
+
 ## Anki: a card reset keeps its last level; live recall
 
 2026-09-26 (spec 006): a word reset or deleted in Anki keeps the level of its last import, since
