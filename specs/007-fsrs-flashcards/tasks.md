@@ -143,7 +143,7 @@ long-term word changes its shade everywhere.
 - [X] T034 [P] Update `specs/006-anki-baseline` references where display by Anki level is now superseded (FR-012 of 006 → spec 007 FR-016), in one line in its spec's header
 - [X] T035 Run the test-auditor agent over the new tests (tests that cannot fail, properties true by construction)
 - [X] T036 `npm run check`, `npm run lint`, `npm test`, and only the `verify:browser` scenarios `encounters` and `cards` plus the existing media and reading scenarios
-- [ ] T037 Phone, one deploy (quickstart phone steps 1–6): export Anki format 2 and import it, then check SC-001 to SC-006 and the delete behaviour. Record the measured numbers in `specs/007-fsrs-flashcards/quickstart.md`
+- [X] T037 Phone, one deploy (quickstart phone steps 1–6): export Anki format 2 and import it, then check SC-001 to SC-006 and the delete behaviour. Record the measured numbers in `specs/007-fsrs-flashcards/quickstart.md`
 
 ---
 
