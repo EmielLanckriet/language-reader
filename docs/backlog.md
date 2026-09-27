@@ -47,11 +47,19 @@ heard with the text hidden, so the history will be there when the cards arrive.
 
 ## Fit the evidence rule to review outcomes
 
-2026-09-27 (spec 007): `evidence-1`'s weights are guesses (research R5): a lookup is Again in both
-skills, a check or a word met under "I tapped everything" is Hard. Once months of in-app reviews
-exist, whether a passive encounter predicts recall can be measured against them, and a fitted
-`evidence-2` replaces it by a background recompute. Candidates then: creator and speed as
-covariates, context diversity (distinct documents) and library frequency as difficulty priors.
+2026-09-27 (spec 007): the rule's weights are guesses (research R5). Under `evidence-2` a lookup is
+Again in both skills, a check is Hard, and a word met untapped in a session answered "I tapped every
+word I didn't know" is Good, including words with no memory yet (memory, not a card; the reader
+chose that). Only the stretches actually played or on screen count, so quitting halfway credits
+only the part seen.
+
+The reader's point (2026-09-27): these are not Anki grades, and forcing each fact into one is the
+guess. The log already keeps facts rather than ratings, so the step is in the model: treat
+"untapped in a thorough session" as its own kind of evidence with a weight learned from what
+follows (later reviews, later lookups of the same word), rather than a fixed FSRS grade. Once months
+of in-app reviews exist, fit it and replace the rule by a background recompute over the whole
+history. Candidates then: creator and speed as covariates, context diversity (distinct documents)
+and library frequency as difficulty priors, and whether such words should ever become cards.
 
 ## The attention answer recomputes a session's words while saving waits
 
