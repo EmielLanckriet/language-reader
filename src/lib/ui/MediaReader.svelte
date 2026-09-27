@@ -75,7 +75,10 @@
 	});
 
 	function started() {
-		if (player && startAt > 0) player.currentTime = startAt;
+		if (!player) return;
+		if (startAt > 0) player.currentTime = startAt;
+		// Both: a new source resets playbackRate to defaultPlaybackRate.
+		player.defaultPlaybackRate = player.playbackRate = speed;
 	}
 
 	/** The last line that started: a gap keeps the line before it, and nothing precedes line 0. */
@@ -95,6 +98,7 @@
 
 	function seek(line: number) {
 		if (!player || !cues[line]) return;
+		stoppedAt = -1;
 		player.currentTime = cues[line].start;
 		void player.play();
 	}
@@ -105,6 +109,10 @@
 	 */
 	let stage = $state(readPreference('reader.stage', true));
 	let blurEnglish = $state(readPreference('reader.blurEnglish', true));
+	/** Stop at the end of every line, to repeat it or read it before going on. */
+	let pauseEachLine = $state(readPreference('reader.pauseEachLine', false));
+	const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
+	let speed = $state(readSpeed());
 	/** The line whose English the reader unblurred; the next line starts blurred again. */
 	let unblurred = $state(-1);
 
@@ -123,6 +131,55 @@
 		} catch {
 			// Private mode or blocked storage: the choice just lasts for this visit.
 		}
+	}
+
+	function readSpeed(): number {
+		try {
+			const kept = Number(localStorage.getItem('reader.speed'));
+			return SPEEDS.includes(kept) ? kept : 1;
+		} catch {
+			return 1;
+		}
+	}
+
+	function nextSpeed() {
+		speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+		if (player) player.playbackRate = speed;
+		try {
+			localStorage.setItem('reader.speed', String(speed));
+		} catch {
+			// As keep() below: the choice lasts for this visit.
+		}
+	}
+
+	function togglePauseEachLine() {
+		pauseEachLine = !pauseEachLine;
+		keep('reader.pauseEachLine', pauseEachLine);
+		stoppedAt = -1;
+	}
+
+	/** The line already stopped at, so pressing play again carries on into the next one. */
+	let stoppedAt = -1;
+
+	/**
+	 * Every frame while playing, not on timeupdate: that fires about every quarter second, which
+	 * let the next line's first word through. A line ends at its own end or where the next begins,
+	 * whichever is first, since cues can overlap. Checked before follow() moves on to the next line.
+	 */
+	function watchLineEnd() {
+		if (!player || player.paused) return;
+		if (pauseEachLine && currentLine >= 0) {
+			const end = Math.min(cues[currentLine].end, cues[currentLine + 1]?.start ?? Infinity);
+			const time = player.currentTime;
+			if (stoppedAt === currentLine && time < end - 0.5) stoppedAt = -1;
+			if (time >= end - 0.05 && stoppedAt !== currentLine) {
+				stoppedAt = currentLine;
+				player.pause();
+				return;
+			}
+		}
+		follow();
+		requestAnimationFrame(watchLineEnd);
 	}
 
 	function setStage(on: boolean) {
@@ -190,13 +247,18 @@
 		<div class="media" class:stage>
 			{#if stage && status}<div class="stage-status">{@render status()}</div>{/if}
 			<!-- svelte-ignore a11y_media_has_caption -->
+			<!-- No full screen of the player's own: it showed the bare video, without the subtitles on
+			     it. ⛶ on the stage is the one full screen, the whole app's. -->
 			<video
 				class="player"
 				controls
+				controlslist="nofullscreen"
+				disablepictureinpicture
 				playsinline
 				src={url}
 				bind:this={player}
 				ontimeupdate={follow}
+				onplay={watchLineEnd}
 				onloadedmetadata={started}
 			></video>
 			{#if stage}
@@ -228,11 +290,18 @@
 								(askable ? 'translating…' : 'No English yet')}</button
 						>
 						<div class="steps">
+							<button
+								onclick={togglePauseEachLine}
+								aria-pressed={pauseEachLine}
+								class:on={pauseEachLine}
+								aria-label="Stop after each line">⏸ each</button
+							>
 							<button onclick={previous} aria-label="Previous line">◀</button>
 							<button onclick={replay} aria-label="Replay this line (twice: the line before)"
 								>↻</button
 							>
 							<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
+							<button onclick={nextSpeed} aria-label="Playback speed">{speed}×</button>
 						</div>
 					</div>
 				{/if}
@@ -422,7 +491,13 @@
 	}
 	.steps {
 		display: flex;
-		gap: 1.5rem;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.6rem;
+	}
+	.steps button.on {
+		background: var(--accent);
+		border-color: var(--accent);
 	}
 	.to-stage {
 		display: block;
