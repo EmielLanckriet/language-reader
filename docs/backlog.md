@@ -13,6 +13,27 @@ same-reading homographs (花 flower / to spend) are an open problem. For the dis
 correction layer (the reader fixing a reading once, remembered per word or per occurrence) or the
 contextual model already on the device could improve it.
 
+## Word meanings in context — parked
+
+2026-09-27: the word sheet now ranks CC-CEDICT senses (names, variants and archaic senses last; the
+pinyin heard in context first) and explains missing words by their parts (`analyzer/gloss.ts`).
+Re-measured on the 上海 street-interview video: 1 of 682 words with a poor first meaning, from 117.
+The pinyin-based ranking inherits pinyin-pro's mistakes (above): 说服 read shuō picks "to speak".
+What it cannot do is choose between same-reading senses (花 flower / to spend) or explain misheard
+subtitles (新资 for 薪资, about half of the missing words). Options, most promising first:
+
+1. **The LLM picks the sense** as multiple choice over the numbered CEDICT senses, in the per-line
+   translation pass (translate.py). It cannot make up a sense; for a missing word it writes a short
+   gloss marked as a guess. Derived data, per document and offset.
+2. **A bigger laptop model replaces it in the background** (ADR-0023), and can also flag misheard
+   words.
+3. **The reader picks the sense** in the sheet: earned, per occurrence (what the recorded occurrence
+   exists for), overriding any model, feeding the card's meaning, and ground truth for 1 and 2.
+4. **An optional online model**, opt-in only, against the offline principle.
+
+First step when picked up: measure before building. Run Qwen3 1.7B (the phone's) on this video's
+words, hand-check about 50 choices, and compare with a 7–14B model on the laptop.
+
 ## Listening cards: brainstorm first
 
 2026-09-27 (spec 007): left out of 007 on purpose; the reader wants a brainstorm before specifying.
