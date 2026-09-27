@@ -280,7 +280,7 @@
 					<!-- The stage covers the page, its back link too: without this, a video had no way out
 					     but Android's back gesture. -->
 					<a class="back-to-videos" href={resolve('/')} aria-label="Back to videos">←</a>
-					<button onclick={() => setStage(false)}>☰ Lines</button>
+					<button onclick={() => setStage(false)} aria-label="All lines">☰</button>
 					<button onclick={toggleBlur} aria-pressed={!blurEnglish}
 						>{blurEnglish ? 'English blurred' : 'English shown'}</button
 					>
@@ -311,7 +311,7 @@
 								onclick={togglePauseEachLine}
 								aria-pressed={pauseEachLine}
 								class:on={pauseEachLine}
-								aria-label="Stop after each line">⏸</button
+								aria-label="Stop after each line">❚❚</button
 							>
 							<div class="moves">
 								<button onclick={previous} aria-label="Previous line">◀</button>
@@ -410,6 +410,10 @@
 		border-radius: 999px;
 		padding: 0.3rem 0.8rem;
 		min-height: 0;
+	}
+	.bar button,
+	.bar .back-to-videos {
+		white-space: nowrap;
 	}
 	.bar .back-to-videos {
 		display: inline-flex;
