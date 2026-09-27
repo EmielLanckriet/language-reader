@@ -115,40 +115,35 @@
 	<button class="dismiss" onclick={onclose} aria-label="Close without marking"></button>
 
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="Mark {word}">
-		<p class="word" lang="zh">{word}</p>
-
-		<div class="meanings">
-			{#await looked}
-				<p class="muted">Looking up…</p>
-			{:then parts}
-				{#each parts as part (part.text)}
-					{#if parts.length > 1}<p class="part" lang="zh">{part.text}</p>{/if}
-					{#each part.entries.slice(0, 4) as entry, i (i)}
-						<p><span class="pinyin">{entry.pinyin}</span> {entry.meaning}</p>
+		<!-- Compact on purpose: in full screen the phone is in landscape, about 380 px tall, and a
+		     sheet anchored to the bottom loses its top — the word and its meaning — first. -->
+		<div class="head">
+			<p class="word" lang="zh">{word}</p>
+			<div class="meanings">
+				{#await looked}
+					<p class="muted">Looking up…</p>
+				{:then parts}
+					{#each parts as part (part.text)}
+						{#if parts.length > 1}<p class="part" lang="zh">{part.text}</p>{/if}
+						{#each part.entries.slice(0, 4) as entry, i (i)}
+							<p><span class="pinyin">{entry.pinyin}</span> {entry.meaning}</p>
+						{/each}
+					{:else}
+						<p class="muted">Not in the dictionary.</p>
 					{/each}
-				{:else}
-					<p class="muted">Not in the dictionary.</p>
-				{/each}
-			{:catch error}
-				<p class="muted">{error.message}</p>
-			{/await}
+				{:catch error}
+					<p class="muted">{error.message}</p>
+				{/await}
+			</div>
+			<button class="icon close" onclick={onclose} aria-label="Cancel" title="Close">✕</button>
 		</div>
 
-		{#if translateUrl}
-			<!-- An external site, so there is nothing for resolve() to resolve. -->
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a class="translate" href={translateUrl} target="_blank" rel="noreferrer"
-				>Translate sentence ↗</a
-			>
-		{/if}
-
 		{#if remembered}
-			<p class="muted memory">{remembered.skills}</p>
-			<p class="muted memory">
-				{remembered.origin}{#if fromAnki}
+			<p class="muted small">
+				{remembered.skills} · {remembered.origin}{#if fromAnki}
 					· {fromAnki}{/if}
 			</p>
-		{:else if fromAnki}<p class="muted anki">{fromAnki}</p>{/if}
+		{:else if fromAnki}<p class="muted small">{fromAnki}</p>{/if}
 
 		{#if marking}
 			<div class="choices">
@@ -164,84 +159,51 @@
 				{/each}
 			</div>
 		{:else}
-			<p class="muted">You can mark words once the transcript is complete.</p>
+			<p class="muted small">You can mark words once the transcript is complete.</p>
 		{/if}
 
-		{#if onjoin || onsplit}
-			<div class="segmenting">
-				{#if onjoin}
+		<div class="actions">
+			{#if translateUrl}
+				<!-- An external site, so there is nothing for resolve() to resolve. -->
+				<!-- eslint-disable svelte/no-navigation-without-resolve -->
+				<a
+					href={translateUrl}
+					class="icon tap"
+					target="_blank"
+					rel="noreferrer"
+					aria-label="Translate sentence"
+					title="Translate sentence">🌐</a
+				>
+				<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			{/if}
+			{#if onknew}
+				<button class="icon" onclick={onknew} aria-label="I knew it" title="I knew it">✓</button>
+			{/if}
+			{#if onjoin}
+				<button
+					class="icon"
+					onclick={() => (joinRefused ? (refusal = joinRefused) : onjoin())}
+					aria-label="Join with next"
+					title="Join with next">⇥</button
+				>
+			{/if}
+			{#if onsplit}
+				{#each splits as split (split.at)}
 					<button
-						class="secondary"
-						onclick={() => (joinRefused ? (refusal = joinRefused) : onjoin())}
-						>Join with next</button
+						class="icon split"
+						lang="zh"
+						onclick={() => onsplit(split.at)}
+						aria-label="Split {split.label}"
+						title="Split {split.label}">✂ {split.label.replace(' · ', '|')}</button
 					>
-				{/if}
-				{#if onsplit}
-					{#each splits as split (split.at)}
-						<button class="secondary" lang="zh" onclick={() => onsplit(split.at)}
-							>Split {split.label}</button
-						>
-					{/each}
-				{/if}
-			</div>
-			{#if refusal}<p class="muted" role="alert">{refusal}</p>{/if}
-		{/if}
-
-		<div class="closing">
-			{#if onknew}<button class="secondary" onclick={onknew}>I knew it</button>{/if}
-			<button class="secondary cancel" onclick={onclose}>Cancel</button>
+				{/each}
+			{/if}
 		</div>
+		{#if refusal}<p class="muted small" role="alert">{refusal}</p>{/if}
 	</div>
 </div>
 
 <style>
-	.segmenting {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
-	}
-	.segmenting > button {
-		flex: 1 1 auto;
-	}
-	.closing {
-		display: flex;
-		gap: 0.5rem;
-	}
-	.closing > button {
-		flex: 1;
-	}
-	.meanings {
-		max-height: 30vh;
-		overflow-y: auto;
-		margin-bottom: 0.75rem;
-		font-size: 0.95rem;
-		line-height: 1.4;
-	}
-
-	.meanings p {
-		margin: 0.2rem 0;
-	}
-
-	.pinyin {
-		font-weight: 600;
-		margin-right: 0.3rem;
-	}
-
-	.part {
-		font-size: 1.2rem;
-		margin-top: 0.5rem !important;
-	}
-
-	.muted {
-		color: var(--muted);
-	}
-
-	.translate {
-		display: block;
-		margin-bottom: 0.75rem;
-	}
-
 	.backdrop {
 		position: fixed;
 		inset: 0;
@@ -265,39 +227,86 @@
 		padding: 0;
 	}
 
-	/* Anchored to the bottom of the screen, where a thumb reaches without shifting grip. */
+	/* Anchored to the bottom, where a thumb reaches; never taller than the screen, so nothing is
+	   cut off — it scrolls instead. */
 	.sheet {
 		position: relative;
 		width: 100%;
-		max-width: 32rem;
+		max-width: 36rem;
+		max-height: 100dvh;
+		overflow-y: auto;
 		background: var(--paper);
-		border-top-left-radius: 16px;
-		border-top-right-radius: 16px;
-		padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+		border-top-left-radius: 12px;
+		border-top-right-radius: 12px;
+		padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom));
 		box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+		display: grid;
+		gap: 0.4rem;
+	}
+
+	.head {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.6rem;
 	}
 
 	.word {
-		font-size: 2rem;
-		text-align: center;
-		margin: 0.25rem 0 1rem;
+		font-size: 1.6rem;
+		line-height: 1.2;
+		margin: 0;
+		flex: none;
+	}
+
+	.meanings {
+		flex: 1;
+		min-width: 0;
+		max-height: 7.5rem;
+		overflow-y: auto;
+		font-size: 0.85rem;
+		line-height: 1.3;
+	}
+
+	.meanings p {
+		margin: 0 0 0.15rem;
+	}
+
+	.pinyin {
+		font-weight: 600;
+		margin-right: 0.3rem;
+	}
+
+	.part {
+		font-size: 1rem;
+		margin-top: 0.25rem !important;
+	}
+
+	.muted {
+		color: var(--muted);
+	}
+
+	.small {
+		font-size: 0.75rem;
+		margin: 0;
 	}
 
 	.choices {
 		display: grid;
-		gap: 0.5rem;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0.3rem;
 	}
 
 	.choice {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		width: 100%;
+		justify-content: center;
+		gap: 0.3rem;
+		min-height: 34px;
+		min-width: 0;
+		padding: 0.2rem 0.3rem;
+		font-size: 0.8rem;
 		background: transparent;
 		color: var(--ink);
 		border: 1px solid var(--rule);
-		text-align: left;
-		padding: 0.75rem 1rem;
 	}
 
 	.choice.chosen {
@@ -306,8 +315,8 @@
 	}
 
 	.swatch {
-		width: 1rem;
-		height: 1rem;
+		width: 0.7rem;
+		height: 0.7rem;
 		border-radius: 50%;
 		flex: none;
 	}
@@ -325,8 +334,34 @@
 		background: var(--ignored);
 	}
 
-	.cancel {
-		width: 100%;
-		margin-top: 0.75rem;
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+	}
+
+	.icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 34px;
+		min-width: 34px;
+		padding: 0 0.5rem;
+		font-size: 0.95rem;
+		background: transparent;
+		color: var(--accent);
+		border: 1px solid var(--rule);
+		border-radius: 6px;
+		text-decoration: none;
+	}
+
+	.icon.split {
+		font-size: 0.85rem;
+	}
+
+	.close {
+		flex: none;
+		border: none;
+		color: var(--muted);
 	}
 </style>

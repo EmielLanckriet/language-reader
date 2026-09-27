@@ -520,6 +520,69 @@ const scenarios = {
 		}
 	},
 
+	// The word sheet fits a phone in full screen, which is landscape and about 384 px tall: its top
+	// (the word and its meaning) was cut off. Screenshots go to sheet-*.png in the working directory.
+	async sheet() {
+		const tab = await openTab('about:blank');
+		const { writeFileSync } = await import('node:fs');
+		try {
+			await tab.goto('/add');
+			await until('the paste box', () =>
+				tab.evaluate('return !!document.querySelector("textarea");')
+			);
+			await tab.evaluate(`
+				const box = document.querySelector('textarea');
+				box.value = '我们学习中文。你是哪国人？';
+				box.dispatchEvent(new Event('input', { bubbles: true }));
+				return true;`);
+			await until('Save to be enabled', () =>
+				tab.evaluate(`return ${SAVE_BUTTON} && !${SAVE_BUTTON}.disabled;`)
+			);
+			await tab.evaluate(`${SAVE_BUTTON}.click(); return true;`);
+			const link = await until('the saved document', () => tab.evaluate(`return ${READ_LINK};`));
+			await tab.evaluate(`location.href = ${JSON.stringify(link)}; return true;`);
+			const result = {};
+			for (const [name, width, height] of [
+				['landscape', 853, 384],
+				['portrait', 384, 853]
+			]) {
+				await tab.send('Emulation.setDeviceMetricsOverride', {
+					width,
+					height,
+					deviceScaleFactor: 2.8,
+					mobile: true
+				});
+				await until('a word', () =>
+					tab.evaluate(
+						`const b = document.querySelector('.reading button.token'); if (!b) return null; b.click(); return true;`
+					)
+				);
+				const box = await until('the sheet with its meaning', () =>
+					tab.evaluate(`
+						const sheet = document.querySelector('.sheet');
+						if (!sheet || /Looking up/.test(sheet.textContent)) return null;
+						const word = sheet.querySelector('.word').getBoundingClientRect();
+						return { top: sheet.getBoundingClientRect().top, height: sheet.getBoundingClientRect().height, wordTop: word.top, scroll: sheet.scrollHeight > sheet.clientHeight };`)
+				);
+				const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+				writeFileSync(`sheet-${name}.png`, Buffer.from(shot.data, 'base64'));
+				result[name] = box;
+				await tab.evaluate(
+					`document.querySelector('.sheet button[aria-label="Cancel"]').click(); return true;`
+				);
+				await until('the sheet to close', () =>
+					tab.evaluate(`return !document.querySelector('.sheet') || null;`)
+				);
+			}
+			return {
+				pass: Object.values(result).every((box) => box.top >= 0 && box.wordTop >= 0),
+				...result
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Correcting the segmentation (spec 004), plumbing only: join two words from the word sheet,
 	// split them back, be refused across punctuation, then undo from More. Words are found by their
 	// offsets, not their text, because each button also carries its pinyin.
@@ -538,7 +601,7 @@ const scenarios = {
 		const press = (label) =>
 			until(`the ${label} button`, () =>
 				tab.evaluate(
-					`const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return null; b.click(); return true;`
+					`const b = [...document.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent.trim()).startsWith(${JSON.stringify(label)})); if (!b) return null; b.click(); return true;`
 				)
 			);
 		try {
@@ -575,7 +638,7 @@ const scenarios = {
 			const cut = a[1] - a[0];
 			await until('the split option', () =>
 				tab.evaluate(
-					`const bs = [...document.querySelectorAll('.segmenting button')].filter((b) => b.textContent.startsWith('Split')); const b = bs[${cut - 1}]; if (!b) return null; b.click(); return true;`
+					`const bs = [...document.querySelectorAll('.sheet button')].filter((b) => (b.getAttribute('aria-label') ?? '').startsWith('Split')); const b = bs[${cut - 1}]; if (!b) return null; b.click(); return true;`
 				)
 			);
 			const splitBack = await until('the split to show', async () =>
@@ -881,7 +944,7 @@ const scenarios = {
 					const button = [...document.querySelectorAll('.reading button.token')].find((b) => b.textContent.length > 1);
 					if (!button) return null;
 					button.click();
-					return button.textContent;
+					const plain = button.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;
 				`)
 			);
 			const started = Date.now();
@@ -893,7 +956,7 @@ const scenarios = {
 						if (!sheet || sheet.textContent.includes('Looking up')) return null;
 						return {
 							meaning: sheet.innerText.slice(0, 200),
-							translate: document.querySelector('.translate')?.href ?? null
+							translate: document.querySelector('.sheet a[aria-label="Translate sentence"]')?.href ?? null
 						};
 					`),
 				30000
@@ -943,7 +1006,7 @@ const scenarios = {
 					if (!word) return null;
 					word.click();
 					await new Promise((r) => setTimeout(r, 300));
-					const button = [...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === ${JSON.stringify(then)});
+					const button = [...document.querySelectorAll('.sheet button')].find((b) => (b.getAttribute('aria-label') ?? b.textContent.trim()) === ${JSON.stringify(then)});
 					if (!button) return null;
 					button.click();
 					const plain = word.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;

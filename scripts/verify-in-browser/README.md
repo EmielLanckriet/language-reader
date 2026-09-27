@@ -31,6 +31,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `offline` | Reading with the server stopped. Warms with `words`, then stops the server. |
 | `readonly` | A second copy refuses a change it cannot keep (the storage lease). |
 | `model` | Downloads the model (~110 MB over the network) and checks the analyzer switches. Slow. |
+| `sheet` | The word sheet fits a phone in full screen (landscape, ~384 px tall) and in portrait; screenshots to `sheet-*.png`. |
 | `corrections` | Spec 004: join from the word sheet within a second, split back, refused across 。, undone from More back to the analyzer's cut. |
 | `bigimport` | SC-004: a 4,999-character document imports and opens within 3 seconds **with the model on the device**. Warms with `model`, so it is slow. |
 
