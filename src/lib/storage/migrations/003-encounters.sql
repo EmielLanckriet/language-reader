@@ -46,6 +46,8 @@ CREATE UNIQUE INDEX encounter_device_seq ON encounter (device_id, device_seq);
 CREATE INDEX encounter_session ON encounter (session_id);
 CREATE INDEX encounter_lexeme ON encounter (lexeme_id);
 CREATE INDEX encounter_document ON encounter (document_id, from_offset);
+-- The latest Anki parameters, and a session's attention answer, are found by kind.
+CREATE INDEX encounter_kind ON encounter (kind, device_id, device_seq);
 
 CREATE TABLE memory (
   lexeme_id  INTEGER NOT NULL REFERENCES lexeme (id),
@@ -64,6 +66,10 @@ CREATE TABLE memory (
   rule       TEXT NOT NULL,
   PRIMARY KEY (lexeme_id, skill)
 );
+
+-- A word's memory is recomputed from the stretches covering its tokens, found by word: without this
+-- every recompute scanned every token (measured 2026-09-27: a 20,000-encounter history took minutes).
+CREATE INDEX token_lexeme ON token (lexeme_id);
 
 -- Hidden from the library, media gone, text and tokens kept: encounters still point into it.
 ALTER TABLE document ADD COLUMN removed_at TEXT;

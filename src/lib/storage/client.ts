@@ -19,7 +19,14 @@ function earned<T>(result: T): T {
 	return result;
 }
 import { StorageFailure } from './failures';
-import type { DocumentSummary, RecentSession, StoredDocument, UpgradeBatch } from './repository';
+import type {
+	CardSentence,
+	CardsToday,
+	DocumentSummary,
+	RecentSession,
+	StoredDocument,
+	UpgradeBatch
+} from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
@@ -275,6 +282,19 @@ export class RepositoryClient {
 	/** Derived data catching up, like replaceTokens: not a reader change. */
 	refreshMemory(lexemeIds: number[]): Promise<void> {
 		return this.call({ method: 'refreshMemory', args: [lexemeIds] });
+	}
+
+	/** A flashcard grade: earned, so it takes READER_CHANGES' path like a mark. */
+	recordReview(lexemeId: LexemeId, grade: number, shown?: Occurrence): Promise<void> {
+		return this.call<void>({ method: 'recordReview', args: [lexemeId, grade, shown] }).then(earned);
+	}
+
+	cardSentence(lexemeId: LexemeId): Promise<CardSentence | undefined> {
+		return this.call({ method: 'cardSentence', args: [lexemeId] });
+	}
+
+	cardsToday(cap: number): Promise<CardsToday> {
+		return this.call({ method: 'cardsToday', args: [cap] });
 	}
 
 	recentEncounters(): Promise<RecentSession[]> {

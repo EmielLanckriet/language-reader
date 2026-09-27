@@ -190,3 +190,22 @@ arrays. Restore re-links sessions and encounters by device and sequence.
 (`all`, `some`, `none`) and can be dismissed. A dismissal is recorded as `kind = 'attention'` with
 `detail.answer = null`. The app's own estimate is not stored; it is derivable from lookups per
 minute, and `evidence-1` does not use it.
+
+## R14 — Measured cost of keeping memory in step (T032, 2026-09-27, laptop)
+
+Real Anki export (2,122 words) plus synthetic reading: 20 documents of 500 characters made of the
+reader's own words, watched in sessions of 48 encounters (12 lookups, 36 played chunks) each
+answered "all" — every word met already has a memory, so this is the heavy case.
+
+| History | Session write (incl. recompute) | Full rebuild | Today's cards |
+|---|---|---|---|
+| Anki import only | — | 0.67 s | — |
+| 40 sessions, ~2,000 encounters | 187 ms | 0.96 s | 58 ms |
+| 400 sessions, ~20,000 encounters, before fixes | minutes (stopped) | — | — |
+| 400 sessions, after `token_lexeme` + one exposure per session | 815 ms | 5.2 s | 77 ms |
+| same, after `encounter_kind` + the 1,000-code-point range bound | 719 ms | 4.8 s | 75 ms |
+
+The cost is assembling each word's history, not the FSRS fold (44 s against 4 s over 150
+sessions). The session write is dominated by the attention answer, which recomputes every word of
+the session that has a memory. Not yet measured: the phone, which may be several times slower.
+

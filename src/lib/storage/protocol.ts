@@ -26,6 +26,9 @@ export type Call =
 	| { method: 'startSession'; args: [number, string] }
 	| { method: 'recordEncounters'; args: [number, unknown[]] }
 	| { method: 'recentEncounters'; args: [] }
+	| { method: 'recordReview'; args: [number, number, unknown] }
+	| { method: 'cardSentence'; args: [number] }
+	| { method: 'cardsToday'; args: [number] }
 	| { method: 'staleMemory'; args: [number] }
 	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }

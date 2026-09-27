@@ -39,6 +39,13 @@ export interface Encounter {
 	detail?: Record<string, unknown>;
 }
 
+/**
+ * The longest read or played stretch, in code points. Bounding it lets a word's stretches be found
+ * with an index range rather than a scan of the document's history (repository.wordHistory); the
+ * recorder splits a longer read range. A played chunk is five seconds of subtitles, far shorter.
+ */
+export const MAX_RANGE = 1000;
+
 export class InvalidEncounter extends Error {
 	name = 'InvalidEncounter';
 }
@@ -77,14 +84,20 @@ export function validateEncounter(encounter: Encounter): void {
 			break;
 		case 'read':
 			needsRange();
+			if (encounter.toOffset! - encounter.fromOffset! > MAX_RANGE)
+				fail(`is longer than ${MAX_RANGE}`);
 			break;
 		case 'played':
 			needsRange();
+			if (encounter.toOffset! - encounter.fromOffset! > MAX_RANGE)
+				fail(`is longer than ${MAX_RANGE}`);
 			if (typeof encounter.mediaMs !== 'number' || typeof detail.toMs !== 'number')
 				fail('has no media times');
 			break;
 		case 'review':
-			needsWord();
+			// A word in no document (an Anki word never met) is reviewed without a sentence.
+			if (encounter.lexemeId === undefined) fail('has no word');
+			if (encounter.documentId !== undefined) needsRange();
 			if (detail.skill !== 'reading' && detail.skill !== 'listening') fail('names no skill');
 			if (![1, 2, 3, 4].includes(detail.grade as number)) fail('has no grade from 1 to 4');
 			break;

@@ -7,7 +7,12 @@
  * lease, so they are written rather than queued behind it.
  */
 
-import type { AttentionAnswer, Encounter, Modality } from '$lib/domain/encounter';
+import {
+	MAX_RANGE,
+	type AttentionAnswer,
+	type Encounter,
+	type Modality
+} from '$lib/domain/encounter';
 
 export interface EncounterSink {
 	startSession(documentId: number, modality: Modality): Promise<number>;
@@ -143,7 +148,13 @@ export class Recorder {
 		const key = `${fromOffset}-${toOffset}`;
 		if (key === this.lastRead) return;
 		this.lastRead = key;
-		this.push({ kind: 'read', documentId: this.documentId, fromOffset, toOffset });
+		for (let from = fromOffset; from < toOffset; from += MAX_RANGE)
+			this.push({
+				kind: 'read',
+				documentId: this.documentId,
+				fromOffset: from,
+				toOffset: Math.min(from + MAX_RANGE, toOffset)
+			});
 	}
 
 	/**
@@ -210,6 +221,8 @@ export class Recorder {
 		const from = this.lineRanges[c.fromLine];
 		const to = this.lineRanges[c.toLine];
 		if (!from || !to || c.toMs - c.fromMs < MIN_PLAYED_MS) return;
+		// Five seconds of subtitles never come near MAX_RANGE; a jump the continuity check missed might.
+		if (to[1] - from[0] > MAX_RANGE) return;
 		this.buffer.push({
 			kind: 'played',
 			at: c.at,

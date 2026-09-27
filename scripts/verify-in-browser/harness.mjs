@@ -906,6 +906,98 @@ const scenarios = {
 		}
 	},
 
+	// Spec 007 US3: a word looked up on the stage becomes a card, shown in its sentence; Again brings
+	// it back in the same session, Easy finishes it. Needs the fixture-media job served.
+	async cards() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the video to be playable',
+				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				60000,
+				250
+			);
+			await tab.evaluate(
+				`const v = document.querySelector('video'); v.muted = true; v.currentTime = 10; v.play(); return true;`
+			);
+			await new Promise((r) => setTimeout(r, 1500));
+			const word = await until('a word looked up', () =>
+				tab.evaluate(`
+					const word = document.querySelector('.media.stage .subtitles button.token');
+					if (!word) return null;
+					word.click();
+					await new Promise((r) => setTimeout(r, 300));
+					[...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Cancel').click();
+					return word.textContent;
+				`)
+			);
+			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
+			await until('the library', () =>
+				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+			);
+			await tab.evaluate(`
+				const skip = [...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Skip');
+				skip?.click();
+				[...document.querySelectorAll('nav.tabs a')].find((a) => a.textContent.includes('Cards')).click();
+				return true;
+			`);
+			const card = await until('a card', () =>
+				tab.evaluate(`
+					const mark = document.querySelector('.card .sentence mark');
+					return mark ? { counts: document.querySelector('.subtitle')?.textContent.trim(), word: mark.textContent, sentence: mark.parentElement.textContent } : null;
+				`)
+			);
+			const started = Date.now();
+			const shown = await until('the answer', () =>
+				tab.evaluate(`
+					document.querySelector('.card .reveal')?.click();
+					const answer = document.querySelector('.card .answer');
+					if (!answer || answer.textContent.includes('Looking up')) return null;
+					return answer.textContent.slice(0, 120);
+				`)
+			);
+			const grade = (label) =>
+				tab.evaluate(`
+					[...document.querySelectorAll('.card .grade')].find((b) => b.textContent.trim() === ${JSON.stringify(label)}).click();
+					return true;
+				`);
+			await grade('Again');
+			const back = await until('the card again', () =>
+				tab.evaluate(`
+					const mark = document.querySelector('.card .sentence mark');
+					return mark && !document.querySelector('.card .grade') ? mark.textContent : null;
+				`)
+			);
+			const secondsToNext = (Date.now() - started) / 1000;
+			await tab.evaluate(`document.querySelector('.card .reveal').click(); return true;`);
+			await until('grades', () =>
+				tab.evaluate(`return document.querySelector('.card .grade') ? true : null;`)
+			);
+			// Easy, not Good: Good leaves a card answered Again in learning, due again within the
+			// 20-minute learn-ahead, so with nothing else to review it would simply come back.
+			await grade('Easy');
+			const done = await until('done', () =>
+				tab.evaluate(`return document.querySelector('.empty')?.textContent.trim() || null;`)
+			);
+			return {
+				pass:
+					card.word === word &&
+					back === word &&
+					/pinyin|[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(shown) &&
+					done.startsWith('Done'),
+				word,
+				card,
+				shown,
+				back,
+				secondsToNext,
+				done
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// A Termux job with subtitles, imported from New from Termux and played. Needs make-fixtures.sh's
 	// fixture-media job served by reader-service.py on 127.0.0.1:8765.
 	async media() {

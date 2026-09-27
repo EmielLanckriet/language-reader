@@ -43,7 +43,8 @@ const READER_CHANGES = new Set([
 	'assertState',
 	'removeDocument',
 	'importAnki',
-	'undoAnkiImport'
+	'undoAnkiImport',
+	'recordReview'
 ]);
 
 let state: Availability = { kind: 'paused' };
@@ -254,6 +255,16 @@ function run(request: Request): unknown {
 			return repository.staleMemory(request.args[0]);
 		case 'refreshMemory':
 			return repository.refreshMemory(request.args[0]);
+		case 'recordReview':
+			return repository.recordReview(
+				request.args[0],
+				request.args[1],
+				request.args[2] as Occurrence
+			);
+		case 'cardSentence':
+			return repository.cardSentence(request.args[0]);
+		case 'cardsToday':
+			return repository.cardsToday(request.args[0]);
 		case 'recentEncounters':
 			return repository.recentEncounters();
 		case 'importAnki':

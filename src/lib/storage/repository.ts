@@ -19,7 +19,7 @@ import { checkTiling } from '../domain/tiling';
 import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { projectStates, RETRACTED } from '../domain/state';
-import { validateEncounter, type Encounter, type Modality } from '../domain/encounter';
+import { MAX_RANGE, validateEncounter, type Encounter, type Modality } from '../domain/encounter';
 import type { FsrsParameters } from '../domain/anki';
 import {
 	memoryOf,
@@ -31,6 +31,7 @@ import {
 	type WordHistory
 } from '../domain/memory';
 import type { AttentionAnswer, Skill } from '../domain/encounter';
+import { cardQueue, type Queue } from '../domain/queue';
 import {
 	type Database,
 	type Row,
@@ -56,6 +57,44 @@ export interface RecentSession {
 		at: string;
 	}[];
 }
+
+function memoryFromRow(row: Row): Memory {
+	return {
+		stability: Number(row.stability),
+		difficulty: Number(row.difficulty),
+		state: Number(row.state),
+		lastAt: String(row.last_at),
+		due: String(row.due),
+		reps: Number(row.reps),
+		lapses: Number(row.lapses),
+		card: row.card === 1,
+		reviewed: row.reviewed === 1,
+		...(row.seeded === null ? {} : { seeded: String(row.seeded) })
+	};
+}
+
+/** A sentence a card shows its word in (research R9), in code points of its document. */
+export interface CardSentence {
+	documentId: DocumentId;
+	/** The sentence's range in the document. */
+	from: number;
+	to: number;
+	text: string;
+	/** The word's range within `text`. */
+	wordFrom: number;
+	wordTo: number;
+	/** Its line in the document, which for a video is its subtitle line. */
+	line: number;
+}
+
+export interface CardsToday {
+	queue: Queue;
+	words: Record<LexemeId, string>;
+	counts: { due: number; fresh: number };
+}
+
+/** A card's sentence ends at these, and at a line break. */
+const SENTENCE_ENDS = new Set(['。', '！', '？', '!', '?']);
 
 /** Enough to list a document without loading it. */
 export interface DocumentSummary {
@@ -587,7 +626,7 @@ export class Repository {
 	recordReview(
 		lexemeId: LexemeId,
 		grade: number,
-		shown: Occurrence,
+		shown: Occurrence | undefined,
 		at: string = new Date().toISOString()
 	): void {
 		transact(this.db, () => {
@@ -595,9 +634,9 @@ export class Repository {
 				kind: 'review',
 				at,
 				lexemeId,
-				documentId: shown.documentId,
-				fromOffset: shown.fromOffset,
-				toOffset: shown.toOffset,
+				...(shown
+					? { documentId: shown.documentId, fromOffset: shown.fromOffset, toOffset: shown.toOffset }
+					: {}),
 				detail: { skill: 'reading', grade }
 			});
 			this.recomputeMemory([lexemeId]);
@@ -674,13 +713,20 @@ export class Repository {
 			kind: String(row.kind),
 			detail: JSON.parse(String(row.detail))
 		}));
+		// One exposure per session and text visibility, the earliest: evidence-1 counts a word met in a
+		// session at most once, and a session's every 5 s chunk covering the word made this the cost
+		// of recomputing a busy word (measured 2026-09-27: 1.2 s a session at 20,000 encounters).
 		const exposures = queryRows(
 			this.db,
-			`SELECT DISTINCT e.id, e.session_id, s.modality, e.text_visible, e.at, e.device_id, e.device_seq
-       FROM encounter e JOIN session s ON s.id = e.session_id
-       JOIN token t ON t.document_id = e.document_id
-                   AND t.start < e.to_offset AND t.end > e.from_offset
-       WHERE t.lexeme_id = ? AND e.kind IN ('read', 'played')`,
+			`SELECT e.session_id, s.modality, e.text_visible, MIN(e.device_seq) AS device_seq,
+              e.device_id, MIN(e.at) AS at
+       FROM token t
+       JOIN encounter e ON e.document_id = t.document_id
+                       AND e.from_offset < t.end AND e.from_offset > t.start - ${MAX_RANGE}
+                       AND e.to_offset > t.start AND e.kind IN ('read', 'played')
+       JOIN session s ON s.id = e.session_id
+       WHERE t.lexeme_id = ?
+       GROUP BY e.session_id, e.text_visible, e.device_id`,
 			[lexemeId]
 		).map((row) => ({ ...ordered(row), ...optional(row) }) as Exposure);
 		const answers = new Map<number, AttentionAnswer>();
@@ -984,6 +1030,112 @@ export class Repository {
 	}
 
 	/**
+	 * The sentence a card shows its word in (research R9): where it was first looked up, then, after
+	 * each review, the next of its occurrences in library order, so reviews go through different
+	 * sentences. Undefined for a word in no document (an Anki word never met).
+	 */
+	cardSentence(lexemeId: LexemeId): CardSentence | undefined {
+		const occurrences = queryRows(
+			this.db,
+			'SELECT document_id, start, end FROM token WHERE lexeme_id = ? ORDER BY document_id, start',
+			[lexemeId]
+		).map((row) => ({
+			documentId: Number(row.document_id),
+			start: Number(row.start),
+			end: Number(row.end)
+		}));
+		if (occurrences.length === 0) return undefined;
+
+		const at = (documentId: unknown, offset: unknown) =>
+			occurrences.findIndex(
+				(o) => o.documentId === Number(documentId) && o.start === Number(offset)
+			);
+		const lastShown = queryRows(
+			this.db,
+			`SELECT document_id, from_offset FROM encounter WHERE lexeme_id = ? AND kind = 'review'
+       ORDER BY device_id, device_seq DESC LIMIT 1`,
+			[lexemeId]
+		)[0];
+		const firstLookup = queryRows(
+			this.db,
+			`SELECT document_id, from_offset FROM encounter WHERE lexeme_id = ? AND kind = 'lookup'
+       ORDER BY device_id, device_seq LIMIT 1`,
+			[lexemeId]
+		)[0];
+		let chosen = 0;
+		if (lastShown)
+			chosen =
+				(Math.max(at(lastShown.document_id, lastShown.from_offset), -1) + 1) % occurrences.length;
+		else if (firstLookup)
+			chosen = Math.max(at(firstLookup.document_id, firstLookup.from_offset), 0);
+		const occurrence = occurrences[chosen];
+
+		const characters = codePointsOf(
+			String(
+				queryRows(this.db, 'SELECT raw_content FROM document WHERE id = ?', [
+					occurrence.documentId
+				])[0].raw_content
+			)
+		);
+		let from = occurrence.start;
+		while (from > 0 && characters[from - 1] !== '\n' && !SENTENCE_ENDS.has(characters[from - 1]))
+			from--;
+		let to = occurrence.end;
+		while (
+			to < characters.length &&
+			characters[to] !== '\n' &&
+			!SENTENCE_ENDS.has(characters[to - 1])
+		)
+			to++;
+		return {
+			documentId: occurrence.documentId,
+			from,
+			to,
+			text: characters.slice(from, to).join(''),
+			wordFrom: occurrence.start - from,
+			wordTo: occurrence.end - from,
+			line: characters.slice(0, occurrence.start).filter((c) => c === '\n').length
+		};
+	}
+
+	/** Today's reading cards in the order to show them (research R8), with each card's word. */
+	cardsToday(cap: number, now: Date = new Date()): CardsToday {
+		const rows = queryRows(
+			this.db,
+			`SELECT m.*, l.surface FROM memory m JOIN lexeme l ON l.id = m.lexeme_id
+       WHERE m.skill = 'reading' AND m.card = 1`
+		);
+		const frequency = new Map(
+			queryRows(
+				this.db,
+				`SELECT t.lexeme_id, COUNT(*) AS n FROM token t
+         JOIN memory m ON m.lexeme_id = t.lexeme_id AND m.skill = 'reading' AND m.card = 1
+         GROUP BY t.lexeme_id`
+			).map((row) => [Number(row.lexeme_id), Number(row.n)])
+		);
+		const midnight = new Date(now);
+		midnight.setHours(0, 0, 0, 0);
+		const firstReviewsToday = Number(
+			queryRows(
+				this.db,
+				`SELECT COUNT(*) AS n FROM (
+           SELECT MIN(at) AS first FROM encounter WHERE kind = 'review' GROUP BY lexeme_id
+         ) WHERE first >= ?`,
+				[midnight.toISOString()]
+			)[0].n
+		);
+		const queue = cardQueue(
+			rows.map((row) => ({ lexemeId: Number(row.lexeme_id), memory: memoryFromRow(row) })),
+			{ frequency, firstReviewsToday, cap, now }
+		);
+		return {
+			queue,
+			words: Object.fromEntries(rows.map((row) => [Number(row.lexeme_id), String(row.surface)])),
+			counts: { due: queue.due.length, fresh: queue.fresh.length }
+		};
+	}
+
+	/**
 	 * These words' memory in each skill, and the parameters today's recall is computed with
 	 * (spec 007, research R7). Recall itself is not stored: it changes with the clock.
 	 */
@@ -1002,18 +1154,7 @@ export class Repository {
 			for (const row of rows) {
 				const id = Number(row.lexeme_id);
 				const skills = memory.get(id) ?? {};
-				skills[String(row.skill) as Skill] = {
-					stability: Number(row.stability),
-					difficulty: Number(row.difficulty),
-					state: Number(row.state),
-					lastAt: String(row.last_at),
-					due: String(row.due),
-					reps: Number(row.reps),
-					lapses: Number(row.lapses),
-					card: row.card === 1,
-					reviewed: row.reviewed === 1,
-					...(row.seeded === null ? {} : { seeded: String(row.seeded) })
-				};
+				skills[String(row.skill) as Skill] = memoryFromRow(row);
 				memory.set(id, skills);
 			}
 		}

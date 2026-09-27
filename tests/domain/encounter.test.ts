@@ -27,10 +27,15 @@ const valid: Encounter[] = [
 	{ kind: 'attention', at, detail: { answer: 'all' } },
 	{ kind: 'attention', at, detail: { answer: null } },
 	{ kind: 'review', at, ...word, detail: { skill: 'reading', grade: 3 } },
+	{ kind: 'review', at, lexemeId: 7, detail: { skill: 'reading', grade: 3 } },
 	{ kind: 'something-a-later-build-writes', at }
 ];
 
 const invalid: [string, Encounter][] = [
+	[
+		'a read range longer than 1000',
+		{ kind: 'read', at, documentId: 1, fromOffset: 0, toOffset: 1001 }
+	],
 	['a lookup without its word', { kind: 'lookup', at, documentId: 1, fromOffset: 3, toOffset: 5 }],
 	['a check without offsets', { kind: 'check', at, lexemeId: 7, documentId: 1 }],
 	['a read range without a document', { kind: 'read', at, fromOffset: 0, toOffset: 4 }],
@@ -45,6 +50,11 @@ const invalid: [string, Encounter][] = [
 	['a review without a grade', { kind: 'review', at, ...word, detail: { skill: 'reading' } }],
 	['a review graded 5', { kind: 'review', at, ...word, detail: { skill: 'reading', grade: 5 } }],
 	['a review of no skill', { kind: 'review', at, ...word, detail: { grade: 3 } }],
+	['a review of no word', { kind: 'review', at, detail: { skill: 'reading', grade: 3 } }],
+	[
+		'a review whose sentence has no offsets',
+		{ kind: 'review', at, lexemeId: 7, documentId: 1, detail: { skill: 'reading', grade: 3 } }
+	],
 	['an attention answer not offered', { kind: 'attention', at, detail: { answer: 'mostly' } }],
 	['an attention without an answer field', { kind: 'attention', at, detail: {} }],
 	[

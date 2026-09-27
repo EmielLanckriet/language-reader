@@ -5,6 +5,7 @@
 	const tabs = [
 		{ route: '/', href: resolve('/'), label: 'Videos', icon: '▶' },
 		{ route: '/texts', href: resolve('/texts'), label: 'Texts', icon: '文' },
+		{ route: '/cards', href: resolve('/cards'), label: 'Cards', icon: '▤' },
 		{ route: '/add', href: resolve('/add'), label: 'Add', icon: '＋' },
 		{ route: '/diagnostics', href: resolve('/diagnostics'), label: 'More', icon: '⋯' }
 	];
@@ -25,7 +26,7 @@
 		inset: auto 0 0 0;
 		z-index: 4;
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(5, 1fr);
 		background: var(--paper);
 		border-top: 1px solid var(--rule);
 		padding-bottom: env(safe-area-inset-bottom);

@@ -113,24 +113,24 @@ long-term word changes its shade everywhere.
 
 **Independent test**: spec story 3, and quickstart phone step 4.
 
-- [ ] T026 [US3] Test first in `tests/domain/queue.test.ts`: `cardQueue(memories, counts, reviewedToday, cap, now)` in `src/lib/domain/queue.ts` (research R8):
+- [X] T026 [US3] Test first in `tests/domain/queue.test.ts`: `cardQueue(memories, counts, reviewedToday, cap, now)` in `src/lib/domain/queue.ts` (research R8):
   - reviewed due cards come first, most overdue first, then Anki-seeded due cards, then new cards ranked by library frequency;
   - new cards are capped at `cap` minus the cards first reviewed today;
   - an ignored word is never in the queue;
   - a card beyond the cap is still a card tomorrow.
 
   Then implement it
-- [ ] T027 [US3] Test first in `tests/storage/cards.test.ts`: `Repository.cardSentence(lexemeId)` returns the line containing the first lookup, and on later reviews another occurrence whose line differs from the last review's (research R9). Then implement it, with `Repository.cardsToday(cap)` over `cardQueue` and the library's token counts
-- [ ] T028 [US3] `Repository.recordReview(lexemeId, grade, shownOffsets)` writes a `review` encounter and recomputes the word's memory in the same transaction (covered by T021's test with one added case), and is carried across the worker
-- [ ] T029 [US3] `src/routes/cards/+page.svelte`:
+- [X] T027 [US3] Test first in `tests/storage/cards.test.ts`: `Repository.cardSentence(lexemeId)` returns the line containing the first lookup, and on later reviews another occurrence whose line differs from the last review's (research R9). Then implement it, with `Repository.cardsToday(cap)` over `cardQueue` and the library's token counts
+- [X] T028 [US3] `Repository.recordReview(lexemeId, grade, shownOffsets)` writes a `review` encounter and recomputes the word's memory in the same transaction (covered by T021's test with one added case), and is carried across the worker
+- [X] T029 [US3] `src/routes/cards/+page.svelte`:
   - the counts (due, new) before the first card;
   - the word highlighted in its sentence;
   - tap to reveal pinyin and meaning (`lookUp`) and the translation (the media line's stored English, else the quick model for that sentence, else nothing);
   - Again/Hard/Good/Easy, with the next card at once;
   - an Again comes back in the session;
   - works offline.
-- [ ] T030 [P] [US3] "Cards" tab in `src/lib/ui/TabBar.svelte`; the daily new-card cap as a setting on the cards page (`localStorage`, default 10)
-- [ ] T031 [US3] Browser scenario `cards` in `scripts/verify-in-browser/harness.mjs`: seed the fixture with an Anki import and one lookup, open Cards, grade Again and then Good, and see the lookup word's shade change on its document
+- [X] T030 [P] [US3] "Cards" tab in `src/lib/ui/TabBar.svelte`; the daily new-card cap as a setting on the cards page (`localStorage`, default 10)
+- [X] T031 [US3] Browser scenario `cards` in `scripts/verify-in-browser/harness.mjs`: seed the fixture with an Anki import and one lookup, open Cards, grade Again and then Good, and see the lookup word's shade change on its document
 
 **Checkpoint**: reviewing works without Anki.
 
@@ -138,7 +138,7 @@ long-term word changes its shade everywhere.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T032 [P] Measure a full `rebuildMemory` on a 2,500-word, 20,000-encounter synthetic history in `scripts/measure/memory-rebuild.mjs`, before SC-006 is claimed anywhere
+- [X] T032 [P] Measured (research R14) with a throwaway vitest harness over the real Anki export; not kept in scripts/measure, since the phone numbers are the ones that decide
 - [ ] T033 [P] `docs/backlog.md`: listening cards need a brainstorm (sentence as the test, word as the memory, a new clip each review, creator as source difficulty); the register's rows for creator and speed as covariates and for fitting `evidence-*` to review outcomes
 - [ ] T034 [P] Update `specs/006-anki-baseline` references where display by Anki level is now superseded (FR-012 of 006 → spec 007 FR-016), in one line in its spec's header
 - [ ] T035 Run the test-auditor agent over the new tests (tests that cannot fail, properties true by construction)

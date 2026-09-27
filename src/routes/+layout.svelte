@@ -20,9 +20,11 @@
 
 	let { children } = $props();
 
-	// The library's four sections get the tab bar and Termux's status; reading a document or a
+	// The library's five sections get the tab bar and Termux's status; reading a document or a
 	// video does not, so nothing sits over the text or the stage.
-	const tabbed = $derived(['/', '/texts', '/add', '/diagnostics'].includes(page.route.id ?? ''));
+	const tabbed = $derived(
+		['/', '/texts', '/cards', '/add', '/diagnostics'].includes(page.route.id ?? '')
+	);
 
 	$effect(() => {
 		if (!browser) return;
