@@ -568,6 +568,8 @@
 			online={(line) => quick?.focus(line)}
 			onword={chooseWord}
 			{recorder}
+			title={document.title}
+			artist={typeof media.meta.uploader === 'string' ? media.meta.uploader : undefined}
 			bind:player
 		>
 			{#snippet status()}

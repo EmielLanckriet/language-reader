@@ -35,6 +35,8 @@
 		status,
 		onword,
 		recorder,
+		title,
+		artist,
 		player = $bindable(null)
 	}: {
 		file: File;
@@ -55,6 +57,9 @@
 		onword: (line: number, word: LineWord) => void;
 		/** Where what happens during playback is written down (spec 007). */
 		recorder?: Recorder;
+		/** What the lock screen and headphones' controls say is playing. */
+		title?: string;
+		artist?: string;
 		player?: HTMLMediaElement | null;
 	} = $props();
 
@@ -90,9 +95,12 @@
 
 	/** The last line that started: a gap keeps the line before it, and nothing precedes line 0. */
 	function follow() {
-		if (!player) return;
-		const time = player.currentTime;
-		if (!player.paused) recorder?.playing(lineAt(time), moment());
+		const media = active();
+		if (!media) return;
+		const time = media.currentTime;
+		if (!media.paused) recorder?.playing(lineAt(time), moment());
+		// The screen is locked: no animation frames, so watchLineEnd cannot stop at a line's end.
+		if (away) checkLineEnd(media);
 		let at = -1;
 		for (let i = 0; i < cues.length && cues[i].start <= time; i++) at = i;
 		if (at === currentLine) return;
@@ -111,13 +119,107 @@
 		return at;
 	}
 
-	/** Every line's text is on screen today: on the stage and in the list alike. */
+	/**
+	 * Every line's text is on screen while the page is (the stage and the list alike); with the
+	 * screen locked it is heard only, which is what makes it listening (research R5).
+	 */
 	function moment() {
+		const media = active();
 		return {
-			mediaMs: Math.round((player?.currentTime ?? 0) * 1000),
-			speed: player?.playbackRate ?? speed,
-			textVisible: true
+			mediaMs: Math.round((media?.currentTime ?? 0) * 1000),
+			speed: media?.playbackRate ?? speed,
+			textVisible: !away && document.visibilityState === 'visible'
 		};
+	}
+
+	// --- Listening with the screen locked (asked for 2026-09-27: audio on the bike) ---
+
+	/**
+	 * Chrome pauses a hidden video within seconds (measured on the phone: ~14 s after locking), but
+	 * not an audio element. So while the page is hidden, the same file plays in `sound`, from where
+	 * the video was, and hands back to the video on return. An audio file needs none of this.
+	 */
+	let sound = $state<HTMLAudioElement | null>(null);
+	let away = $state(false);
+
+	/** Whichever element is playing now: the video, or its sound while the screen is locked. */
+	function active(): HTMLMediaElement | null {
+		return away ? sound : player;
+	}
+
+	function handOff() {
+		if (isAudio || away || !player || !sound || player.paused) return;
+		sound.currentTime = player.currentTime;
+		sound.defaultPlaybackRate = sound.playbackRate = player.playbackRate;
+		away = true;
+		player.pause();
+		void sound.play();
+	}
+
+	function handBack() {
+		if (!away || !player || !sound) return;
+		const playing = !sound.paused;
+		player.currentTime = sound.currentTime;
+		sound.pause();
+		away = false;
+		if (playing) void player.play();
+	}
+
+	$effect(() => {
+		const change = () => (document.visibilityState === 'hidden' ? handOff() : handBack());
+		document.addEventListener('visibilitychange', change);
+		return () => document.removeEventListener('visibilitychange', change);
+	});
+
+	/** A line's end, checked on timeupdate while locked: coarser than per frame, but it still stops. */
+	function checkLineEnd(media: HTMLMediaElement) {
+		if (!pauseEachLine || currentLine < 0 || media.paused) return;
+		const end = Math.min(cues[currentLine].end, cues[currentLine + 1]?.start ?? Infinity);
+		if (stoppedAt === currentLine && media.currentTime < end - 0.5) stoppedAt = -1;
+		if (media.currentTime >= end - 0.05 && stoppedAt !== currentLine) {
+			stoppedAt = currentLine;
+			media.pause();
+		}
+	}
+
+	/**
+	 * Headphones' and the lock screen's buttons (Media Session). Headphones send three signals:
+	 * one press play/pause, two "next track", three "previous track". Chosen by the reader: next
+	 * replays the current sentence, previous goes to the one before.
+	 */
+	$effect(() => {
+		if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+		const session = navigator.mediaSession;
+		session.metadata = new MediaMetadata({ title: title ?? '', artist: artist ?? '' });
+		const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
+			['play', () => void active()?.play()],
+			['pause', () => active()?.pause()],
+			['nexttrack', () => replayFrom('media-key', false)],
+			['previoustrack', () => replayFrom('media-key', true)]
+		];
+		for (const [action, handler] of handlers) {
+			try {
+				session.setActionHandler(action, handler);
+			} catch {
+				// An action this browser does not know: that button just does nothing here.
+			}
+		}
+		return () => {
+			for (const [action] of handlers) {
+				try {
+					session.setActionHandler(action, null);
+				} catch {
+					// As above.
+				}
+			}
+		};
+	});
+
+	/** Replay the current sentence, or the one before it. */
+	function replayFrom(via: string, before: boolean) {
+		const line = before && currentLine > 0 ? currentLine - 1 : currentLine;
+		recorder?.replay(currentLine, before && currentLine > 0, moment().mediaMs, via);
+		seek(line);
 	}
 
 	/**
@@ -127,14 +229,16 @@
 	let playedTo = 0;
 	let seekFrom = 0;
 	function noteTime() {
-		if (player && !player.seeking) playedTo = player.currentTime;
+		const media = active();
+		if (media && !media.seeking) playedTo = media.currentTime;
 	}
 
 	function seek(line: number) {
-		if (!player || !cues[line]) return;
+		const media = active();
+		if (!media || !cues[line]) return;
 		stoppedAt = -1;
-		player.currentTime = cues[line].start;
-		void player.play();
+		media.currentTime = cues[line].start;
+		void media.play();
 	}
 
 	/**
@@ -179,6 +283,7 @@
 	function nextSpeed() {
 		speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
 		if (player) player.playbackRate = speed;
+		if (sound) sound.playbackRate = speed;
 		recorder?.setting('speed', speed);
 		try {
 			localStorage.setItem('reader.speed', String(speed));
@@ -197,9 +302,10 @@
 	/** Controls hidden for plain watching: only the video and its lines. For this visit only. */
 	let bare = $state(false);
 	function playOrPause() {
-		if (!player) return;
-		if (player.paused) void player.play();
-		else player.pause();
+		const media = active();
+		if (!media) return;
+		if (media.paused) void media.play();
+		else media.pause();
 	}
 
 	/** The line already stopped at, so pressing play again carries on into the next one. */
@@ -261,8 +367,9 @@
 
 	/** ◀ goes to the start of this line when more than a second in, as Language Reactor does. */
 	function previous() {
-		if (!player || currentLine < 0) return;
-		const into = player.currentTime - cues[currentLine].start;
+		const media = active();
+		if (!media || currentLine < 0) return;
+		const into = media.currentTime - cues[currentLine].start;
 		seek(into > 1 || currentLine === 0 ? currentLine : currentLine - 1);
 	}
 
@@ -276,7 +383,7 @@
 	}
 
 	function tap(line: number, word: LineWord) {
-		player?.pause();
+		active()?.pause();
 		onword(line, word);
 	}
 </script>
@@ -321,6 +428,16 @@
 				onseeking={() => (seekFrom = playedTo)}
 				onseeked={() => recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
 			></video>
+			<!-- The video's own sound, for while the screen is locked (handOff). Never shown. -->
+			<audio
+				src={url}
+				preload="auto"
+				bind:this={sound}
+				ontimeupdate={() => away && (noteTime(), follow())}
+				onpause={() => away && recorder?.paused()}
+				onseeking={() => away && (seekFrom = playedTo)}
+				onseeked={() => away && recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
+			></audio>
 			{#if stage}
 				{#if bare}
 					<button class="unbare" onclick={() => (bare = false)} aria-label="Show the buttons"

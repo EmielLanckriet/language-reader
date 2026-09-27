@@ -10,6 +10,7 @@
 	import TermuxStatus from '$lib/ui/TermuxStatus.svelte';
 	import AttentionSheet from '$lib/ui/AttentionSheet.svelte';
 	import { attention } from '$lib/ui/attention.svelte';
+	import { recoverUnsent } from '$lib/ui/recorder';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
 	import { sweepStaleDocuments, sweepStaleMemory } from '$lib/storage/sweep';
@@ -39,6 +40,13 @@
 		// and so the registration is available to the parts of the interface that need it.
 		void serviceWorker();
 		startCopying();
+
+		// Encounters a killed app left waiting (a ride with the screen locked): written now, and
+		// every few minutes, since a stash only counts as abandoned once it stops being updated.
+		void session().then(({ repository }) => {
+			void recoverUnsent(repository);
+			setInterval(() => void recoverUnsent(repository), 5 * 60_000);
+		});
 
 		// Catch up the documents the reader has not opened (FR-016). Started once, from the layout,
 		// because it is about the library rather than about any screen — and starting it per screen

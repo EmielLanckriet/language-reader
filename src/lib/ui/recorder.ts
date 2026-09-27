@@ -43,6 +43,50 @@ interface OpenChunk {
 }
 
 export const FLUSH_EVERY_MS = 5_000;
+
+const STASH_PREFIX = 'reader.unsent.';
+/** A stash not updated for this long belongs to a recorder that is gone (a live one saves every flush). */
+const ABANDONED_MS = 60_000;
+
+interface Stash {
+	documentId: number;
+	modality: Modality;
+	session: number | null;
+	savedAt: number;
+	encounters: Encounter[];
+}
+
+/**
+ * Write what a recorder that is gone left in its stash (the app was killed with writes waiting).
+ * Run at start-up and now and then; a stash still being updated is a live recorder's, and is left.
+ */
+export async function recoverUnsent(
+	sink: EncounterSink,
+	now: () => number = Date.now
+): Promise<number> {
+	let recovered = 0;
+	let keys: string[];
+	try {
+		keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i) ?? '').filter(
+			(key) => key.startsWith(STASH_PREFIX)
+		);
+	} catch {
+		return 0;
+	}
+	for (const key of keys) {
+		try {
+			const stash = JSON.parse(localStorage.getItem(key) ?? 'null') as Stash | null;
+			if (!stash || now() - stash.savedAt < ABANDONED_MS) continue;
+			const session = stash.session ?? (await sink.startSession(stash.documentId, stash.modality));
+			await sink.recordEncounters(session, stash.encounters);
+			localStorage.removeItem(key);
+			recovered += stash.encounters.length;
+		} catch {
+			// Left for the next try: storage may be held by another copy, or the lease not yet back.
+		}
+	}
+	return recovered;
+}
 /** A jump in playback bigger than this, or any jump back, starts a new chunk. */
 const CONTINUOUS_MS = 3_000;
 const MIN_SEEK_MS = 500;
@@ -56,6 +100,9 @@ export class Recorder {
 	private open: { word: WordAt; moment?: MediaMoment; at: string } | undefined;
 	private lastRead = '';
 	private flushing: Promise<void> | undefined;
+	/** A batch sent but not yet confirmed written: kept in the stash until it is. */
+	private inflight: Encounter[] = [];
+	private readonly stashKey = `${STASH_PREFIX}${Math.random().toString(36).slice(2)}${Date.now()}`;
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private engaged = 0;
 	private readSince: number | undefined;
@@ -125,12 +172,13 @@ export class Recorder {
 		void this.flush();
 	}
 
-	replay(line: number, toPrevious: boolean, mediaMs: number): void {
+	/** `via` names where the replay came from when it was not the ↻ button (e.g. `media-key`). */
+	replay(line: number, toPrevious: boolean, mediaMs: number, via?: string): void {
 		this.push({
 			kind: 'replay',
 			documentId: this.documentId,
 			mediaMs,
-			detail: { line, toPrevious }
+			detail: { line, toPrevious, ...(via ? { via } : {}) }
 		});
 	}
 
@@ -177,10 +225,44 @@ export class Recorder {
 		return this.flush();
 	}
 
-	/** Write everything buffered. Encounters that fail stay for the next flush. */
+	/**
+	 * Write everything buffered. Encounters that fail stay for the next flush, and everything not
+	 * yet written is also in the stash: with the screen locked the storage lease is let go, so a
+	 * write waits until the reader is back, and Android may kill the app first (a bike ride).
+	 */
 	flush(): Promise<void> {
+		this.splitPlaying();
+		this.stash();
 		this.flushing ??= this.write().finally(() => (this.flushing = undefined));
 		return this.flushing;
+	}
+
+	/** A chunk still playing is written as it stands and continued in a new one. */
+	private splitPlaying(): void {
+		const playing = this.chunk;
+		if (!playing || playing.toMs <= playing.fromMs) return;
+		this.closeChunk();
+		this.chunk = { ...playing, fromMs: playing.toMs, fromLine: playing.toLine, at: this.stamp() };
+	}
+
+	private stash(): void {
+		const unsent = [...this.inflight, ...this.buffer];
+		try {
+			if (unsent.length === 0) localStorage.removeItem(this.stashKey);
+			else
+				localStorage.setItem(
+					this.stashKey,
+					JSON.stringify({
+						documentId: this.documentId,
+						modality: this.modality,
+						session: this.session ?? null,
+						savedAt: this.now(),
+						encounters: unsent
+					} satisfies Stash)
+				);
+		} catch {
+			// No storage for it (private mode, or full): the encounters are only in memory, as before.
+		}
 	}
 
 	/** Leave the document: an open sheet counts as a lookup, and everything is written. */
@@ -247,21 +329,19 @@ export class Recorder {
 	}
 
 	private async write(): Promise<void> {
-		// A chunk still playing is written as it stands and continued in a new one.
-		const playing = this.chunk;
-		if (playing && playing.toMs > playing.fromMs) {
-			this.closeChunk();
-			this.chunk = { ...playing, fromMs: playing.toMs, fromLine: playing.toLine, at: this.stamp() };
-		}
 		if (this.buffer.length === 0) return;
 		const batch = this.buffer;
 		this.buffer = [];
+		this.inflight = batch;
 		try {
 			this.session ??= await this.sink.startSession(this.documentId, this.modality);
 			await this.sink.recordEncounters(this.session, batch);
 		} catch {
 			// Kept for the next flush. All or nothing on the other side, so resending is safe.
 			this.buffer = [...batch, ...this.buffer];
+		} finally {
+			this.inflight = [];
+			this.stash();
 		}
 	}
 }
