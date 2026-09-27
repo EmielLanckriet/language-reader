@@ -158,6 +158,14 @@
 		stoppedAt = -1;
 	}
 
+	/** Controls hidden for plain watching: only the video and its lines. For this visit only. */
+	let bare = $state(false);
+	function playOrPause() {
+		if (!player) return;
+		if (player.paused) void player.play();
+		else player.pause();
+	}
+
 	/** The line already stopped at, so pressing play again carries on into the next one. */
 	let stoppedAt = -1;
 
@@ -251,7 +259,8 @@
 			     it. ⛶ on the stage is the one full screen, the whole app's. -->
 			<video
 				class="player"
-				controls
+				controls={!bare}
+				onclick={bare ? playOrPause : undefined}
 				controlslist="nofullscreen"
 				disablepictureinpicture
 				playsinline
@@ -262,7 +271,12 @@
 				onloadedmetadata={started}
 			></video>
 			{#if stage}
-				<div class="bar">
+				{#if bare}
+					<button class="unbare" onclick={() => (bare = false)} aria-label="Show the buttons"
+						>⋯</button
+					>
+				{/if}
+				<div class="bar" class:hidden={bare}>
 					<!-- The stage covers the page, its back link too: without this, a video had no way out
 					     but Android's back gesture. -->
 					<a class="back-to-videos" href={resolve('/')} aria-label="Back to videos">←</a>
@@ -271,6 +285,7 @@
 						>{blurEnglish ? 'English blurred' : 'English shown'}</button
 					>
 					<button onclick={toggleFullscreen} aria-label="Full screen">⛶</button>
+					<button onclick={() => (bare = true)} aria-label="Hide the buttons">✕</button>
 				</div>
 				{#if currentLine >= 0 && lines[currentLine]}
 					<div class="subtitles">
@@ -289,19 +304,25 @@
 							>{translations[currentLine]?.text ??
 								(askable ? 'translating…' : 'No English yet')}</button
 						>
-						<div class="steps">
+						<!-- ◀ ↻ ▶ in the middle; the two settings aside at the edges, quieter. -->
+						<div class="steps" class:hidden={bare}>
 							<button
+								class="setting"
 								onclick={togglePauseEachLine}
 								aria-pressed={pauseEachLine}
 								class:on={pauseEachLine}
-								aria-label="Stop after each line">⏸ each</button
+								aria-label="Stop after each line">⏸</button
 							>
-							<button onclick={previous} aria-label="Previous line">◀</button>
-							<button onclick={replay} aria-label="Replay this line (twice: the line before)"
-								>↻</button
+							<div class="moves">
+								<button onclick={previous} aria-label="Previous line">◀</button>
+								<button onclick={replay} aria-label="Replay this line (twice: the line before)"
+									>↻</button
+								>
+								<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
+							</div>
+							<button class="setting" onclick={nextSpeed} aria-label="Playback speed"
+								>{speed}×</button
 							>
-							<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
-							<button onclick={nextSpeed} aria-label="Playback speed">{speed}×</button>
 						</div>
 					</div>
 				{/if}
@@ -490,14 +511,42 @@
 		font-style: italic;
 	}
 	.steps {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 0.6rem;
+		align-self: stretch;
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		align-items: center;
 	}
-	.steps button.on {
+	.moves {
+		display: flex;
+		gap: 1.5rem;
+	}
+	.steps .setting {
+		justify-self: start;
+		font-size: 0.85rem;
+		opacity: 0.6;
+		border-color: transparent;
+	}
+	.steps .setting:last-child {
+		justify-self: end;
+	}
+	.steps .setting.on {
+		opacity: 1;
 		background: var(--accent);
-		border-color: var(--accent);
+	}
+	.hidden {
+		display: none !important;
+	}
+	.unbare {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		z-index: 1;
+		background: rgb(0 0 0 / 35%);
+		color: rgb(255 255 255 / 70%);
+		border: none;
+		border-radius: 999px;
+		padding: 0.2rem 0.7rem;
+		min-height: 0;
 	}
 	.to-stage {
 		display: block;
