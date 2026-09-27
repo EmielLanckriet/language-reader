@@ -1,23 +1,16 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.4.0 → 1.5.0
-Bump rationale: MINOR. A principle is added; no principle is removed or redefined. Recorded in
-ADR-0023.
+Version change: 1.5.0 → 2.0.0
+Bump rationale: MAJOR. Principle III is redefined: Anki is no longer the scheduler; the Reader
+schedules and Anki is a read-only seed. The no-write constraint is unchanged. Recorded in ADR-0026.
 
-Modified principles: none
+Modified principles:
+  - III. "Anki Is Authoritative And Read-Mostly" → "Anki Is Read, Never Written"
 
-Added sections:
-  - VIII. Fast First, Better In The Background — every derived result reaches the reader within
-    seconds, even if rough; a better one may replace it piece by piece in the background, never
-    the other way round, and each piece records its method. Derived data only (ADR-0003).
-
+Added sections: none
 Removed sections: none
 
-Deferred items:
-  - TODO(PROJECT_NAME): Working title "Language Reader" is in use throughout.
-    Renaming is a PATCH-level amendment and requires no ADR.
-
-Follow-up: none blocking. Templates read the constitution at runtime; plan checks now include VIII.
+Follow-up: none blocking. Plan checks of Principle III now check "never written" and "seed only".
 -->
 
 # Language Reader Constitution
@@ -72,15 +65,20 @@ list because ADR-0002's claim that word identity is revisable depends entirely o
 correctness, and because correcting segmentation — a user-facing feature — is implemented by
 them.
 
-### III. Anki Is Authoritative And Read-Mostly
+### III. Anki Is Read, Never Written
 
 The user's Anki collection is an external system under a one-way contract. This tool MUST NOT
 mutate existing scheduling state, FSRS parameters, note types, cards, or review history. It MAY
 propose new notes. Every write path MUST be additive and reversible.
 
+Scheduling belongs to the Reader: reviews happen in the app, over the Reader's own history, and
+Anki's scheduling state is a **seed** for it, read from a copy of the collection. After a word's
+first review in the Reader, Anki no longer changes its schedule.
+
 Rationale: The collection holds years of irreplaceable review history. A scheduling corruption
-is silent, discovered late, and unrecoverable. No feature is worth that risk, so the constraint
-is absolute rather than case-by-case.
+is silent, discovered late, and unrecoverable, so the constraint on writing is absolute. Moving
+scheduling into the Reader (ADR-0026) lets reading and viewing shape it, which Anki cannot be
+told; it does not relax the constraint on writing.
 
 ### IV. Vertical Slices Only
 
@@ -310,4 +308,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 1.5.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-26
+**Version**: 2.0.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-27
