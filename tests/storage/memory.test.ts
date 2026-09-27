@@ -68,10 +68,33 @@ describe('memory kept with the history', () => {
 		expect(queryRows(db, `SELECT reps FROM memory WHERE skill = 'reading'`)[0].reps).toBe(
 			Number(before) + 1
 		);
-		// Words read past with no memory yet get none (evidence-1).
-		expect(queryRows(db, 'SELECT DISTINCT lexeme_id FROM memory')).toEqual([
-			{ lexeme_id: words[0].lexemeId! }
+		// Every word read past starts a memory (evidence-2), though only the looked-up one is a card.
+		expect(queryRows(db, 'SELECT DISTINCT lexeme_id FROM memory ORDER BY lexeme_id')).toEqual(
+			[...new Set(words.map((w) => w.lexemeId!))]
+				.sort((a, b) => a - b)
+				.map((id) => ({ lexeme_id: id }))
+		);
+		expect(
+			queryRows(db, "SELECT lexeme_id FROM memory WHERE card = 1 AND skill = 'reading'")
+		).toEqual([{ lexeme_id: words[0].lexemeId! }]);
+	});
+
+	it('finds words from earlier attentive sessions that have no memory yet, and stops', async () => {
+		const { db, repository, documentId, words, read } = await library();
+		repository.assertState(words[1].lexemeId!, 'ignored');
+		const session = repository.startSession(documentId, 'reading');
+		repository.recordEncounters(session, [
+			read(day(5)),
+			{ kind: 'attention', at: day(5, 11), detail: { answer: 'all' } }
 		]);
+		// As a database written under evidence-1 left it: no memory for words only read past.
+		run(db, 'DELETE FROM memory');
+
+		const found = repository.staleMemory(100);
+		expect(found).not.toContain(words[1].lexemeId!);
+		expect(found.length).toBeGreaterThan(0);
+		repository.refreshMemory(found);
+		expect(repository.staleMemory(100)).toEqual([]);
 	});
 
 	it('is made by an Anki import, under the parameters it brought', async () => {

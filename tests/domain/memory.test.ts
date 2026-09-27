@@ -11,7 +11,7 @@ import {
 	type Mark
 } from '../../src/lib/domain/memory';
 
-// The evidence rule `evidence-1` (research R5, contracts/evidence-rule.md): how a word's history
+// The evidence rule `evidence-2` (research R5, contracts/evidence-rule.md): how a word's history
 // counts for its reading and listening memory. One example per row and per limit of the table.
 
 const AGAIN = 1;
@@ -120,9 +120,9 @@ describe('evidence-1', () => {
 		const known = lookup(9, at(1));
 		const answered = (answer: 'all' | 'some' | null) => new Map([[1, answer]]);
 
-		it('is a weak success when the reader said they tapped everything', () => {
+		it('is a success when the reader said they tapped everything', () => {
 			const h = history({ events: [known], exposures: [seen(1, at(3))], answers: answered('all') });
-			expect(ratings(h).reading).toEqual([AGAIN, HARD]);
+			expect(ratings(h).reading).toEqual([AGAIN, GOOD]);
 		});
 
 		it('counts for nothing under any other answer, or none', () => {
@@ -139,9 +139,10 @@ describe('evidence-1', () => {
 			]);
 		});
 
-		it('counts for nothing when the word had no memory yet', () => {
+		it('starts a memory for a word that had none, without making it a card (evidence-2)', () => {
 			const h = history({ exposures: [seen(1, at(3))], answers: answered('all') });
-			expect(ratings(h)).toEqual({ reading: [], listening: [] });
+			expect(ratings(h)).toEqual({ reading: [GOOD], listening: [] });
+			expect(evidenceFor(h).card).toBe(false);
 		});
 
 		it('counts once a day', () => {
@@ -150,7 +151,7 @@ describe('evidence-1', () => {
 				exposures: [seen(1, at(3, 9)), seen(1, at(3, 20)), seen(1, at(4, 9))],
 				answers: answered('all')
 			});
-			expect(ratings(h).reading).toEqual([AGAIN, HARD, HARD]);
+			expect(ratings(h).reading).toEqual([AGAIN, GOOD, GOOD]);
 		});
 
 		it('does not count in a session the word was looked up in', () => {
@@ -168,7 +169,7 @@ describe('evidence-1', () => {
 				exposures: [seen(1, at(3), true, false)],
 				answers: answered('all')
 			});
-			expect(ratings(h)).toEqual({ reading: [AGAIN], listening: [AGAIN, HARD] });
+			expect(ratings(h)).toEqual({ reading: [AGAIN], listening: [AGAIN, GOOD] });
 		});
 	});
 

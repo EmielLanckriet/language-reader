@@ -38,3 +38,11 @@ is unknown, and will stay unknown until months of reviews exist to fit it agains
 - `detail` fields are checked by the repository, not by SQLite: a validation bug could write a
   malformed detail. The per-kind validation is tested first.
 - Fitting the rule later is a pure function over the log, measured against review outcomes.
+
+## Amendment, 2026-09-27: `evidence-2`
+
+On the reader's word, a word met untapped in a session answered "I tapped every word I didn't know"
+is a Good, not a Hard, and it counts even for a word with no memory yet, which then starts one
+(still not a card). The rule change is the recompute this ADR provides for. The memory sweep
+also backfills words from earlier attentive sessions that `evidence-1` left without a memory,
+Ignored words excepted. Measured on 10 videos (1,340 encounters): 223 words in 0.5 s on the laptop.

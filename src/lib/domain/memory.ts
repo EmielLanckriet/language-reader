@@ -19,7 +19,7 @@ import { ankiSeedOf, isFromAnki, type AnkiSeed, type FsrsParameters } from './an
 import type { AttentionAnswer, Modality, Skill } from './encounter';
 import { RETRACTED } from './state';
 
-export const RULE = 'evidence-1';
+export const RULE = 'evidence-2';
 
 /** Position in the history: what orders it. `at` only measures the time between evidence. */
 export interface Ordered {
@@ -91,6 +91,7 @@ export interface Memory {
 
 const AGAIN: Grade = 1;
 const HARD: Grade = 2;
+const GOOD: Grade = 3;
 
 function byHistory(a: Ordered, b: Ordered): number {
 	if (a.deviceId !== b.deviceId) return a.deviceId < b.deviceId ? -1 : 1;
@@ -102,7 +103,12 @@ function skillOf(item: { modality?: Modality; textVisible?: boolean }): Skill {
 	return item.modality === 'media' && item.textVisible === false ? 'listening' : 'reading';
 }
 
-/** What `evidence-1` makes of one word's history (research R5). */
+/**
+ * What `evidence-2` makes of one word's history (research R5). It differs from `evidence-1` in one
+ * row, on the reader's word (2026-09-27): a word met untapped in a session answered "I tapped every
+ * word I didn't know" is a Good, not a Hard, and it counts even for a word with no memory yet —
+ * which then starts one, without becoming a card.
+ */
 export function evidenceFor(history: WordHistory): WordEvidence {
 	const marks = [...history.marks].sort(byHistory);
 	const events = [...history.events].sort(byHistory);
@@ -140,7 +146,6 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		reading: { seed, evidence: [] },
 		listening: { evidence: [] }
 	};
-	const has = (skill: Skill) => found[skill].seed !== undefined || found[skill].evidence.length > 0;
 	const counted = new Set<string>();
 	const once = (key: string) => (counted.has(key) ? false : (counted.add(key), true));
 
@@ -168,9 +173,9 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		} else if (exposure) {
 			const skill = skillOf(exposure);
 			if (history.answers.get(exposure.sessionId) !== 'all') continue;
-			if (lookedIn.has(exposure.sessionId) || !has(skill)) continue;
+			if (lookedIn.has(exposure.sessionId)) continue;
 			if (!once(`seen ${skill} ${exposure.at.slice(0, 10)}`)) continue;
-			found[skill].evidence.push({ at: exposure.at, rating: HARD });
+			found[skill].evidence.push({ at: exposure.at, rating: GOOD });
 		}
 	}
 	return found;

@@ -165,6 +165,15 @@ import { StorageFailure } from './failures';
 import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
 import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
 
+/** Every word a stretch covered in a session answered "I tapped every word I didn't know". */
+const ATTENTIVELY_SEEN = `
+  SELECT DISTINCT t.lexeme_id FROM encounter a
+    JOIN encounter e ON e.session_id = a.session_id AND e.kind IN ('read', 'played')
+    JOIN token t ON t.document_id = e.document_id
+                AND t.start < e.to_offset AND t.end > e.from_offset
+   WHERE a.kind = 'attention' AND json_extract(a.detail, '$.answer') = 'all'
+     AND t.lexeme_id IS NOT NULL`;
+
 export class Repository {
 	constructor(private readonly db: Database) {}
 
@@ -773,8 +782,8 @@ export class Repository {
 
 	/**
 	 * The words whose memory a batch of encounters can change (research R6): the word of a lookup,
-	 * check or review, and for an attention answer every word the session's stretches covered that
-	 * already has a memory, since only those can gain evidence from it.
+	 * check or review, and for an attention answer every word the session's stretches covered
+	 * (evidence-2 starts a memory for a word met untapped in an attentive session).
 	 */
 	private touchedBy(sessionId: number, encounters: Encounter[]): Set<LexemeId> {
 		const touched = new Set<LexemeId>();
@@ -786,8 +795,7 @@ export class Repository {
 				`SELECT DISTINCT t.lexeme_id FROM encounter e
          JOIN token t ON t.document_id = e.document_id
                      AND t.start < e.to_offset AND t.end > e.from_offset
-         WHERE e.session_id = ? AND e.kind IN ('read', 'played')
-           AND t.lexeme_id IN (SELECT lexeme_id FROM memory)`,
+         WHERE e.session_id = ? AND e.kind IN ('read', 'played') AND t.lexeme_id IS NOT NULL`,
 				[sessionId]
 			))
 				touched.add(Number(row.lexeme_id));
@@ -841,7 +849,7 @@ export class Repository {
 			kind: String(row.kind),
 			detail: JSON.parse(String(row.detail))
 		}));
-		// One exposure per session and text visibility, the earliest: evidence-1 counts a word met in a
+		// One exposure per session and text visibility, the earliest: evidence-2 counts a word met in a
 		// session at most once, and a session's every 5 s chunk covering the word made this the cost
 		// of recomputing a busy word (measured 2026-09-27: 1.2 s a session at 20,000 encounters).
 		const exposures = queryRows(
@@ -930,10 +938,22 @@ export class Repository {
 	 * and shown until the sweep recomputes them, a batch at a time.
 	 */
 	staleMemory(limit: number): LexemeId[] {
-		return queryRows(this.db, 'SELECT DISTINCT lexeme_id FROM memory WHERE rule != ? LIMIT ?', [
-			ruleKey(this.currentParameters()),
-			limit
-		]).map((row) => Number(row.lexeme_id));
+		const stale = queryRows(
+			this.db,
+			'SELECT DISTINCT lexeme_id FROM memory WHERE rule != ? LIMIT ?',
+			[ruleKey(this.currentParameters()), limit]
+		).map((row) => Number(row.lexeme_id));
+		if (stale.length > 0) return stale;
+		// Words evidence-1 gave no memory and evidence-2 does: met untapped in an attentive session.
+		// An ignored word never gets a row, so it is left out, or the sweep would find it forever.
+		return queryRows(
+			this.db,
+			`SELECT lexeme_id FROM (${ATTENTIVELY_SEEN})
+        WHERE lexeme_id NOT IN (SELECT lexeme_id FROM memory)
+          AND lexeme_id NOT IN (SELECT lexeme_id FROM word_state WHERE state = 'ignored')
+        LIMIT ?`,
+			[limit]
+		).map((row) => Number(row.lexeme_id));
 	}
 
 	/** Recompute these words' memory: one batch of the sweep. */
@@ -941,13 +961,23 @@ export class Repository {
 		transact(this.db, () => this.recomputeMemory(lexemeIds));
 	}
 
-	/** The words with a memory among a document's tokens starting in [from, to). */
+	/**
+	 * The words among a document's tokens starting in [from, to) that have a memory, or can gain one:
+	 * those an attentive session covered (evidence-2).
+	 */
 	private memoryWordsIn(documentId: DocumentId, from: number, to: number): Set<LexemeId> {
 		return new Set(
 			queryRows(
 				this.db,
-				`SELECT DISTINCT t.lexeme_id FROM token t JOIN memory m ON m.lexeme_id = t.lexeme_id
-         WHERE t.document_id = ? AND t.start >= ? AND t.start < ?`,
+				`SELECT DISTINCT t.lexeme_id FROM token t
+         WHERE t.document_id = ? AND t.start >= ? AND t.start < ? AND t.lexeme_id IS NOT NULL
+           AND (t.lexeme_id IN (SELECT lexeme_id FROM memory) OR EXISTS (
+                SELECT 1 FROM encounter e
+                  JOIN encounter a ON a.session_id = e.session_id AND a.kind = 'attention'
+                                  AND json_extract(a.detail, '$.answer') = 'all'
+                 WHERE e.document_id = t.document_id AND e.kind IN ('read', 'played')
+                   AND e.from_offset < t.end AND e.from_offset > t.start - ${MAX_RANGE}
+                   AND e.to_offset > t.start))`,
 				[documentId, from, Number.isFinite(to) ? to : Number.MAX_SAFE_INTEGER]
 			).map((row) => Number(row.lexeme_id))
 		);
@@ -958,7 +988,8 @@ export class Repository {
 		return queryRows(
 			this.db,
 			`SELECT lexeme_id FROM status_event UNION
-       SELECT lexeme_id FROM encounter WHERE lexeme_id IS NOT NULL`
+       SELECT lexeme_id FROM encounter WHERE lexeme_id IS NOT NULL UNION
+       ${ATTENTIVELY_SEEN}`
 		).map((row) => Number(row.lexeme_id));
 	}
 
