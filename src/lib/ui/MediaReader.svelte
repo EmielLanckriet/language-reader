@@ -162,6 +162,14 @@
 		seek(into > 1 || currentLine === 0 ? currentLine : currentLine - 1);
 	}
 
+	/** When ↻ was last pressed: a second press soon after goes to the line before (asked for 2026-09-27). */
+	let replayedAt = 0;
+	function replay() {
+		const again = performance.now() - replayedAt < 1500;
+		replayedAt = performance.now();
+		seek(again && currentLine > 0 ? currentLine - 1 : currentLine);
+	}
+
 	function tap(line: number, word: LineWord) {
 		player?.pause();
 		onword(line, word);
@@ -221,7 +229,9 @@
 						>
 						<div class="steps">
 							<button onclick={previous} aria-label="Previous line">◀</button>
-							<button onclick={() => seek(currentLine)} aria-label="Replay this line">↻</button>
+							<button onclick={replay} aria-label="Replay this line (twice: the line before)"
+								>↻</button
+							>
 							<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
 						</div>
 					</div>
