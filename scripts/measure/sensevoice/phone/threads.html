@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8" /><title>threads</title>
+<pre id="log">…</pre>
+<!-- One thread setting per page load: onnxruntime-web fixes its thread count when it starts. ?c=[{"threads":2}] -->
+<script type="module">
+	import * as ort from '/ort/ort.all.min.mjs';
+	import { transcribe, parseTokens, wavSamples } from './sensevoice.mjs';
+	const el = document.getElementById('log');
+	const say = (m) => {
+		el.textContent += '\n' + m;
+	};
+	const configs = JSON.parse(decodeURIComponent(new URLSearchParams(location.search).get('c')));
+	ort.env.wasm.wasmPaths = '/ort/';
+	const meta = await (await fetch('meta.json')).json();
+	const tokens = parseTokens(await (await fetch('tokens.txt')).text());
+	const bytes = new Uint8Array(await (await fetch('model.int8.onnx')).arrayBuffer());
+	const wavs = [];
+	for (const i of [0, 1])
+		wavs.push(wavSamples(new Uint8Array(await (await fetch(`s${i}.wav`)).arrayBuffer())));
+	const results = [];
+	for (const c of configs) {
+		try {
+			ort.env.wasm.numThreads = c.threads;
+			const opts = { executionProviders: ['wasm'], graphOptimizationLevel: 'all' };
+			if (c.spin === false) opts.extra = { session: { 'intra_op.allow_spinning': '0' } };
+			const s = await ort.InferenceSession.create(bytes, opts);
+			const ms = [];
+			for (let i = 0; i < wavs.length; i++) {
+				const a = performance.now();
+				await transcribe(ort, s, tokens, meta, wavs[i], i * 30);
+				ms.push(Math.round(performance.now() - a));
+			}
+			await s.release();
+			results.push({ ...c, ms, threadsSeen: ort.env.wasm.numThreads });
+			say(JSON.stringify(results.at(-1)));
+		} catch (e) {
+			results.push({ ...c, error: String(e) });
+			say(String(e));
+		}
+	}
+	await fetch('/result', { method: 'POST', body: JSON.stringify({ test: 'threads', results }) });
+	say('sent');
+</script>

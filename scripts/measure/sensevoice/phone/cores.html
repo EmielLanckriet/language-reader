@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8" /><title>cores</title>
+<pre id="log">…</pre>
+<!-- Can Chrome on this phone use several cores? Same busy loop in 1, 2, 4, 6, 8 workers at once. -->
+<script type="module">
+	const el = document.getElementById('log');
+	const say = (m) => {
+		el.textContent += '\n' + m;
+	};
+	const N = 400_000_000;
+	const run = (k) =>
+		new Promise((done) => {
+			const t = performance.now(),
+				each = [];
+			const ws = Array.from({ length: k }, () => new Worker('spin.js'));
+			let left = k;
+			ws.forEach((w) => {
+				w.onmessage = ({ data }) => {
+					each.push(Math.round(data.ms));
+					w.terminate();
+					if (!--left) done({ k, wall: Math.round(performance.now() - t), each });
+				};
+				w.postMessage(N);
+			});
+		});
+	const out = [];
+	await run(1); // warm up
+	for (const k of [1, 2, 4, 6, 8]) {
+		const r = await run(k);
+		out.push(r);
+		say(JSON.stringify(r));
+	}
+	await fetch('/result', {
+		method: 'POST',
+		body: JSON.stringify({ test: 'cores', isolated: self.crossOriginIsolated, out })
+	});
+	say('sent');
+</script>

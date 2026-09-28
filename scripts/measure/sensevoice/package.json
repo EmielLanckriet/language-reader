@@ -1,0 +1,10 @@
+{
+	"name": "measure-sensevoice",
+	"private": true,
+	"type": "module",
+	"description": "Laptop and phone measurements for SenseVoice-Small in the browser; never shipped",
+	"devDependencies": {
+		"onnxruntime-node": "^1.23.0",
+		"onnxruntime-web": "1.30.0"
+	}
+}

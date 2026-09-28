@@ -2,6 +2,57 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper
+
+2026-09-28, measured (harnesses in `scripts/measure/sensevoice/`): SenseVoice-Small (int8, 239 MB)
+running in Reader itself through onnxruntime-web, with 2 threads, number normalisation off, and
+30 s windows every 28 s, each keeping its tokens up to the middle of the overlap. Termux stays for
+downloading; the reader prefers transcription in the app over Termux.
+
+Measured on Chef Wang (154 s) and the 上海 street interview (231 s):
+
+- **Accuracy**: about as good as turbo, with different errors. SenseVoice got 家常菜, 成色, 浙江工业大学,
+  电子信息 where turbo wrote 加重菜, 橙色, 这家工业大学, 电子气息; turbo got 滑好锅 and 明油 where
+  SenseVoice wrote 划 and 淋. It keeps fillers (呃 嗯 哦). With ITN on it garbles numbers (20到4000 for
+  两千到四千); off, they come out as characters. Nothing invented on Chef Wang's music-only outro.
+- **Speed, laptop, 4 threads**: 6.4 s and 9.6 s for the two clips; turbo took 188 s and 345 s.
+- **Speed, the A71's Chrome, per 30 s window**: 38.6 s on 1 thread, **22.0 s on 2**, 48.8 s on 3,
+  40.4 s on 4. The Snapdragon 730 has 2 fast cores and 6 slow ones, and onnxruntime splits each op
+  evenly and waits for the slowest thread, so a thread on a slow core holds up every op. Spinning off
+  made 2 threads slower (28.8 s). The laptop scales 3x from 1 to 4 threads.
+- **The JS pipeline** (`sensevoice.mjs`) reproduces sherpa-onnx's preprocessing: features equal
+  kaldi-native-fbank's to 1e-4, and the text differs only at near-tied tokens (香/鲜: top-two gap
+  0.09, against a median of 9.8), which sherpa itself flips between CPUs.
+
+Rejected, measured the same day:
+
+- **Longer windows**: SenseVoice's README gives 30 s as the input limit. At 45, 60 and 90 s the
+  interview gained some context fixes (期望, 师兄师姐) and dropped phrases (看一点, 左右), more the
+  longer the window; the whole clip at once lost a fifth of its text. Clear speech did not care.
+- **Cutting at pauses** (Silero VAD, the README's recommended pipeline): at threshold 0.5 it skipped
+  49 s of the interview's real speech, whole answers; at 0.3 still 一千八左右 and 花一千五到两千吧; at
+  0.2 it found no pauses and cut at its 30 s maximum. The fixed 2 s overlap instead keeps words cut
+  at a boundary whole (师姐啊, 不经常花). Moving the cuts at all reshuffles near-ties elsewhere.
+- **Fun-ASR-Nano**: its encoder in SenseVoice form (264 MB) is as fast and clearly worse (家虫菜,
+  勤工卷学, about ten errors on the interview). The full model (encoder + Qwen3-0.6B) is broken as
+  int8 (empty or looping), and as fp16 (1.6 GB) the most accurate on content words but slow (half
+  real time on the laptop), without timestamps, silent above 25 s windows, and it writes fluent
+  words that were not said (前功尽弃 for 勤工俭学), the worst kind of error for a learner.
+- **sherpa-onnx's own WebAssembly build**: works (29–38 s per window on the phone), but ships no
+  threaded onnxruntime; a threaded build means building onnxruntime for WebAssembly ourselves.
+- **WebGPU** with the fp32 model (938 MB): the page crashed while loading, likely out of memory.
+- **A cloud service**, kept as an option: pay-per-use with a prepaid top-up, no subscription.
+  Prices on 2026-09-28: Groq whisper-large-v3-turbo $0.04/h (free tier up to 8 h a day, same model
+  as turbo), Alibaba Qwen3-ASR-Flash about $0.13/h, OpenAI gpt-4o-mini-transcribe $0.18/h. A
+  ChatGPT subscription includes no API credit.
+
+Open when this is built: the thread count differs per phone, so calibrate once on the device (time 1,
+2 and 4 threads, each in its own worker, and keep the best) rather than hard-coding 2. sherpa's
+single thread was faster than onnxruntime-web's (about 30 s against 38.6 s), so faster kernels may
+exist. A slower, better background pass (ADR-0023) is untested: Qwen3-ASR-0.6B, which sherpa-onnx
+1.13.8 can load, or decoding a second time with the windows offset by 15 s and keeping, where the
+two disagree, the tokens the model is surer of.
+
 ## Pinyin for heteronyms (多音字), and the homograph problem
 
 2026-09-27: pinyin is now shown above every character, from pinyin-pro reading a whole text at a
@@ -33,6 +84,9 @@ subtitles (新资 for 薪资, about half of the missing words). Options, most pr
 
 First step when picked up: measure before building. Run Qwen3 1.7B (the phone's) on this video's
 words, hand-check about 50 choices, and compare with a 7–14B model on the laptop.
+
+2026-09-28, the reader: a model picks senses only for words that are new or hard at import, plus
+every word missing from CC-CEDICT (where misheard subtitles hide), once per word per document.
 
 ## Listening cards: brainstorm first
 
