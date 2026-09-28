@@ -12,8 +12,18 @@ import { SpeechClient } from './worker-client';
 
 const FILE = 'calibration.json';
 const TRIALS = [1, 2, 4];
+/**
+ * Measured on the phone (2026-09-29): one timing per count, in one order, chose 1 thread (9.3 s
+ * against 11.9 s for 2), while the same signal in a bare page gave 2 threads 7 s against 12.6 s,
+ * and repeats of one count varied from 6.9 s to 12 s on a warm phone. So each count is tried in
+ * two interleaved rounds, three decodes a trial, and its fastest decode counts: the fastest is the
+ * least disturbed. Bumped whenever the method changes, so an older result is measured again.
+ */
+const ROUNDS = 2;
+const METHOD = 2;
 
 export interface Calibration {
+	method?: number;
 	threads: number;
 	timings: Record<string, number>;
 	revision: string;
@@ -30,6 +40,7 @@ export async function readCalibration(): Promise<Calibration | undefined> {
 function valid(c: Calibration | undefined): c is Calibration {
 	return (
 		!!c &&
+		c.method === METHOD &&
 		c.isolated &&
 		c.revision === REVISION &&
 		c.runtime === RUNTIME &&
@@ -56,19 +67,25 @@ export async function calibrate(
 ): Promise<Calibration> {
 	const counts = TRIALS.filter((n) => n <= (navigator.hardwareConcurrency || 1));
 	const timings: Record<string, number> = {};
-	for (const [i, threads] of counts.entries()) {
-		onStep(i + 1, counts.length);
-		const client = worker();
-		try {
-			await client.open(base, REVISION, threads);
-			// Twice, keeping the second: the first also pays for warming the session up.
-			timings[threads] = Math.round(await client.time(10, 2));
-		} finally {
-			client.close();
+	const steps = counts.length * ROUNDS;
+	for (let round = 0; round < ROUNDS; round++) {
+		for (const [i, threads] of counts.entries()) {
+			onStep(round * counts.length + i + 1, steps);
+			const client = worker();
+			try {
+				await client.open(base, REVISION, threads);
+				// The first decode also warms the session up; the fastest of the rest counts.
+				await client.time(10, 1);
+				const ms = Math.min(await client.time(10, 1), await client.time(10, 1));
+				timings[threads] = Math.round(Math.min(timings[threads] ?? Infinity, ms));
+			} finally {
+				client.close();
+			}
 		}
 	}
 	const threads = Number(Object.entries(timings).sort((a, b) => a[1] - b[1])[0][0]);
 	const result: Calibration = {
+		method: METHOD,
 		threads,
 		timings,
 		revision: REVISION,

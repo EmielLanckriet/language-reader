@@ -145,6 +145,13 @@ revision, the onnxruntime version and `hardwareConcurrency`; it is measured agai
 differ, or when it was measured without isolation. If the session is not isolated at download time,
 calibration waits for the next isolated start and transcription uses 1 thread meanwhile.
 
+**Amended 2026-09-29, measured on the phone**: one timing per count in one order chose 1 thread
+(1: 9.3 s, 2: 11.9 s, 4: 11.6 s per 10 s), yet the same signal in a bare page gave 2 threads
+7.2/6.9 s against 12.6/17.2 s for 1, and speech windows confirmed 2 threads (27 s against 38.7 s per
+30 s). Single timings on a warm, charging phone varied from 6.9 s to 12 s for one count. So each
+count is now tried in two interleaved rounds (1, 2, 4, 1, 2, 4), three decodes a trial, and the
+fastest decode counts; about two minutes. A `method` field invalidates results of the old one.
+
 **Rationale**: the encoder's cost depends on the audio's length, not its content, so a generated
 signal times it as well as speech and ships nothing (no clip to license). Timed per the phone
 figures: about 13, 7 and 13 s per 10 s decode plus about 10 s of session creation each, so about a

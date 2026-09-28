@@ -14,8 +14,18 @@
 	const tokens = parseTokens(await (await fetch('tokens.txt')).text());
 	const bytes = new Uint8Array(await (await fetch('model.int8.onnx')).arrayBuffer());
 	const wavs = [];
-	for (const i of [0, 1])
-		wavs.push(wavSamples(new Uint8Array(await (await fetch(`s${i}.wav`)).arrayBuffer())));
+	// ?signal: the calibration's input instead (src/lib/speech/speech-worker.ts `time`): generated,
+	// 10 s, decoded twice with the second timed, to compare with speech in the same bare page.
+	const signal = new URLSearchParams(location.search).has('signal');
+	if (signal) {
+		const generated = Float32Array.from(
+			{ length: 10 * 16000 },
+			(_, i) => 0.1 * Math.sin(i / 7) * Math.sin(i / 1601)
+		);
+		wavs.push(generated, generated);
+	} else
+		for (const i of [0, 1])
+			wavs.push(wavSamples(new Uint8Array(await (await fetch(`s${i}.wav`)).arrayBuffer())));
 	const results = [];
 	for (const c of configs) {
 		try {
