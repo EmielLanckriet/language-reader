@@ -20,7 +20,7 @@ worker and Termux changes are glue: a browser scenario or the phone check, no su
 
 ## Phase 1: Setup
 
-- [ ] T001 Pin `onnxruntime-web` to exactly `1.30.0` in `package.json` (from ^1.29.0; 1.30.0 is what was measured, R1). Then check that `npm run build` passes `scripts/check-bundle.mjs` and `scripts/copy-ort-runtime.mjs` still finds `ort-wasm-simd-threaded.{wasm,mjs}`, and that `npm test` passes
+- [ ] T001 Pin `onnxruntime-web` to exactly `1.30.0` in `package.json` (from ^1.29.0; 1.30.0 is what was measured, R1). Then check that `npm run build` passes `scripts/check-bundle.mjs` and `scripts/copy-ort-runtime.mjs` still finds `ort-wasm-simd-threaded.{wasm,mjs}`, and that `npm test` passes. Then run `npm run verify:browser -- model` (slow: it downloads the segmenter), since the bump also changes the segmenter and quick English
 - [ ] T002 [P] Generate `src/lib/speech/sense-voice-meta.json` with `python scripts/measure/sensevoice/export_meta.py model.int8.onnx` from the pinned revision `2365baeacb507f821a0c8120fcee3d484dba7a07`. Add a top-level `"revision"` field so code can check that it matches the model it's used with
 - [ ] T003 [P] Browser fixture: see what `scripts/verify-in-browser/make-fixtures.sh` already produces. Add a 90 s MP4 with Chinese speech and AAC-LC audio as a pending bundle without subtitles, cut locally and not committed if its source is a YouTube video (as the existing media fixtures are handled)
 
@@ -98,6 +98,7 @@ Termux and see the LLM translation arrive.
 - [ ] T020 [US1] FR-019, Reader side, in `src/lib/speech/transcriber.ts`:
   - after a document is created, `PUT` its `media.zh.vtt` to `http://127.0.0.1:8765/downloads/<job>/media.zh.vtt` (the job from `meta.json`, `jobOf`), and write `transcript-sent` on a 204;
   - retry unsent documents when the transcriber starts and every 5 minutes, as `src/lib/backup/scheduler.ts` does;
+  - on a 404 (the job is gone from Termux) write `transcript-sent` as `{"gone": true}` and stop retrying, per `contracts/reader-service.md`;
   - a failure never blocks the transcript
 - [ ] T021 [P] [US1] `scripts/termux/reader-service.py` per `contracts/reader-service.md`:
   - `PUT /downloads/<job>/media.zh.vtt` writes the file aside and renames it, then starts `translate.py` detached unless `translate.lock` is held (204/404/400);
@@ -159,13 +160,13 @@ duplicated at the join.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T030 [P] Docs:
+- [ ] T030 [P] Docs (the register's new entries from this spec's Anticipated Changes were added during analysis, 2026-09-28):
   - `docs/adr/0019-transcripts-stream-from-termux.md`: a status line "Superseded in part by ADR-0029 (transcription moved into Reader)";
   - `docs/anticipated-changes.md`: revise the speech-to-text row (built in Reader, spec 008, ADR-0029; the audio is still the retained input);
   - `scripts/termux/README` or the setup notes, if any mention whisper
 - [ ] T031 [P] `npm run lint`, `npm run check` and `npm test` pass. For each test kept in `tests/speech/`, mutate the code it covers once and see it fail (CLAUDE.md); note the mutations in the commit message
 - [ ] T032 Deploy, then run the Termux setup on the phone (`setup.sh`). Check that the whisper files are gone and about 720 MB is freed
-- [ ] T033 Phone check, batched per `quickstart.md` §4 (stay-awake on, driven over adb and CDP): the update and isolation; the download with an interruption; calibration; SC-001, SC-002 and SC-007 on the street interview; SC-004 and FR-019 with Termux closed and then reopened; SC-005 and SC-003 on Chef Wang, swiped away halfway; SC-006 offline. Record the time per window with quick English running beside it (R13)
+- [ ] T033 Phone check, batched per `quickstart.md` §4 (stay-awake on, driven over adb and CDP): the update and isolation; the download with an interruption; calibration; SC-001, SC-002 and SC-007 on the street interview; SC-004 and FR-019 with Termux closed and then reopened; SC-005 and SC-003 on Chef Wang, swiped away halfway; SC-006 offline. Record the time per window with quick English running beside it (R13). Also one long video (30–60 min): it catches up with playback and stays ahead, and Chrome's memory, read over CDP, stays flat rather than growing with the video (edge case "a long video")
 - [ ] T034 If T033 shows the transcript falling behind playback because of quick English (R13), make quick English wait while a window decodes (`src/lib/translation/quick.ts`), and re-measure. Otherwise note in research.md R13 that it didn't
 - [ ] T035 Record T033's numbers in `specs/008-in-app-speech-to-text/spec.md` (a "Phone check" note, as 006 and 007 have), in the backlog entry "Speech-to-text in Reader with SenseVoice" (move it to built), and in ADR-0029's Consequences where they differ from the plan's estimates
 

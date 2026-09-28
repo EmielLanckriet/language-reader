@@ -60,7 +60,9 @@ already exist, other languages, the GPU, and a cloud service.
 - Q: Does a transcript run only while its video's page is open? → A: No: whenever Reader is open on
   screen, on any page, waiting videos are transcribed one at a time, the one being watched first.
 - Q: When is the best thread count measured? → A: Straight after the model download, as part of
-  the one-time setup, on a short clip shipped with Reader (about a minute, with progress shown).
+  the one-time setup (about a minute, with progress shown). At planning, with the reader's
+  agreement, on a generated signal rather than a shipped clip: the model's cost depends only on the
+  audio's length, so nothing needs to be shipped (research R9).
 - Q: Where is the model downloaded from? → A: Straight from Hugging Face, the repository the
   measurements used, pinned to an exact revision and checked against a stored checksum.
 
@@ -170,7 +172,10 @@ that the transcript continues from the last finished stretch with the earlier li
 - **Storage too full for the model**: Reader says so before downloading, not partway through.
 - **A browser without cross-origin isolation, or without threads**: transcription runs on one thread,
   slower than playback, rather than failing.
-- **An app update while a transcript runs**: the transcript resumes after the update as in Story 3.
+- **An app update while a transcript runs**: the transcript resumes after the update as in Story 3,
+  unless the update changed what produces it (the model, its runtime, or the settings of FR-005–
+  FR-008): then it starts again from the beginning, so one transcript never mixes two methods
+  (FR-012).
 - **Documents transcribed by whisper before this slice**: unchanged; marks point into their text.
 - **A Termux not yet updated**, still transcribing: Reader does not wait for or read its transcript;
   it transcribes the video itself. Termux's own work is wasted but harmless.
@@ -209,7 +214,7 @@ that the transcript continues from the last finished stretch with the earlier li
   a checksum Reader carries before it is used, and be kept on the device persistently.
 - **FR-010**: Reader MUST determine, once per device, the thread count that transcribes fastest, and
   remember it; it MUST NOT assume a fixed count. It MUST do so straight after the model download,
-  as part of the one-time setup, on a short clip shipped with Reader, showing progress; and again
+  as part of the one-time setup, on a generated signal, showing progress; and again
   whenever the remembered result is missing or was measured with a different model or runtime.
 - **FR-011**: Reader MUST provide the cross-origin isolation that threads require itself, since the
   static host cannot; where isolation or threads are unavailable it MUST transcribe on one thread
@@ -219,7 +224,8 @@ that the transcript continues from the last finished stretch with the earlier li
 - **FR-013**: A transcript interrupted by Reader closing, the phone restarting or an app update MUST
   resume from its last finished stretch, keeping the lines already written.
 - **FR-014**: Reader MUST show how far a transcript has got, and why it is waiting when it is (the
-  model missing, another video first, Reader not open).
+  model missing, the model being set up, another video first), and on return that it continued
+  where it stopped.
 - **FR-015**: Transcription MUST run whenever Reader is open on screen, on any page, not only on
   the video's own page. Only one transcript MUST run at a time; the video being watched goes first,
   then the others in the order they were imported. A video imported and not yet opened is
@@ -242,7 +248,8 @@ that the transcript continues from the last finished stretch with the earlier li
   and what they were measured with. Derived; measured again if missing or out of date.
 - **Transcript in progress**: for one imported video not yet a document, the stretches finished so
   far and their lines, so that it can resume. Derived from the kept audio.
-- **Transcript line**: text with start and end times, and the method that produced it (FR-012).
+- **Transcript line**: text with start and end times, cut from the recognised characters' times;
+  the method that produced it is recorded once per transcript (FR-012).
 
 ## Success Criteria *(mandatory)*
 
@@ -255,9 +262,10 @@ that the transcript continues from the last finished stretch with the earlier li
   and from about two minutes in, no line arrives after playback has reached it. Earlier, played
   straight away, lines trail by up to about 20 s: at 0.73 x real time the transcript cannot start
   ahead of playback, only catch up (plan, research R3).
-- **SC-003**: On Chef Wang and the street interview, the transcript is at least as accurate as the
-  2026-09-28 SenseVoice measurement (scripts/measure/sensevoice/), and invents no line over Chef
-  Wang's music-only outro.
+- **SC-003**: On Chef Wang and the street interview, the transcript is as accurate as the
+  2026-09-28 SenseVoice measurement: the app's pipeline gives text identical to the measured one on
+  the laptop (scripts/measure/sensevoice/), the phone's transcript equals the laptop's except at
+  near-tied characters, and no line is invented over Chef Wang's music-only outro.
 - **SC-004**: With Termux closed after the download, a subtitle-less video is transcribed to the end.
 - **SC-005**: Interrupted halfway and reopened, a transcript loses at most the stretch that was in
   progress, with no duplicated or missing line at the join.

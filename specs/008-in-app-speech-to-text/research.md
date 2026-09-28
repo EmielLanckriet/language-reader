@@ -157,7 +157,8 @@ and renames it, then starts `translate.py <job>` unless it is already running fo
 file). `translate.py` treats a present `media.zh.vtt` with no `transcribing.json` as complete, as
 for a downloaded track. Reader records, per document, whether the transcript has been sent
 (`transcript-sent` beside the media files), and the transcriber retries unsent ones when it
-starts and every 5 minutes, as the backup does. The read page's existing `followTranslation` then
+starts and every 5 minutes, as the backup does; a `404` means Termux no longer has the job, and
+ends the retries. The read page's existing `followTranslation` then
 finds `translate.json` as today.
 
 **Rationale**: the least change: `translate.py` already translates a downloaded Chinese track, and

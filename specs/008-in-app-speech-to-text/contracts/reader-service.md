@@ -16,9 +16,10 @@ and private-network headers it already sends on every reply cover this too.
 - **Idempotent**: sending the same transcript again changes nothing, and translation isn't started
   twice.
 
-Reader writes `transcript-sent` beside the document's media after a `204`, and not on a `404`, so
-a job Termux has since pruned is retried until it's pruned in Reader's list too. That's at most
-30 jobs, as `/downloads` lists.
+Reader writes `transcript-sent` beside the document's media after a `204`. On a `404` the job is
+gone from Termux (pruned or never there), so Reader writes `transcript-sent` with
+`{"gone": true}` and stops retrying: the lines keep Reader's quick English. Any other failure
+(the service unreachable, a `5xx`) is retried.
 
 ## `GET /downloads`
 

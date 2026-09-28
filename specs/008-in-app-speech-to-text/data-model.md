@@ -68,7 +68,7 @@ Termux, which is ignored).
 | File | Contents |
 |---|---|
 | `media.zh.method.json` | the `method` above: which model and settings wrote this transcript (FR-012) |
-| `transcript-sent` | present once the Termux service accepted the transcript for translation (FR-019). Absent means retry. |
+| `transcript-sent` | present once the Termux service accepted the transcript for translation (FR-019), or as `{"gone": true}` when Termux no longer has the job. Absent means retry. |
 
 ## Transcriber state (in memory, published to subscribers)
 
