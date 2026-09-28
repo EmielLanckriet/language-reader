@@ -2,6 +2,10 @@
 	import { safeguards, type Safeguards } from '$lib/backup/safeguards';
 	import { latest, restore } from '$lib/backup/destination';
 	import StartTermux from '$lib/ui/StartTermux.svelte';
+	import SpeechModel from '$lib/ui/SpeechModel.svelte';
+	import { readCalibration, type Calibration } from '$lib/speech/calibrate';
+	import { REVISION } from '$lib/speech/model';
+	import { speechSetup } from '$lib/speech/app';
 
 	let guards = $state<Safeguards | null>(null);
 	let restoring = $state(false);
@@ -157,6 +161,14 @@
 	 * tools**. On Android there are none to hand, and with no server there is nowhere else the
 	 * information exists — so this page is the whole of it.
 	 */
+	// Speech-to-text (spec 008): what the phone check reads, and where the model can be set up.
+	let calibration = $state<Calibration | undefined>();
+	$effect(() =>
+		speechSetup.subscribe((state) => {
+			if (state.kind === 'ready') void readCalibration().then((c) => (calibration = c));
+		})
+	);
+
 	let entries = $state<Diagnostic[]>([]);
 	let availability = $state<Availability>({ kind: 'acquiring', remembering: false });
 	let persistence = $state('');
@@ -299,6 +311,21 @@
 <h2 class="section">Right now</h2>
 
 <dl class="facts">
+	<dt>Speech-to-text</dt>
+	<dd>
+		<SpeechModel />
+		<small>
+			Model {REVISION.slice(0, 7)} · Threads available: {globalThis.crossOriginIsolated
+				? 'yes'
+				: 'no (after the next update)'} · {calibration
+				? `Measured: ${calibration.threads} thread${calibration.threads === 1 ? '' : 's'} (${Object.entries(
+						calibration.timings
+					)
+						.map(([n, ms]) => `${n}: ${(ms / 1000).toFixed(1)} s`)
+						.join(', ')} per 10 s)`
+				: 'Not measured yet'}
+		</small>
+	</dd>
 	<dt>Safeguards</dt>
 	<dd>
 		{#if guards}

@@ -21,6 +21,9 @@ export const FILES = [
 	}
 ] as const;
 
+/** The runtime a transcript and a calibration were made with (package.json pins it exactly). */
+export const RUNTIME = 'onnxruntime-web 1.30.0';
+
 export const TOTAL_BYTES = FILES.reduce((n, f) => n + f.size, 0);
 
 export async function speechRoot(): Promise<FileSystemDirectoryHandle> {

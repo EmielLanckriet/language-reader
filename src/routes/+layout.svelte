@@ -17,6 +17,7 @@
 	import { noteUpgraded } from '$lib/storage/upgrades';
 	import { activeAnalyzer } from '$lib/analyzer/active';
 	import { startCopying } from '$lib/backup/scheduler';
+	import { startTranscriber } from '$lib/speech/app';
 	import { describeError } from '$lib/diagnostics/describe';
 
 	let { children } = $props();
@@ -40,6 +41,8 @@
 		// and so the registration is available to the parts of the interface that need it.
 		void serviceWorker();
 		startCopying();
+		// Transcribes waiting videos on any page while Reader is open (spec 008, FR-015).
+		startTranscriber();
 
 		// Encounters a killed app left waiting (a ride with the screen locked): written now, and
 		// every few minutes, since a stash only counts as abandoned once it stops being updated.

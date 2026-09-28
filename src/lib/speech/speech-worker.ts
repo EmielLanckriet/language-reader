@@ -12,7 +12,7 @@ import { loadPending, isPlayable } from '$lib/media/store';
 import { modelFiles } from './model';
 import { SpeechAudio } from './audio';
 import { parseTokens, transcribeWindow } from './pipeline';
-import { keep } from './windows';
+import { keep, windowPlan } from './windows';
 import type { SpeechReply, SpeechRequest } from './worker-client';
 
 let ort: typeof Ort;
@@ -45,9 +45,11 @@ async function transcribe(data: Extract<SpeechRequest, { type: 'transcribe' }>):
 	const audio = await SpeechAudio.open(media);
 	if (typeof audio === 'string') return reply({ type: 'failed', job: data.job, reason: audio });
 	try {
-		for (let index = data.from; index < data.plan.length; index++) {
+		const plan = windowPlan(audio.duration, data.settings);
+		reply({ type: 'planned', job: data.job, duration: audio.duration, windows: plan.length });
+		for (let index = data.from; index < plan.length; index++) {
 			if (stopping) return reply({ type: 'stopped', job: data.job, next: index });
-			const w = data.plan[index];
+			const w = plan[index];
 			const started = performance.now();
 			const samples = await audio.window(w.start, w.end);
 			const found = await transcribeWindow(ort, session, tokens, meta, samples, w.start);
@@ -55,7 +57,7 @@ async function transcribe(data: Extract<SpeechRequest, { type: 'transcribe' }>):
 				type: 'window',
 				job: data.job,
 				index,
-				tokens: keep(data.plan, index, found),
+				tokens: keep(plan, index, found),
 				ms: performance.now() - started
 			});
 		}

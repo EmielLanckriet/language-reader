@@ -4,16 +4,17 @@
  * `new Worker(new URL('./speech-worker.ts', import.meta.url), { type: 'module' })`, so Vite bundles
  * it; `SpeechPort` is what the client needs of it, which is also what a test fakes.
  */
-import type { Token, Window } from './windows';
+import type { Token, WindowSettings } from './windows';
 
 export type SpeechRequest =
 	| { type: 'open'; base: string; revision: string; threads: number }
-	| { type: 'transcribe'; job: string; plan: Window[]; from: number }
+	| { type: 'transcribe'; job: string; settings: WindowSettings; from: number }
 	| { type: 'stop' }
 	| { type: 'time'; seconds: number; repeat: number };
 
 export type SpeechReply =
 	| { type: 'opened'; ms: number }
+	| { type: 'planned'; job: string; duration: number; windows: number }
 	| { type: 'window'; job: string; index: number; tokens: Token[]; ms: number }
 	| { type: 'finished'; job: string }
 	| { type: 'stopped'; job: string; next: number }

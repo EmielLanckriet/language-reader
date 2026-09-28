@@ -11,7 +11,7 @@ crosses the message boundary.
 | Message | Meaning |
 |---|---|
 | `{type: 'open', revision, threads}` | Create the session from `speech/<revision>/`. Answers `opened` or `failed`. |
-| `{type: 'transcribe', job, media, duration, from, plan}` | Decode `media/pending/<job>/<media>`, then run windows `from…plan.length-1` of `plan` (from `windowPlan`). Answers one `window` per window, then `finished`. |
+| `{type: 'transcribe', job, settings, from}` | Decode the video in `media/pending/<job>/`, plan its windows with `windowPlan(duration, settings)`, answer `planned`, then run windows `from…` to the end. Answers one `window` per window, then `finished`. The worker plans because only it knows the duration, once it has opened the audio; the same duration gives the same plan on resume. |
 | `{type: 'stop'}` | Finish the current window, then answer `stopped`. Used when another job goes first; the job resumes later from its saved `windowsDone`. |
 | `{type: 'time', seconds, repeat}` | Calibration: decode a generated signal of `seconds`, `repeat` times, and answer `timed {ms}` with the last run's time. |
 
@@ -20,6 +20,7 @@ crosses the message boundary.
 | Message | Meaning |
 |---|---|
 | `{type: 'opened', ms}` | The session is ready; `ms` is how long creating it took. |
+| `{type: 'planned', job, duration, windows}` | The video's speech duration and how many windows it has. |
 | `{type: 'window', job, index, tokens: [[text, time]], ms}` | The kept tokens of window `index`, times absolute in seconds. |
 | `{type: 'finished', job}` | All windows are done. |
 | `{type: 'stopped', job, next}` | Stopped before window `next`. |

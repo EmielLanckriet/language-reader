@@ -4,8 +4,9 @@
     reader-service.py [--root DIR] [--port 8765]
 
 Keeps copies of the reader's work under <root>/backups, and serves <root>/downloads, where
-termux-url-opener leaves bundles and transcribe.py leaves live transcripts (ADR-0019). Started at
-boot by Termux:Boot; ~/.bashrc starts it again when Termux is opened and it is not running.
+termux-url-opener leaves bundles. Takes the transcripts Reader writes (spec 008, ADR-0029) and starts
+translate.py on them. Started at boot by Termux:Boot; ~/.bashrc starts it again when Termux is opened
+and it is not running.
 """
 
 import argparse
@@ -13,6 +14,8 @@ import hashlib
 import http.server
 import json
 import os
+import subprocess
+import sys
 import time
 
 VERSION = 1
@@ -20,6 +23,7 @@ VERSION = 1
 STARTED = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 KEEP_RECENT = 20
 KEEP_DAYS = 30
+TRANSLATE = os.environ.get('READER_TRANSLATE', os.path.expanduser('~/bin/translate.py'))
 
 
 def canonical(value):
@@ -61,6 +65,16 @@ def prune(backups):
     for name in names:
         if name not in keep:
             os.remove(os.path.join(backups, name))
+
+
+def translating(folder):
+    """Whether translate.py is already running for this job: its lock names a live process."""
+    try:
+        with open(os.path.join(folder, 'translate.lock'), encoding='utf-8') as file:
+            os.kill(int(file.read().strip()), 0)
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -113,7 +127,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 except (OSError, ValueError):
                     continue
                 found.append({'job': job, 'title': state.get('title') or 'A new video', 'id': None,
-                              'bytes': 0, 'transcribing': False, 'ready': False, 'progress': state})
+                              'bytes': 0, 'ready': False, 'progress': state})
                 continue
             try:
                 with open(os.path.join(folder, 'meta.json'), encoding='utf-8') as file:
@@ -125,13 +139,37 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 'title': meta.get('title') or job,
                 'id': meta.get('id'),
                 'bytes': os.path.getsize(bundle),
-                'transcribing': os.path.exists(os.path.join(folder, 'transcribing.json')),
                 'ready': True,
             })
         return found
 
+    def put_transcript(self, job):
+        """A transcript Reader wrote (contracts/reader-service.md): stored, then translated."""
+        folder = os.path.join(self.root, 'downloads', job)
+        if not job or '/' in job or job.startswith('.') or not os.path.isdir(folder):
+            return self.reply(404, {'error': 'no such job'})
+        raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        text = raw.decode('utf-8', errors='replace')
+        if not text.startswith('WEBVTT') or '-->' not in text:
+            return self.reply(400, {'error': 'not WebVTT with a cue'})
+        target = os.path.join(folder, 'media.zh.vtt')
+        with open(target + '.part', 'wb') as file:
+            file.write(raw)
+        os.replace(target + '.part', target)
+        # An older Termux's markers would make translate.py wait for a transcript still growing.
+        for stale in ('transcribing.json', 'status.json'):
+            if os.path.exists(os.path.join(folder, stale)):
+                os.remove(os.path.join(folder, stale))
+        if not translating(folder):
+            subprocess.Popen([sys.executable, TRANSLATE, folder], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.reply(204)
+
     def do_PUT(self):
-        if self.path != '/backup':
+        path = self.path.split('?')[0]
+        if path.startswith('/downloads/') and path.endswith('/media.zh.vtt'):
+            return self.put_transcript(path[len('/downloads/'):-len('/media.zh.vtt')])
+        if path != '/backup':
             return self.reply(404)
         raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))
         try:

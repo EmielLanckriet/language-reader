@@ -3,7 +3,10 @@
 	import Library from '$lib/ui/Library.svelte';
 	import { latest, restore } from '$lib/backup/destination';
 	import { downloadState, importJob, newFromTermux, type TermuxJob } from '$lib/media/termux';
-	import { dismissJob } from '$lib/media/store';
+	import { dismissJob, listPending, loadPending } from '$lib/media/store';
+	import { titleIn } from '$lib/media/import';
+	import { transcriber } from '$lib/speech/app';
+	import type { JobState } from '$lib/speech/transcriber';
 	import Progress from '$lib/ui/Progress.svelte';
 	import { goto } from '$app/navigation';
 
@@ -64,6 +67,42 @@
 		}
 	}
 
+	// Videos Reader is still transcribing (spec 008): they run on any page, so they are listed here to
+	// be opened again, with how far each has got.
+	let transcribing = $state<{ job: string; title: string; state?: JobState }[]>([]);
+	$effect(() => {
+		let unsubscribe = () => {};
+		void (async () => {
+			const jobs = await listPending();
+			transcribing = await Promise.all(
+				jobs.map(async (job) => {
+					const meta = (await loadPending(job)).find((file) => file.name === 'meta.json');
+					return {
+						job,
+						title: meta ? titleIn(await meta.text(), 'Video') : 'Video',
+						state: transcriber.state(job)
+					};
+				})
+			);
+			unsubscribe = transcriber.subscribe((job, state) => {
+				transcribing = transcribing
+					.map((entry) => (entry.job === job ? { ...entry, state } : entry))
+					.filter((entry) => entry.state?.kind !== 'done');
+			});
+		})();
+		return () => unsubscribe();
+	});
+
+	function describe(state: JobState | undefined): string {
+		if (!state) return 'waiting';
+		if (state.kind === 'transcribing' && state.total)
+			return `${Math.round((100 * state.through) / state.total)}% transcribed`;
+		if (state.kind === 'queued') return 'waiting for another video';
+		if (state.kind === 'waiting-for-model') return 'needs the speech model';
+		if (state.kind === 'failed') return `stopped: ${state.reason}`;
+		return 'transcribing';
+	}
+
 	let found = $state<Awaited<ReturnType<typeof latest>> | null>(null);
 	let restoring = $state(false);
 	let restoreProblem = $state<string | null>(null);
@@ -90,6 +129,20 @@
 
 <h1>Videos</h1>
 
+{#if transcribing.length > 0}
+	<section class="fresh" aria-label="Being transcribed">
+		<h2>Being transcribed</h2>
+		<ul class="library">
+			{#each transcribing as entry (entry.job)}
+				<li>
+					<a href={resolve('/live/[job]', { job: entry.job })}>{entry.title}</a>
+					<small>{describe(entry.state)}</small>
+				</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
+
 {#if fresh.length > 0}
 	<section class="fresh" aria-label="New from Termux">
 		<h2>New from Termux</h2>
@@ -109,9 +162,7 @@
 						</button>
 						{job.title}
 						<small>
-							{Math.round(job.bytes / 1e6)} MB{job.transcribing
-								? ' · subtitles still being made'
-								: ''}
+							{Math.round(job.bytes / 1e6)} MB
 						</small>
 						<button class="dismiss" aria-label="Don't offer this again" onclick={() => dismiss(job)}
 							>✕</button

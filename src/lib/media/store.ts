@@ -50,8 +50,8 @@ export async function saveMedia(documentId: number, files: NamedBlob[]): Promise
 }
 
 /**
- * A video whose transcript is still arriving from Termux (ADR-0019). No document exists yet: it is
- * created, and these files copied to it, when the transcript is complete.
+ * A video whose transcript Reader is still writing (spec 008, ADR-0029). No document exists yet: it
+ * is created, and these files copied to it, when the transcript is complete.
  */
 export async function savePending(job: string, files: NamedBlob[]): Promise<void> {
 	await writeFiles(await directoryAt(['pending', job], true), files);
@@ -89,6 +89,78 @@ export async function removeMedia(documentId: number): Promise<void> {
 
 export async function removePending(job: string): Promise<void> {
 	await (await directoryAt(['pending'], false)).removeEntry(job, { recursive: true });
+}
+
+/**
+ * Beside a pending video (spec 008, data-model.md). All derived: recomputable from the video.
+ * `pending.json` says when it was imported, for the transcriber's order; `transcript.json` is the
+ * transcript so far, so it can resume.
+ */
+export const PENDING_INFO = 'pending.json';
+export const TRANSCRIPT = 'transcript.json';
+/** Beside a finished transcript: what produced it (FR-012), and whether Termux has it (FR-019). */
+export const TRANSCRIPT_METHOD = 'media.zh.method.json';
+export const TRANSCRIPT_SENT = 'transcript-sent';
+
+async function readJsonIn<T>(
+	directory: FileSystemDirectoryHandle,
+	name: string
+): Promise<T | undefined> {
+	try {
+		return JSON.parse(await (await (await directory.getFileHandle(name)).getFile()).text()) as T;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Written aside and moved into place, so an interruption leaves the previous whole version. */
+async function writeJsonIn(
+	directory: FileSystemDirectoryHandle,
+	name: string,
+	value: unknown
+): Promise<void> {
+	const aside = await directory.getFileHandle(`${name}.part`, { create: true });
+	const writable = await aside.createWritable();
+	await writable.write(JSON.stringify(value));
+	await writable.close();
+	await (aside as FileSystemFileHandle & { move(name: string): Promise<void> }).move(name);
+}
+
+export async function readPending<T>(job: string, name: string): Promise<T | undefined> {
+	try {
+		return await readJsonIn<T>(await directoryAt(['pending', job], false), name);
+	} catch {
+		return undefined;
+	}
+}
+
+export async function writePending(job: string, name: string, value: unknown): Promise<void> {
+	await writeJsonIn(await directoryAt(['pending', job], true), name, value);
+}
+
+/** The pending videos, by folder name. */
+export async function listPending(): Promise<string[]> {
+	const jobs: string[] = [];
+	for await (const entry of (await directoryAt(['pending'], true)).values()) {
+		if (entry.kind === 'directory') jobs.push(entry.name);
+	}
+	return jobs;
+}
+
+export async function readMediaJson<T>(documentId: number, name: string): Promise<T | undefined> {
+	try {
+		return await readJsonIn<T>(await directoryAt([String(documentId)], false), name);
+	} catch {
+		return undefined;
+	}
+}
+
+export async function writeMediaJson(
+	documentId: number,
+	name: string,
+	value: unknown
+): Promise<void> {
+	await writeJsonIn(await directoryAt([String(documentId)], true), name, value);
 }
 
 /** A Chinese subtitle track: any .vtt or .srt except the English one translate.py writes. */

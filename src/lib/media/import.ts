@@ -6,7 +6,15 @@ import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 import { RejectedInput } from '$lib/content/types';
 import { readTar } from './tar';
 import { parseSubtitles } from './subtitles';
-import { isPlayable, isSubtitle, saveMedia, savePending, type NamedBlob } from './store';
+import {
+	isPlayable,
+	isSubtitle,
+	saveMedia,
+	savePending,
+	writePending,
+	PENDING_INFO,
+	type NamedBlob
+} from './store';
 
 /** Simplified before traditional, and a human track (no suffix from yt-dlp) is what arrives first. */
 function preference(name: string): number {
@@ -15,7 +23,7 @@ function preference(name: string): number {
 	return 2;
 }
 
-/** A document when the bundle carried subtitles; a pending job while Termux is transcribing. */
+/** A document when the bundle carried subtitles; a pending job while Reader transcribes it. */
 export type Imported = { documentId: number } | { pending: string };
 
 export async function importBundle(bundle: Blob, fallbackTitle: string): Promise<Imported> {
@@ -26,19 +34,19 @@ export async function importBundle(bundle: Blob, fallbackTitle: string): Promise
 		.sort((a, b) => preference(a.name) - preference(b.name));
 	const media = members.find((member) => isPlayable(member.name));
 	const meta = named('meta.json');
-	const transcribing = named('transcribing.json');
 	const keep = [media, meta].filter((member) => member !== undefined);
 	const files = (list: typeof keep) =>
 		list.map((member) => ({ name: member.name.split('/').pop()!, blob: member.blob }));
 
+	// No subtitles: Reader transcribes the video itself (spec 008). An older Termux's
+	// transcribing.json is not kept; its transcript is never waited for.
 	if (subtitles.length === 0) {
-		if (!transcribing || !media) {
-			throw new RejectedInput(
-				'This bundle has no Chinese subtitles, so there is nothing to read yet.'
-			);
+		if (!media) {
+			throw new RejectedInput('This bundle has no Chinese subtitles and no video to transcribe.');
 		}
 		const job = crypto.randomUUID();
-		await savePending(job, files([...keep, transcribing]));
+		await savePending(job, files(keep));
+		await writePending(job, PENDING_INFO, { importedAt: new Date().toISOString() });
 		return { pending: job };
 	}
 

@@ -1,8 +1,10 @@
 """python3 -m unittest scripts/termux/test_translate.py — the one check on placing the LLM's English."""
 
+import os
+import tempfile
 import unittest
 
-from translate import place
+from translate import place, source
 
 
 class Placing(unittest.TestCase):
@@ -26,6 +28,16 @@ class Placing(unittest.TestCase):
         lines = ['美国', '关税', '美国']
         answers = [(1, '美国', 'America'), (2, '关税', 'tariffs'), (3, '美国。', 'the US')]
         self.assertEqual(place(lines, answers), ['America', 'tariffs', 'the US'])
+
+
+class Source(unittest.TestCase):
+    def test_a_transcript_reader_sent_is_complete(self):
+        # Spec 008: Reader writes the transcript; the service stores it as media.zh.vtt, and no
+        # transcribing.json or status.json is there to say it is still growing.
+        job = tempfile.mkdtemp()
+        with open(os.path.join(job, 'media.zh.vtt'), 'w', encoding='utf-8') as file:
+            file.write('WEBVTT\n\n00:00:00.200 --> 00:00:01.000\n上海\n')
+        self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
 
 
 if __name__ == '__main__':

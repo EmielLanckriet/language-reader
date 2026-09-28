@@ -5,15 +5,18 @@
 	import { resolve } from '$app/paths';
 	import { fallbackAnalyzer } from '$lib/analyzer/active';
 	import { codePointsOf } from '$lib/domain/offsets';
-	import { parseSubtitles, type Cue } from '$lib/media/subtitles';
-	import { isPlayable, loadPending, removePending, QUICK_ENGLISH } from '$lib/media/store';
-	import { createMediaDocument, titleIn } from '$lib/media/import';
+	import type { Cue } from '$lib/media/subtitles';
+	import { isPlayable, loadPending } from '$lib/media/store';
+	import { titleIn } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import Progress from '$lib/ui/Progress.svelte';
-	import StartTermux from '$lib/ui/StartTermux.svelte';
-	import { followTranslation } from '$lib/media/translation';
-	import { englishFor, llmByLine } from '$lib/translation/lines';
+	import SpeechModel from '$lib/ui/SpeechModel.svelte';
+	import { speechSetup, transcriber, type SetupState } from '$lib/speech/app';
+	import { lines as cut } from '$lib/speech/lines';
+	import type { JobState } from '$lib/speech/transcriber';
+	import type { Token } from '$lib/speech/windows';
+	import { englishFor } from '$lib/translation/lines';
 	import {
 		quickTranslation,
 		type QuickStatus,
@@ -21,40 +24,31 @@
 	} from '$lib/translation/quick';
 
 	/**
-	 * A video whose transcript Termux is still producing (ADR-0019). Lines are fetched from Termux
-	 * as they arrive and segmented here with the fast analyzer, so words can be looked up at once.
-	 * Nothing is stored until the transcript is complete; then it becomes an ordinary document.
+	 * A video Reader is still transcribing (spec 008). Lines arrive from the app-wide transcriber a
+	 * window at a time and are segmented here with the fast analyzer, so words can be looked up at
+	 * once. Nothing is stored in the database until the transcript is complete; then the transcriber
+	 * makes it an ordinary document and this page moves to it at the same point in playback.
 	 */
 	const job = page.params.job!;
-	const POLL_MS = 2000;
 
 	let files = $state<File[]>([]);
 	let title = $state('');
 	let cues = $state<Cue[]>([]);
 	let lines = $state<LineWord[][]>([]);
-	let through = $state(0);
-	/** The video's length, and the chunk whisper is on: when it started and how long it usually takes. */
-	let total = $state<number | null>(null);
-	let chunk = $state<{ started: number; expected: number } | null>(null);
-	/** Ticks while waiting for the first lines, so the estimated bar moves. */
-	let now = $state(Date.now() / 1000);
 	let problem = $state<string | null>(null);
-	let reachable = $state(true);
 	let chosen = $state<{ line: number; word: LineWord } | null>(null);
 	let player = $state<HTMLMediaElement | null>(null);
-	let finishing = false;
-	let translations = $state<Cue[]>([]);
-	let translated = $state<{ done: boolean; vtt: string } | null>(null);
+	let jobState = $state<JobState | undefined>();
+	let setup = $state<SetupState>(speechSetup.state);
 
 	const media = $derived(files.find((file) => isPlayable(file.name)));
 
-	/** Quick English as lines arrive (ADR-0023), carried into the document when the transcript ends. */
+	/** Quick English as lines arrive (ADR-0023); the LLM's follows on the read page, once a document. */
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
 	let quickStatus = $state<QuickStatus | undefined>();
-	let transcribed = false;
-	const llmLines = $derived(llmByLine(cues, translations));
-	const english = $derived(englishFor(cues.length, llmLines, quickLines));
+	const transcribed = $derived(jobState?.kind === 'finishing' || jobState?.kind === 'done');
+	const english = $derived(englishFor(cues.length, [], quickLines));
 
 	$effect(() => {
 		if (!media) return;
@@ -62,7 +56,7 @@
 		const translator = untrack(() =>
 			quickTranslation(
 				() => cues.map((cue) => cue.text),
-				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
+				(i) => Boolean(quickLines[i]),
 				(i, text) => {
 					const next = [...quickLines];
 					next[i] = text;
@@ -88,99 +82,66 @@
 		}));
 	}
 
-	async function poll(where: { status: string; vtt: string }) {
-		try {
-			const answer = await fetch(where.status, { cache: 'no-store' });
-			// Termux answered, but the transcriber has not written anything yet: starting, not lost.
-			if (answer.status === 404) {
-				reachable = true;
-				return;
-			}
-			const status = await answer.json();
-			const vtt = await (await fetch(where.vtt, { cache: 'no-store' })).text();
-			reachable = true;
-			const fresh = parseSubtitles(vtt);
-			// Earlier lines never change, so only the new ones are segmented.
-			const added = await Promise.all(fresh.slice(lines.length).map((cue) => segment(cue.text)));
-			cues = fresh;
-			lines = [...lines, ...added];
-			through = status.through;
-			total = status.total ?? null;
-			chunk = status.chunk ?? null;
-			transcribed = Boolean(status.done);
-			if (added.length > 0 || transcribed) quick?.more();
-			if (status.done) await finish(vtt);
-		} catch {
-			reachable = false;
-		}
-	}
-
-	async function finish(vtt: string) {
-		if (finishing) return;
-		finishing = true;
-		const kept = files.filter((file) => file.name !== 'transcribing.json');
-		const id = await createMediaDocument(title, vtt, [
-			...kept.map((file) => ({ name: file.name, blob: file })),
-			{ name: 'media.zh.vtt', blob: new Blob([vtt], { type: 'text/vtt' }) },
-			// A finished translation goes with it; an unfinished one is followed on by the reader page.
-			...(translated?.done ? [{ name: 'media.en.vtt', blob: new Blob([translated.vtt]) }] : []),
-			// Quick lines so far; the reader page translates whatever is still missing.
-			{ name: QUICK_ENGLISH, blob: new Blob([JSON.stringify(quickLines)]) }
-		]);
-		await removePending(job);
-		const at = Math.floor(player?.currentTime ?? 0);
-		// resolve() is used; the rule cannot see through the query string appended to it.
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		await goto(`${resolve('/read/[id]', { id: String(id) })}?t=${at}`, { replaceState: true });
+	/**
+	 * New tokens: lines are cut again, and only lines whose text changed are segmented. Earlier lines
+	 * stay as they were; the last can still grow while its speech continues into the next window.
+	 */
+	let shown = 0;
+	async function show(tokens: Token[]) {
+		const call = ++shown;
+		const fresh = cut(tokens).filter((line) => line.text);
+		const words = await Promise.all(
+			fresh.map((line, i) => (cues[i]?.text === line.text ? lines[i] : segment(line.text)))
+		);
+		if (call !== shown) return;
+		const changed = fresh.some((line, i) => cues[i]?.text !== line.text);
+		quickLines = quickLines.map((english, i) =>
+			cues[i]?.text === fresh[i]?.text ? english : null
+		);
+		cues = fresh.map((line) => ({ start: line.from, end: line.to, text: line.text }));
+		lines = words;
+		if (changed) quick?.more();
 	}
 
 	$effect(() => {
-		let timer: ReturnType<typeof setInterval> | undefined;
-		let stopTranslation = () => {};
+		let unsubscribe = () => {};
+		const stopSetup = speechSetup.subscribe((state) => (setup = state));
 		void (async () => {
 			try {
 				files = await loadPending(job);
 				const meta = files.find((file) => file.name === 'meta.json');
 				title = meta ? titleIn(await meta.text(), 'Video') : 'Video';
-				const where = JSON.parse(
-					await files.find((file) => file.name === 'transcribing.json')!.text()
-				);
-				await poll(where);
-				timer = setInterval(() => void poll(where), POLL_MS);
-				const termuxJob = /\/downloads\/([^/]+)\//.exec(where.vtt)?.[1];
-				if (termuxJob) {
-					stopTranslation = followTranslation(
-						decodeURIComponent(termuxJob),
-						(english, done, text) => {
-							translations = english;
-							translated = { done, vtt: text };
-						}
-					);
-				}
+				unsubscribe = transcriber.subscribe((which, state, tokens) => {
+					if (which !== job) return;
+					jobState = state;
+					void show([...tokens]);
+					if (state.kind === 'done') void moveTo(state.documentId);
+				});
+				transcriber.prefer(job);
 			} catch (error) {
 				problem = error instanceof Error ? error.message : String(error);
 			}
 		})();
 		return () => {
-			clearInterval(timer);
-			stopTranslation();
+			unsubscribe();
+			stopSetup();
 		};
 	});
 
-	$effect(() => {
-		const timer = setInterval(() => (now = Date.now() / 1000), 500);
-		return () => clearInterval(timer);
-	});
+	let moving = false;
+	async function moveTo(documentId: number) {
+		if (moving) return;
+		moving = true;
+		const at = Math.floor(player?.currentTime ?? 0);
+		// resolve() is used; the rule cannot see through the query string appended to it.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		await goto(`${resolve('/read/[id]', { id: String(documentId) })}?t=${at}`, {
+			replaceState: true
+		});
+	}
 
-	/**
-	 * How far into its chunk whisper probably is, from this device's own timings (transcribe.py),
-	 * held short of full until the lines are there. It keeps the bar moving between chunks too.
-	 */
-	const inChunk = $derived(
-		chunk ? Math.min(0.95, (now - chunk.started) / chunk.expected) : undefined
-	);
-	/** The transcript's progress: what is done, plus the estimate for the chunk under way. */
-	const heard = $derived(Math.min(total ?? Infinity, through + (inChunk ?? 0) * 30));
+	const clock = (seconds: number) =>
+		`${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
 	function sentenceOf(line: number): string {
 		return cues[line]?.text ?? '';
@@ -206,18 +167,25 @@
 	>
 		{#snippet status()}
 			<div class="progress">
-				{#if !reachable}
-					<Progress label="Termux isn't running." />
-					<StartTermux />
-				{:else if !chunk && cues.length === 0}
-					<Progress label="Starting speech-to-text…" />
-				{:else if cues.length === 0}
-					<Progress label="Listening to the first 30 seconds…" fraction={inChunk} />
-				{:else}
+				{#if setup.kind === 'missing' || setup.kind === 'paused' || setup.kind === 'downloading' || setup.kind === 'calibrating' || setup.kind === 'failed'}
+					<SpeechModel />
+				{:else if !jobState || jobState.kind === 'waiting-for-model'}
+					<Progress label="Getting speech-to-text ready…" />
+				{:else if jobState.kind === 'queued'}
+					<Progress label="Waiting: another video is being transcribed first." />
+				{:else if jobState.kind === 'loading'}
+					<Progress label="Loading the speech model…" />
+				{:else if jobState.kind === 'transcribing'}
 					<Progress
-						label={`Transcribing: ${Math.round(heard)}${total ? ` of ${Math.round(total)}` : ''} s`}
-						fraction={total ? heard / total : undefined}
+						label={cues.length
+							? `Transcribing: ${clock(jobState.through)} of ${clock(jobState.total)}`
+							: 'Listening to the first seconds…'}
+						fraction={jobState.total ? jobState.through / jobState.total : undefined}
 					/>
+				{:else if jobState.kind === 'finishing'}
+					<Progress label="Saving the transcript…" />
+				{:else if jobState.kind === 'failed'}
+					<Progress label={`Transcribing stopped: ${jobState.reason}`} />
 				{/if}
 				{#if quickStatus}<Progress {...quickStatus} />{/if}
 			</div>

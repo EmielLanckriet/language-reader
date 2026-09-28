@@ -10,24 +10,18 @@ pkg install -y --no-install-recommends python ffmpeg nodejs curl
 # yt-dlp's own single-file release, so no pip; `yt-dlp -U` updates it when YouTube breaks it.
 curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "$PREFIX/bin/yt-dlp"
 chmod +x "$PREFIX/bin/yt-dlp"
-# Speech-to-text for videos without Chinese subtitles: whisper-cli from this repository's release
-# (scripts/termux/build-binaries.sh), and the base and large-v3-turbo q5_0 models (148 + 574 MB).
-# small (488 MB) is no longer used (ADR-0019, 2026-09-27) and is removed.
+# Translation runs here; speech-to-text does not: Reader transcribes videos itself (spec 008,
+# ADR-0029). llama-completion from this repository's release (scripts/termux/build-binaries.sh).
 RELEASE="${RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-d09f61a-d81aef1}"
 case "$(uname -m)" in
 x86_64) variant=x86_64-avx2 ;;
 *) grep -qw asimddp /proc/cpuinfo && variant=arm64-dotprod || variant=arm64 ;;
 esac
-for tool in whisper-cli llama-completion; do
-	curl -fsSL "$RELEASE/$tool-$variant" -o "$PREFIX/bin/$tool"
-	chmod +x "$PREFIX/bin/$tool"
-done
-MODELS="${MODELS:-https://huggingface.co/ggerganov/whisper.cpp/resolve/main}"
+curl -fsSL "$RELEASE/llama-completion-$variant" -o "$PREFIX/bin/llama-completion"
+chmod +x "$PREFIX/bin/llama-completion"
+# What earlier setups installed for whisper, about 720 MB: gone with Termux's transcription.
+rm -f "$PREFIX/bin/whisper-cli" ~/bin/transcribe.py ~/.whisper/ggml-*.bin ~/.whisper/chunk-seconds.json
 mkdir -p ~/.whisper
-for model in base large-v3-turbo-q5_0; do
-	[ -f ~/.whisper/ggml-$model.bin ] || curl -fL "$MODELS/ggml-$model.bin" -o ~/.whisper/ggml-$model.bin
-done
-rm -f ~/.whisper/ggml-small.bin
 # Translation into English (translate.py): Qwen3-1.7B at Q4_K_M, 1.1 GB, run with --no-repack
 # (1.4 GB peak on the phone, against 2.45 GB for the Q8 it replaces; ADR-0023).
 [ -f ~/.whisper/qwen3-1.7b-q4.gguf ] ||
@@ -36,13 +30,13 @@ rm -f ~/.whisper/qwen3-1.7b-q8.gguf
 
 mkdir -p ~/bin
 curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener
-curl -fsSL "$SOURCE/transcribe.py" -o ~/bin/transcribe.py
 curl -fsSL "$SOURCE/reader-service.py" -o ~/bin/reader-service.py
 curl -fsSL "$SOURCE/reader-service-up" -o ~/bin/reader-service-up
 chmod +x ~/bin/reader-service-up
 curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 
-# The service that keeps copies of the reader's work and serves transcripts (ADR-0020). Termux:Boot
+# The service that keeps copies of the reader's work, serves downloads, and takes Reader's
+# transcripts to translate (ADR-0020, ADR-0029). Termux:Boot
 # (F-Droid, next to Termux; open it once after installing) starts it at boot; opening Termux starts
 # it again if Android stopped it. The boot task runs the service in the foreground and so lasts as
 # long as it does: Termux keeps its wake lock only while a task or session runs, and a service left

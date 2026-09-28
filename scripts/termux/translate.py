@@ -141,9 +141,9 @@ def source(job):
         with open(status, encoding='utf-8') as file:
             growing = not json.load(file).get('done', False)
         return os.path.join(job, 'media.zh.vtt'), growing
-    # termux-url-opener writes transcribing.json before starting this and transcribe.py together,
-    # and this one looked first: no status yet, no subtitles, so it finished with nothing, on every
-    # transcribed video until 2026-09-26. The marker means a transcript is on its way.
+    # An older Termux wrote transcribing.json before its transcriber had written a status. Reader now
+    # writes the transcript (spec 008) and the service removes this marker when it arrives, so a
+    # present marker still means a transcript is on its way.
     if os.path.exists(os.path.join(job, 'transcribing.json')):
         return os.path.join(job, 'media.zh.vtt'), True
     tracks = [path for path in glob.glob(os.path.join(job, 'media.*.vtt')) if not path.endswith('.en.vtt')]
@@ -192,5 +192,23 @@ def main(job):
             time.sleep(2)
 
 
+def locked(job):
+    """Take the job's lock, so the reader service never starts a second translation of it."""
+    lock = os.path.join(job, 'translate.lock')
+    try:
+        with open(lock, encoding='utf-8') as file:
+            os.kill(int(file.read().strip()), 0)
+        return False  # a live translate.py has it
+    except (OSError, ValueError):
+        pass
+    with open(lock, 'w', encoding='utf-8') as file:
+        file.write(str(os.getpid()))
+    return True
+
+
 if __name__ == '__main__':
-    main(sys.argv[1])
+    if locked(sys.argv[1]):
+        try:
+            main(sys.argv[1])
+        finally:
+            os.remove(os.path.join(sys.argv[1], 'translate.lock'))

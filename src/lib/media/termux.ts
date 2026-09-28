@@ -12,7 +12,6 @@ export interface TermuxJob {
 	job: string;
 	title: string;
 	bytes: number;
-	transcribing: boolean;
 	/** False while Termux is still downloading; absent from services older than this field. */
 	ready?: boolean;
 	progress?: {

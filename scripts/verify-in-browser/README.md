@@ -33,6 +33,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `model` | Downloads the model (~110 MB over the network) and checks the analyzer switches. Slow. |
 | `sheet` | The word sheet fits a phone in full screen (landscape, ~384 px tall) and in portrait; screenshots to `sheet-*.png`. |
 | `corrections` | Spec 004: join from the word sheet within a second, split back, refused across 。, undone from More back to the analyzer's cut. |
+| `live` | Spec 008: a video without subtitles (make-fixtures.sh's `fixture-live`, served by `reader-service.py --root <dir>`) gets the speech-model offer, downloads it (239 MB, slow), shows its first lines within 20 s, and becomes a document with `media.zh.method.json`. Run the service with `READER_TRANSLATE=scripts/termux/translate.py TRANSLATE_STUB=1` to see the transcript handed back and translated. |
 | `bigimport` | SC-004: a 4,999-character document imports and opens within 3 seconds **with the model on the device**. Warms with `model`, so it is slow. |
 
 `model` really does fetch the weights from HuggingFace, so it takes minutes and needs a network.

@@ -1,6 +1,6 @@
 # ADR-0019: A Transcript Streams From Termux While The Video Is Watched
 
-**Status**: Accepted
+**Status**: Accepted; transcription superseded by [ADR-0029](0029-reader-transcribes-in-the-browser.md) (2026-09-28): Reader transcribes in the browser and Termux no longer runs whisper. The streaming into a live page, and the document made only when complete, carry over.
 **Date**: 2026-09-25
 **Relates to**: ADR-0017 (amends "nothing at read time"), ADR-0018, the change register's
 speech-to-text row

@@ -824,9 +824,10 @@ const scenarios = {
 		}
 	},
 
-	// A video without subtitles: shared while Termux transcribes, readable as lines arrive, and an
-	// ordinary document once the transcript is done (ADR-0019). Needs scripts/verify-in-browser/make-fixtures.sh and a
-	// transcriber serving 127.0.0.1:8765 (scripts/termux/transcribe.py; see android-emulator/).
+	// A video without subtitles, transcribed by Reader itself (spec 008): readable as lines arrive,
+	// and an ordinary document once the transcript is done. Needs make-fixtures.sh's fixture-live
+	// served by the reader service on 127.0.0.1:8765. Downloads the speech model (239 MB) from Hugging
+	// Face into the fresh profile, so it is slow, like `model`.
 	async live() {
 		const tab = await openTab('about:blank');
 		try {
@@ -836,24 +837,41 @@ const scenarios = {
 				() => tab.evaluate(`return location.pathname.includes('/live/');`),
 				30000
 			);
-			const opened = Date.now();
-			// What the page says before there is anything to read: a bar, not a blank.
+			// What the page says before there is anything to read: a bar or the offer, not a blank.
 			const waitingLabel = await until(
 				'something to show before the first lines',
 				() =>
-					tab.evaluate(
-						`return document.querySelector('.progress .progress-bar span')?.textContent ?? null;`
-					),
+					tab.evaluate(`return document.querySelector('.progress')?.textContent?.trim() || null;`),
 				10000,
 				100
 			).catch(() => null);
+			await until(
+				'the offer to download the speech model',
+				() =>
+					tab.evaluate(`
+						const button = [...document.querySelectorAll('.speech-model button')].find((b) => b.textContent.includes('Download'));
+						if (!button) return null;
+						button.click();
+						return true;
+					`),
+				20000,
+				250
+			);
+			// The download and the calibration are the device's, not the page's: timed from when both end.
+			await until(
+				'the model downloaded and calibrated',
+				() => tab.evaluate(`return document.querySelector('.speech-model') ? null : true;`),
+				900000,
+				1000
+			);
+			const ready = Date.now();
 			const firstLines = await until(
 				'the first transcribed lines',
 				() => tab.evaluate(`return document.querySelectorAll('.lines p').length || null;`),
 				60000,
 				250
 			);
-			const secondsToFirstLines = (Date.now() - opened) / 1000;
+			const secondsToFirstLines = (Date.now() - ready) / 1000;
 			const word = await tab.evaluate(`
 				const button = document.querySelector('.lines button.token');
 				button.click();
@@ -867,62 +885,48 @@ const scenarios = {
 			);
 			const markingHidden = await tab.evaluate(`return !document.querySelector('.choices');`);
 			await tab.evaluate(`document.querySelector('.cancel')?.click(); return true;`);
-			// Quick English while the transcript is still arriving (ADR-0023). The first run in a
-			// fresh profile downloads the model, so this allows two minutes.
-			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
-			const quickWhileLive = await until(
-				'quick English while transcribing',
-				() =>
-					tab.evaluate(`
-						const english = document.querySelector('.lines p .english');
-						return english && !english.classList.contains('pending') && location.pathname.includes('/live/')
-							? english.textContent
-							: null;
-					`),
-				120000,
-				1000
-			).catch((error) => ({ error: error.message }));
 			const stored = await until(
 				'the finished transcript to become a stored document',
 				() =>
 					tab.evaluate(`
 						const video = document.querySelector('video');
-						if (!location.pathname.includes('/read/') || !video || !(video.duration > 0)) return null;
-						return { url: location.pathname + location.search, lines: document.querySelectorAll('.lines p').length };
+						const lines = document.querySelectorAll('.lines p').length;
+						if (!location.pathname.includes('/read/') || !video || !(video.duration > 0) || !lines) return null;
+						return { url: location.pathname + location.search, lines };
 					`),
-				120000,
+				180000,
 				500
 			);
-			// The live page's quick lines go with the document, so the first line needs no second pass.
-			await tab.evaluate(`document.querySelector('.lines .reveal').click(); return true;`);
-			const quickKept = await until(
-				'the first line’s quick English in the stored document',
-				() =>
-					tab.evaluate(`
-						const english = document.querySelector('.lines p .english');
-						return english && !english.classList.contains('pending') ? english.textContent : null;
-					`),
-				5000,
-				250
-			).catch(() => null);
+			const method = await tab
+				.evaluate(
+					`
+				const id = location.pathname.split('/').filter(Boolean).pop();
+				const media = await (await navigator.storage.getDirectory()).getDirectoryHandle('media');
+				const file = await (await (await media.getDirectoryHandle(id)).getFileHandle('media.zh.method.json')).getFile();
+				return JSON.parse(await file.text());
+			`
+				)
+				.catch((error) => ({ error: String(error) }));
+			const diagnostics = await tab.evaluate(`
+				return { isolated: self.crossOriginIsolated, cores: navigator.hardwareConcurrency };
+			`);
 			return {
 				pass:
 					secondsToFirstLines < 20 &&
 					!!meaning &&
 					markingHidden &&
 					stored.lines >= firstLines &&
-					typeof quickWhileLive === 'string' &&
-					quickKept === quickWhileLive &&
+					method?.model === 'sense-voice-small-int8' &&
 					!!waitingLabel,
 				waitingLabel,
-				quickWhileLive,
-				quickKept,
 				secondsToFirstLines,
 				firstLines,
 				word,
 				meaning,
 				markingHidden,
-				stored
+				stored,
+				method,
+				diagnostics
 			};
 		} finally {
 			await tab.close();
