@@ -107,3 +107,13 @@ phrase at one of seven boundaries (33–38 s swallowed into one segment), the 2-
 repeat. Chunks stay 30 s. `base` in the first chunk wrote traditional 採访 and 新资 on the phone, so
 "revisit if traditional characters appear" has happened; it is limited to the first 30 s.
 
+Later on 2026-09-27: long chunks invent text. Redoing Chef Wang with `turbo` in 2-minute chunks, the
+music-only last minute came back as one subtitle credit (中文字幕志愿者 杨栋梁…) 20 times, and two
+whole-file runs never finished (28 min at full CPU). The same video in the deployed 30 s chunks
+(`base` first) invented nothing. Within a chunk whisper conditions on its own text and loops over
+silence; a 30 s chunk starts fresh. Silero VAD (`--vad`, supported at this commit) did not help: 17
+invented lines with 2-minute chunks, and at 30 s it replaced 2:11–2:33 of real speech with a credit.
+So chunks stay 30 s, VAD is not used, and `transcribe.py` drops, per new line, known credit phrases
+and a line identical to the one before when longer than 4 characters. On the runs above it removed
+only invented lines (71 to 45 on the 2-minute run; nothing from the 30 s run or the interview).
+

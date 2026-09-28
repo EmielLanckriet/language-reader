@@ -22,6 +22,7 @@ wrote no traditional characters. Long segments are still cut at clause punctuati
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -45,6 +46,29 @@ EXPECTED = {'base': 20.0, 'small': 55.0, 'large-v3-turbo-q5_0': 118.0}
 
 BREAKS = '，,。？?！!；;'
 LONGEST = 24
+
+
+# Lines whisper writes over silence and music, learnt from subtitle credits: seen on Chef Wang's
+# music-only outro, 20 times over (2026-09-27). Silero VAD did not prevent it (ADR-0019).
+INVENTED = re.compile(r'字幕(志愿者|由|提供|制作)|请不吝点赞|订阅.{0,4}转发|打赏支持|明镜与点点')
+
+
+def kept(cues, new):
+    """The new cues worth adding after `cues`: no invented credit, no repeat of the line before.
+
+    Decided per new cue and never for one already written, because Reader shows lines while they
+    arrive. A repeat is dropped only when longer than 4 characters: 对 said twice is speech, a
+    sentence twice in a row is whisper looping.
+    """
+    out = []
+    last = cues[-1][2] if cues else None
+    for cue in new:
+        text = cue[2]
+        if INVENTED.search(text) or (text == last and len(text) > 4):
+            continue
+        out.append(cue)
+        last = text
+    return out
 
 
 def lines(segments):
@@ -130,7 +154,7 @@ def main(job, media):
             segments = segments[:-1]
         else:
             offset += CHUNK_MS
-        cues.extend(segments)
+        cues.extend(kept(cues, segments))
         first = False
 
         write_atomically(

@@ -45,14 +45,13 @@ covariates: a source's difficulty, for reading evidence (a miss in fast accented
 and for picking clips easy first. Listening memory is already kept from lookups and from words
 heard with the text hidden, so the history will be there when the cards arrive.
 
-## Transcripts: one whisper run after the first chunk
+## Transcripts: phrases lost at 30 s chunk boundaries
 
-2026-09-27 (ADR-0019 amendment): each 30 s chunk starts without the text before it, and with
-`turbo` one of seven boundaries swallowed a phrase. A prompt cannot carry the context (whisper.cpp
-then returns only a chunk's first sentence). The fix without a prompt: after the fast first chunk,
-one whisper-cli run over the rest, reading segments from its output as they are printed, so there is
-one boundary rather than one per 30 s. Unknown whether whisper.cpp prints each segment promptly on
-the phone; measure that first. Worth it only if lost phrases keep showing up.
+2026-09-27 (ADR-0019 amendments): each 30 s chunk starts without the text before it, and with
+`turbo` one of seven boundaries swallowed a phrase. Longer chunks and one run over the rest are
+ruled out, measured: whisper then loops over silence and invents lines. If lost phrases keep
+showing up, try overlapping chunks (re-decode a few seconds before each boundary and keep the
+better join), measured on the interview first.
 
 ## Fit the evidence rule to review outcomes
 

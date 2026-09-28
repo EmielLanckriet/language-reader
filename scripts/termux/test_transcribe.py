@@ -2,7 +2,7 @@
 
 import unittest
 
-from transcribe import lines
+from transcribe import kept, lines
 
 
 def token(text, start, end):
@@ -33,6 +33,22 @@ class Cutting(unittest.TestCase):
         }
         self.assertTrue(all(len(text) <= 24 + 8 for _, _, text in lines([segment])))
         self.assertGreater(len(lines([segment])), 1)
+
+
+class Invented(unittest.TestCase):
+    def test_credits_and_looped_lines_are_dropped_but_short_repeats_are_speech(self):
+        before = [(0, 1000, '关注头条号美食作家王刚')]
+        new = [
+            (1000, 2000, '这里总有一款属于你的菜'),
+            (2000, 3000, '这里总有一款属于你的菜'),
+            (3000, 4000, '中文字幕志愿者 杨栋梁炒蛋的技术总结完毕'),
+            (4000, 4500, '对'),
+            (4500, 5000, '对'),
+        ]
+        self.assertEqual(
+            [text for _, _, text in kept(before, new)],
+            ['这里总有一款属于你的菜', '对', '对'],
+        )
 
 
 if __name__ == '__main__':
