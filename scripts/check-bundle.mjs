@@ -66,7 +66,13 @@ function everyFile(directory) {
 // 8.19 MB raw, 3.5 MB gzipped) is now in the install, on purpose, so meanings work offline from the
 // first launch. Chosen over fetching it on demand because it is the simpler of the two; revisit if
 // the install size is ever felt.
-const SANCTIONED_INSTALL = { files: 38, bytes: 2529253 + 8190220 };
+//
+// **Raised on 2026-09-28 for speech-to-text** (spec 008): the speech worker, 253,602 bytes, is in
+// the install so a video can be transcribed offline once the model is on the device. Most of it
+// is its own copy of mp4box (about 180 KB): a worker is bundled apart from the page, which has
+// one already. Fetching the worker with the model instead was rejected: its name changes with
+// every build, so after an update it would be missing offline until fetched again.
+const SANCTIONED_INSTALL = { files: 39, bytes: 2529253 + 8190220 + 253602 };
 
 // Ten per cent, unchanged in spirit: wide enough that ordinary code growth never trips it, far
 // narrower than anything worth catching.
