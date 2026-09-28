@@ -70,7 +70,8 @@ already exist, other languages, the GPU, and a cloud service.
 
 The reader downloads a video with Termux as today. It has no Chinese subtitles. Reader opens it as
 soon as it is playable and writes the transcript itself: the first lines appear within seconds,
-later lines keep ahead of playback, and the words can be looked up as they arrive. When the whole
+later lines catch up with playback within about two minutes and then keep ahead, and the words can
+be looked up as they arrive. When the whole
 video is transcribed it becomes an ordinary document, at the same point in playback, and marking
 works as for any other video. Termux is not needed for the transcript after the download; it
 still translates the lines once the transcript is done (FR-019).
@@ -78,8 +79,8 @@ still translates the lines once the transcript is done (FR-019).
 **Why this priority**: It is the feature. Everything else serves it.
 
 **Independent Test**: With the model already on the phone, import the street interview (231 s, no
-subtitles). Time the first line after the video becomes playable, check that no line arrives after
-playback has reached it, close Termux once the video is in Reader, and check that the finished
+subtitles). Time the first line after the video becomes playable, check that from about two minutes in no
+line arrives after playback has reached it, close Termux once the video is in Reader, and check that the finished
 transcript becomes a document with the lines at their times.
 
 **Acceptance Scenarios**:
@@ -88,7 +89,8 @@ transcript becomes a document with the lines at their times.
    the reader opens it, **Then** its first lines are readable within 20 s of the video being
    playable.
 2. **Given** a transcript in progress, **When** the reader plays the video from the start at normal
-   speed, **Then** each line is on screen before playback reaches it.
+   speed, **Then** from about two minutes in each line is on screen before playback reaches it, and
+   before that lines trail by at most about 20 s (SC-002).
 3. **Given** a transcript in progress, **When** new lines arrive, **Then** their words can be looked
    up, and marking stays unavailable until the transcript is complete, as today (ADR-0019).
 4. **Given** the transcript finishes while the video plays, **When** it becomes a document, **Then**
@@ -250,7 +252,9 @@ that the transcript continues from the last finished stretch with the earlier li
   subtitle-less video are readable within 20 s of the video becoming playable (ADR-0019's target;
   measured with `base` in Termux: 14 s and 22 s, on two videos).
 - **SC-002**: The street interview (231 s) is fully transcribed in less time than it takes to play,
-  and no line arrives after playback has reached it.
+  and from about two minutes in, no line arrives after playback has reached it. Earlier, played
+  straight away, lines trail by up to about 20 s: at 0.73 x real time the transcript cannot start
+  ahead of playback, only catch up (plan, research R3).
 - **SC-003**: On Chef Wang and the street interview, the transcript is at least as accurate as the
   2026-09-28 SenseVoice measurement (scripts/measure/sensevoice/), and invents no line over Chef
   Wang's music-only outro.
@@ -266,9 +270,10 @@ that the transcript continues from the last finished stretch with the earlier li
   made. Other phones are served by the calibration (FR-010), not measured in advance.
 - **About 240 MB of device storage is available** and persistent storage stays granted, as today.
 - **The reader downloads the model on Wi-Fi when they choose**; it is not downloaded unasked.
-- **Termux still downloads the video and hands it to Reader** as today (ADR-0022); it may also
-  prepare the audio in a form Reader can read cheaply, which planning decides. It also still
-  translates lines, now from a transcript Reader sends it (FR-019).
+- **Termux still downloads the video and hands it to Reader** as today (ADR-0022), and prepares
+  nothing for the transcript: Reader decodes the video's own audio (decided at planning,
+  2026-09-28, to rely on Termux as little as possible; measured on the phone the same day). Termux
+  still translates lines, now from a transcript Reader sends it (FR-019).
 - **Cross-origin isolation can be added without breaking what Reader already fetches** (the Termux
   service on 127.0.0.1, the dictionary and the app's own files); planning verifies this.
 - **The measured JS pipeline is the starting point** (scripts/measure/sensevoice/sensevoice.mjs),

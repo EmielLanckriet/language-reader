@@ -20,6 +20,10 @@ version.
 - `check.mjs` — the JS pipeline against that reference, window by window (`web` or `node`
   runtime). Expect identical text except at near-tied tokens.
 - `cuts.py` — fixed 30 s, 30 s with 2 s overlap, and pause-based cutting at a given VAD threshold.
+- `first-check.mjs` — a short first window (10 or 15 s) against 30 s throughout (spec 008 R3).
+- `resample.mjs`, `resample-check.mjs` — the downmix-and-resample step against ffmpeg's 16 kHz
+  (decoded audio as raw 44.1 kHz stereo float32 from `ffmpeg -f f32le -ac 2`), and
+  `pair-check.mjs` for the control: two ffmpeg resamplers against each other (spec 008 R4).
 
 ## Phone (Chrome, over USB)
 
@@ -28,3 +32,6 @@ version.
 3. `phone/run.sh results.jsonl '{"threads":1}' '{"threads":2}' '{"threads":4}'` — one fresh page per
    setting, since onnxruntime-web fixes its thread count at startup. The phone must be unlocked.
 4. `cores.html` shows whether several workers really run in parallel (the A71 has 2 fast cores).
+5. `decode.html` decodes an ADTS AAC file (`ffmpeg -i media.mp4 -vn -c:a copy -f adts street.aac`)
+   with WebCodecs in a worker, resamples it, and compares with the laptop's 16 kHz
+   (`street-ref16.f32`, raw float32) served from the audio directory.

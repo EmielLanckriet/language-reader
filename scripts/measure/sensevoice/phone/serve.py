@@ -9,7 +9,8 @@ import http.server, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROUTES = {'/ort/': os.path.join(HERE, '..', 'node_modules', 'onnxruntime-web', 'dist'),
-          '/sensevoice.mjs': os.path.join(HERE, '..', 'sensevoice.mjs')}
+          '/sensevoice.mjs': os.path.join(HERE, '..', 'sensevoice.mjs'),
+          '/resample.mjs': os.path.join(HERE, '..', 'resample.mjs')}
 MODEL, AUDIO, RESULTS = sys.argv[1:4]
 
 
@@ -24,7 +25,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return os.path.join(target, path[len(prefix):]) if prefix.endswith('/') else target
         name = os.path.basename(path)
         if name in ('model.int8.onnx', 'tokens.txt', 'meta.json'): return os.path.join(MODEL, name)
-        if name.endswith('.wav'): return os.path.join(AUDIO, name)
+        if name.endswith(('.wav', '.aac', '.f32')): return os.path.join(AUDIO, name)
         return os.path.join(HERE, name)
 
     def do_POST(self):

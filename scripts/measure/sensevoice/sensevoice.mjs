@@ -162,38 +162,47 @@ export async function transcribe(ort, session, tokens, meta, samples, offset = 0
 }
 
 /**
- * Whole-recording transcription: 30 s windows every 28 s, each keeping its tokens up to the middle
- * of the overlap. SenseVoice is built for 30 s at most (its README); longer windows drop phrases,
- * and the overlap keeps words cut at a fixed boundary whole. A pause detector was worse on street
- * speech: it either skipped quiet voices or found no pauses (docs/backlog.md).
+ * Where each window starts and ends, and which part of it is kept: windows of `win` s overlapping
+ * by `overlap` s, each keeping its tokens up to the middle of the overlap. `first` makes the first
+ * window shorter, so its lines arrive sooner (Principle VIII). SenseVoice is built for 30 s at most
+ * (its README); longer windows drop phrases, and the overlap keeps words cut at a fixed boundary
+ * whole. A pause detector was worse on street speech (docs/backlog.md).
  */
-export async function transcribeLong(ort, session, tokens, meta, samples, onWindow) {
+export function windowPlan(dur, { first = 30, win = 30, overlap = 2 } = {}) {
+	const plan = [];
+	for (let start = 0, len = first; ; start += len - overlap, len = win) {
+		const end = Math.min(start + len, dur);
+		plan.push({
+			start,
+			end,
+			keepFrom: start ? start + overlap / 2 : 0,
+			keepTo: end < dur ? end - overlap / 2 : Infinity
+		});
+		if (end >= dur) return plan;
+	}
+}
+
+export async function transcribeLong(ort, session, tokens, meta, samples, options, onWindow) {
 	const RATE_ = 16000,
-		WIN = 30,
-		OVERLAP = 2,
-		dur = samples.length / RATE_;
-	const out = { tokens: [], ts: [] };
-	for (let start = 0; ; start += WIN - OVERLAP) {
-		const end = Math.min(start + WIN, dur);
+		out = { tokens: [], ts: [] };
+	for (const w of windowPlan(samples.length / RATE_, options)) {
 		const r = await transcribe(
 			ort,
 			session,
 			tokens,
 			meta,
-			samples.subarray(start * RATE_, end * RATE_),
-			start
+			samples.subarray(Math.round(w.start * RATE_), Math.round(w.end * RATE_)),
+			w.start
 		);
-		const lo = start ? start + OVERLAP / 2 : 0,
-			hi = end < dur ? end - OVERLAP / 2 : Infinity;
 		r.ts.forEach((t, i) => {
-			if (t >= lo && t < hi) {
+			if (t >= w.keepFrom && t < w.keepTo) {
 				out.tokens.push(r.tokens[i]);
 				out.ts.push(t);
 			}
 		});
-		onWindow?.(out, end);
-		if (end >= dur) return { ...out, text: out.tokens.join('') };
+		onWindow?.(out, w.end);
 	}
+	return { ...out, text: out.tokens.join('') };
 }
 
 export function parseTokens(text) {

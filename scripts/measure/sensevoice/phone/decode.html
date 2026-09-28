@@ -1,0 +1,48 @@
+<!doctype html><meta charset="utf-8" /><title>decode</title>
+<pre id="log">…</pre>
+<!-- Can this browser decode the video's AAC in a worker, how fast, and how close is it to the laptop's 16 kHz? -->
+<script type="module">
+	const el = document.getElementById('log');
+	const say = (m) => {
+		el.textContent += '\n' + m;
+	};
+	const w = new Worker('decode-worker.js', { type: 'module' });
+	w.postMessage('street.aac');
+	w.onmessage = async ({ data }) => {
+		const out = { ...data };
+		if (data.speech) {
+			const ref = new Float32Array(await (await fetch('street-ref16.f32')).arrayBuffer());
+			const s = data.speech;
+			let best = { lag: 0, snr: -Infinity };
+			for (let lag = -2000; lag <= 2000; lag += 1) {
+				// align on a 10 s stretch first, cheaply
+				let d = 0,
+					p = 0;
+				for (let i = 160000; i < 320000; i += 4) {
+					const j = i + lag;
+					if (j < 0 || j >= s.length) continue;
+					d += (ref[i] - s[j]) ** 2;
+					p += ref[i] ** 2;
+				}
+				const snr = 10 * Math.log10(p / d);
+				if (snr > best.snr) best = { lag, snr };
+			}
+			let d = 0,
+				p = 0;
+			for (let i = 0; i < ref.length; i++) {
+				const j = i + best.lag;
+				if (j < 0 || j >= s.length) continue;
+				d += (ref[i] - s[j]) ** 2;
+				p += ref[i] ** 2;
+			}
+			out.lag = best.lag;
+			out.snrDb = +(10 * Math.log10(p / d)).toFixed(1);
+			out.samples16k = s.length;
+			out.refSamples = ref.length;
+			delete out.speech;
+		}
+		say(JSON.stringify(out));
+		await fetch('/result', { method: 'POST', body: JSON.stringify({ test: 'decode', ...out }) });
+		say('sent');
+	};
+</script>

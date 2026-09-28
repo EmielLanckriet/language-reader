@@ -4,6 +4,8 @@ Things decided but not yet scheduled. Newest first.
 
 ## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper
 
+Specified and planned as spec 008 (ADR-0029); the audio is decoded in Reader, not by Termux.
+
 2026-09-28, measured (harnesses in `scripts/measure/sensevoice/`): SenseVoice-Small (int8, 239 MB)
 running in Reader itself through onnxruntime-web, with 2 threads, number normalisation off, and
 30 s windows every 28 s, each keeping its tokens up to the middle of the overlap. Termux stays for
