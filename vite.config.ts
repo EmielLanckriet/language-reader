@@ -8,6 +8,11 @@ import { sveltekit } from '@sveltejs/kit/vite';
 // Typed as SvelteKit types it: empty, or a leading-slash path such as '/language-reader'.
 const base = (process.env.BASE_PATH ?? '') as '' | `/${string}`;
 
+const ISOLATION = {
+	'Cross-Origin-Opener-Policy': 'same-origin',
+	'Cross-Origin-Embedder-Policy': 'require-corp'
+};
+
 export default defineConfig({
 	resolve: {
 		// Keep onnxruntime-web's WebAssembly out of the bundle (ADR-0015).
@@ -51,6 +56,10 @@ export default defineConfig({
 			serviceWorker: { register: false }
 		})
 	],
+	// The same cross-origin isolation the service worker adds in production (spec 008, R6), so
+	// threads behave alike in development.
+	server: { headers: ISOLATION },
+	preview: { headers: ISOLATION },
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

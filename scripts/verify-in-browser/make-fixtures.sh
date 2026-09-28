@@ -5,10 +5,12 @@
 #   scripts/verify-in-browser/make-fixtures.sh <video.mp4> <subtitles.vtt> <serve-root>
 #
 #   <serve-root>/downloads/fixture-media/  bundle.tar (45 s clip + subtitles), meta.json, the .vtt
-#   <serve-root>/downloads/fixture-live/   bundle.tar (clip, no subtitles, transcribing.json)
+#   <serve-root>/downloads/fixture-live/   bundle.tar (clip, no subtitles, and the transcribing.json
+#                                          an older Termux wrote: Reader transcribes it anyway)
 #
 # Serve them with `python3 scripts/termux/reader-service.py --root <serve-root>`. The clip is 45 s:
-# two transcription chunks, so the boundary is exercised, and each scenario takes seconds.
+# three transcription windows in Reader (10 s, then 30 s every 28 s), so both joins are exercised,
+# and each scenario takes seconds. The video needs AAC audio, which Reader decodes itself.
 set -euo pipefail
 video=$1
 subtitles=$2
@@ -30,5 +32,4 @@ printf '{"status":"http://127.0.0.1:8765/downloads/fixture-live/status.json","vt
 tar cf "$live/bundle.tar" -C "$live" media.mp4 meta.json transcribing.json
 
 echo "service:     python3 scripts/termux/reader-service.py --root $root"
-echo "transcriber: python3 scripts/termux/transcribe.py $live $live/media.mp4"
 echo "translator:  TRANSLATE_STUB=1 python3 scripts/termux/translate.py $media"

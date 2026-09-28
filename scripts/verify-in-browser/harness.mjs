@@ -1514,9 +1514,16 @@ const scenarios = {
 				const res = await fetch('${BASE}/precache.json');
 				return (await res.json()).length;
 			`);
+			// Spec 008: the worker supplies cross-origin isolation, so a load it serves is isolated.
+			// The first load is not (nothing reloads it, per firstload); the next one is.
+			await tab.goto('/');
+			const isolated = await until('cross-origin isolated once served by the worker', () =>
+				tab.evaluate('return self.crossOriginIsolated === true || null')
+			);
 			return {
-				pass: !!controlled && manifest.ok && manifest.icons > 0,
+				pass: !!controlled && manifest.ok && manifest.icons > 0 && isolated === true,
 				controlled,
+				isolated,
 				manifest,
 				precached
 			};

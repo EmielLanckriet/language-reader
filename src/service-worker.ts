@@ -106,7 +106,32 @@ worker.addEventListener('fetch', (event) => {
 	event.respondWith(respond(event.request));
 });
 
+/**
+ * Cross-origin isolation, which threads need (spec 008, research R6). The static host cannot send
+ * these headers, so every response this worker returns carries them, worker scripts included: a
+ * dedicated worker needs COEP on its own script. require-corp breaks nothing Reader loads: every
+ * cross-origin fetch is CORS (the Termux service, Hugging Face) and media plays from blob: URLs.
+ * A page becomes isolated only once this worker serves it, so the reload that accepting an update
+ * already does brings it; nothing reloads a first visit to get it (the firstload check).
+ */
+function isolated(response: Response): Response {
+	if (response.type === 'error' || response.type === 'opaque' || response.type === 'opaqueredirect')
+		return response;
+	const headers = new Headers(response.headers);
+	headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+	headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers
+	});
+}
+
 async function respond(request: Request): Promise<Response> {
+	return isolated(await serve(request));
+}
+
+async function serve(request: Request): Promise<Response> {
 	// The segmenter's runtime lives in its own cache, not the precache (ADR-0015). It is downloaded
 	// with the model and must be served offline for the same reason the model is: a reader who has
 	// paid for both should not be handed dictionary segmentation because the network is gone.

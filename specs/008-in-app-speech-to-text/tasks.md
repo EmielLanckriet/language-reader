@@ -20,21 +20,21 @@ worker and Termux changes are glue: a browser scenario or the phone check, no su
 
 ## Phase 1: Setup
 
-- [ ] T001 Pin `onnxruntime-web` to exactly `1.30.0` in `package.json` (from ^1.29.0; 1.30.0 is what was measured, R1). Then check that `npm run build` passes `scripts/check-bundle.mjs` and `scripts/copy-ort-runtime.mjs` still finds `ort-wasm-simd-threaded.{wasm,mjs}`, and that `npm test` passes. Then run `npm run verify:browser -- model` (slow: it downloads the segmenter), since the bump also changes the segmenter and quick English
-- [ ] T002 [P] Generate `src/lib/speech/sense-voice-meta.json` with `python scripts/measure/sensevoice/export_meta.py model.int8.onnx` from the pinned revision `2365baeacb507f821a0c8120fcee3d484dba7a07`. Add a top-level `"revision"` field so code can check that it matches the model it's used with
-- [ ] T003 [P] Browser fixture: see what `scripts/verify-in-browser/make-fixtures.sh` already produces. Add a 90 s MP4 with Chinese speech and AAC-LC audio as a pending bundle without subtitles, cut locally and not committed if its source is a YouTube video (as the existing media fixtures are handled)
+- [X] T001 Pin `onnxruntime-web` to exactly `1.30.0` in `package.json` (from ^1.29.0; 1.30.0 is what was measured, R1). Then check that `npm run build` passes `scripts/check-bundle.mjs` and `scripts/copy-ort-runtime.mjs` still finds `ort-wasm-simd-threaded.{wasm,mjs}`, and that `npm test` passes. Then run `npm run verify:browser -- model` (slow: it downloads the segmenter), since the bump also changes the segmenter and quick English
+- [X] T002 [P] Generate `src/lib/speech/sense-voice-meta.json` with `python scripts/measure/sensevoice/export_meta.py model.int8.onnx` from the pinned revision `2365baeacb507f821a0c8120fcee3d484dba7a07`. Add a top-level `"revision"` field so code can check that it matches the model it's used with
+- [X] T003 [P] Browser fixture: see what `scripts/verify-in-browser/make-fixtures.sh` already produces. Add a 90 s MP4 with Chinese speech and AAC-LC audio as a pending bundle without subtitles, cut locally and not committed if its source is a YouTube video (as the existing media fixtures are handled)
 
 ---
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T004 [P] Test first in `tests/speech/windows.test.ts`, with fast-check over durations 0.5–4000 s and `first` 5–30. For `windowPlan(duration, {first, length: 30, overlap: 2})`, the keep ranges `[keepFrom, keepTo)` tile `[0, duration)` with no gap or overlap, and each window is at most 30 s long. `keep(plan, index, tokens)` keeps exactly the tokens in that window's range. Then implement `src/lib/speech/windows.ts`, ported from `windowPlan` in `scripts/measure/sensevoice/sensevoice.mjs`, but with the last `keepTo` equal to `duration` rather than `Infinity`, so that plans survive JSON
-- [ ] T005 [P] Test first in `tests/speech/lines.test.ts`, with fast-check over token lists with non-decreasing times. `lines(tokens)` puts every token in exactly one line, in order; no line is longer than 24 characters; a pause of 0.6 s or more always starts a new line; each line's `from` is its first token's time; and `to` is at or before the next line's `from`. Then implement `src/lib/speech/lines.ts` per R8, plus `toVtt(lines)`
-- [ ] T006 [P] Port the pipeline to `src/lib/speech/pipeline.ts` from `scripts/measure/sensevoice/sensevoice.mjs`: `fbank`, `lfrCmvn`, `transcribeWindow(ort, session, tokens, meta, samples, offset)` and `parseTokens`. Import the ONNX runtime type only, so the module runs in the worker and in Node. Keep the measured module's comments on why (ITN off, snip edges, samples ×32768), and nothing else
-- [ ] T007 [P] Port the resampler to `src/lib/speech/resample.ts` from `scripts/measure/sensevoice/resample.mjs`, adding `resampleRange(channels, rate, fromOut, toOut)`. It produces output samples `[fromOut, toOut)` from the input around them, reading up to 32 taps beyond the range, so windows can be resampled one at a time and give exactly the samples a whole-file run would
-- [ ] T008 Fidelity check: add `scripts/measure/sensevoice/app-check.mjs`, which runs `src/lib/speech/{pipeline,windows,resample}.ts` in Node 24 (type stripping). It feeds Chef Wang and the interview (raw 44.1 kHz stereo float32 from ffmpeg) through `resampleRange` window by window, and compares the result with `transcribeLong` of the measured module on `toSpeech` of the whole file. **Identical text required**, on the same runtime, onnxruntime-node. Stop and report if not
-- [ ] T009 `src/lib/speech/audio.ts`: open a media file from OPFS and pull the AAC track's samples and `esds` decoder config with mp4box, reusing what `src/lib/media/audio-track.ts` already does. Decode with WebCodecs `AudioDecoder` (codec from the track, `description` from the esds), keeping only the decoded audio the next window needs plus the resampler's margin. Yield `windowSamples(w)` as 16 kHz mono through `resampleRange`. Report "no audio track" or "codec not supported" as reasons, not throws
-- [ ] T010 `src/lib/speech/speech-worker.ts` per `contracts/speech-worker.md`:
+- [X] T004 [P] Test first in `tests/speech/windows.test.ts`, with fast-check over durations 0.5–4000 s and `first` 5–30. For `windowPlan(duration, {first, length: 30, overlap: 2})`, the keep ranges `[keepFrom, keepTo)` tile `[0, duration)` with no gap or overlap, and each window is at most 30 s long. `keep(plan, index, tokens)` keeps exactly the tokens in that window's range. Then implement `src/lib/speech/windows.ts`, ported from `windowPlan` in `scripts/measure/sensevoice/sensevoice.mjs`, but with the last `keepTo` equal to `duration` rather than `Infinity`, so that plans survive JSON
+- [X] T005 [P] Test first in `tests/speech/lines.test.ts`, with fast-check over token lists with non-decreasing times. `lines(tokens)` puts every token in exactly one line, in order; no line is longer than 24 characters; a pause of 0.6 s or more always starts a new line; each line's `from` is its first token's time; and `to` is at or before the next line's `from`. Then implement `src/lib/speech/lines.ts` per R8, plus `toVtt(lines)`
+- [X] T006 [P] Port the pipeline to `src/lib/speech/pipeline.ts` from `scripts/measure/sensevoice/sensevoice.mjs`: `fbank`, `lfrCmvn`, `transcribeWindow(ort, session, tokens, meta, samples, offset)` and `parseTokens`. Import the ONNX runtime type only, so the module runs in the worker and in Node. Keep the measured module's comments on why (ITN off, snip edges, samples ×32768), and nothing else
+- [X] T007 [P] Port the resampler to `src/lib/speech/resample.ts` from `scripts/measure/sensevoice/resample.mjs`, adding `resampleRange(channels, rate, fromOut, toOut)`. It produces output samples `[fromOut, toOut)` from the input around them, reading up to 32 taps beyond the range, so windows can be resampled one at a time and give exactly the samples a whole-file run would
+- [X] T008 Fidelity check: add `scripts/measure/sensevoice/app-check.mjs`, which runs `src/lib/speech/{pipeline,windows,resample}.ts` in Node 24 (type stripping). It feeds Chef Wang and the interview (raw 44.1 kHz stereo float32 from ffmpeg) through `resampleRange` window by window, and compares the result with `transcribeLong` of the measured module on `toSpeech` of the whole file. **Identical text required**, on the same runtime, onnxruntime-node. Stop and report if not
+- [X] T009 `src/lib/speech/audio.ts`: open a media file from OPFS and pull the AAC track's samples and `esds` decoder config with mp4box, reusing what `src/lib/media/audio-track.ts` already does. Decode with WebCodecs `AudioDecoder` (codec from the track, `description` from the esds), keeping only the decoded audio the next window needs plus the resampler's margin. Yield `windowSamples(w)` as 16 kHz mono through `resampleRange`. Report "no audio track" or "codec not supported" as reasons, not throws
+- [X] T010 `src/lib/speech/speech-worker.ts` per `contracts/speech-worker.md`:
   - load `onnxruntime-web/wasm` from `${base}/ort/`, with `env.wasm.numThreads` set before the first session;
   - `open` reads `speech/<revision>/model.int8.onnx` and `tokens.txt` from OPFS;
   - `transcribe` runs `audio.ts` and `pipeline.ts` over `plan` from `from`, posting `window` messages with the kept tokens (`windows.ts`);
@@ -42,7 +42,7 @@ worker and Termux changes are glue: a browser scenario or the phone check, no su
   - `time` decodes a generated signal of the given length for calibration.
 
   Plus a small typed client, `src/lib/speech/worker-client.ts`, that the transcriber and calibration use
-- [ ] T011 `src/lib/speech/model.ts` per R5 and data-model.md:
+- [X] T011 `src/lib/speech/model.ts` per R5 and data-model.md:
   - pinned URLs for `model.int8.onnx` and `tokens.txt` at revision `2365bae…`;
   - `modelState()` (missing / partial with bytes / present);
   - `downloadModel(onProgress, signal)` in 16 MB Range requests, written at their offsets into OPFS `speech/<revision>/`, with `download.json` updated after each range, so it resumes after an interruption or a reload;
@@ -50,12 +50,12 @@ worker and Termux changes are glue: a browser scenario or the phone check, no su
   - the runtime files through the existing `downloadInto(RUNTIME_PATHS…)` when missing;
   - old revision folders deleted once the current one is present;
   - a `navigator.storage.estimate()` check that there's room for the remaining bytes before starting (edge case "storage too full")
-- [ ] T012 Cross-origin isolation per R6:
+- [X] T012 Cross-origin isolation per R6:
   - in `src/service-worker.ts`, add `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` to every same-origin response `respond()` returns: the precache hit, the network pass-through, the shell fallback and the `/ort/` model-cache hit. Rebuild cached responses, and leave errors and opaque responses alone;
   - in `vite.config.ts`, set `server.headers` and `preview.headers` to the same.
 
   No reload is added
-- [ ] T013 Run `npm run verify:browser` with `firstload`, `shell`, `offline` and `readonly` against the build. Extend `shell` in `scripts/verify-in-browser/` to assert that `crossOriginIsolated` is true on the second load and that `firstload` still does not reload. Check the console for sqlite's `opfs` VFS starting its async proxy under isolation (R6); if it does, report what changed before going on
+- [X] T013 Run `npm run verify:browser` with `firstload`, `shell`, `offline` and `readonly` against the build. Extend `shell` in `scripts/verify-in-browser/` to assert that `crossOriginIsolated` is true on the second load and that `firstload` still does not reload. Check the console for sqlite's `opfs` VFS starting its async proxy under isolation (R6); if it does, report what changed before going on
 
 **Checkpoint**: the pipeline in the app matches the measured one exactly; a model can be downloaded, resumed and verified; the app is isolated and storage still works.
 
