@@ -45,6 +45,19 @@ covariates: a source's difficulty, for reading evidence (a miss in fast accented
 and for picking clips easy first. Listening memory is already kept from lookups and from words
 heard with the text hidden, so the history will be there when the cards arrive.
 
+## Termux's service keeps dying: watch whether the process limit was it
+
+2026-09-28: Diagnostics recorded the reader service dying or restarting ten times from 2026-09-26
+evening to 2026-09-27 18:52, with Termux already exempt from battery optimisation. Suspected, not
+proven (the logs had rolled over): Android 13's phantom process killer. Set over adb, reversible,
+not something setup.sh can do: `device_config set_sync_disabled_for_tests persistent`,
+`device_config put activity_manager max_phantom_processes 2147483647`,
+`settings put global settings_enable_monitor_phantom_procs false`. Chrome was also "background
+restricted", so Android killed Reader as soon as it left the front: now `appops
+RUN_ANY_IN_BACKGROUND allow` and on the deviceidle exemption list. Samsung's own sleeping-apps
+list can still restrict it. Check the "What has happened before" count in a few days: if the
+service still dies, the phantom killer was not the cause.
+
 ## Transcripts: phrases lost at 30 s chunk boundaries
 
 2026-09-27 (ADR-0019 amendments): each 30 s chunk starts without the text before it, and with
