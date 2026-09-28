@@ -23,7 +23,12 @@
 </script>
 
 {#if current}
-	{#if !current.installed}
+	{#if current.browser}
+		<p class="notice warning" data-safeguard="browser">
+			<strong>This is a separate copy of Reader, in {current.browser}.</strong> Your library is in the
+			Reader installed from Chrome; each browser keeps its own. Open that one, and remove this icon.
+		</p>
+	{:else if !current.installed}
 		<p class="notice warning" data-safeguard="installed">
 			<strong>Reader is open in a browser tab.</strong> The browser may delete its data without warning.
 			Install it: Chrome menu → Add to Home screen → Install, then open it from its icon.

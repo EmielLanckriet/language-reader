@@ -302,7 +302,8 @@
 	<dt>Safeguards</dt>
 	<dd>
 		{#if guards}
-			Installed: {guards.installed ? 'yes' : 'no (a tab or shortcut)'} · Storage kept: {guards.persisted
+			{#if guards.browser}Browser: {guards.browser}, a separate copy ·
+			{/if}Installed: {guards.installed ? 'yes' : 'no (a tab or shortcut)'} · Storage kept: {guards.persisted
 				? 'yes'
 				: 'no'} · Copy in Termux: {guards.copy === 'current'
 				? 'up to date'
