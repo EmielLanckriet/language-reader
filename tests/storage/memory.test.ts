@@ -292,6 +292,28 @@ describe('memory kept with the history', () => {
 		expect(rows(db)).toEqual(built);
 	});
 
+	it('after a correction, is what a rebuild from nothing gives', async () => {
+		const { db, repository, documentId, lookup, read } = await library();
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			lookup(1, day(1)),
+			lookup(5, day(1))
+		]);
+		const later = repository.startSession(documentId, 'reading');
+		repository.recordEncounters(later, [
+			read(day(5)),
+			{ kind: 'attention', at: day(5, 11), detail: { answer: 'all' } }
+		]);
+		const before = rows(db);
+
+		// 我看 joined: 我 and 看 lose their tokens there, and 我看 is a new word with its exposure.
+		repository.correct('zh', '我看', [{ surface: '我看', key: '我看' }]);
+		const kept = rows(db);
+		repository.rebuildMemory();
+
+		expect(kept).not.toEqual(before);
+		expect(kept).toEqual(rows(db));
+	});
+
 	it('follows a re-segmentation, since the words a stretch covered are its current tokens', async () => {
 		const { db, repository, documentId, lookup, read } = await library();
 		repository.recordEncounters(repository.startSession(documentId, 'reading'), [

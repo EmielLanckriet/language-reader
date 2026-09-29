@@ -586,6 +586,44 @@ const scenarios = {
 	// Correcting the segmentation (spec 004), plumbing only: join two words from the word sheet,
 	// split them back, be refused across punctuation, then undo from More. Words are found by their
 	// offsets, not their text, because each button also carries its pinyin.
+	// How long a join takes on a long document (the fixture carries a 44 min video's subtitles,
+	// 18,629 characters): the reader found corrections slow on such a document.
+	async correctlong() {
+		const tab = await openTab('about:blank');
+		const count = `return document.querySelectorAll('.lines button.token').length;`;
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the long document',
+				async () => ((await tab.evaluate(count)) > 1000 ? true : null),
+				120000,
+				250
+			);
+			// Let the page settle (quick English, the first memory read) before timing.
+			await new Promise((resolve) => setTimeout(resolve, 5000));
+			const before = await tab.evaluate(count);
+			await tab.evaluate(
+				`document.querySelectorAll('.lines button.token')[30].click(); return true;`
+			);
+			await until('the join button', () =>
+				tab.evaluate(
+					`const b = [...document.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') ?? '').startsWith('Join with next')); if (!b || b.disabled) return null; b.click(); return true;`
+				)
+			);
+			const t0 = Date.now();
+			await until(
+				'the joined word',
+				async () => ((await tab.evaluate(count)) < before ? true : null),
+				60000,
+				20
+			);
+			const joinMs = Date.now() - t0;
+			return { pass: true, joinMs, words: before };
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async corrections() {
 		const tab = await openTab('about:blank');
 		const spans = () =>

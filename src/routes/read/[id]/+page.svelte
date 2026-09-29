@@ -433,9 +433,17 @@
 		try {
 			const { repository } = await session();
 			const fresh = await repository.getDocument(document.id);
+			// Read everything first and show it at once: set one by one, each redrew every word, three
+			// times per correction, which was most of a join's second on a long transcript (laptop).
+			const words = [...new Set(lexemesIn(fresh))];
+			const [freshStates, freshMemory] = await Promise.all([
+				repository.getStates(words),
+				repository.getMemory(words)
+			]);
 			document = fresh;
-			states = await repository.getStates(lexemesIn(fresh));
-			await readMemory(lexemesIn(fresh));
+			states = freshStates;
+			memory = freshMemory;
+			now = new Date();
 			refreshWhenFree = false;
 		} catch {
 			// The words on screen are still correct words, just not the newest ones, and the next

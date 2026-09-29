@@ -656,9 +656,17 @@ export class Repository {
 					...(token.lexeme_key === null ? {} : { lexemeKey: String(token.lexeme_key) })
 				}));
 				const remembered = this.memoryWordsIn(documentId, 0, Infinity);
+				const before = this.tokenSpans(documentId);
 				this.writeCorrected(documentId, language, String(row.raw_content), analyzed, 0, Infinity);
 				for (const id of this.memoryWordsIn(documentId, 0, Infinity)) remembered.add(id);
-				this.recomputeMemory(remembered);
+				// Only a word whose tokens moved can have a different memory: its exposures are its
+				// tokens under a read or played stretch. Recomputing every remembered word of the document
+				// took 1.5 s of a 2.1 s correction on a 44 min transcript (laptop; the phone is slower).
+				const after = this.tokenSpans(documentId);
+				const moved = new Set<LexemeId>();
+				for (const [span, id] of before) if (after.get(span) !== id) moved.add(id);
+				for (const [span, id] of after) if (before.get(span) !== id) moved.add(id);
+				this.recomputeMemory(new Set([...remembered].filter((id) => moved.has(id))));
 			}
 		});
 	}
@@ -732,6 +740,17 @@ export class Repository {
 		this.writeCorrected(documentId, language, rawContent, tokens, from, through);
 	}
 
+	/** A document's word tokens, as start:end to the word there. */
+	private tokenSpans(documentId: DocumentId): Map<string, LexemeId> {
+		return new Map(
+			queryRows(
+				this.db,
+				'SELECT start, end, lexeme_id FROM token WHERE document_id = ? AND lexeme_id IS NOT NULL',
+				[documentId]
+			).map((row) => [`${row.start}:${row.end}`, Number(row.lexeme_id)])
+		);
+	}
+
 	private writeCorrected(
 		documentId: DocumentId,
 		language: string,
@@ -746,16 +765,26 @@ export class Repository {
 			Number.isFinite(through) ? through : Number.MAX_SAFE_INTEGER
 		]);
 		const rules = rulesInForce(this.readCorrections(), language);
-		for (const token of applyCorrections(codePointsOf(rawContent), analyzed, rules)) {
-			const lexemeId =
-				token.isWord && token.lexemeKey !== undefined
-					? this.findOrCreateLexeme(language, token.lexemeKey)
-					: null;
-			run(
-				this.db,
-				'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
-				[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
-			);
+		// One statement for every row, and each word looked up once: row by row, a 44 min transcript's
+		// 9,000 tokens took 0.5 s on the laptop.
+		const lexemes = new Map<string, LexemeId>();
+		const insert = this.db.prepare(
+			'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)'
+		);
+		try {
+			for (const token of applyCorrections(codePointsOf(rawContent), analyzed, rules)) {
+				let lexemeId: LexemeId | null = null;
+				if (token.isWord && token.lexemeKey !== undefined) {
+					lexemeId =
+						lexemes.get(token.lexemeKey) ?? this.findOrCreateLexeme(language, token.lexemeKey);
+					lexemes.set(token.lexemeKey, lexemeId);
+				}
+				insert
+					.bind([documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0])
+					.stepReset();
+			}
+		} finally {
+			insert.finalize();
 		}
 	}
 
