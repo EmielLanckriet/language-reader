@@ -191,12 +191,20 @@ textarea {
 	overflow: hidden;
 }
 
-/* How far the reader got: the furthest point played, along the picture's bottom edge. */
-.library .watched {
+/* How far the reader got: the furthest point played, along the picture's bottom edge, over a track
+   so that a video barely started still shows it has been. */
+.library .track {
 	position: absolute;
 	left: 0;
+	right: 0;
 	bottom: 0;
-	height: 4px;
+	height: 5px;
+	background: rgb(255 255 255 / 0.55);
+}
+
+.library .watched {
+	display: block;
+	height: 100%;
 	/* A video only just started still shows that it was. */
 	min-width: 4px;
 	background: var(--unknown);

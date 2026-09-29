@@ -128,11 +128,9 @@
 								<span class="picture"></span>
 							{/if}
 							{#if watched}
-								<span
-									class="watched"
-									style:width={percent(watched)}
-									title={`Watched to ${percent(watched)}`}
-								></span>
+								<span class="track" title={`Watched to ${percent(watched)}`}>
+									<span class="watched" style:width={percent(watched)}></span>
+								</span>
 							{/if}
 						</span>
 					{/if}

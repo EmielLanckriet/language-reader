@@ -1223,6 +1223,73 @@ const scenarios = {
 		}
 	},
 
+	// "Stop after each line" on: a line stops at its end, and "next line" plays the next one rather
+	// than stopping again at once (it did: the stop measured against the line before).
+	async autostop() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the imported document to open',
+				() =>
+					tab.evaluate(
+						`return (location.pathname.includes('/read/') && document.querySelector('.player')?.duration > 0) || null;`
+					),
+				120000,
+				250
+			);
+			await tab.evaluate(
+				`localStorage.setItem('reader.pauseEachLine', 'true'); location.reload(); return true;`
+			);
+			await until('the player again', () =>
+				tab.evaluate(`return document.querySelector('.player')?.duration > 0 || null;`)
+			);
+			await tab.evaluate(`
+				const player = document.querySelector('.player');
+				player.muted = true;
+				document.querySelectorAll('.seek')[3].click();
+				return true;
+			`);
+			const stopped = await until(
+				'line 3 to stop at its end',
+				() =>
+					tab.evaluate(`
+						const player = document.querySelector('.player');
+						return player.paused && player.currentTime > 0 ? player.currentTime : null;
+					`),
+				20000,
+				100
+			);
+			await tab.evaluate(
+				`document.querySelector('[aria-label="Next line"]').click(); return true;`
+			);
+			await new Promise((resolve) => setTimeout(resolve, 600));
+			const after = await tab.evaluate(`
+				const player = document.querySelector('.player');
+				return { paused: player.paused, time: player.currentTime };
+			`);
+			// And the line it went on to stops at its own end.
+			const next = await until(
+				'the next line to stop at its end',
+				() =>
+					tab.evaluate(`
+						const player = document.querySelector('.player');
+						return player.paused ? player.currentTime : null;
+					`),
+				20000,
+				100
+			);
+			return {
+				pass: !after.paused && after.time > stopped && next > after.time,
+				stopped,
+				...after,
+				next
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async media() {
 		const tab = await openTab('about:blank');
 		try {

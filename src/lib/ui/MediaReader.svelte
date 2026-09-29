@@ -189,13 +189,27 @@
 
 	/** A line's end, checked on timeupdate while locked: coarser than per frame, but it still stops. */
 	function checkLineEnd(media: HTMLMediaElement) {
-		if (!pauseEachLine || currentLine < 0 || media.paused) return;
-		const end = Math.min(cues[currentLine].end, cues[currentLine + 1]?.start ?? Infinity);
-		if (stoppedAt === currentLine && media.currentTime < end - 0.5) stoppedAt = -1;
-		if (media.currentTime >= end - 0.05 && stoppedAt !== currentLine) {
-			stoppedAt = currentLine;
+		stopAtLineEnd(media);
+	}
+
+	/**
+	 * Stops at the end of the line playing now, and says whether it did. The line is taken from the
+	 * time, not from currentLine: that follows a frame behind, so after "next line" it still named
+	 * the line before, whose end is where the next begins, and playback stopped at once.
+	 */
+	function stopAtLineEnd(media: HTMLMediaElement): boolean {
+		if (!pauseEachLine || media.paused) return false;
+		const time = media.currentTime;
+		const line = lineAt(time);
+		if (line < 0) return false;
+		const end = Math.min(cues[line].end, cues[line + 1]?.start ?? Infinity);
+		if (stoppedAt === line && time < end - 0.5) stoppedAt = -1;
+		if (time >= end - 0.05 && stoppedAt !== line) {
+			stoppedAt = line;
 			media.pause();
+			return true;
 		}
+		return false;
 	}
 
 	/**
@@ -334,16 +348,7 @@
 	 */
 	function watchLineEnd() {
 		if (!player || player.paused) return;
-		if (pauseEachLine && currentLine >= 0) {
-			const end = Math.min(cues[currentLine].end, cues[currentLine + 1]?.start ?? Infinity);
-			const time = player.currentTime;
-			if (stoppedAt === currentLine && time < end - 0.5) stoppedAt = -1;
-			if (time >= end - 0.05 && stoppedAt !== currentLine) {
-				stoppedAt = currentLine;
-				player.pause();
-				return;
-			}
-		}
+		if (stopAtLineEnd(player)) return;
 		follow();
 		requestAnimationFrame(watchLineEnd);
 	}
