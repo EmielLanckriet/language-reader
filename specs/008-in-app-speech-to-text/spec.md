@@ -272,6 +272,38 @@ that the transcript continues from the last finished stretch with the earlier li
 - **SC-006**: After the one download, a subtitle-less video is transcribed with the network off.
 - **SC-007**: While a transcript runs, looking up a word responds as quickly as when none runs.
 
+## Phone check (2026-09-29)
+
+On the reader's Samsung A71, driven over adb and CDP (T033):
+
+- **Setup**: Termux's whisper removed (about 720 MB freed); Reader cross-origin isolated after the
+  update. The model download, cut at 117 MB by airplane mode, resumed there and verified.
+- **Calibration**: one timing per thread count chose 1 thread; repeats on a warm phone varied from
+  6.9 s to 12 s. Two interleaved rounds, fastest decode each, chose **2** (per 10 s: 1 thread 9.0 s,
+  2 threads 4.7 s, 4 threads 11.2 s).
+- **SC-001**: first lines about 12 s after the video was playable.
+- **SC-002**: 22.4 s per 28 s window, steady, with nothing else running; the interview (231 s)
+  transcribed in 203 s while it played, lines trailing only in the first 20 s. The 44 min video
+  finished in about 0.8x its length.
+- **SC-003**: 6.1% character error on the 44 min video against its human subtitles (the laptop,
+  same pipeline: 6.0%). Chef Wang: phone and laptop differ in one character (a stutter the laptop
+  kept), one line boundary and seven cue times by tens of ms; nothing over the music-only outro.
+- **SC-004, SC-006**: with Termux stopped and airplane mode on, transcribed to the end.
+- **SC-005**: Chrome killed at window 5 of 9; reopened, it resumed from window 5, with the same
+  lines as an uninterrupted run and none duplicated or missing. Four uninterrupted runs were
+  byte-identical; the resumed one differs in two characters (呃/啊, 学/写) in windows after the
+  resume point, so decoding after a resume is not bit-exact (backlog).
+- **SC-007**: word lookups, median 20 ms and at most 40 ms idle; 28 ms and at most 155 ms while a
+  transcript runs.
+- **FR-019**: the transcript reached Termux and was translated; sent while Termux was down, it was
+  delivered 2.5 min after Termux came back.
+- **Found and fixed**: Termux's translation (4 LLM threads) beside the decoder took windows to about
+  55 s. Reader now tells Termux it is busy (contracts/reader-service.md, `PUT /busy`): measured, the
+  chunk in progress finished, no new one started while Reader transcribed, and translation resumed
+  90 s after it stopped. On the live page, quick English took windows to about 29 s, and 33 s with
+  the video playing; the transcript now keeps a 60 s lead on playback and waits there (R13).
+- **Not measured**: Chrome's memory over the long video, which finished unobserved.
+
 ## Assumptions
 
 - **The reader uses the Chrome install of Reader on the Samsung A71**, where the measurements were

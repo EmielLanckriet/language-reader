@@ -56,13 +56,16 @@ ADR-0017's "Termux is needed only while an import is finishing" (as amended by A
     later (Principle VIII).
 - **Harder**:
   - A one-time 239 MB download, plus a one-minute calibration.
-  - The transcript trails playback for about its first two minutes, because at 0.73× real time it
-    can only catch up.
+  - The transcript trails playback at the start (measured: its first 20 s), then keeps a 60 s lead
+    while the video plays and waits there, leaving the cores to playback and quick English.
+  - Termux's translation must wait while Reader transcribes (`PUT /busy`): beside it, a 30 s
+    window took about 55 s instead of 22 s on the phone.
   - Cross-origin isolation now constrains everything Reader loads: a future cross-origin resource
     needs CORS or CORP.
   - A brand-new install transcribes on one thread until its second start.
 - **Revisit if**:
   - another phone calibrates slower than playback;
-  - quick English or the segmenter slows the transcriber below playback on the phone (research R13);
+  - quick English or the segmenter slows the transcriber below playback on the phone (research R13;
+    measured 2026-09-29: 29–33 s per 28 s window on the live page, kept in check by the lead);
   - Hugging Face's pinned revision disappears, in which case Termux fetching the model becomes the
     route.

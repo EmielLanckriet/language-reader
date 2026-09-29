@@ -196,7 +196,13 @@ and the transcript itself is derived.
 
 ## R13. What competes with the transcriber
 
-**Suspected, not measured**: Reader's quick English runs in its own single-threaded worker while
-lines arrive, and the segmenter may run on the main thread; on two fast cores either could slow the
-transcriber. Measured in the phone check (quickstart); if SC-002 fails because of it, quick English
-waits while a window decodes.
+**Suspected, then measured on the phone (2026-09-29)**: per 28 s window, 22.4 s with nothing else
+running; about 29 s on the live page with quick English translating arriving lines (video paused);
+about 33 s with the video playing too. Quick English and the tagger already run single-threaded;
+the phone has two fast cores and the decoder wants both. Making quick English wait while a window
+decodes does not work: windows run back to back, so it would never run and lines would have no
+English. Instead, while the video plays, the transcript keeps a 60 s lead on playback and waits
+there (`LEAD` in `src/lib/speech/transcriber.ts`); it runs flat out when playback pauses or the
+reader leaves. Measured: it stopped at a 73 s lead, waited 18 s, and finished the interview in
+203 s. Termux's LLM translation was the larger competitor (windows at about 55 s), now held off by
+`PUT /busy` (contracts/reader-service.md).

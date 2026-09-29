@@ -2,9 +2,16 @@
 
 Things decided but not yet scheduled. Newest first.
 
-## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper
+## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper — built
 
-Specified and planned as spec 008 (ADR-0029); the audio is decoded in Reader, not by Termux.
+Built as spec 008 (ADR-0029), phone-checked on 2026-09-29 (spec.md, "Phone check"): 2 threads by
+calibration, 22.4 s per 28 s window, 6.1% character error on a 44 min video against human
+subtitles. Termux only downloads and translates, and waits while Reader transcribes (`PUT /busy`).
+
+Open: decoding after a resume is not bit-exact. A transcript resumed at window 5 differed from four
+identical uninterrupted runs in two characters, in windows after the resume point; the lines were
+all there. Unexplained; the decoder starting two frames early or the resampler's phase are
+suspects, not measured.
 
 2026-09-28, measured (harnesses in `scripts/measure/sensevoice/`): SenseVoice-Small (int8, 239 MB)
 running in Reader itself through onnxruntime-web, with 2 threads, number normalisation off, and
