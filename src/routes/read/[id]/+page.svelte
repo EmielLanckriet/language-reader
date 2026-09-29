@@ -27,7 +27,7 @@
 	import { colourBand } from '$lib/domain/memory';
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { WordMemory } from '$lib/storage/client';
-	import { englishFor, llmByLine } from '$lib/translation/lines';
+	import { clausesOf, coveredByLlm, englishFor, llmByLine } from '$lib/translation/lines';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
 		quickTranslation,
@@ -75,6 +75,7 @@
 	let quick = $state<QuickTranslation | undefined>();
 	let quickStatus = $state<QuickStatus | undefined>();
 	const english = $derived(media ? englishFor(media.cues.length, llmLines, quickLines) : []);
+	const llmCovered = $derived(media ? coveredByLlm(media.cues, llmCues) : []);
 
 	$effect(() => {
 		const current = media;
@@ -96,7 +97,7 @@
 		quickLines = [...current.quick];
 		// The LLM has every line already: nothing for the quick model to add. Its finished file can
 		// still have gaps, lines it could not place, and those are the quick model's.
-		if (llmByLine(current.cues, current.translation).every(Boolean)) return;
+		if (coveredByLlm(current.cues, current.translation).every(Boolean)) return;
 
 		let unsaved = 0;
 		const save = () => {
@@ -110,7 +111,7 @@
 		const translator = untrack(() =>
 			quickTranslation(
 				() => chinese,
-				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
+				(i) => Boolean(llmCovered[i] || quickLines[i]),
 				(i, text) => {
 					const next = [...quickLines];
 					next[i] = text;
@@ -201,6 +202,27 @@
 		}
 		return grouped;
 	});
+
+	/**
+	 * What the player shows: a clause the subtitles cut over several lines as one line, with one
+	 * English, once the LLM has translated it so (clausesOf). The document's own lines stay as they
+	 * are underneath: the recorder and the quick model count in them.
+	 */
+	const clauses = $derived(media ? clausesOf(media.cues, llmCues) : []);
+	const shownCues = $derived.by(() => {
+		const cues = media?.cues ?? [];
+		return clauses.map(([first, last]) => ({
+			...cues[first],
+			end: cues[last].end,
+			text: cues
+				.slice(first, last + 1)
+				.map((cue) => cue.text)
+				.join('')
+		}));
+	});
+	const shownLines = $derived(clauses.map(([first, last]) => lines.slice(first, last + 1).flat()));
+	const shownEnglish = $derived(clauses.map(([first]) => english[first]));
+	const firstLineOf = (shown: number) => clauses[shown]?.[0] ?? shown;
 
 	function chooseWord(_line: number, word: LineWord) {
 		open(document?.tokens.find((token) => token.start === word.key) ?? null);
@@ -629,14 +651,15 @@
 	{#if media?.media}
 		<MediaReader
 			file={media.media}
-			cues={media.cues}
-			{lines}
+			cues={shownCues}
+			sourceCues={media.cues}
+			lines={shownLines}
 			language={document.language}
 			{startAt}
-			translations={english}
+			translations={shownEnglish}
 			askable={quick !== undefined}
-			onask={(line) => quick?.focus(line, true)}
-			online={(line) => quick?.focus(line)}
+			onask={(line) => quick?.focus(firstLineOf(line), true)}
+			online={(line) => quick?.focus(firstLineOf(line))}
 			onword={chooseWord}
 			{recorder}
 			title={document.title}

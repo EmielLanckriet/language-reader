@@ -15,6 +15,7 @@ Smaller chunks were measured worse, not better: at 5 lines a sentence split acro
 TRANSLATE_STUB=1 replaces the model with "EN: <line>", for tests that check plumbing, not English.
 """
 
+import difflib
 import glob
 import json
 import os
@@ -153,6 +154,68 @@ def translate(lines):
     return [answer or '' for answer in ask(lines)]
 
 
+PUNCTUATE = ('Add Chinese punctuation (，。？！) to the text so that it reads as proper sentences. Do not '
+             'change, add or remove any other character. Reply with the punctuated text only.')
+MARKS = '，。？！；：,.?!;:'
+# A group with no punctuation at any of its line ends is still cut after this many characters.
+GROUP_MAX = 40
+
+
+def ends_from(lines, punctuated):
+    """After which lines a clause ends: the line ends the model put a mark after.
+
+    Aligned by character rather than compared whole: the model sometimes changes a character (it
+    added 是 to 不得不提的一个词AI), and that must cost the one boundary, not the chunk.
+    """
+    text = ''.join(lines)
+    kept, marked = [], set()
+    for ch in punctuated:
+        if ch in MARKS:
+            if kept:
+                marked.add(len(kept) - 1)
+        elif not ch.isspace():
+            kept.append(ch)
+    after = set()
+    for block in difflib.SequenceMatcher(None, text, ''.join(kept), autojunk=False).get_matching_blocks():
+        for k in range(block.size):
+            if block.b + k in marked:
+                after.add(block.a + k)
+    ends, at = set(), 0
+    for i, line in enumerate(lines):
+        at += len(line)
+        if at - 1 in after:
+            ends.add(i)
+    return ends
+
+
+def groups(lines, ends):
+    """Consecutive lines as clauses: [first, last] index pairs covering every line once."""
+    found, first, length = [], 0, 0
+    for i, line in enumerate(lines):
+        length += len(line)
+        if i in ends or length >= GROUP_MAX or i == len(lines) - 1:
+            found.append([first, i])
+            first, length = i + 1, 0
+    return found
+
+
+def sentence_ends(lines):
+    """Where the model punctuates the lines run together: subtitles cut a sentence wherever a line
+    ran out of room, and a learner needs the whole sentence, and its English, together."""
+    if STUB:
+        return set(range(len(lines)))
+    wait_for_memory()
+    text = ''.join(lines)
+    prompt = (f'<|im_start|>system\n{PUNCTUATE}<|im_end|>\n<|im_start|>user\n{text} /no_think'
+              f'<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n')
+    out = subprocess.run(
+        [LLAMA, '-m', MODEL, '-c', '2048', '--no-repack', '-p', prompt, '-n', str(2 * len(text) + 40),
+         '--temp', '0.2', '-t', THREADS, '-no-cnv', '--no-display-prompt'],
+        capture_output=True, text=True, check=True,
+    ).stdout.replace('[end of text]', '')
+    return ends_from(lines, out)
+
+
 def source(job):
     """The Chinese track, and whether it can still grow (a transcript still being written)."""
     status = os.path.join(job, 'status.json')
@@ -185,28 +248,47 @@ def write(path, text):
     os.replace(path + '.part', path)
 
 
+def span(first, last):
+    """One cue's timing across lines: the first line's start to the last one's end."""
+    return first.split('-->')[0].strip() + ' --> ' + last.split('-->')[1].strip()
+
+
 def main(job):
+    # One entry per clause: (timing across its lines, English, how many lines).
     done = []
     while True:
         track, growing = source(job)
         available = cues(track) if track and os.path.exists(track) else []
-        pending = available[len(done):]
+        through = sum(n for _, _, n in done)
+        pending = available[through:]
         # Not while a transcript is still being written: the two shared the phone's four cores, and the
         # transcript, which the reader is waiting for, took 6:50 against 4:20 without this beside it.
         # Reader's quick English covers those lines meanwhile (ADR-0023).
         if pending and not growing:
             wait_for_reader()
             chunk = pending[:CHUNK]
-            done.extend(zip((timing for timing, _ in chunk), translate([text for _, text in chunk])))
+            texts = [text for _, text in chunk]
+            ends = sentence_ends(texts)
+            found = groups(texts, ends)
+            # The last clause may go on past the chunk: it is left to the next chunk, unless the chunk
+            # is the end of the track, the model closed it, or it is the only clause.
+            more = len(pending) > len(chunk)
+            if more and len(found) > 1 and found[-1][1] not in ends:
+                found = found[:-1]
+            english = translate([''.join(texts[a:b + 1]) for a, b in found])
+            done.extend((span(chunk[a][0], chunk[b][0]), text, b - a + 1)
+                        for (a, b), text in zip(found, english))
             write(os.path.join(job, 'media.en.vtt'),
-                  # No cue for a line that could not be placed: Reader matches English to Chinese by
-                  # timing, and the line keeps its quick English.
-                  'WEBVTT\n\n' + ''.join(f'{timing}\n{text}\n\n' for timing, text in done if text))
-        finished = not growing and len(done) == len(available)
+                  # One cue per clause, across its lines: Reader shows the lines one cue covers as one.
+                  # No cue for a clause that could not be placed: Reader matches English to Chinese by
+                  # timing, and those lines keep their quick English.
+                  'WEBVTT\n\n' + ''.join(f'{timing}\n{text}\n\n' for timing, text, _ in done if text))
+            through = sum(n for _, _, n in done)
+        finished = not growing and through == len(available)
         write(os.path.join(job, 'translate.json'),
-              json.dumps({'through': len(done), 'total': len(available), 'done': finished}))
+              json.dumps({'through': through, 'total': len(available), 'done': finished}))
         if finished:
-            print(f'translated {len(done)} lines', flush=True)
+            print(f'translated {through} lines in {len(done)} clauses', flush=True)
             return
         if not pending or growing:
             time.sleep(2)

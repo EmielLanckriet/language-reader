@@ -25,6 +25,7 @@
 	let {
 		file,
 		cues,
+		sourceCues,
 		lines,
 		language = 'zh',
 		startAt = 0,
@@ -42,6 +43,11 @@
 	}: {
 		file: File;
 		cues: Cue[];
+		/**
+		 * The document's own lines, when `cues` shows some of them as one (a clause the subtitles cut):
+		 * what the recorder counts in, since the offsets it writes are theirs.
+		 */
+		sourceCues?: Cue[];
 		lines: LineWord[][];
 		language?: string;
 		startAt?: number;
@@ -74,7 +80,7 @@
 	function reveal(line: number) {
 		if (!translations[line]) onask?.(line);
 		revealed = revealed.includes(line) ? revealed.filter((i) => i !== line) : [...revealed, line];
-		if (revealed.includes(line)) recorder?.translation(line, translations[line]?.source);
+		if (revealed.includes(line)) recorder?.translation(sourceOf(line), translations[line]?.source);
 	}
 	/** How much English there is: every line with some, and those the LLM has improved. */
 	const english = $derived({
@@ -112,7 +118,7 @@
 		const media = active();
 		if (!media) return;
 		const time = media.currentTime;
-		if (!media.paused) recorder?.playing(lineAt(time), moment());
+		if (!media.paused) recorder?.playing(sourceLineAt(time), moment());
 		// The screen is locked: no animation frames, so watchLineEnd cannot stop at a line's end.
 		if (away) checkLineEnd(media);
 		let at = -1;
@@ -124,6 +130,19 @@
 			document
 				.getElementById(`line-${at}`)
 				?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	}
+
+	/** The document's own line playing at `time`, for the recorder. */
+	function sourceLineAt(time: number): number {
+		const own = sourceCues ?? cues;
+		let at = -1;
+		for (let i = 0; i < own.length && own[i].start <= time; i++) at = i;
+		return at;
+	}
+
+	/** The document's first own line of shown line `line`, for the recorder. */
+	function sourceOf(line: number): number {
+		return line < 0 || !cues[line] ? line : sourceLineAt(cues[line].start);
 	}
 
 	/** The line playing at `time`: the last one started, as follow() decides. */
@@ -248,7 +267,7 @@
 	/** Replay the current sentence, or the one before it. */
 	function replayFrom(via: string, before: boolean) {
 		const line = before && currentLine > 0 ? currentLine - 1 : currentLine;
-		recorder?.replay(currentLine, before && currentLine > 0, moment().mediaMs, via);
+		recorder?.replay(sourceOf(currentLine), before && currentLine > 0, moment().mediaMs, via);
 		seek(line);
 	}
 
@@ -383,7 +402,7 @@
 		if (!translations[currentLine]) onask?.(currentLine);
 		unblurred = unblurred === currentLine ? -1 : currentLine;
 		if (unblurred === currentLine)
-			recorder?.translation(currentLine, translations[currentLine]?.source);
+			recorder?.translation(sourceOf(currentLine), translations[currentLine]?.source);
 	}
 
 	/** ◀ goes to the start of this line when more than a second in, as Language Reactor does. */
@@ -399,7 +418,7 @@
 	function replay() {
 		const again = performance.now() - replayedAt < 1500;
 		replayedAt = performance.now();
-		recorder?.replay(currentLine, again && currentLine > 0, moment().mediaMs);
+		recorder?.replay(sourceOf(currentLine), again && currentLine > 0, moment().mediaMs);
 		seek(again && currentLine > 0 ? currentLine - 1 : currentLine);
 	}
 

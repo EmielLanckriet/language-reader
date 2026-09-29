@@ -1328,6 +1328,37 @@ const scenarios = {
 		}
 	},
 
+	// A clause the subtitles cut over two lines is shown as one line with one English, once Termux's
+	// English cue spans both. Needs fixture-media's media.en.vtt made by translate.py with
+	// TRANSLATE_STUB=1 and every two lines one clause (see the commit that added this).
+	async clauses() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			const shown = await until(
+				'the first line to show two lines as one, with its English',
+				() =>
+					tab.evaluate(`
+						const box = document.querySelector('.all-english input');
+						if (box && !box.checked) box.click();
+						const first = document.querySelector('#line-0');
+						const english = first?.querySelector('.english')?.textContent;
+						if (!english?.startsWith('EN: ')) return null;
+						const chinese = [...first.querySelectorAll('.token')].map((t) => t.textContent).join('').replace(/[^\\u4e00-\\u9fff]/g, '');
+						return { chinese, english, shown: document.querySelectorAll('.lines p').length };
+					`),
+				60000,
+				250
+			);
+			return {
+				pass: shown.english === 'EN: ' + shown.chinese && [...shown.chinese].length > 3,
+				...shown
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async media() {
 		const tab = await openTab('about:blank');
 		try {
