@@ -93,6 +93,41 @@ async function settled(t: Transcriber): Promise<void> {
 }
 
 describe('the transcriber', () => {
+	it.each([false, true])(
+		'settles after a checkpoint write fails (persistent: %s)',
+		async (persistent) => {
+			const s = storage();
+			const calls: SpeechRequest[] = [];
+			const deps = s.deps(() => fakeWorker(calls));
+			const save = deps.writeProgress;
+			let failures = 0;
+			deps.writeProgress = async (job, progress) => {
+				if (progress.windowsDone === 2 && (persistent || failures === 0)) {
+					failures++;
+					throw new Error('Checkpoint storage unavailable');
+				}
+				await save(job, progress);
+			};
+			const t = new Transcriber(deps);
+			t.wake();
+			await settled(t);
+			expect(calls.filter((m) => m.type === 'transcribe').map((m) => m.from)).toEqual([0, 1]);
+			if (persistent) {
+				expect(t.state('job')).toEqual({
+					kind: 'failed',
+					reason: 'Checkpoint storage unavailable'
+				});
+				expect(s.saved.get('job')?.windowsDone).toBe(1);
+				expect(s.documents).toEqual([]);
+			} else {
+				expect(t.state('job')?.kind).toBe('done');
+				expect(s.saved.get('job')?.tokens).toEqual(WINDOWS.flat());
+				expect(s.documents).toHaveLength(1);
+			}
+		},
+		1000
+	);
+
 	it('gives the same transcript when stopped halfway and resumed as when run straight through', async () => {
 		const straight = storage();
 		const a = new Transcriber(straight.deps(() => fakeWorker()));

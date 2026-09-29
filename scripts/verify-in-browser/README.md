@@ -79,3 +79,37 @@ to have worked.
 
 Ad-hoc poking at a live page is fine and does not belong here; write it in a scratch directory and
 throw it away. What belongs here is a check worth running again.
+
+## Isolated phone and browser interaction
+
+For synthetic lookups, reviews, corrections, imports, and recovery tests:
+
+```sh
+npm run verify:isolated             # laptop
+npm run verify:isolated -- --phone  # USB phone, using adb -d reverse
+```
+
+This builds in `verification` mode, serves the test reader at
+`http://127.0.0.1:4176/language-reader/`, and starts a disposable reader service at port 18765.
+All app service callers use that port in this build; the daily reader continues to use 8765.
+The test reader displays a banner and cannot launch the real Termux helper. The script prints its
+service data directory, creates an empty downloads directory (no link to personal downloads), and
+stubs translation. Put small fixture bundles under that directory's `downloads/` to test import.
+The script refuses occupied ports or existing adb mappings and removes only mappings it creates.
+Ctrl-C stops its servers; the temporary data directory is retained for inspection.
+
+The script does not open or interact with the phone. Before driving it, check the foreground app
+immediately before each input; pause if the user is using another app. Open the test address in
+Chrome once it is appropriate. The test origin's browser data persists across runs, independently
+of the fresh service root. For a clean run, clear only this test origin or use a fresh laptop
+profile. Never restore personal learning backups into the test reader.
+
+Separate URL paths, documents, or sessions are **not** storage isolation. Do not automate learning
+interactions in the installed daily reader. Its installation/update behavior still needs a narrow
+production-origin check, reported separately; localhost verification does not establish that.
+
+The test build shares `build/` with normal local builds. Before production-like browser checks,
+rebuild with `BASE_PATH=/language-reader npm run build`. CI always makes its own production build.
+A speech checkpoint-write failure now retries from the saved window once, then reports failure;
+the focused regression is `tests/speech/transcriber.test.ts`. This does not resolve the recorded
+real-audio resume discrepancy in the backlog.

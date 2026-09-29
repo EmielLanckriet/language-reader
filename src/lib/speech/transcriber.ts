@@ -247,42 +247,51 @@ export class Transcriber {
 		const client = this.client!;
 		return new Promise((resolve, reject) => {
 			let windows = 0;
+			let ended = false;
 			// One reply at a time, in order: each window is saved before the next is looked at.
 			let chain = Promise.resolve();
 			this.abandon = () => {
+				ended = true;
 				off();
 				resolve('stopped');
 			};
 			const off = client.listen((reply: SpeechReply) => {
-				chain = chain.then(async () => {
-					if (this.closed) {
-						off();
-						return resolve('stopped');
-					}
-					if (reply.type === 'failed') {
-						off();
-						return reject(new Error(reply.reason));
-					}
-					if (!('job' in reply) || reply.job !== job) return;
-					if (reply.type === 'planned') {
-						progress.duration = reply.duration;
-						windows = reply.windows;
-						this.publish(job, this.transcribing(progress, windows));
-					} else if (reply.type === 'window') {
-						progress.tokens.push(...reply.tokens);
-						progress.windowsDone = reply.index + 1;
-						await this.deps.writeProgress(job, progress);
+				chain = chain
+					.then(async () => {
+						if (ended) return;
 						if (this.closed) {
 							off();
 							return resolve('stopped');
 						}
-						this.publish(job, this.transcribing(progress, windows));
-						if (this.ahead(job)) client.port.postMessage({ type: 'stop' });
-					} else if (reply.type === 'finished' || reply.type === 'stopped') {
+						if (reply.type === 'failed') throw new Error(reply.reason);
+						if (!('job' in reply) || reply.job !== job) return;
+						if (reply.type === 'planned') {
+							progress.duration = reply.duration;
+							windows = reply.windows;
+							this.publish(job, this.transcribing(progress, windows));
+						} else if (reply.type === 'window') {
+							progress.tokens.push(...reply.tokens);
+							progress.windowsDone = reply.index + 1;
+							await this.deps.writeProgress(job, progress);
+							if (this.closed) {
+								off();
+								return resolve('stopped');
+							}
+							this.publish(job, this.transcribing(progress, windows));
+							if (this.ahead(job)) client.port.postMessage({ type: 'stop' });
+						} else if (reply.type === 'finished' || reply.type === 'stopped') {
+							ended = true;
+							off();
+							resolve(reply.type);
+						}
+					})
+					.catch((error: unknown) => {
+						// Reject the window loop too: a rejected save otherwise leaves it waiting forever.
+						// Replies already queued from this worker must not write after the retry starts.
+						ended = true;
 						off();
-						resolve(reply.type);
-					}
-				});
+						reject(error);
+					});
 			});
 			client.port.postMessage({
 				type: 'transcribe',

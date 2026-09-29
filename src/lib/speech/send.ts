@@ -13,7 +13,7 @@ import {
 	TRANSCRIPT_SENT
 } from '$lib/media/store';
 
-const SERVICE = 'http://127.0.0.1:8765';
+import { SERVICE } from '$lib/media/service-address';
 
 /**
  * Reader is transcribing: Termux's translation waits between chunks while it hears this every 20 s

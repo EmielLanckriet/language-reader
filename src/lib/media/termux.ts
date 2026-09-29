@@ -6,7 +6,7 @@
 import { importBundle, type Imported } from './import';
 import { importedJobs } from './store';
 
-const SERVICE = 'http://127.0.0.1:8765';
+import { SERVICE } from '$lib/media/service-address';
 
 export interface TermuxJob {
 	job: string;

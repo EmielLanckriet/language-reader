@@ -6,7 +6,7 @@
 
 import { parseSubtitles, type Cue } from './subtitles';
 
-const SERVICE = 'http://127.0.0.1:8765';
+import { SERVICE } from '$lib/media/service-address';
 const POLL_MS = 3000;
 
 export function followTranslation(

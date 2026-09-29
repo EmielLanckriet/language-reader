@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { VERIFICATION } from '$lib/media/service-address';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import '$lib/ui/app.css';
@@ -135,6 +136,9 @@
 	reading application would be worse than any of the notices are good.
 -->
 <div class="notices">
+	{#if VERIFICATION}
+		<p role="status">Test reader — separate learning history and backup service.</p>
+	{/if}
 	<InstallOffer />
 	<UpdateOffer />
 	<ReadOnlyNotice />

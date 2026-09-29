@@ -1,16 +1,9 @@
 <!--
 SYNC IMPACT REPORT
-Version change: 1.5.0 → 2.0.0
-Bump rationale: MAJOR. Principle III is redefined: Anki is no longer the scheduler; the Reader
-schedules and Anki is a read-only seed. The no-write constraint is unchanged. Recorded in ADR-0026.
-
-Modified principles:
-  - III. "Anki Is Authoritative And Read-Mostly" → "Anki Is Read, Never Written"
-
-Added sections: none
-Removed sections: none
-
-Follow-up: none blocking. Plan checks of Principle III now check "never written" and "seed only".
+Version change: 2.0.0 → 2.1.0 (2026-09-29, ADR-0031)
+Allows a proportionate workflow for small reversible work and separate quality benchmarks.
+Earned-data test-first requirements and real-phone validation remain unchanged.
+Shared agent instructions and current-state entry point added; old specs remain historical.
 -->
 
 # Language Reader Constitution
@@ -50,7 +43,8 @@ unchanged by this.
 **Derived data is tested for its invariants, never for exact values.** Segmentation output MUST
 be asserted on properties — spans non-overlapping, spans covering the input exactly, offsets
 valid, every token resolving to a lexeme, re-segmentation idempotent for a fixed analyzer
-version — and MUST NOT be asserted against expected segmentations. Word-hood is undefined and
+version — and MUST NOT use an expected segmentation as a universal correctness invariant. Separate,
+versioned quality benchmarks MAY compare against reviewed reference segmentations (ADR-0031). Word-hood is undefined and
 analyzer-dependent, so expected values encode one analyzer's judgment and break on every
 upgrade. Earned data, by contrast, is asserted exactly.
 
@@ -273,11 +267,16 @@ Every new dependency MUST carry a named justification, per Principle V.
 
 ## Development Workflow
 
-The Spec Kit flow is followed in order: `specify` → `clarify` → `plan` → `tasks` → `implement`.
+For substantial features, earned-data contract changes, and architectural changes, the Spec Kit
+flow is followed in order: `specify` → `clarify` → `plan` → `tasks` → `implement`.
 
-`clarify` is MANDATORY on every feature, not optional. Ambiguity is disproportionately expensive
+`clarify` is MANDATORY within that full flow, not optional. Ambiguity is disproportionately expensive
 for a solo developer without professional software engineering experience, because unresolved
 ambiguity is resolved silently by the implementing agent rather than surfaced.
+
+Small fixes, documentation, UI adjustments, and reversible implementation changes MAY use a short
+problem statement, focused implementation, and relevant checks without generating a full set of
+specification artifacts (ADR-0031). Earned-data test-first requirements still apply.
 
 Every feature branch ends with a deploy and a phone check, per Principle I. ADRs are authored
 during `plan`, per Principle VI.
@@ -308,4 +307,4 @@ moving a seam under Principle V is an amendment.
 generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
 gates that pass without checking Principle III are invalid.
 
-**Version**: 2.0.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-27
+**Version**: 2.1.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-29

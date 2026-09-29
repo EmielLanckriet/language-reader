@@ -8,7 +8,7 @@
  * starts the service for the address below and opens `back` again, through Chrome's share panel.
  */
 
-const SERVICE = 'http://127.0.0.1:8765';
+import { SERVICE, VERIFICATION } from '$lib/media/service-address';
 const SEEN = 'reader.service';
 /** Set once Chrome came back from the Reader Start link because the app is not installed. */
 const NO_HELPER = 'reader.noReaderStart';
@@ -49,7 +49,7 @@ function stored(key: string): string | null {
 
 /** Whether to try Reader Start; false once Chrome has fallen back from it on this device. */
 export function helperExpected(): boolean {
-	return stored(NO_HELPER) === null;
+	return !VERIFICATION && stored(NO_HELPER) === null;
 }
 
 /**
@@ -70,6 +70,7 @@ export function cameBackWithoutHelper(): boolean {
 
 /** Open Reader Start and wait for the service; false when it did not answer within 20 s. */
 export async function startWithHelper(): Promise<boolean> {
+	if (VERIFICATION) return false;
 	const page = location.href.split('#')[0];
 	location.href =
 		'intent://start#Intent;scheme=reader-start;package=io.github.emiellanckriet.readerstart;' +
@@ -78,7 +79,7 @@ export async function startWithHelper(): Promise<boolean> {
 }
 
 export function canShareToTermux(): boolean {
-	return typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+	return !VERIFICATION && typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 }
 
 /**
@@ -86,6 +87,7 @@ export function canShareToTermux(): boolean {
  * the share sheet, or the service did not answer within 30 s of coming back.
  */
 export async function startBySharing(): Promise<boolean> {
+	if (VERIFICATION) return false;
 	try {
 		await navigator.share({
 			url: `${SERVICE}/start?back=${encodeURIComponent(location.href)}`

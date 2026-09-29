@@ -10,7 +10,7 @@ import { isPlayable, isSubtitle, mediaFiles, saveMedia } from '$lib/media/store'
 import { version } from '$app/environment';
 import { open, seal, type CopyBody } from './format';
 
-const SERVICE = 'http://127.0.0.1:8765';
+import { SERVICE } from '$lib/media/service-address';
 const LAST_SENT = 'reader.lastCopy';
 
 export type Found = { text: string; createdAt: string; documents: number; words: number };
