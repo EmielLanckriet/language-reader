@@ -65,6 +65,22 @@ export async function thumbnailOf(documentId: DocumentId): Promise<Blob | undefi
 }
 
 /**
+ * A YouTube title's parts: 【年度总结】一口气了解过去一年的全球经济｜关税战新格局 is three. Translated
+ * whole, quick English kept only "[annual summary]" of that (measured on the phone); part by part it
+ * keeps each.
+ */
+export function titleParts(title: string): string[] {
+	const parts = title
+		.split(/[【】[\]｜|丨]+/)
+		.map((part) => part.trim())
+		.filter(Boolean);
+	return parts.length > 0 ? parts : [title];
+}
+
+/** Bumped when the way titles are translated changes, so a kept one is translated again. */
+const TITLE_METHOD = 2;
+
+/**
  * English titles, from what was kept, else from quick English (ADR-0023) when its model is already
  * on the device: the library never starts that download itself.
  */
@@ -72,25 +88,37 @@ export async function englishTitles(
 	documents: { id: DocumentId; title: string }[],
 	onTitle: (id: DocumentId, english: string) => void
 ): Promise<() => void> {
-	const missing: { id: DocumentId; title: string }[] = [];
+	const missing: { id: DocumentId; title: string; parts: string[] }[] = [];
 	for (const document of documents) {
-		const kept = await readMediaJson<{ chinese: string; english: string }>(
+		const kept = await readMediaJson<{ chinese: string; english: string; method?: number }>(
 			document.id,
 			ENGLISH_TITLE
 		);
-		if (kept?.chinese === document.title) onTitle(document.id, kept.english);
-		else missing.push(document);
+		if (kept?.chinese === document.title && kept.method === TITLE_METHOD)
+			onTitle(document.id, kept.english);
+		else missing.push({ ...document, parts: titleParts(document.title) });
 	}
 	if (missing.length === 0 || !(await quickTranslatorPresent())) return () => {};
-	const done = new Set<number>();
+	// One line per part, in order; a title is done when all of its parts are.
+	const lines = missing.flatMap((document) => document.parts);
+	const owner = missing.flatMap((document, i) => document.parts.map(() => i));
+	const english: (string | undefined)[] = lines.map(() => undefined);
 	const translator = quickTranslation(
-		() => missing.map((document) => document.title),
-		(i) => done.has(i),
-		(i, english) => {
-			done.add(i);
-			const { id, title } = missing[i];
-			onTitle(id, english);
-			void writeMediaJson(id, ENGLISH_TITLE, { chinese: title, english });
+		() => lines,
+		(i) => english[i] !== undefined,
+		(i, text) => {
+			english[i] = text.trim();
+			const d = owner[i];
+			const parts = english.filter((_, j) => owner[j] === d);
+			if (parts.some((part) => part === undefined)) return;
+			const { id, title } = missing[d];
+			const joined = parts.filter(Boolean).join(' · ');
+			onTitle(id, joined);
+			void writeMediaJson(id, ENGLISH_TITLE, {
+				chinese: title,
+				english: joined,
+				method: TITLE_METHOD
+			});
 		},
 		() => {}
 	);
