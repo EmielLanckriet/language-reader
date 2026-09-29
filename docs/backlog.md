@@ -10,8 +10,9 @@ subtitles. Termux only downloads and translates, and waits while Reader transcri
 
 Open: decoding after a resume is not bit-exact. A transcript resumed at window 5 differed from four
 identical uninterrupted runs in two characters, in windows after the resume point; the lines were
-all there. Unexplained; the decoder starting two frames early or the resampler's phase are
-suspects, not measured.
+all there. Measured 2026-09-29: mid-file decoding changes the input samples, whereas decoding from zero
+matched the uninterrupted samples exactly in two trials. See `docs/audio-resume-investigation.md`.
+A bounded-memory replay and its startup cost still need evaluation; production resume is unchanged.
 
 2026-09-28, measured (harnesses in `scripts/measure/sensevoice/`): SenseVoice-Small (int8, 239 MB)
 running in Reader itself through onnxruntime-web, with 2 threads, number normalisation off, and

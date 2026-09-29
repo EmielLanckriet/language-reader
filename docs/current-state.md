@@ -43,16 +43,26 @@ Built bundles were checked for the correct service address in each mode.
 
 The isolated setup was checked on the connected Android phone on 2026-09-29: the test banner
 appeared, the built-in 52-character sample saved, and the disposable service received a backup
-containing that document. USB reverse mappings worked. Deployment/update verification is pending.
+containing that document. USB reverse mappings worked. Maintenance commit `638d543` was deployed successfully through
+GitHub Actions (run 36596561024); the installed reader offered the update and "Update now" was
+tapped. USB disconnected before the running version could be read, so final installed-version
+verification remains pending. The deployed build ID was `1790698663317`.
 The smoke check does not prove the checkpoint failure path on physical storage; that path is
 covered by injected-failure regressions.
+
+Device cleanup pending reconnection: restore `stay_on_while_plugged_in` to its previous value `0`.
+The test servers were stopped. Inspect and remove any remaining test reverse mappings on 4176,
+18765, and 18799; removal could not run after USB disconnected.
 
 ## Recorded validation and open limits
 
 - Spec 008 records a phone check on 2026-09-29: about 22.4 s per 28 s transcription window in the
   measured setup. Concurrent playback/translation can slow it; see ADR-0029.
 - Resumed real-audio transcription differed by two characters in a recorded comparison. The fake
-  worker regression proves orchestration, not bit-exact audio decoding. Root cause remains open.
+  worker regression proves orchestration, not bit-exact audio decoding. A phone measurement now
+  shows that mid-file AAC decoding changes the input samples; decoding from zero matched exactly
+  in two control trials. See [investigation](audio-resume-investigation.md). A bounded-memory
+  production remedy and its latency tradeoff remain open.
 - Long-video Chrome memory growth was not measured in the recorded phone check.
 - Segmentation corrections are built; the backlog still lists the real-phone join-and-sweep check
   as pending. The old Claude memory saying spec 004 is on hold is superseded.

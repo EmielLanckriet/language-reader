@@ -1,0 +1,84 @@
+{
+	"userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+	"duration": 230.8295625,
+	"rows": [
+		{
+			"fromBeginning": false,
+			"resumeAt": 5,
+			"window": 5,
+			"start": 120,
+			"samples": 480000,
+			"actual": 480000,
+			"different": 7260,
+			"first": 1109,
+			"last": 383074,
+			"max": 0.013885092921555042,
+			"rmse": 0.00016881303086570853
+		},
+		{
+			"fromBeginning": false,
+			"resumeAt": 5,
+			"window": 6,
+			"start": 148,
+			"samples": 480000,
+			"actual": 480000,
+			"different": 9322,
+			"first": 34222,
+			"last": 400217,
+			"max": 0.005010746419429779,
+			"rmse": 0.00006976556910832853
+		},
+		{
+			"fromBeginning": true,
+			"resumeAt": 5,
+			"window": 5,
+			"start": 120,
+			"samples": 480000,
+			"actual": 480000,
+			"different": 0,
+			"first": -1,
+			"last": -1,
+			"max": 0,
+			"rmse": 0
+		},
+		{
+			"fromBeginning": true,
+			"resumeAt": 5,
+			"window": 6,
+			"start": 148,
+			"samples": 480000,
+			"actual": 480000,
+			"different": 0,
+			"first": -1,
+			"last": -1,
+			"max": 0,
+			"rmse": 0
+		},
+		{
+			"fromBeginning": true,
+			"resumeAt": 5,
+			"window": 5,
+			"start": 120,
+			"samples": 480000,
+			"actual": 480000,
+			"different": 0,
+			"first": -1,
+			"last": -1,
+			"max": 0,
+			"rmse": 0
+		},
+		{
+			"fromBeginning": true,
+			"resumeAt": 5,
+			"window": 6,
+			"start": 148,
+			"samples": 480000,
+			"actual": 480000,
+			"different": 0,
+			"first": -1,
+			"last": -1,
+			"max": 0,
+			"rmse": 0
+		}
+	]
+}

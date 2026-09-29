@@ -35,3 +35,21 @@ version.
 5. `decode.html` decodes an ADTS AAC file (`ffmpeg -i media.mp4 -vn -c:a copy -f adts street.aac`)
    with WebCodecs in a worker, resamples it, and compares with the laptop's 16 kHz
    (`street-ref16.f32`, raw float32) served from the audio directory.
+
+## Reproducing the resume audio comparison
+
+From the repository root, with Node 24:
+
+```sh
+node scripts/measure/sensevoice/resume-audio.mjs /path/to/street-interview.mp4 /tmp/resume-results.json
+adb -d reverse --no-rebind tcp:18799 tcp:18799
+```
+
+When the phone is free, open `http://127.0.0.1:18799/` in its Chrome. The worker compares the actual
+app's decoded/resampled samples for uninterrupted playback, resume at window 5, and two controls
+that decode from frame zero. Use an AAC-LC recording longer than 178 seconds. Results are posted
+to the local server and saved at the supplied output path. No model download or Reader data is
+used. Stop with Ctrl-C and remove only this mapping: `adb -d reverse --remove tcp:18799`.
+
+The checked-in results and `docs/audio-resume-investigation.md` record the 2026-09-29 A71 run.
+This measures audio equivalence, not ASR quality or long-video memory use.
