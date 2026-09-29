@@ -167,6 +167,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_PUT(self):
         path = self.path.split('?')[0]
+        if path == '/busy':
+            # Reader is transcribing: translate.py waits between chunks while this is fresh, so the
+            # two do not share the phone's two fast cores (it took windows from 22 s to 55 s).
+            with open(os.path.join(self.root, 'busy'), 'w'):
+                pass
+            return self.reply(204)
         if path.startswith('/downloads/') and path.endswith('/media.zh.vtt'):
             return self.put_transcript(path[len('/downloads/'):-len('/media.zh.vtt')])
         if path != '/backup':

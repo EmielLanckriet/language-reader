@@ -2,8 +2,11 @@
 
 import os
 import tempfile
+import time
 import unittest
+from unittest import mock
 
+import translate
 from translate import place, source
 
 
@@ -38,6 +41,24 @@ class Source(unittest.TestCase):
         with open(os.path.join(job, 'media.zh.vtt'), 'w', encoding='utf-8') as file:
             file.write('WEBVTT\n\n00:00:00.200 --> 00:00:01.000\n上海\n')
         self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
+
+
+class WaitingForReader(unittest.TestCase):
+    def test_waits_while_reader_is_busy_and_not_once_it_stops(self):
+        busy = os.path.join(tempfile.mkdtemp(), 'busy')
+        open(busy, 'w').close()
+        slept = []
+
+        def sleep(seconds):
+            # Reader stops sending: the file ages past the limit.
+            slept.append(seconds)
+            os.utime(busy, (0, 0))
+
+        with mock.patch.object(translate, 'BUSY', busy), mock.patch.object(translate.time, 'sleep', sleep):
+            translate.wait_for_reader()
+            self.assertEqual(len(slept), 1)
+            translate.wait_for_reader()
+            self.assertEqual(len(slept), 1)
 
 
 if __name__ == '__main__':

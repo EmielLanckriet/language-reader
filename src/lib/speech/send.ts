@@ -15,6 +15,14 @@ import {
 
 const SERVICE = 'http://127.0.0.1:8765';
 
+/**
+ * Reader is transcribing: Termux's translation waits between chunks while it hears this every 20 s
+ * (the two together took a window from 22 s to 55 s on the phone). Best effort, like the rest.
+ */
+export function sayBusy(): void {
+	void fetch(`${SERVICE}/busy`, { method: 'PUT' }).catch(() => {});
+}
+
 /** Send one document's transcript, unless it has been; true once Termux has it or never will. */
 export async function sendTranscript(documentId: number): Promise<boolean> {
 	if (await readMediaJson(documentId, TRANSCRIPT_SENT)) return true;

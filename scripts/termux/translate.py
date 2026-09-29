@@ -31,6 +31,9 @@ MODEL = os.environ.get('TRANSLATE_MODEL', os.path.expanduser('~/.whisper/qwen3-1
 # available, which is why the margin is not smaller: the phone froze twice when this ran out.
 NEEDED_KB = 2_000_000
 STUB = os.environ.get('TRANSLATE_STUB') == '1'
+# Touched by the reader service while Reader transcribes (PUT /busy); Reader repeats it every 20 s.
+BUSY = os.environ.get('READER_BUSY', os.path.expanduser('~/.reader/busy'))
+BUSY_SECONDS = 90  # Chrome runs a hidden page's timers about once a minute
 THREADS = str(min(4, os.cpu_count() or 4))
 SYSTEM = ('You translate Chinese subtitles into natural English for a learner. For each numbered line, '
           'write the number, the Chinese line copied exactly, " => ", and its English translation, one line '
@@ -75,6 +78,22 @@ def wait_for_memory():
             print(f'waiting for memory: {free // 1000} MB free, {NEEDED_KB // 1000} MB needed', flush=True)
             said = True
         time.sleep(10)
+
+
+def wait_for_reader():
+    """Waits while Reader transcribes: measured on the phone, the two together took a 30 s window
+    from 22 s to 55 s, and the transcript is what the reader is waiting for."""
+    said = False
+    while True:
+        try:
+            if time.time() - os.path.getmtime(BUSY) > BUSY_SECONDS:
+                return
+        except OSError:
+            return
+        if not said:
+            print('waiting while Reader transcribes', flush=True)
+            said = True
+        time.sleep(5)
 
 
 def ask(lines):
@@ -176,6 +195,7 @@ def main(job):
         # transcript, which the reader is waiting for, took 6:50 against 4:20 without this beside it.
         # Reader's quick English covers those lines meanwhile (ADR-0023).
         if pending and not growing:
+            wait_for_reader()
             chunk = pending[:CHUNK]
             done.extend(zip((timing for timing, _ in chunk), translate([text for _, text in chunk])))
             write(os.path.join(job, 'media.en.vtt'),

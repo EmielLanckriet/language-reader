@@ -67,6 +67,12 @@ class TakingATranscript(unittest.TestCase):
         with open(os.path.join(self.job, 'runs')) as file:
             self.assertEqual(file.read().count('run'), 1)
 
+    def test_busy_touches_the_file_translate_waits_on(self):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1])
+        connection.request('PUT', '/busy')
+        self.assertEqual(connection.getresponse().status, 204)
+        self.assertLess(time.time() - os.path.getmtime(os.path.join(self.root, 'busy')), 5)
+
     def test_refuses_an_unknown_job_and_what_is_not_a_transcript(self):
         self.assertEqual(self.put('no-such-job', VTT), 404)
         self.assertEqual(self.put('..', VTT), 404)

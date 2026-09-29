@@ -18,11 +18,12 @@ import {
 import { modelState, TOTAL_BYTES } from './model';
 import { downloadModel, ModelDownloadError } from './model-download';
 import { calibrate, calibratedThreads, needsCalibration } from './calibrate';
-import { sendTranscript, sendUnsent } from './send';
+import { sayBusy, sendTranscript, sendUnsent } from './send';
 import { Transcriber, type Progress } from './transcriber';
 import { SpeechClient } from './worker-client';
 
 const RETRY_MS = 5 * 60 * 1000;
+const BUSY_MS = 20 * 1000;
 /** Files beside a pending video that are the transcriber's own, not the video's. */
 const OWN = new Set([PENDING_INFO, TRANSCRIPT, `${PENDING_INFO}.part`, `${TRANSCRIPT}.part`]);
 
@@ -127,6 +128,20 @@ export const transcriber = new Transcriber({
 	afterDocument: async (id) => void (await sendTranscript(id).catch(() => false))
 });
 
+/** Tells Termux while decoding runs, transcribing or calibrating, and stops telling it after. */
+class Heartbeat {
+	private timer: ReturnType<typeof setInterval> | undefined;
+	set(on: boolean): void {
+		if (on && !this.timer) {
+			sayBusy();
+			this.timer = setInterval(sayBusy, BUSY_MS);
+		} else if (!on && this.timer) {
+			clearInterval(this.timer);
+			this.timer = undefined;
+		}
+	}
+}
+
 let started = false;
 
 /** At app start: resume pending transcripts, and send the ones Termux has not got. */
@@ -136,6 +151,19 @@ export function startTranscriber(): () => void {
 	void speechSetup.refresh().then(() => transcriber.wake());
 	void sendUnsent();
 	const timer = setInterval(() => void sendUnsent(), RETRY_MS);
+	const heartbeat = new Heartbeat();
+	const decoding = new Set<string>();
+	let calibrating = false;
+	const beat = () => heartbeat.set(calibrating || decoding.size > 0);
+	const offSetup = speechSetup.subscribe((state) => {
+		calibrating = state.kind === 'calibrating';
+		beat();
+	});
+	const offJobs = transcriber.subscribe((job, state) => {
+		if (state.kind === 'loading' || state.kind === 'transcribing') decoding.add(job);
+		else decoding.delete(job);
+		beat();
+	});
 	const online = () => {
 		if (speechSetup.state.kind === 'paused') void speechSetup.download();
 	};
@@ -146,6 +174,9 @@ export function startTranscriber(): () => void {
 	document.addEventListener('visibilitychange', visible);
 	return () => {
 		clearInterval(timer);
+		offSetup();
+		offJobs();
+		heartbeat.set(false);
 		removeEventListener('online', online);
 		document.removeEventListener('visibilitychange', visible);
 	};
