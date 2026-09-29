@@ -17,6 +17,8 @@ export type Call =
 	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }
+	| { method: 'deletedWithHistory'; args: [] }
+	| { method: 'withdrawDocument'; args: [number, string] }
 	| { method: 'readHistory'; args: [] }
 	| { method: 'replaceTokens'; args: [number, unknown, unknown] }
 	| { method: 'advanceUpgrade'; args: [number, unknown, unknown] }

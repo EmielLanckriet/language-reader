@@ -231,6 +231,10 @@ function run(request: Request): unknown {
 			return repository.wordOccurrences(request.args[0]);
 		case 'playedThrough':
 			return repository.playedThrough(request.args[0]);
+		case 'deletedWithHistory':
+			return repository.deletedWithHistory();
+		case 'withdrawDocument':
+			return repository.withdrawDocument(request.args[0], request.args[1]);
 		case 'getStates':
 			return repository.getStates(request.args[0]);
 		case 'readHistory':

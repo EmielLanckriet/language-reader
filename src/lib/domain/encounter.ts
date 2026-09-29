@@ -19,6 +19,8 @@ export type EncounterKind =
 	| 'setting'
 	| 'attention'
 	| 'review'
+	/** The reader took the session back (ADR-0030): its encounters count for nothing. */
+	| 'withdrawn'
 	/** Not something the reader did: the parameters an Anki import brought, kept with the history. */
 	| 'anki-parameters';
 

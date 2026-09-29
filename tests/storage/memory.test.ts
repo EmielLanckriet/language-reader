@@ -314,6 +314,41 @@ describe('memory kept with the history', () => {
 		expect(kept).toEqual(rows(db));
 	});
 
+	it('counts nothing a withdrawn session did, as if it had never happened', async () => {
+		// Libraries alike but for what the first does and then withdraws: a session of only lookups
+		// (as a test of lookup speed left), then one read attentively.
+		const [withdrawn, attentiveOnly, never] = [await library(), await library(), await library()];
+		for (const { repository, documentId, lookup, read } of [withdrawn, attentiveOnly, never]) {
+			repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+				lookup(0, day(1)),
+				read(day(1)),
+				{ kind: 'attention', at: day(1, 11), detail: { answer: 'all' } }
+			]);
+		}
+		const attentively = (l: typeof withdrawn) => {
+			const session = l.repository.startSession(l.documentId, 'reading');
+			l.repository.recordEncounters(session, [
+				l.read(day(3)),
+				{ kind: 'attention', at: day(3, 11), detail: { answer: 'all' } }
+			]);
+			return session;
+		};
+		const { repository, documentId, lookup } = withdrawn;
+		const lookups = repository.startSession(documentId, 'reading');
+		repository.recordEncounters(lookups, [lookup(1, day(2)), lookup(1, day(2, 11))]);
+		const attentive = attentively(withdrawn);
+		attentively(attentiveOnly);
+		expect(rows(withdrawn.db)).not.toEqual(rows(attentiveOnly.db));
+
+		repository.withdrawSession(lookups, 'test lookups');
+		expect(rows(withdrawn.db)).toEqual(rows(attentiveOnly.db));
+		repository.withdrawSession(attentive, 'test reading');
+		const kept = rows(withdrawn.db);
+		expect(kept).toEqual(rows(never.db));
+		repository.rebuildMemory();
+		expect(rows(withdrawn.db)).toEqual(kept);
+	});
+
 	it('follows a re-segmentation, since the words a stretch covered are its current tokens', async () => {
 		const { db, repository, documentId, lookup, read } = await library();
 		repository.recordEncounters(repository.startSession(documentId, 'reading'), [

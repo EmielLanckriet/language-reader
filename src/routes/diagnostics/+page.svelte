@@ -22,6 +22,22 @@
 	let ankiBusy = $state(false);
 	let ankiImportsList = $state<{ id: string; words: number }[]>([]);
 	let recent = $state<RecentSession[]>([]);
+	/** Deleted documents whose sessions still count (ADR-0030). */
+	let deletedHistory = $state<{ id: number; title: string; sessions: number; lookups: number }[]>(
+		[]
+	);
+
+	async function forget(document: { id: number; title: string }) {
+		if (
+			!confirm(
+				`Forget what you did in “${document.title}”? Its lookups and viewing stop counting towards your words and cards.`
+			)
+		)
+			return;
+		const { repository } = await session();
+		await repository.withdrawDocument(document.id, 'forgotten from Diagnostics');
+		deletedHistory = await repository.deletedWithHistory();
+	}
 	let corrections = $state<{ language: string; form: string; parts: string[]; madeAt: string }[]>(
 		[]
 	);
@@ -273,6 +289,7 @@
 			persistence = s.persistence;
 			entries = await s.repository.readDiagnostics();
 			recent = await s.repository.recentEncounters();
+			deletedHistory = await s.repository.deletedWithHistory();
 			const analyzer = await activeAnalyzer();
 			stale = (await s.repository.staleDocumentIds(analyzer.name, analyzer.version)).length;
 			loading = false;
@@ -534,6 +551,25 @@
 {:else}
 	<p class="empty">Nothing recorded yet.</p>
 {/each}
+
+{#if deletedHistory.length > 0}
+	<h2 class="section">History of deleted documents</h2>
+	<p class="subtitle">
+		What you did in a document stays when you delete it, so your words keep what you learned. To
+		have a test copy or a mistake count for nothing, forget it here: the record stays, but it no
+		longer counts towards your words and cards.
+	</p>
+	<ul class="forgettable">
+		{#each deletedHistory as document (document.id)}
+			<li>
+				{document.title} · {document.sessions}
+				{document.sessions === 1 ? 'session' : 'sessions'} · {document.lookups}
+				{document.lookups === 1 ? 'lookup' : 'lookups'}
+				<button onclick={() => void forget(document)}>Forget</button>
+			</li>
+		{/each}
+	</ul>
+{/if}
 
 <h2 class="section">What has happened before</h2>
 <p class="subtitle">

@@ -246,6 +246,16 @@ export class RepositoryClient {
 		return this.call({ method: 'getStates', args: [lexemeIds] });
 	}
 
+	deletedWithHistory(): Promise<
+		{ id: DocumentId; title: string; sessions: number; lookups: number }[]
+	> {
+		return this.call({ method: 'deletedWithHistory', args: [] });
+	}
+
+	withdrawDocument(documentId: DocumentId, reason: string): Promise<void> {
+		return this.call({ method: 'withdrawDocument', args: [documentId, reason] });
+	}
+
 	playedThrough(documentIds: DocumentId[]): Promise<Map<DocumentId, number>> {
 		return this.call({ method: 'playedThrough', args: [documentIds] });
 	}

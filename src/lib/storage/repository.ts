@@ -166,12 +166,19 @@ import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
 import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
 
 /** Every word a stretch covered in a session answered "I tapped every word I didn't know". */
+/**
+ * Sessions the reader withdrew (a test, a mistake): their encounters stay in the history, which is
+ * append-only, but count for nothing in memory (ADR-0030).
+ */
+const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn'`;
+
 const ATTENTIVELY_SEEN = `
   SELECT DISTINCT t.lexeme_id FROM encounter a
     JOIN encounter e ON e.session_id = a.session_id AND e.kind IN ('read', 'played')
     JOIN token t ON t.document_id = e.document_id
                 AND t.start < e.to_offset AND t.end > e.from_offset
    WHERE a.kind = 'attention' AND json_extract(a.detail, '$.answer') = 'all'
+     AND a.session_id NOT IN (${WITHDRAWN})
      AND t.lexeme_id IS NOT NULL`;
 
 export class Repository {
@@ -819,6 +826,46 @@ export class Repository {
 	}
 
 	/**
+	 * Take back a session: a test, or a sitting the reader does not want counted (ADR-0030). Nothing
+	 * is removed; a `withdrawn` encounter joins it, and every word it touched is recomputed without it.
+	 */
+	withdrawSession(sessionId: number, reason: string): void {
+		this.recordEncounters(sessionId, [
+			{ kind: 'withdrawn', at: new Date().toISOString(), detail: { reason } }
+		]);
+	}
+
+	/** Deleted documents whose sessions still count, newest first: what the reader can take back. */
+	deletedWithHistory(): { id: DocumentId; title: string; sessions: number; lookups: number }[] {
+		return queryRows(
+			this.db,
+			`SELECT d.id, d.title, COUNT(DISTINCT s.id) AS sessions,
+              COUNT(CASE WHEN e.kind IN ('lookup', 'check') THEN 1 END) AS lookups
+         FROM document d JOIN session s ON s.document_id = d.id
+         LEFT JOIN encounter e ON e.session_id = s.id
+        WHERE d.removed_at IS NOT NULL AND s.id NOT IN (${WITHDRAWN})
+        GROUP BY d.id ORDER BY d.removed_at DESC`
+		).map((row) => ({
+			id: Number(row.id),
+			title: String(row.title),
+			sessions: Number(row.sessions),
+			lookups: Number(row.lookups)
+		}));
+	}
+
+	/** Every session in this document not yet withdrawn, withdrawn together (ADR-0030). */
+	withdrawDocument(documentId: DocumentId, reason: string): void {
+		transact(this.db, () => {
+			for (const row of queryRows(
+				this.db,
+				`SELECT id FROM session WHERE document_id = ? AND id NOT IN (${WITHDRAWN})`,
+				[documentId]
+			))
+				this.withdrawSession(Number(row.id), reason);
+		});
+	}
+
+	/**
 	 * Record a flashcard grade (FR-007) and recompute the word's memory with it. `shown` is the
 	 * sentence the card showed, so a later review can show another.
 	 */
@@ -851,7 +898,14 @@ export class Repository {
 		const touched = new Set<LexemeId>();
 		for (const encounter of encounters) {
 			if (encounter.lexemeId !== undefined) touched.add(encounter.lexemeId);
-			if (encounter.kind !== 'attention') continue;
+			if (encounter.kind === 'withdrawn')
+				for (const row of queryRows(
+					this.db,
+					'SELECT DISTINCT lexeme_id FROM encounter WHERE session_id = ? AND lexeme_id IS NOT NULL',
+					[sessionId]
+				))
+					touched.add(Number(row.lexeme_id));
+			if (encounter.kind !== 'attention' && encounter.kind !== 'withdrawn') continue;
 			for (const row of queryRows(
 				this.db,
 				`SELECT DISTINCT t.lexeme_id FROM encounter e
@@ -903,7 +957,8 @@ export class Repository {
 			this.db,
 			`SELECT e.kind, e.session_id, s.modality, e.text_visible, e.detail, e.at, e.device_id, e.device_seq
        FROM encounter e LEFT JOIN session s ON s.id = e.session_id
-       WHERE e.lexeme_id = ? AND e.kind IN ('lookup', 'check', 'review')`,
+       WHERE e.lexeme_id = ? AND e.kind IN ('lookup', 'check', 'review')
+         AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN}))`,
 			[lexemeId]
 		).map((row) => ({
 			...ordered(row),
@@ -923,7 +978,7 @@ export class Repository {
                        AND e.from_offset < t.end AND e.from_offset > t.start - ${MAX_RANGE}
                        AND e.to_offset > t.start AND e.kind IN ('read', 'played')
        JOIN session s ON s.id = e.session_id
-       WHERE t.lexeme_id = ?
+       WHERE t.lexeme_id = ? AND e.session_id NOT IN (${WITHDRAWN})
        GROUP BY e.session_id, e.text_visible, e.device_id`,
 			[lexemeId]
 		).map((row) => ({ ...ordered(row), ...optional(row) }) as Exposure);
