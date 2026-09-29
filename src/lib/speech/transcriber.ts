@@ -55,6 +55,14 @@ export interface TranscriberDeps {
 	afterDocument(documentId: number): Promise<void>;
 }
 
+/**
+ * While the reader watches, the transcript keeps this far ahead of playback and waits there (s).
+ * Measured on the phone: with the video playing, windows took 33 s instead of 22 s and the video
+ * ran at 0.75x, since the decoder, the video and quick English share two fast cores. A lead leaves
+ * them the cores; the rest is transcribed when playback pauses or the reader leaves.
+ */
+export const LEAD = 60;
+
 type Listener = (job: string, state: JobState, tokens: Token[]) => void;
 
 const same = (a: Method, b: Method) => JSON.stringify(a) === JSON.stringify(b);
@@ -72,8 +80,40 @@ export class Transcriber {
 	private again = false;
 	private closed = false;
 	private current: string | undefined;
+	private watching: { job: string; at: number } | undefined;
+	private resume: (() => void) | undefined;
+	/** Ends the window loop in progress: closing the worker drops its listeners, and so its end. */
+	private abandon: (() => void) | undefined;
 
-	constructor(private readonly deps: TranscriberDeps) {}
+	constructor(
+		private readonly deps: TranscriberDeps,
+		private readonly lead = LEAD
+	) {}
+
+	/** Where playback is in the video being watched; `undefined` once it pauses or the page goes. */
+	pace(job: string, at: number | undefined): void {
+		this.watching = at === undefined ? undefined : { job, at };
+		if (this.ahead(job)) {
+			if (this.current === job) this.client?.port.postMessage({ type: 'stop' });
+		} else this.resume?.();
+	}
+
+	private ahead(job: string): boolean {
+		const watching = this.watching;
+		if (!watching || watching.job !== job) return false;
+		return (this.tokens.get(job)?.at(-1)?.[1] ?? 0) - watching.at >= this.lead;
+	}
+
+	/** Until the watched video's lead runs short, or it stops being watched. */
+	private paced(job: string): Promise<void> {
+		if (!this.ahead(job)) return Promise.resolve();
+		return new Promise((resolve) => {
+			this.resume = () => {
+				this.resume = undefined;
+				resolve();
+			};
+		});
+	}
 
 	/** Every change of every job's state, starting with the current ones. */
 	subscribe(listener: Listener): () => void {
@@ -123,6 +163,8 @@ export class Transcriber {
 	/** Stop at once, writing nothing more: what happens to the work when Reader is closed. */
 	shutdown(): void {
 		this.closed = true;
+		this.resume?.();
+		this.abandon?.();
 		this.client?.close();
 		this.client = undefined;
 	}
@@ -145,6 +187,8 @@ export class Transcriber {
 			const job = await this.pick(jobs);
 			for (const other of jobs)
 				if (other !== job) this.publish(other, { kind: 'queued', behind: job });
+			await this.paced(job);
+			if (this.closed) return;
 			await this.transcribe(job);
 		}
 	}
@@ -205,6 +249,10 @@ export class Transcriber {
 			let windows = 0;
 			// One reply at a time, in order: each window is saved before the next is looked at.
 			let chain = Promise.resolve();
+			this.abandon = () => {
+				off();
+				resolve('stopped');
+			};
 			const off = client.listen((reply: SpeechReply) => {
 				chain = chain.then(async () => {
 					if (this.closed) {
@@ -229,6 +277,7 @@ export class Transcriber {
 							return resolve('stopped');
 						}
 						this.publish(job, this.transcribing(progress, windows));
+						if (this.ahead(job)) client.port.postMessage({ type: 'stop' });
 					} else if (reply.type === 'finished' || reply.type === 'stopped') {
 						off();
 						resolve(reply.type);

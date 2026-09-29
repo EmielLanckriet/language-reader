@@ -36,21 +36,31 @@ const WINDOWS: Token[][] = [
 	]
 ];
 
+/** Like the real worker: one window at a time, and `stop` is looked at before each. */
 function fakeWorker(calls: SpeechRequest[] = []): SpeechPort {
+	let stopping = false;
+	const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 	const port: SpeechPort = {
 		onmessage: null,
 		terminate() {},
 		postMessage(message) {
 			calls.push(message);
 			const send = (reply: SpeechReply) =>
-				queueMicrotask(() => port.onmessage?.({ data: reply } as MessageEvent<SpeechReply>));
-			if (message.type === 'open') send({ type: 'opened', ms: 1 });
+				port.onmessage?.({ data: reply } as MessageEvent<SpeechReply>);
+			if (message.type === 'open') queueMicrotask(() => send({ type: 'opened', ms: 1 }));
+			if (message.type === 'stop') stopping = true;
 			if (message.type === 'transcribe') {
-				send({ type: 'planned', job: message.job, duration: 90, windows: WINDOWS.length });
-				for (let i = message.from; i < WINDOWS.length; i++) {
-					send({ type: 'window', job: message.job, index: i, tokens: WINDOWS[i], ms: 1 });
-				}
-				send({ type: 'finished', job: message.job });
+				stopping = false;
+				void (async () => {
+					await tick();
+					send({ type: 'planned', job: message.job, duration: 90, windows: WINDOWS.length });
+					for (let i = message.from; i < WINDOWS.length; i++) {
+						await tick();
+						if (stopping) return send({ type: 'stopped', job: message.job, next: i });
+						send({ type: 'window', job: message.job, index: i, tokens: WINDOWS[i], ms: 1 });
+					}
+					send({ type: 'finished', job: message.job });
+				})();
 			}
 		}
 	};
@@ -108,6 +118,29 @@ describe('the transcriber', () => {
 		expect(calls.find((m) => m.type === 'transcribe')).toMatchObject({ from: 2 });
 		expect(interrupted.documents).toEqual(straight.documents);
 		expect(straight.documents[0]).toContain('上海');
+	});
+
+	it('waits once it is a lead ahead of playback, and carries on as playback catches up', async () => {
+		const straight = storage();
+		const a = new Transcriber(straight.deps(() => fakeWorker()));
+		a.wake();
+		await settled(a);
+
+		const watched = storage();
+		const t = new Transcriber(
+			watched.deps(() => fakeWorker()),
+			20
+		);
+		t.pace('job', 0);
+		t.wake();
+		// Through 41 s after the third window, 41 s ahead of playback: it stops there and waits.
+		for (let i = 0; i < 20; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(watched.saved.get('job')!.windowsDone).toBe(3);
+		expect(watched.documents).toEqual([]);
+
+		t.pace('job', 30);
+		await settled(t);
+		expect(watched.documents).toEqual(straight.documents);
 	});
 
 	it('starts again from the beginning when what was saved came from a different method', async () => {

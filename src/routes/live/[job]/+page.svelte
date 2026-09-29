@@ -128,6 +128,20 @@
 		};
 	});
 
+	// While the video plays, the transcript keeps a lead on it rather than taking every core (LEAD).
+	$effect(() => {
+		const media = player;
+		if (!media) return;
+		const report = () => transcriber.pace(job, media.paused ? undefined : media.currentTime);
+		const events = ['play', 'pause', 'ended', 'timeupdate', 'seeked'];
+		for (const event of events) media.addEventListener(event, report);
+		report();
+		return () => {
+			for (const event of events) media.removeEventListener(event, report);
+			transcriber.pace(job, undefined);
+		};
+	});
+
 	let moving = false;
 	async function moveTo(documentId: number) {
 		if (moving) return;
