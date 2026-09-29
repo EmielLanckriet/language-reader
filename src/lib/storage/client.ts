@@ -246,6 +246,10 @@ export class RepositoryClient {
 		return this.call({ method: 'getStates', args: [lexemeIds] });
 	}
 
+	playedThrough(documentIds: DocumentId[]): Promise<Map<DocumentId, number>> {
+		return this.call({ method: 'playedThrough', args: [documentIds] });
+	}
+
 	wordOccurrences(documentIds: DocumentId[]): Promise<Map<DocumentId, Map<LexemeId, number>>> {
 		return this.call({ method: 'wordOccurrences', args: [documentIds] });
 	}

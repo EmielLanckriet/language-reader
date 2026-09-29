@@ -79,6 +79,58 @@ describe('memory kept with the history', () => {
 		).toEqual([{ lexeme_id: words[0].lexemeId! }]);
 	});
 
+	it('credits only the words of the part that played, when a video was left halfway', async () => {
+		const { db, repository, documentId, words } = await library();
+		// 我看书 played, 你好将来 not: the reader stopped there and said they tapped every word.
+		const half = words.find((w) => w.start >= 3)!.start;
+		const session = repository.startSession(documentId, 'media');
+		repository.recordEncounters(session, [
+			{
+				kind: 'played',
+				at: day(5),
+				documentId,
+				fromOffset: 0,
+				toOffset: half,
+				mediaMs: 0,
+				speed: 1,
+				textVisible: true,
+				detail: { toMs: 5000 }
+			},
+			{ kind: 'attention', at: day(5, 11), detail: { answer: 'all' } }
+		]);
+
+		const credited = queryRows(db, 'SELECT DISTINCT lexeme_id FROM memory').map((row) =>
+			Number(row.lexeme_id)
+		);
+		const played = words.filter((w) => w.end <= half).map((w) => w.lexemeId!);
+		const unplayed = words.filter((w) => w.start >= half).map((w) => w.lexemeId!);
+		expect(new Set(credited)).toEqual(new Set(played));
+		expect(unplayed.some((id) => credited.includes(id))).toBe(false);
+	});
+
+	it('says how far playback reached in a video, for the library', async () => {
+		const { repository, documentId } = await library();
+		const played = (fromMs: number, toMs: number) => ({
+			kind: 'played',
+			at: day(5),
+			documentId,
+			fromOffset: 0,
+			toOffset: 3,
+			mediaMs: fromMs,
+			speed: 1,
+			textVisible: true,
+			detail: { toMs }
+		});
+		repository.recordEncounters(repository.startSession(documentId, 'media'), [
+			played(0, 5000),
+			played(20000, 31000),
+			played(9000, 12000)
+		]);
+		expect(repository.playedThrough([documentId, documentId + 1])).toEqual(
+			new Map([[documentId, 31000]])
+		);
+	});
+
 	it('finds words from earlier attentive sessions that have no memory yet, and stops', async () => {
 		const { db, repository, documentId, words, read } = await library();
 		repository.assertState(words[1].lexemeId!, 'ignored');

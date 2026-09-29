@@ -482,6 +482,19 @@ export class Repository {
 		});
 	}
 
+	/** How far into each of these videos playback has reached, in ms: the library's progress. */
+	playedThrough(documentIds: DocumentId[]): Map<DocumentId, number> {
+		if (documentIds.length === 0) return new Map();
+		const rows = queryRows(
+			this.db,
+			`SELECT document_id, MAX(json_extract(detail, '$.toMs')) AS through FROM encounter
+        WHERE kind = 'played' AND document_id IN (${documentIds.map(() => '?').join(', ')})
+        GROUP BY document_id`,
+			documentIds
+		);
+		return new Map(rows.map((row) => [Number(row.document_id), Number(row.through)]));
+	}
+
 	/** How often each word occurs in each of these documents, for the library's shares. */
 	wordOccurrences(documentIds: DocumentId[]): Map<DocumentId, Map<LexemeId, number>> {
 		const found = new Map<DocumentId, Map<LexemeId, number>>();

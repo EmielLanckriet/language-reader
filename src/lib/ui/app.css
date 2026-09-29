@@ -183,8 +183,25 @@ textarea {
 	align-items: flex-start;
 }
 
-.library .picture {
+.library .frame {
+	position: relative;
 	flex: 0 0 auto;
+	display: block;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+/* How far the reader got: the furthest point played, along the picture's bottom edge. */
+.library .watched {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	height: 4px;
+	background: var(--unknown);
+}
+
+.library .picture {
+	display: block;
 	width: 7.5rem;
 	aspect-ratio: 16 / 9;
 	object-fit: cover;

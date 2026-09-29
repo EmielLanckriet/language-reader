@@ -8,6 +8,7 @@ import { quickTranslation, quickTranslatorPresent } from '$lib/translation/quick
 import type { DocumentId } from '$lib/domain/types';
 import {
 	isPlayable,
+	isSubtitle,
 	mediaFiles,
 	readMediaJson,
 	saveMedia,
@@ -123,6 +124,32 @@ export async function englishTitles(
 		() => {}
 	);
 	return () => translator.stop();
+}
+
+/** A video's length in ms: yt-dlp's duration, or where its last subtitle ends. */
+async function durationOf(documentId: DocumentId): Promise<number | undefined> {
+	const meta = await readMediaJson<{ duration?: number }>(documentId, 'meta.json');
+	if (typeof meta?.duration === 'number' && meta.duration > 0) return meta.duration * 1000;
+	const vtt = (await mediaFiles(documentId)).find((file) => isSubtitle(file.name));
+	const ends = [...((await vtt?.text()) ?? '').matchAll(/--> *(?:(\d+):)?(\d+):(\d+)[.,](\d+)/g)];
+	const last = ends.at(-1);
+	if (!last) return undefined;
+	const [, h = '0', m, sec, ms] = last;
+	return (
+		((Number(h) * 60 + Number(m)) * 60 + Number(sec)) * 1000 + Number(ms.padEnd(3, '0').slice(0, 3))
+	);
+}
+
+/** How far into each video the reader got, as a fraction: the furthest point played. */
+export async function progressOf(ids: DocumentId[]): Promise<Map<DocumentId, number>> {
+	const { repository } = await session();
+	const through = await repository.playedThrough(ids);
+	const found = new Map<DocumentId, number>();
+	for (const [id, ms] of through) {
+		const duration = await durationOf(id);
+		if (duration && ms > 0) found.set(id, Math.min(1, ms / duration));
+	}
+	return found;
 }
 
 /** Each document's shares of known, learning and new words, as of now. */

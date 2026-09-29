@@ -1194,6 +1194,15 @@ const scenarios = {
 				120000,
 				250
 			);
+			// Seven seconds played, from the sixth line, past the recorder's 5 s flush: the library shows how
+			// far that got.
+			await tab.evaluate(`
+				const player = document.querySelector('.player');
+				player.muted = true;
+				document.querySelectorAll('.seek')[5].click();
+				return true;
+			`);
+			await new Promise((resolve) => setTimeout(resolve, 7000));
 			await tab.goto('/');
 			const shown = await until(
 				'a picture and shares in the library',
@@ -1201,8 +1210,9 @@ const scenarios = {
 					tab.evaluate(`
 						const picture = document.querySelector('.library img.picture');
 						const meta = document.querySelector('.library .meta')?.textContent.replace(/\\s+/g, ' ').trim();
-						if (!picture?.naturalWidth || !meta?.includes('known')) return null;
-						return { width: picture.naturalWidth, height: picture.naturalHeight, meta };
+						const watched = document.querySelector('.library .watched')?.style.width;
+						if (!picture?.naturalWidth || !meta?.includes('known') || !watched) return null;
+						return { width: picture.naturalWidth, height: picture.naturalHeight, meta, watched };
 					`),
 				30000,
 				250

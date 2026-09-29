@@ -6,7 +6,7 @@
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import ErrorNotice from './ErrorNotice.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
-	import { englishTitles, sharesOf, thumbnailOf } from '$lib/media/cover';
+	import { englishTitles, progressOf, sharesOf, thumbnailOf } from '$lib/media/cover';
 	import type { Shares } from '$lib/domain/shares';
 
 	/** Videos or pasted texts: a video is a document with media beside it (ADR-0018). */
@@ -28,6 +28,7 @@
 	let shares = $state<Map<number, Shares>>(new Map());
 	let english = $state<Record<number, string>>({});
 	let pictures = $state<Record<number, string>>({});
+	let progress = $state<Map<number, number>>(new Map());
 
 	const percent = (share: number) => `${Math.round(share * 100)}%`;
 
@@ -40,6 +41,7 @@
 		const urls: string[] = [];
 		void sharesOf(listed.map((d) => d.id)).then((found) => !stopped && (shares = found));
 		if (kind === 'video') {
+			void progressOf(listed.map((d) => d.id)).then((found) => !stopped && (progress = found));
 			void englishTitles(listed, (id, text) => {
 				if (!stopped) english = { ...english, [id]: text };
 			}).then((stop) => (stopped ? stop() : (stopTitles = stop)));
@@ -118,11 +120,21 @@
 					class:with-picture={kind === 'video'}
 				>
 					{#if kind === 'video'}
-						{#if pictures[document.id]}
-							<img class="picture" src={pictures[document.id]} alt="" />
-						{:else}
-							<span class="picture"></span>
-						{/if}
+						{@const watched = progress.get(document.id)}
+						<span class="frame">
+							{#if pictures[document.id]}
+								<img class="picture" src={pictures[document.id]} alt="" />
+							{:else}
+								<span class="picture"></span>
+							{/if}
+							{#if watched}
+								<span
+									class="watched"
+									style:width={percent(watched)}
+									title={`Watched to ${percent(watched)}`}
+								></span>
+							{/if}
+						</span>
 					{/if}
 					<span class="text">
 						{document.title}
