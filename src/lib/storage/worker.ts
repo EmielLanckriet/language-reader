@@ -227,6 +227,8 @@ function run(request: Request): unknown {
 			);
 		case 'getMemory':
 			return repository.getMemory(request.args[0]);
+		case 'wordOccurrences':
+			return repository.wordOccurrences(request.args[0]);
 		case 'getStates':
 			return repository.getStates(request.args[0]);
 		case 'readHistory':

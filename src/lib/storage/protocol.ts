@@ -15,6 +15,7 @@ export type Call =
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'getMemory'; args: [number[]] }
+	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'readHistory'; args: [] }
 	| { method: 'replaceTokens'; args: [number, unknown, unknown] }
 	| { method: 'advanceUpgrade'; args: [number, unknown, unknown] }

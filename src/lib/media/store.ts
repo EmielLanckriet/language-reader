@@ -178,6 +178,13 @@ export const QUICK_ENGLISH = 'quick-english.json';
 /** The video's sound alone, for listening with the screen locked (media/audio-track.ts). Derived. */
 export const SOUND_ONLY = 'sound-only.m4a';
 
+/** The library's picture of a video: YouTube's (via Termux), or a frame Reader took from it. */
+export const THUMBNAIL = 'thumbnail.jpg';
+
+export function isPicture(name: string): boolean {
+	return /\.(jpe?g|png|webp)$/i.test(name);
+}
+
 export function isPlayable(name: string): boolean {
 	return /\.(mp4|webm|m4a|mp3|ogg|opus|wav)$/i.test(name);
 }

@@ -6,6 +6,9 @@
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import ErrorNotice from './ErrorNotice.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
+	import { englishTitles, sharesOf, thumbnailOf } from '$lib/media/cover';
+	import type { Shares } from '$lib/domain/shares';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	/** Videos or pasted texts: a video is a document with media beside it (ADR-0018). */
 	let {
@@ -23,6 +26,41 @@
 	let total = $state(0);
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
+	let shares = $state<Map<number, Shares>>(new Map());
+	const english = new SvelteMap<number, string>();
+	const pictures = new SvelteMap<number, string>();
+
+	const percent = (share: number) => `${Math.round(share * 100)}%`;
+
+	// The extras load after the list, each at its own pace: a slow one never holds the titles back.
+	$effect(() => {
+		const listed = documents;
+		if (listed.length === 0) return;
+		let stopped = false;
+		let stopTitles = () => {};
+		const urls: string[] = [];
+		void sharesOf(listed.map((d) => d.id)).then((found) => !stopped && (shares = found));
+		if (kind === 'video') {
+			void englishTitles(listed, (id, text) => {
+				if (!stopped) english.set(id, text);
+			}).then((stop) => (stopped ? stop() : (stopTitles = stop)));
+			void (async () => {
+				for (const d of listed) {
+					const picture = await thumbnailOf(d.id).catch(() => undefined);
+					if (stopped) return;
+					if (!picture) continue;
+					const url = URL.createObjectURL(picture);
+					urls.push(url);
+					pictures.set(d.id, url);
+				}
+			})();
+		}
+		return () => {
+			stopped = true;
+			stopTitles();
+			for (const url of urls) URL.revokeObjectURL(url);
+		};
+	});
 
 	async function load() {
 		try {
@@ -74,10 +112,40 @@
 {:else}
 	<ul class="library">
 		{#each documents as document (document.id)}
+			{@const share = shares.get(document.id)}
 			<li>
-				<a href={resolve('/read/[id]', { id: String(document.id) })}>
-					{document.title}
-					<span class="meta">{document.characterCount.toLocaleString()} characters</span>
+				<a
+					href={resolve('/read/[id]', { id: String(document.id) })}
+					class:with-picture={kind === 'video'}
+				>
+					{#if kind === 'video'}
+						{#if pictures.get(document.id)}
+							<img class="picture" src={pictures.get(document.id)} alt="" />
+						{:else}
+							<span class="picture"></span>
+						{/if}
+					{/if}
+					<span class="text">
+						{document.title}
+						{#if english.get(document.id)}
+							<span class="english-title">{english.get(document.id)}</span>
+						{/if}
+						<span class="meta">
+							{document.characterCount.toLocaleString()} characters
+							{#if share}
+								· <span class="known">{percent(share.known)} known</span> ·
+								<span class="learning">{percent(share.learning)} learning</span> ·
+								<span class="fresh">{percent(share.fresh)} new</span>
+							{/if}
+						</span>
+						{#if share}
+							<span class="shares" aria-hidden="true">
+								<span class="known" style:width={percent(share.known)}></span>
+								<span class="learning" style:width={percent(share.learning)}></span>
+								<span class="fresh" style:width={percent(share.fresh)}></span>
+							</span>
+						{/if}
+					</span>
 				</a>
 			</li>
 		{/each}

@@ -30,6 +30,7 @@ cd "$work"
 # machine-translated variants (zh-Hant-zh-CN, ...) as well got rate-limited (HTTP 429). The app
 # sees human and automatic tracks and prefers human; nothing is decided here.
 # --ignore-errors: a failed subtitle must not cost the video.
+# --write-thumbnail: YouTube's picture for the library, as media.jpg (ffmpeg converts it).
 # Through python3: the zipapp's /usr/bin/env shebang fails when Termux starts this from a share.
 # progress.json while downloading, so Reader can show a bar from the moment of the share; it goes
 # once the bundle exists. Written by Python, because a title can hold anything JSON must escape.
@@ -42,6 +43,7 @@ python3 "$(command -v yt-dlp)" \
 	--write-subs --write-auto-subs --sub-langs 'zh,zh-CN,zh-Hans,zh-SG,zh-TW,zh-Hant,zh-HK' --sub-format vtt \
 	--sleep-subtitles 2 --ignore-errors \
 	--write-info-json --no-write-playlist-metafiles --no-playlist \
+	--write-thumbnail --convert-thumbnails jpg \
 	-o 'media.%(ext)s' \
 	"$url" | python3 -u -c '
 import json, os, re, sys

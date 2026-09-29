@@ -176,6 +176,65 @@ textarea {
 	font-size: 0.82rem;
 }
 
+/* A video: its picture beside the titles. */
+.library a.with-picture {
+	display: flex;
+	gap: 0.75rem;
+	align-items: flex-start;
+}
+
+.library .picture {
+	flex: 0 0 auto;
+	width: 7.5rem;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	border-radius: 4px;
+	background: var(--rule);
+}
+
+.library .text {
+	display: block;
+	min-width: 0;
+	flex: 1;
+}
+
+.library .english-title {
+	display: block;
+	color: var(--muted);
+	font-size: 0.88rem;
+	margin-top: 0.1rem;
+}
+
+.library .meta .known {
+	color: var(--known);
+}
+
+.library .meta .learning {
+	color: var(--learning);
+}
+
+/* How much of the text is known, learning and new: one thin bar, in the reading page's colours. */
+.library .shares {
+	display: flex;
+	height: 4px;
+	margin-top: 0.35rem;
+	border-radius: 2px;
+	overflow: hidden;
+	background: var(--rule);
+}
+
+.library .shares .known {
+	background: var(--known);
+}
+
+.library .shares .learning {
+	background: var(--learning);
+}
+
+.library .shares .fresh {
+	background: var(--new);
+}
+
 .empty {
 	color: var(--muted);
 	font-style: italic;

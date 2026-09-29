@@ -482,6 +482,26 @@ export class Repository {
 		});
 	}
 
+	/** How often each word occurs in each of these documents, for the library's shares. */
+	wordOccurrences(documentIds: DocumentId[]): Map<DocumentId, Map<LexemeId, number>> {
+		const found = new Map<DocumentId, Map<LexemeId, number>>();
+		if (documentIds.length === 0) return found;
+		const rows = queryRows(
+			this.db,
+			`SELECT document_id, lexeme_id, COUNT(*) AS n FROM token
+        WHERE is_word = 1 AND document_id IN (${documentIds.map(() => '?').join(', ')})
+        GROUP BY document_id, lexeme_id`,
+			documentIds
+		);
+		for (const row of rows) {
+			const id = Number(row.document_id);
+			const words = found.get(id) ?? new Map<LexemeId, number>();
+			words.set(Number(row.lexeme_id), Number(row.n));
+			found.set(id, words);
+		}
+		return found;
+	}
+
 	listDocuments(): DocumentSummary[] {
 		return queryRows(
 			this.db,

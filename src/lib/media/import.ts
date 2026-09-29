@@ -7,8 +7,10 @@ import { RejectedInput } from '$lib/content/types';
 import { readTar } from './tar';
 import { parseSubtitles } from './subtitles';
 import {
+	isPicture,
 	isPlayable,
 	isSubtitle,
+	THUMBNAIL,
 	saveMedia,
 	savePending,
 	writePending,
@@ -34,9 +36,12 @@ export async function importBundle(bundle: Blob, fallbackTitle: string): Promise
 		.sort((a, b) => preference(a.name) - preference(b.name));
 	const media = members.find((member) => isPlayable(member.name));
 	const meta = named('meta.json');
+	// YouTube's picture, when Termux saved one: kept as the library's thumbnail (store.ts).
+	const picture = members.find((member) => isPicture(member.name));
 	const keep = [media, meta].filter((member) => member !== undefined);
 	const files = (list: typeof keep) =>
 		list.map((member) => ({ name: member.name.split('/').pop()!, blob: member.blob }));
+	const thumbnail = picture ? [{ name: THUMBNAIL, blob: picture.blob }] : [];
 
 	// No subtitles: Reader transcribes the video itself (spec 008). An older Termux's
 	// transcribing.json is not kept; its transcript is never waited for.
@@ -45,7 +50,7 @@ export async function importBundle(bundle: Blob, fallbackTitle: string): Promise
 			throw new RejectedInput('This bundle has no Chinese subtitles and no video to transcribe.');
 		}
 		const job = crypto.randomUUID();
-		await savePending(job, files(keep));
+		await savePending(job, [...files(keep), ...thumbnail]);
 		await writePending(job, PENDING_INFO, { importedAt: new Date().toISOString() });
 		return { pending: job };
 	}
@@ -54,7 +59,8 @@ export async function importBundle(bundle: Blob, fallbackTitle: string): Promise
 	const chosen = subtitles[0];
 	const documentId = await createMediaDocument(title, await chosen.blob.text(), [
 		...files([chosen]),
-		...files(keep)
+		...files(keep),
+		...thumbnail
 	]);
 	return { documentId };
 }

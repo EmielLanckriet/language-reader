@@ -27,6 +27,15 @@ export type QuickReply =
 	| { kind: 'line'; index: number; english: string }
 	| { kind: 'failed'; message: string };
 
+/** Whether the model and runtime are all on the device: the library translates titles only then. */
+export async function quickTranslatorPresent(): Promise<boolean> {
+	if (!('caches' in globalThis)) return false;
+	const cache = await caches.open(MODEL_CACHE);
+	const wanted = [...RUNTIME_PATHS.map((path) => `${base}${path}`), ...Object.values(FILES)];
+	for (const url of wanted) if (!(await cache.match(url))) return false;
+	return true;
+}
+
 /** Fetches whatever of the model and runtime is not on the device yet, streamed into the cache. */
 async function ensureDownloaded(onProgress: (megabytes: number) => void): Promise<void> {
 	const cache = await caches.open(MODEL_CACHE);

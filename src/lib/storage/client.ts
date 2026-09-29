@@ -29,7 +29,7 @@ import type {
 } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
-import type { HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
+import type { DocumentId, HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
 import type { Encounter, Modality, Skill } from '../domain/encounter';
 import type { Memory } from '../domain/memory';
 import type { Part } from '../domain/corrections';
@@ -244,6 +244,10 @@ export class RepositoryClient {
 	getStates(lexemeIds: LexemeId[]): Promise<Map<LexemeId, WordState>> {
 		// A Map survives structuredClone intact, so it arrives as a Map rather than as an object.
 		return this.call({ method: 'getStates', args: [lexemeIds] });
+	}
+
+	wordOccurrences(documentIds: DocumentId[]): Promise<Map<DocumentId, Map<LexemeId, number>>> {
+		return this.call({ method: 'wordOccurrences', args: [documentIds] });
 	}
 
 	getMemory(lexemeIds: LexemeId[]): Promise<WordMemory> {
