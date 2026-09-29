@@ -122,13 +122,3 @@ incremental background operation to improve while using it already."
 - **Open**: the model's own settings ask for a 6-way beam search; greedy decoding is what was
   measured and shipped, as the fast first. Beams would cost about 6× per line.
 - The diagnostics page's "discard" frees the whole model cache, so it frees this model too.
-- **Amended 2026-09-29, clauses**: human subtitles cut sentences wherever a line runs out of room
-  (the 2025 recap: 1,830 lines, median 9 characters, 46 with punctuation, 93 % back to back), and a
-  line's English made sense only beside the next one. The LLM now translates clauses: before each
-  20 lines it punctuates them run together, a line end it marks ends a clause (and 40 characters
-  without one), and one English cue spans the clause's lines. Reader shows the lines one cue spans
-  as one line (`clausesOf`); the document's lines stay as they are underneath, so the history's
-  offsets are untouched. Measured on the laptop: 100 lines became 63 clauses in 124 s. Asking the
-  model to group lines outright failed (it paired lines mechanically and invented Chinese); only
-  punctuation worked, and it cuts at commas as well as full stops, so a long sentence can still be
-  two clauses.

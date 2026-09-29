@@ -1328,31 +1328,65 @@ const scenarios = {
 		}
 	},
 
-	// A clause the subtitles cut over two lines is shown as one line with one English, once Termux's
-	// English cue spans both. Needs fixture-media's media.en.vtt made by translate.py with
-	// TRANSLATE_STUB=1 and every two lines one clause (see the commit that added this).
-	async clauses() {
+	// A sentence the subtitles cut over two lines, joined by hand with ⊕: shown as one line with
+	// both lines' English, kept across a reload, and taken apart again with ✂.
+	async sentences() {
 		const tab = await openTab('about:blank');
+		const state = `
+			const box = document.querySelector('.all-english input');
+			if (box && !box.checked) box.click();
+			const first = document.querySelector('#line-0');
+			return {
+				shown: document.querySelectorAll('.lines p').length,
+				chinese: [...(first?.querySelectorAll('.token') ?? [])].map((t) => t.textContent).join('').replace(/[^\\u4e00-\\u9fff]/g, ''),
+				split: !!first?.querySelector('.split')
+			};`;
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
-			const shown = await until(
-				'the first line to show two lines as one, with its English',
-				() =>
-					tab.evaluate(`
-						const box = document.querySelector('.all-english input');
-						if (box && !box.checked) box.click();
-						const first = document.querySelector('#line-0');
-						const english = first?.querySelector('.english')?.textContent;
-						if (!english?.startsWith('EN: ')) return null;
-						const chinese = [...first.querySelectorAll('.token')].map((t) => t.textContent).join('').replace(/[^\\u4e00-\\u9fff]/g, '');
-						return { chinese, english, shown: document.querySelectorAll('.lines p').length };
-					`),
+			const before = await until(
+				'the lines',
+				async () => {
+					const s = await tab.evaluate(state);
+					return s.shown > 10 ? s : null;
+				},
+				120000,
+				250
+			);
+			const second = await tab.evaluate(
+				`return [...document.querySelectorAll('#line-1 .token')].map((t) => t.textContent).join('').replace(/[^\\u4e00-\\u9fff]/g, '');`
+			);
+			await tab.evaluate(`document.querySelector('#line-0 .join').click(); return true;`);
+			const joined = await until('the two lines as one', async () => {
+				const s = await tab.evaluate(state);
+				return s.shown === before.shown - 1 ? s : null;
+			});
+			// The join is saved beside the video (sentences.json) as it is made; a moment to finish.
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+			await tab.evaluate(`location.reload(); return true;`);
+			const kept = await until(
+				'the join after a reload',
+				async () => {
+					const s = await tab.evaluate(state);
+					return s.shown === before.shown - 1 ? s : null;
+				},
 				60000,
 				250
 			);
+			await tab.evaluate(`document.querySelector('#line-0 .split').click(); return true;`);
+			const apart = await until('the lines apart again', async () => {
+				const s = await tab.evaluate(state);
+				return s.shown === before.shown ? s : null;
+			});
 			return {
-				pass: shown.english === 'EN: ' + shown.chinese && [...shown.chinese].length > 3,
-				...shown
+				pass:
+					joined.chinese === before.chinese + second &&
+					joined.split &&
+					kept.chinese === joined.chinese &&
+					apart.chinese === before.chinese &&
+					!apart.split,
+				before,
+				joined,
+				apart
 			};
 		} finally {
 			await tab.close();

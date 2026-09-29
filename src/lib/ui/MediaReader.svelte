@@ -35,6 +35,9 @@
 		online,
 		status,
 		onword,
+		joined = [],
+		onjoin,
+		onsplit,
 		recorder,
 		title,
 		artist,
@@ -62,6 +65,11 @@
 		/** What the page is waiting on (progress bars), shown on the stage as well as above the list. */
 		status?: Snippet;
 		onword: (line: number, word: LineWord) => void;
+		/** Which lines are sentences the reader joined from several (media/sentences.ts). */
+		joined?: boolean[];
+		/** Join line i with the one after it, or take a joined line apart again. */
+		onjoin?: (line: number) => void;
+		onsplit?: (line: number) => void;
 		/** Where what happens during playback is written down (spec 007). */
 		recorder?: Recorder;
 		/** What the lock screen and headphones' controls say is playing. */
@@ -528,6 +536,17 @@
 								>
 								<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
 							</div>
+							{#if onjoin && currentLine >= 0}
+								<div class="moves">
+									{#if currentLine + 1 < cues.length}<button
+											onclick={() => onjoin(currentLine)}
+											aria-label="Join this line with the next">⊕</button
+										>{/if}{#if joined[currentLine]}<button
+											onclick={() => onsplit?.(currentLine)}
+											aria-label="Split this sentence into its lines again">✂</button
+										>{/if}
+								</div>
+							{/if}
 							<button class="setting" onclick={nextSpeed} aria-label="Playback speed"
 								>{speed}×</button
 							>
@@ -579,7 +598,16 @@
 						class:quick={translations[i]?.source === 'quick'}
 						title={translations[i]?.source === 'quick' ? 'Quick translation' : undefined}
 						lang="en">{translations[i]?.text}</span
-					>{:else if askable && cues[i]}<span class="english pending">translating…</span>{/if}{/if}
+					>{:else if askable && cues[i]}<span class="english pending">translating…</span
+					>{/if}{/if}{#if onjoin && i + 1 < cues.length}<button
+					class="join"
+					aria-label="Join this line with the next"
+					onclick={() => onjoin(i)}>⊕</button
+				>{/if}{#if joined[i]}<button
+					class="split"
+					aria-label="Split this sentence into its lines again"
+					onclick={() => onsplit?.(i)}>✂</button
+				>{/if}
 		</p>
 	{/each}
 </div>
@@ -796,7 +824,9 @@
 	.lines p.current {
 		background: color-mix(in srgb, currentColor 8%, transparent);
 	}
-	.reveal {
+	.reveal,
+	.join,
+	.split {
 		font-size: 0.65rem;
 		vertical-align: middle;
 		margin-left: 0.4rem;

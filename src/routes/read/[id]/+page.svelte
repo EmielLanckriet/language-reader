@@ -19,7 +19,15 @@
 	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, jobOf } from '$lib/media/translation';
-	import { saveMedia, removeMedia, dismissJob, QUICK_ENGLISH, SOUND_ONLY } from '$lib/media/store';
+	import {
+		saveMedia,
+		removeMedia,
+		dismissJob,
+		readMediaJson,
+		writeMediaJson,
+		QUICK_ENGLISH,
+		SOUND_ONLY
+	} from '$lib/media/store';
 	import { audioOnly } from '$lib/media/audio-track';
 	import { goto } from '$app/navigation';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
@@ -27,7 +35,14 @@
 	import { colourBand } from '$lib/domain/memory';
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { WordMemory } from '$lib/storage/client';
-	import { clausesOf, coveredByLlm, englishFor, llmByLine } from '$lib/translation/lines';
+	import { englishFor, llmByLine, type English } from '$lib/translation/lines';
+	import {
+		joinWithNext as joinSentences,
+		runsOf,
+		splitApart,
+		SENTENCES,
+		type Run
+	} from '$lib/media/sentences';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
 		quickTranslation,
@@ -75,7 +90,6 @@
 	let quick = $state<QuickTranslation | undefined>();
 	let quickStatus = $state<QuickStatus | undefined>();
 	const english = $derived(media ? englishFor(media.cues.length, llmLines, quickLines) : []);
-	const llmCovered = $derived(media ? coveredByLlm(media.cues, llmCues) : []);
 
 	$effect(() => {
 		const current = media;
@@ -97,7 +111,7 @@
 		quickLines = [...current.quick];
 		// The LLM has every line already: nothing for the quick model to add. Its finished file can
 		// still have gaps, lines it could not place, and those are the quick model's.
-		if (coveredByLlm(current.cues, current.translation).every(Boolean)) return;
+		if (llmByLine(current.cues, current.translation).every(Boolean)) return;
 
 		let unsaved = 0;
 		const save = () => {
@@ -111,7 +125,7 @@
 		const translator = untrack(() =>
 			quickTranslation(
 				() => chinese,
-				(i) => Boolean(llmCovered[i] || quickLines[i]),
+				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
 				(i, text) => {
 					const next = [...quickLines];
 					next[i] = text;
@@ -204,11 +218,30 @@
 	});
 
 	/**
-	 * What the player shows: a clause the subtitles cut over several lines as one line, with one
-	 * English, once the LLM has translated it so (clausesOf). The document's own lines stay as they
-	 * are underneath: the recorder and the quick model count in them.
+	 * What the player shows: lines the reader joined into one sentence as one line (sentences.ts),
+	 * with their English together. The document's own lines stay as they are underneath: the
+	 * recorder and the quick model count in them.
 	 */
-	const clauses = $derived(media ? clausesOf(media.cues, llmCues) : []);
+	let joined = $state<Run[]>([]);
+	let joinedFor: number | undefined;
+	let joinedChanged = false;
+	// Once per document, not whenever `media` is replaced: resetting then wiped a join just made.
+	$effect(() => {
+		const id = documentId;
+		if (id === undefined || joinedFor === id) return;
+		joinedFor = id;
+		joinedChanged = false;
+		joined = [];
+		void readMediaJson<Run[]>(id, SENTENCES).then((kept) => {
+			if (documentId === id && !joinedChanged) joined = kept ?? [];
+		});
+	});
+	const clauses = $derived(media ? runsOf(media.cues.length, joined) : []);
+	function keepJoined(next: Run[]) {
+		joinedChanged = true;
+		joined = next;
+		if (documentId !== undefined) void writeMediaJson(documentId, SENTENCES, next);
+	}
 	const shownCues = $derived.by(() => {
 		const cues = media?.cues ?? [];
 		return clauses.map(([first, last]) => ({
@@ -221,7 +254,17 @@
 		}));
 	});
 	const shownLines = $derived(clauses.map(([first, last]) => lines.slice(first, last + 1).flat()));
-	const shownEnglish = $derived(clauses.map(([first]) => english[first]));
+	const shownEnglish = $derived(
+		clauses.map(([first, last]): English | undefined => {
+			const parts = english.slice(first, last + 1);
+			const texts = parts.map((part) => part?.text).filter(Boolean);
+			if (texts.length === 0) return undefined;
+			return {
+				text: texts.join(' '),
+				source: parts.every((part) => part?.source === 'llm') ? 'llm' : 'quick'
+			};
+		})
+	);
 	const firstLineOf = (shown: number) => clauses[shown]?.[0] ?? shown;
 
 	function chooseWord(_line: number, word: LineWord) {
@@ -660,6 +703,9 @@
 			askable={quick !== undefined}
 			onask={(line) => quick?.focus(firstLineOf(line), true)}
 			online={(line) => quick?.focus(firstLineOf(line))}
+			joined={clauses.map(([first, last]) => last > first)}
+			onjoin={(line) => keepJoined(joinSentences(clauses, line))}
+			onsplit={(line) => keepJoined(splitApart(clauses, line))}
 			onword={chooseWord}
 			{recorder}
 			title={document.title}

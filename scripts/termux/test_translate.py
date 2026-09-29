@@ -1,6 +1,5 @@
 """python3 -m unittest scripts/termux/test_translate.py — the one check on placing the LLM's English."""
 
-import json
 import os
 import tempfile
 import time
@@ -42,36 +41,6 @@ class Source(unittest.TestCase):
         with open(os.path.join(job, 'media.zh.vtt'), 'w', encoding='utf-8') as file:
             file.write('WEBVTT\n\n00:00:00.200 --> 00:00:01.000\n上海\n')
         self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
-
-
-class Clauses(unittest.TestCase):
-    LINES = ['同时呢各个主要经济体', '都面临着经济增速受限', '保护主义抬头等等', '下一个就是2025年', '不得不提的一个词', 'AI']
-
-    def test_a_clause_ends_where_the_model_put_a_mark_after_a_line(self):
-        # What Qwen3-1.7B wrote for these lines, 是 added: that costs no boundary but its own.
-        punctuated = '同时呢，各个主要经济体都面临着经济增速受限，保护主义抬头等等，下一个就是2025年，不得不提的一个词是AI。'
-        self.assertEqual(translate.ends_from(self.LINES, punctuated), {1, 2, 3, 5})
-        self.assertEqual(translate.groups(self.LINES, {1, 2, 3, 5}), [[0, 1], [2, 2], [3, 3], [4, 5]])
-
-    def test_a_group_with_no_mark_is_still_cut_at_the_length_limit(self):
-        long = ['一二三四五六七八九十'] * 6
-        self.assertEqual(translate.groups(long, set()), [[0, 3], [4, 5]])
-
-    def test_one_english_cue_spans_the_lines_of_a_clause(self):
-        job = tempfile.mkdtemp()
-        with open(os.path.join(job, 'media.zh.vtt'), 'w', encoding='utf-8') as file:
-            file.write('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n今天天气\n\n'
-                       '00:00:02.000 --> 00:00:03.500\n非常好\n\n00:00:03.500 --> 00:00:05.000\n我们去公园吧\n')
-        with mock.patch.object(translate, 'STUB', True), \
-                mock.patch.object(translate, 'sentence_ends', lambda lines: {1, 2}), \
-                mock.patch.object(translate, 'wait_for_reader', lambda: None):
-            translate.main(job)
-        with open(os.path.join(job, 'media.en.vtt'), encoding='utf-8') as file:
-            english = file.read()
-        self.assertEqual(english, 'WEBVTT\n\n00:00:01.000 --> 00:00:03.500\nEN: 今天天气非常好\n\n'
-                                  '00:00:03.500 --> 00:00:05.000\nEN: 我们去公园吧\n\n')
-        with open(os.path.join(job, 'translate.json')) as file:
-            self.assertEqual(json.load(file), {'through': 3, 'total': 3, 'done': True})
 
 
 class WaitingForReader(unittest.TestCase):

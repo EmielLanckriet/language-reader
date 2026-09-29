@@ -38,38 +38,3 @@ export function llmByLine(
 	const at = new Map(english.map((cue) => [Math.round(cue.start * 1000), cue.text]));
 	return chinese.map((cue) => at.get(Math.round(cue.start * 1000)));
 }
-
-/**
- * The lines shown as one, as [first, last] pairs covering every line once, in order: translate.py
- * translates a clause the subtitles cut over several lines as one, and writes one English cue from
- * its first line's start to its last line's end. A line no such cue covers stays on its own.
- */
-export function clausesOf(
-	chinese: readonly { start: number; end: number }[],
-	english: readonly { start: number; end: number }[]
-): [number, number][] {
-	const ms = (seconds: number) => Math.round(seconds * 1000);
-	const ends = new Map(english.map((cue) => [ms(cue.start), ms(cue.end)]));
-	const found: [number, number][] = [];
-	for (let i = 0; i < chinese.length; i++) {
-		const end = ends.get(ms(chinese[i].start));
-		let last = i;
-		if (end !== undefined)
-			while (last + 1 < chinese.length && ms(chinese[last + 1].start) < end) last++;
-		found.push([i, last]);
-		i = last;
-	}
-	return found;
-}
-
-/** Whether each line has the LLM's English, its own or its clause's: the quick model skips those. */
-export function coveredByLlm(
-	chinese: readonly { start: number; end: number }[],
-	english: readonly { start: number; end: number; text: string }[]
-): boolean[] {
-	const own = llmByLine(chinese, english);
-	const covered = chinese.map(() => false);
-	for (const [first, last] of clausesOf(chinese, english))
-		if (own[first]?.trim()) for (let i = first; i <= last; i++) covered[i] = true;
-	return covered;
-}
