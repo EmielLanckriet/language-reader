@@ -15,6 +15,8 @@ Smaller chunks were measured worse, not better: at 5 lines a sentence split acro
 TRANSLATE_STUB=1 replaces the model with "EN: <line>", for tests that check plumbing, not English.
 """
 
+import fcntl
+from contextlib import contextmanager
 import glob
 import json
 import os
@@ -34,7 +36,8 @@ STUB = os.environ.get('TRANSLATE_STUB') == '1'
 # Touched by the reader service while Reader transcribes (PUT /busy); Reader repeats it every 20 s.
 BUSY = os.environ.get('READER_BUSY', os.path.expanduser('~/.reader/busy'))
 BUSY_SECONDS = 90  # Chrome runs a hidden page's timers about once a minute
-THREADS = str(min(4, os.cpu_count() or 4))
+THREADS = '1'
+MODEL_LOCK = os.environ.get('READER_MODEL_LOCK', os.path.expanduser('~/.reader/translation-model.lock'))
 SYSTEM = ('You translate Chinese subtitles into natural English for a learner. For each numbered line, '
           'write the number, the Chinese line copied exactly, " => ", and its English translation, one line '
           'per number, nothing else. Translate each line on its own; use the surrounding lines only for '
@@ -73,9 +76,9 @@ def available_kb():
 def wait_for_memory():
     """Waits while the phone is short of memory, e.g. while Reader is still translating quickly."""
     said = False
-    while (free := available_kb()) is not None and free < NEEDED_KB:
+    while (free := available_kb()) is None or free < NEEDED_KB:
         if not said:
-            print(f'waiting for memory: {free // 1000} MB free, {NEEDED_KB // 1000} MB needed', flush=True)
+            print('waiting for sufficient measurable free memory', flush=True)
             said = True
         time.sleep(10)
 
@@ -96,11 +99,52 @@ def wait_for_reader():
         time.sleep(5)
 
 
+def reader_busy():
+    try:
+        return time.time() - os.path.getmtime(BUSY) <= BUSY_SECONDS
+    except OSError:
+        return False
+
+
+def run_model(command):
+    """Stop an in-flight model if Reader starts work, memory collapses, or it stalls."""
+    deadline = time.monotonic() + 180
+    child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        while True:
+            try:
+                stdout, stderr = child.communicate(timeout=2)
+                if child.returncode:
+                    raise subprocess.CalledProcessError(child.returncode, command, stdout, stderr)
+                return stdout
+            except subprocess.TimeoutExpired:
+                free = available_kb()
+                if reader_busy() or free is None or free < 750_000 or time.monotonic() >= deadline:
+                    raise RuntimeError('Translation stopped to protect phone resources; reopen to retry.')
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate()
+
+
+@contextmanager
+def model_budget():
+    """One model across ALL videos; recheck resources after acquiring the process-wide lock."""
+    os.makedirs(os.path.dirname(MODEL_LOCK), exist_ok=True)
+    with open(MODEL_LOCK, 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            wait_for_memory()
+            wait_for_reader()
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
 def ask(lines):
     """English for each line, or None where the model's answer cannot be placed on it."""
     if STUB:
         return [f'EN: {line}' for line in lines]
-    wait_for_memory()
     numbered = '\n'.join(f'{i + 1}. {line}' for i, line in enumerate(lines))
     # The answer is started for the model: a 1.7B model ignores the echo format when only asked for
     # it, and follows it once the first line shows it.
@@ -111,11 +155,11 @@ def ask(lines):
     # without it, measured on laptop and phone; the phone was no slower without it.
     # -c: without it llama.cpp reserves the model's whole 40k-token context, measured at 6.4 GB peak
     # against 2.0 GB with 1024. That froze a 5.6 GB phone twice. 20 echoed lines need ~1000.
-    out = subprocess.run(
-        [LLAMA, '-m', MODEL, '-c', '2048', '--no-repack', '-p', prompt, '-n', str(60 * len(lines) + 40),
-         '--temp', '0.2', '-t', THREADS, '-no-cnv', '--no-display-prompt'],
-        capture_output=True, text=True, check=True,
-    ).stdout.replace('[end of text]', '')  # llama-completion's own end marker, not the model's
+    with model_budget():
+        out = run_model(
+            [LLAMA, '-m', MODEL, '-c', '2048', '--no-repack', '-p', prompt, '-n', str(60 * len(lines) + 40),
+             '--temp', '0.2', '-t', THREADS, '-no-cnv', '--no-display-prompt'],
+        ).replace('[end of text]', '')  # llama-completion's own end marker, not the model's
     answers = []
     for line in (start + out).splitlines():
         match = re.match(r'\s*(\d+)\.\s*(.*?)\s*=>\s*(.*\S)', line)

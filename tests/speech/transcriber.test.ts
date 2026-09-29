@@ -93,6 +93,43 @@ async function settled(t: Transcriber): Promise<void> {
 }
 
 describe('the transcriber', () => {
+	it('terminates on hide, settles even during loading, and resumes saved work', async () => {
+		const s = storage();
+		let terminated = 0;
+		const calls: SpeechRequest[] = [];
+		let opened!: () => void;
+		const loading = new Promise<void>((resolve) => {
+			opened = resolve;
+		});
+		let first = true;
+		const t = new Transcriber(
+			s.deps(() => {
+				if (!first) return fakeWorker(calls);
+				first = false;
+				return {
+					onmessage: null,
+					terminate() {
+						terminated++;
+					},
+					postMessage() {
+						opened();
+					}
+				};
+			})
+		);
+		t.wake();
+		await loading;
+		t.setActive(false);
+		await t.idle();
+		expect(terminated).toBe(1);
+		t.wake();
+		await t.idle();
+		expect(s.documents).toEqual([]);
+		t.setActive(true);
+		await t.idle();
+		expect(s.documents).toHaveLength(1);
+	});
+
 	it.each([false, true])(
 		'settles after a checkpoint write fails (persistent: %s)',
 		async (persistent) => {

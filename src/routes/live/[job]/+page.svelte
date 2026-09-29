@@ -47,7 +47,6 @@
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
 	let quickStatus = $state<QuickStatus | undefined>();
-	const transcribed = $derived(jobState?.kind === 'finishing' || jobState?.kind === 'done');
 	const english = $derived(englishFor(cues.length, [], quickLines));
 
 	$effect(() => {
@@ -62,8 +61,7 @@
 					next[i] = text;
 					quickLines = next;
 				},
-				(status) => (quickStatus = status),
-				() => transcribed
+				(status) => (quickStatus = status)
 			)
 		);
 		quick = translator;

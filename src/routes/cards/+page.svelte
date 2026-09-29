@@ -133,8 +133,7 @@
 				quickEnglish[i] = english;
 				if (i === index || asked[i] === current?.sentence?.text) show(current!.lexemeId, english);
 			},
-			() => {},
-			() => false
+			() => {}
 		);
 		quick.more();
 		quick.focus(index, true);

@@ -43,7 +43,7 @@
 		void serviceWorker();
 		startCopying();
 		// Transcribes waiting videos on any page while Reader is open (spec 008, FR-015).
-		startTranscriber();
+		const stopTranscriber = startTranscriber();
 
 		// Encounters a killed app left waiting (a ride with the screen locked): written now, and
 		// every few minutes, since a stash only counts as abandoned once it stops being updated.
@@ -61,6 +61,7 @@
 		// page stops being visible, because that is when this copy gives up the storage lease
 		// (FR-018, FR-019).
 		void startCatchUp();
+		return stopTranscriber;
 	});
 
 	async function startCatchUp() {

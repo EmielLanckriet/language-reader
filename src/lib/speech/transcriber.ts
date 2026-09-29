@@ -48,7 +48,7 @@ export interface TranscriberDeps {
 	writeProgress(job: string, progress: Progress): Promise<void>;
 	modelPresent(): Promise<boolean>;
 	threads(): Promise<number>;
-	worker(): SpeechClient;
+	worker(): SpeechClient | Promise<SpeechClient>;
 	/** Make the document from the finished transcript, and remove the pending video. */
 	finish(job: string, vtt: string, method: Method): Promise<number>;
 	/** After a document exists: hand the transcript on for translation (FR-019). */
@@ -79,6 +79,8 @@ export class Transcriber {
 	private running: Promise<void> | undefined;
 	private again = false;
 	private closed = false;
+	private suspended = false;
+	private generation = 0;
 	private current: string | undefined;
 	private watching: { job: string; at: number } | undefined;
 	private resume: (() => void) | undefined;
@@ -132,7 +134,7 @@ export class Transcriber {
 	 * could not create its document then (the storage lease goes with the page), and completes now.
 	 */
 	wake({ retry = false } = {}): void {
-		if (this.closed) return;
+		if (this.closed || this.suspended) return;
 		if (retry) this.failed.clear();
 		if (this.running) {
 			this.again = true;
@@ -160,9 +162,24 @@ export class Transcriber {
 		while (this.running) await this.running;
 	}
 
+	/** Hidden pages must release CPU and model memory, including a model still loading. */
+	setActive(active: boolean): void {
+		if (this.closed) return;
+		this.suspended = !active;
+		if (active) {
+			this.wake({ retry: true });
+		} else {
+			this.generation++;
+			this.resume?.();
+			this.abandon?.();
+			this.release();
+		}
+	}
+
 	/** Stop at once, writing nothing more: what happens to the work when Reader is closed. */
 	shutdown(): void {
 		this.closed = true;
+		this.generation++;
 		this.resume?.();
 		this.abandon?.();
 		this.client?.close();
@@ -177,7 +194,7 @@ export class Transcriber {
 
 	private async run(): Promise<void> {
 		for (;;) {
-			if (this.closed) return;
+			if (this.closed || this.suspended) return;
 			const jobs = (await this.deps.listPending()).filter((job) => !this.failed.has(job));
 			if (jobs.length === 0) return this.release();
 			if (!(await this.deps.modelPresent())) {
@@ -187,8 +204,9 @@ export class Transcriber {
 			const job = await this.pick(jobs);
 			for (const other of jobs)
 				if (other !== job) this.publish(other, { kind: 'queued', behind: job });
+			if (this.ahead(job)) this.release();
 			await this.paced(job);
-			if (this.closed) return;
+			if (this.closed || this.suspended) return;
 			await this.transcribe(job);
 		}
 	}
@@ -208,7 +226,10 @@ export class Transcriber {
 	}
 
 	private async transcribe(job: string): Promise<void> {
+		const generation = this.generation;
+		const interrupted = () => this.closed || this.suspended || generation !== this.generation;
 		const saved = await this.deps.readProgress(job);
+		if (interrupted()) return;
 		const progress: Progress =
 			saved && saved.version === 1 && same(saved.method, METHOD)
 				? saved
@@ -218,13 +239,22 @@ export class Transcriber {
 		try {
 			if (!this.client) {
 				this.publish(job, { kind: 'loading' });
-				this.client = this.deps.worker();
-				await this.client.open(this.deps.base, REVISION, await this.deps.threads());
+				const opened = await this.deps.worker();
+				if (interrupted()) {
+					opened.close();
+					return;
+				}
+				this.client = opened;
+				const client = this.client;
+				const threads = await this.deps.threads();
+				if (interrupted()) return;
+				await client.open(this.deps.base, REVISION, threads);
 			}
+			if (interrupted()) return;
 			const outcome = await this.windows(job, progress);
-			if (outcome === 'finished' && !this.closed) await this.complete(job, progress);
+			if (outcome === 'finished' && !interrupted()) await this.complete(job, progress);
 		} catch (error) {
-			if (this.closed) return;
+			if (interrupted()) return;
 			// A worker that died mid-window (out of memory, a crash) is replaced once; the job resumes
 			// from its saved windows. The same failure again is the job's, not the worker's.
 			this.release();
@@ -245,7 +275,16 @@ export class Transcriber {
 	/** Run the job's remaining windows, saving after each; resolves with how the run ended. */
 	private windows(job: string, progress: Progress): Promise<'finished' | 'stopped'> {
 		const client = this.client!;
-		return new Promise((resolve, reject) => {
+		let timeout: ReturnType<typeof setTimeout>;
+		return new Promise<'finished' | 'stopped'>((resolve, reject) => {
+			const arm = () => {
+				clearTimeout(timeout);
+				timeout = setTimeout(() => {
+					ended = true;
+					off();
+					reject(new Error('Speech processing exceeded its time limit.'));
+				}, 120_000);
+			};
 			let windows = 0;
 			let ended = false;
 			// One reply at a time, in order: each window is saved before the next is looked at.
@@ -253,27 +292,30 @@ export class Transcriber {
 			this.abandon = () => {
 				ended = true;
 				off();
-				resolve('stopped');
+				// Let an already-started checkpoint finish before a foreground restart reads it.
+				void chain.then(() => resolve('stopped'));
 			};
 			const off = client.listen((reply: SpeechReply) => {
 				chain = chain
 					.then(async () => {
 						if (ended) return;
-						if (this.closed) {
+						if (this.closed || this.suspended) {
 							off();
 							return resolve('stopped');
 						}
 						if (reply.type === 'failed') throw new Error(reply.reason);
 						if (!('job' in reply) || reply.job !== job) return;
 						if (reply.type === 'planned') {
+							arm();
 							progress.duration = reply.duration;
 							windows = reply.windows;
 							this.publish(job, this.transcribing(progress, windows));
 						} else if (reply.type === 'window') {
+							arm();
 							progress.tokens.push(...reply.tokens);
 							progress.windowsDone = reply.index + 1;
 							await this.deps.writeProgress(job, progress);
-							if (this.closed) {
+							if (ended || this.closed || this.suspended) {
 								off();
 								return resolve('stopped');
 							}
@@ -293,13 +335,14 @@ export class Transcriber {
 						reject(error);
 					});
 			});
+			arm();
 			client.port.postMessage({
 				type: 'transcribe',
 				job,
 				settings: METHOD.window,
 				from: progress.windowsDone
 			});
-		});
+		}).finally(() => clearTimeout(timeout));
 	}
 
 	private transcribing(progress: Progress, windows: number): JobState {

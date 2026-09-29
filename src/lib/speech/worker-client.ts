@@ -56,11 +56,16 @@ export class SpeechClient {
 		accept: (reply: SpeechReply) => reply is R
 	): Promise<R> {
 		return new Promise((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.close();
+			}, 90_000);
 			const off = this.listen((reply) => {
 				if (accept(reply)) {
+					clearTimeout(timeout);
 					off();
 					resolve(reply);
 				} else if (reply.type === 'failed' && !reply.job) {
+					clearTimeout(timeout);
 					off();
 					reject(new Error(reply.reason));
 				}
@@ -88,6 +93,8 @@ export class SpeechClient {
 	}
 
 	close(): void {
+		for (const listener of [...this.listeners])
+			listener({ type: 'failed', reason: 'The speech worker was stopped.' });
 		this.listeners.clear();
 		this.port.terminate();
 	}

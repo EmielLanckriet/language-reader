@@ -114,17 +114,33 @@ try {
 		rows,
 	};
 	postMessage(result);
-	await fetch('/result', { method: 'POST', body: JSON.stringify(result) });
 } catch (e) {
-	postMessage(String(e));
-	await fetch('/result', {
-		method: 'POST',
-		body: JSON.stringify({ error: String(e) }),
-	});
+	postMessage({ error: String(e) });
 }
 `;
-const html =
-	'<meta charset="utf-8"><title>Reader audio resume check</title><pre>Comparing audio in a worker...</pre><script>new Worker("/run.js",{type:"module"}).onmessage=e=>document.querySelector("pre").textContent=JSON.stringify(e.data,null,2)</script>';
+const html = `
+<meta charset="utf-8"><title>Reader audio resume check</title>
+<button id="start">Start audio comparison</button><button id="stop">Stop</button>
+<pre>Keep this page visible. The comparison stops after five minutes.</pre>
+<script>
+let worker, deadline;
+const stop = () => { worker?.terminate(); worker = undefined; clearTimeout(deadline); };
+document.querySelector('#stop').onclick = stop;
+addEventListener('pagehide', stop);
+document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+document.querySelector('#start').onclick = () => {
+  stop();
+  if (document.hidden) return;
+  worker = new Worker('/run.js', {type: 'module'});
+  deadline = setTimeout(() => { stop(); document.querySelector('pre').textContent = 'Stopped at time limit'; }, 300000);
+  worker.onmessage = async e => {
+    document.querySelector('pre').textContent = JSON.stringify(e.data, null, 2);
+    stop();
+    await fetch('/result', {method: 'POST', body: JSON.stringify(e.data)});
+  };
+  worker.onerror = e => { stop(); document.querySelector('pre').textContent = e.message; };
+};
+</script>`;
 
 const server = createServer((req, res) => {
 	if (req.url === '/run.js') {

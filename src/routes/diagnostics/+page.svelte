@@ -342,10 +342,9 @@
 	<dd>
 		<SpeechModel />
 		<small>
-			Model {REVISION.slice(0, 7)} · Threads available: {globalThis.crossOriginIsolated
-				? 'yes'
-				: 'no (after the next update)'} · {calibration
-				? `Measured: ${calibration.threads} thread${calibration.threads === 1 ? '' : 's'} (${Object.entries(
+			Model {REVISION.slice(0, 7)} · Using one thread · Automatic calibration off · Threads available:
+			{globalThis.crossOriginIsolated ? 'yes' : 'no (after the next update)'} · {calibration
+				? `Previous measurement: ${calibration.threads} thread${calibration.threads === 1 ? '' : 's'} (${Object.entries(
 						calibration.timings
 					)
 						.map(([n, ms]) => `${n}: ${(ms / 1000).toFixed(1)} s`)

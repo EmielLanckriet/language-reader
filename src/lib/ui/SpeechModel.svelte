@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * The speech model's one-time setup (spec 008, story 2): asked for, never downloaded unasked;
-	 * resumable; then a calibration of about a minute. Shown where a transcript waits for it, and on
+	 * resumable, with one processing thread. Shown where a transcript waits for it, and on
 	 * Diagnostics.
 	 */
 	import Progress from './Progress.svelte';
@@ -41,7 +41,7 @@
 		<p role="alert">{state.message}</p>
 		<button onclick={() => void speechSetup.download()}>Try again</button>
 	{:else if state.kind === 'ready'}
-		<p>The speech model is on this device.</p>
+		<p>The speech model is on this device. Transcription runs while Reader is visible.</p>
 	{/if}
 </div>
 

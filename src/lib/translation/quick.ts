@@ -7,6 +7,7 @@
  * the queue.
  */
 
+import { inferenceBudget } from '$lib/inference-budget';
 import { base } from '$app/paths';
 import { MODEL_CACHE, RUNTIME_PATHS } from '$lib/analyzer/model-cache';
 import { downloadInto } from '$lib/analyzer/model-store';
@@ -68,16 +69,29 @@ export interface QuickTranslation {
 /**
  * Translates the lines `linesNow` returns, except those `have` already covers, calling `onLine` as
  * each arrives and `onStatus` with what to tell the reader (undefined once it is simply working).
- * `finished` says no more lines will come; until then the model stays loaded between lines.
+ * The model is unloaded whenever no untranslated lines remain; `more` starts it again.
  */
 export function quickTranslation(
 	linesNow: () => readonly string[],
 	have: (index: number) => boolean,
 	onLine: (index: number, english: string) => void,
-	onStatus: (status: QuickStatus | undefined) => void,
-	finished: () => boolean = () => true
+	onStatus: (status: QuickStatus | undefined) => void
 ): QuickTranslation {
 	let stopped = false;
+	let generation = 0;
+	let starting = false;
+	let request = new AbortController();
+	let release: (() => void) | undefined;
+	let deadline: ReturnType<typeof setTimeout> | undefined;
+	const visible = () => document.visibilityState === 'visible';
+	function unload() {
+		worker?.terminate();
+		worker = undefined;
+		clearTimeout(deadline);
+		release?.();
+		release = undefined;
+		busy = false;
+	}
 	let worker: Worker | undefined;
 	let busy = false;
 	let front = 0;
@@ -94,22 +108,35 @@ export function quickTranslation(
 	}
 
 	function pump() {
-		if (stopped || busy || !worker) return;
+		if (stopped || !visible() || busy || !worker) return;
 		const index = next();
 		if (index === undefined) {
-			if (!finished()) return;
 			// Every line has English. Unloading frees ~0.6 GB, which is what lets Termux's LLM start
 			// its upgrade: translate.py waits for that much memory (ADR-0023).
-			worker.terminate();
-			worker = undefined;
+			unload();
 			return;
 		}
 		busy = true;
 		const text = linesNow()[index];
+		armDeadline();
 		worker.postMessage({ kind: 'translate', index, text } satisfies QuickRequest);
 	}
 
+	function armDeadline() {
+		clearTimeout(deadline);
+		deadline = setTimeout(() => {
+			unload();
+			onStatus({
+				label: 'Quick English stopped because processing took too long. Reopen to retry.'
+			});
+		}, 90_000);
+	}
+
 	async function begin() {
+		if (stopped || !visible() || starting || worker) return;
+		starting = true;
+		const version = generation;
+		const signal = request.signal;
 		try {
 			if (!('caches' in globalThis)) return;
 			// After an await, not before: begin() starts inside the page's effect, and reading the
@@ -117,7 +144,7 @@ export function quickTranslation(
 			// in one load, measured.
 			await Promise.resolve();
 			// Nothing left to translate (a video reopened after its quick pass): no model, no memory.
-			if (next() === undefined && finished()) return;
+			if (next() === undefined) return;
 			onStatus({ label: 'Getting English ready…' });
 			await ensureDownloaded((mb) =>
 				onStatus({
@@ -126,40 +153,79 @@ export function quickTranslation(
 				})
 			);
 			onStatus({ label: 'Getting English ready…' });
-			if (stopped) return;
+			if (stopped || signal.aborted) return;
+			const unlock = await inferenceBudget(signal);
+			if (stopped || signal.aborted) {
+				unlock();
+				return;
+			}
+			release = unlock;
+			armDeadline();
 			worker = new Worker(new URL('./quick-worker.ts', import.meta.url), { type: 'module' });
 			worker.onmessage = ({ data }: MessageEvent<QuickReply>) => {
+				clearTimeout(deadline);
 				if (data.kind === 'ready') onStatus(undefined);
 				else if (data.kind === 'line') {
 					busy = false;
 					if (asked === data.index) asked = undefined;
 					onLine(data.index, data.english);
 				} else {
-					busy = false;
+					unload();
 					onStatus({ label: `Quick English is unavailable: ${data.message}` });
 					return;
 				}
 				pump();
 			};
+			worker.onerror = () => {
+				unload();
+				onStatus({ label: 'Quick English stopped unexpectedly. Reopen to retry.' });
+			};
 			worker.postMessage({ kind: 'open', base, ...FILES } satisfies QuickRequest);
 		} catch (error) {
+			if (signal.aborted) return;
+			unload();
 			onStatus({
 				label: `Quick English is unavailable: ${error instanceof Error ? error.message : error}`
 			});
+		} finally {
+			if (version === generation) starting = false;
 		}
 	}
 
+	function suspend() {
+		generation++;
+		request.abort();
+		starting = false;
+		unload();
+	}
+	function visibility() {
+		if (!visible()) suspend();
+		else {
+			if (request.signal.aborted) request = new AbortController();
+			void begin();
+		}
+	}
+	document.addEventListener('visibilitychange', visibility);
+	addEventListener('pagehide', suspend);
+	addEventListener('pageshow', visibility);
 	void begin();
 	return {
 		focus(index, urgent = false) {
 			front = index;
 			if (urgent) asked = index;
-			pump();
+			if (worker) pump();
+			else void begin();
 		},
-		more: () => pump(),
+		more: () => {
+			if (worker) pump();
+			else void begin();
+		},
 		stop() {
 			stopped = true;
-			worker?.terminate();
+			suspend();
+			document.removeEventListener('visibilitychange', visibility);
+			removeEventListener('pagehide', suspend);
+			removeEventListener('pageshow', visibility);
 		}
 	};
 }

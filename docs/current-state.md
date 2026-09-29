@@ -1,7 +1,19 @@
 # Current state
 
-Updated 2026-09-29. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-09-30. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Phone freeze incident — open validation
+
+The reader reported a hot, unresponsive phone on 2026-09-29 that recovered after battery depletion.
+The exact cause is not established by surviving logs. Local fixes serialize Termux translations,
+supervise model processes, cancel hidden browser speech/quick workers, serialize those workers
+across tabs, remove automatic calibration, and bound worker waits. See
+[incident evidence and limits](phone-freeze-investigation.md) and [ADR-0032](adr/0032-bound-phone-inference.md).
+Local validation: 424 app tests, 9 Termux tests, type checking, lint and production build passed.
+These changes require **both** the website update and a separate Termux script update. Installation
+and thermal validation are not yet confirmed. Do not repeat heavy phone benchmarks to verify them.
+The earlier phone smoke checks below do not certify safety after this incident.
 
 ## Product and architecture
 
@@ -50,9 +62,8 @@ verification remains pending. The deployed build ID was `1790698663317`.
 The smoke check does not prove the checkpoint failure path on physical storage; that path is
 covered by injected-failure regressions.
 
-Device cleanup pending reconnection: restore `stay_on_while_plugged_in` to its previous value `0`.
-The test servers were stopped. Inspect and remove any remaining test reverse mappings on 4176,
-18765, and 18799; removal could not run after USB disconnected.
+Device cleanup: `stay_on_while_plugged_in` restored to its previous value `0` after reconnection.
+The test servers were stopped. After reconnection, `adb reverse --list` was empty; no test mappings remain.
 
 ## Recorded validation and open limits
 

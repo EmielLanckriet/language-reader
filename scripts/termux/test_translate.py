@@ -1,5 +1,7 @@
 """python3 -m unittest scripts/termux/test_translate.py — the one check on placing the LLM's English."""
 
+import concurrent.futures
+import threading
 import os
 import tempfile
 import time
@@ -41,6 +43,50 @@ class Source(unittest.TestCase):
         with open(os.path.join(job, 'media.zh.vtt'), 'w', encoding='utf-8') as file:
             file.write('WEBVTT\n\n00:00:00.200 --> 00:00:01.000\n上海\n')
         self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
+
+
+class ModelBudget(unittest.TestCase):
+    def test_running_model_is_killed_when_memory_falls(self):
+        child = mock.Mock()
+        child.communicate.side_effect = [translate.subprocess.TimeoutExpired('llama', 2), ('', '')]
+        child.poll.return_value = None
+        with mock.patch.object(translate.subprocess, 'Popen', return_value=child), \
+             mock.patch.object(translate, 'available_kb', return_value=100_000), \
+             mock.patch.object(translate, 'reader_busy', return_value=False):
+            with self.assertRaisesRegex(RuntimeError, 'protect phone'):
+                translate.run_model(['fake-model'])
+        child.kill.assert_called_once()
+
+
+    def test_different_jobs_cannot_run_models_together(self):
+        entered = threading.Event()
+        release = threading.Event()
+        calls = []
+
+        def run(*args, **kwargs):
+            calls.append(args)
+            entered.set()
+            release.wait(2)
+            return 'ok'
+
+        with tempfile.TemporaryDirectory() as root, \
+             mock.patch.object(translate, 'MODEL_LOCK', os.path.join(root, 'model.lock'), create=True), \
+             mock.patch.object(translate, 'wait_for_memory'), \
+             mock.patch.object(translate, 'wait_for_reader'), \
+             mock.patch.object(translate, 'STUB', False), \
+             mock.patch.object(translate, 'run_model', run), \
+             concurrent.futures.ThreadPoolExecutor(2) as pool:
+            first = pool.submit(translate.ask, ['你好'])
+            self.assertTrue(entered.wait(1))
+            second = pool.submit(translate.ask, ['世界'])
+            try:
+                time.sleep(0.1)
+                self.assertEqual(len(calls), 1)
+            finally:
+                release.set()
+            first.result(timeout=3)
+            second.result(timeout=3)
+            self.assertEqual(len(calls), 2)
 
 
 class WaitingForReader(unittest.TestCase):
