@@ -197,6 +197,8 @@ textarea {
 	left: 0;
 	bottom: 0;
 	height: 4px;
+	/* A video only just started still shows that it was. */
+	min-width: 4px;
 	background: var(--unknown);
 }
 
