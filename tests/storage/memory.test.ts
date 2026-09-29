@@ -349,6 +349,33 @@ describe('memory kept with the history', () => {
 		expect(rows(withdrawn.db)).toEqual(kept);
 	});
 
+	it('forgets a deleted document: all its sessions withdrawn, and it is no longer offered', async () => {
+		const withdrawn = await library();
+		const never = await library();
+		const test = await buildHistory(withdrawn.repository, ['我看书你好将来'], []);
+		const { repository } = withdrawn;
+		const words = repository.getDocument(test[0]).tokens.filter((t) => t.isWord);
+		for (const at of [day(2), day(3)])
+			repository.recordEncounters(repository.startSession(test[0], 'reading'), [
+				{
+					kind: 'lookup',
+					at,
+					lexemeId: words[1].lexemeId,
+					documentId: test[0],
+					fromOffset: words[1].start,
+					toOffset: words[1].end
+				}
+			]);
+		repository.removeDocument(test[0]);
+		expect(repository.deletedWithHistory().map((d) => [d.id, d.sessions, d.lookups])).toEqual([
+			[test[0], 2, 2]
+		]);
+
+		repository.withdrawDocument(test[0], 'a test copy');
+		expect(repository.deletedWithHistory()).toEqual([]);
+		expect(rows(withdrawn.db)).toEqual(rows(never.db));
+	});
+
 	it('follows a re-segmentation, since the words a stretch covered are its current tokens', async () => {
 		const { db, repository, documentId, lookup, read } = await library();
 		repository.recordEncounters(repository.startSession(documentId, 'reading'), [

@@ -855,13 +855,20 @@ export class Repository {
 
 	/** Every session in this document not yet withdrawn, withdrawn together (ADR-0030). */
 	withdrawDocument(documentId: DocumentId, reason: string): void {
+		// One transaction, and each word recomputed once however many sessions touched it. Through
+		// withdrawSession, each nested a transaction in this one, which SQLite refuses.
 		transact(this.db, () => {
+			const touched = new Set<LexemeId>();
 			for (const row of queryRows(
 				this.db,
 				`SELECT id FROM session WHERE document_id = ? AND id NOT IN (${WITHDRAWN})`,
 				[documentId]
-			))
-				this.withdrawSession(Number(row.id), reason);
+			)) {
+				const withdrawal = { kind: 'withdrawn', at: new Date().toISOString(), detail: { reason } };
+				this.appendEncounter(Number(row.id), withdrawal);
+				for (const id of this.touchedBy(Number(row.id), [withdrawal])) touched.add(id);
+			}
+			this.recomputeMemory(touched);
 		});
 	}
 

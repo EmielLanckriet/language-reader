@@ -27,6 +27,9 @@
 		[]
 	);
 
+	let forgetting = $state<number | null>(null);
+	let forgetProblem = $state<string | null>(null);
+
 	async function forget(document: { id: number; title: string }) {
 		if (
 			!confirm(
@@ -35,8 +38,15 @@
 		)
 			return;
 		const { repository } = await session();
-		await repository.withdrawDocument(document.id, 'forgotten from Diagnostics');
-		deletedHistory = await repository.deletedWithHistory();
+		forgetting = document.id;
+		try {
+			await repository.withdrawDocument(document.id, 'forgotten from Diagnostics');
+			deletedHistory = await repository.deletedWithHistory();
+		} catch (error) {
+			forgetProblem = error instanceof Error ? error.message : String(error);
+		} finally {
+			forgetting = null;
+		}
 	}
 	let corrections = $state<{ language: string; form: string; parts: string[]; madeAt: string }[]>(
 		[]
@@ -565,10 +575,13 @@
 				{document.title} · {document.sessions}
 				{document.sessions === 1 ? 'session' : 'sessions'} · {document.lookups}
 				{document.lookups === 1 ? 'lookup' : 'lookups'}
-				<button onclick={() => void forget(document)}>Forget</button>
+				<button onclick={() => void forget(document)} disabled={forgetting !== null}
+					>{forgetting === document.id ? 'Forgetting…' : 'Forget'}</button
+				>
 			</li>
 		{/each}
 	</ul>
+	{#if forgetProblem}<p role="alert">{forgetProblem}</p>{/if}
 {/if}
 
 <h2 class="section">What has happened before</h2>
