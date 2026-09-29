@@ -8,7 +8,6 @@
 	import { describeError } from '$lib/diagnostics/describe';
 	import { englishTitles, sharesOf, thumbnailOf } from '$lib/media/cover';
 	import type { Shares } from '$lib/domain/shares';
-	import { SvelteMap } from 'svelte/reactivity';
 
 	/** Videos or pasted texts: a video is a document with media beside it (ADR-0018). */
 	let {
@@ -27,8 +26,8 @@
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
 	let shares = $state<Map<number, Shares>>(new Map());
-	const english = new SvelteMap<number, string>();
-	const pictures = new SvelteMap<number, string>();
+	let english = $state<Record<number, string>>({});
+	let pictures = $state<Record<number, string>>({});
 
 	const percent = (share: number) => `${Math.round(share * 100)}%`;
 
@@ -42,7 +41,7 @@
 		void sharesOf(listed.map((d) => d.id)).then((found) => !stopped && (shares = found));
 		if (kind === 'video') {
 			void englishTitles(listed, (id, text) => {
-				if (!stopped) english.set(id, text);
+				if (!stopped) english = { ...english, [id]: text };
 			}).then((stop) => (stopped ? stop() : (stopTitles = stop)));
 			void (async () => {
 				for (const d of listed) {
@@ -51,7 +50,7 @@
 					if (!picture) continue;
 					const url = URL.createObjectURL(picture);
 					urls.push(url);
-					pictures.set(d.id, url);
+					pictures = { ...pictures, [d.id]: url };
 				}
 			})();
 		}
@@ -119,16 +118,16 @@
 					class:with-picture={kind === 'video'}
 				>
 					{#if kind === 'video'}
-						{#if pictures.get(document.id)}
-							<img class="picture" src={pictures.get(document.id)} alt="" />
+						{#if pictures[document.id]}
+							<img class="picture" src={pictures[document.id]} alt="" />
 						{:else}
 							<span class="picture"></span>
 						{/if}
 					{/if}
 					<span class="text">
 						{document.title}
-						{#if english.get(document.id)}
-							<span class="english-title">{english.get(document.id)}</span>
+						{#if english[document.id]}
+							<span class="english-title">{english[document.id]}</span>
 						{/if}
 						<span class="meta">
 							{document.characterCount.toLocaleString()} characters

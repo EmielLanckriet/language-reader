@@ -54,7 +54,8 @@ export async function thumbnailOf(documentId: DocumentId): Promise<Blob | undefi
 	const files = await mediaFiles(documentId);
 	const kept = files.find((file) => file.name === THUMBNAIL);
 	if (kept) return kept;
-	const media = files.find((file) => isPlayable(file.name));
+	// The video itself: beside it may be sound-only.m4a, the audio kept for listening in the background.
+	const media = files.find((file) => isPlayable(file.name) && /\.(mp4|webm)$/i.test(file.name));
 	if (!media) return undefined;
 	const taken = frames.then(() => frameOf(media).catch(() => undefined));
 	frames = taken.then(() => undefined);

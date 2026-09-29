@@ -1178,6 +1178,41 @@ const scenarios = {
 
 	// A Termux job with subtitles, imported from New from Termux and played. Needs make-fixtures.sh's
 	// fixture-media job served by reader-service.py on 127.0.0.1:8765.
+	// The library's extras: a picture taken from the video, and the shares of known, learning and
+	// new words. English titles are not checked here: they need quick English's model, which a fresh
+	// profile does not have and the library never downloads.
+	async library() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the imported document to open',
+				() =>
+					tab.evaluate(
+						`return location.pathname.includes('/read/') && document.querySelector('.player')?.duration > 0 || null;`
+					),
+				120000,
+				250
+			);
+			await tab.goto('/');
+			const shown = await until(
+				'a picture and shares in the library',
+				() =>
+					tab.evaluate(`
+						const picture = document.querySelector('.library img.picture');
+						const meta = document.querySelector('.library .meta')?.textContent.replace(/\\s+/g, ' ').trim();
+						if (!picture?.naturalWidth || !meta?.includes('known')) return null;
+						return { width: picture.naturalWidth, height: picture.naturalHeight, meta };
+					`),
+				30000,
+				250
+			);
+			return { pass: shown.width === 320 && /\d+% new/.test(shown.meta), ...shown };
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async media() {
 		const tab = await openTab('about:blank');
 		try {
