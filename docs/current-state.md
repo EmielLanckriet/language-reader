@@ -82,6 +82,21 @@ The daily Termux service was offline and was not updated in this UI release. Tes
 forward/reverse mappings were removed; `stay_on_while_plugged_in` was restored to `0`. Reader was
 left on its library screen.
 
+## Flashcard presentation — Anki layout
+
+The reading cards now follow the local HSK Anki template's hierarchy: large Chinese headword,
+green pinyin, serif meanings, and a separate Chinese example/pinyin/translation section on a warm
+paper surface, with a matching dark theme. Font stacks use device fallbacks; Anki media and audio
+are not imported. Target pronunciation remains hidden before Show answer, preserving the existing
+reading prompt. Review settings are collapsed; four distinct grade buttons stay within reach.
+Dictionary senses use the contextual pronunciation when available, and late translation results
+are checked against the current sentence before display. Scheduling and review writes are unchanged.
+
+This is a reversible presentation fix under ADR-0031. Four existing card-storage tests, type checking,
+scoped lint, verification build and the isolated `cardlayout` browser scenario passed. The scenario
+imports synthetic text, looks up a word, checks front/reveal, and grades it to completion; light/dark
+390px screenshots were inspected. Deployment and this change's installed-phone check are pending.
+
 ## Product and architecture
 
 Reader is a personal Chinese reading and listening app for an Android phone. TypeScript/SvelteKit

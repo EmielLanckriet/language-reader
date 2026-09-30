@@ -166,6 +166,87 @@ async function importFromTermux(tab, title) {
 }
 
 const scenarios = {
+	async cardlayout() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await tab.goto('/add');
+			await until('paste field', () => tab.evaluate('return !!document.querySelector("textarea")'));
+			await tab.evaluate(
+				`const area=document.querySelector('textarea');area.value='我们每天学习中文。';area.dispatchEvent(new Event('input',{bubbles:true}));`
+			);
+			await until('save enabled', () => tab.evaluate(`return ${SAVE_BUTTON}?.disabled===false`));
+			await tab.evaluate(`${SAVE_BUTTON}.click()`);
+			const link = await until('saved text', () => tab.evaluate(`return ${READ_LINK}`));
+			await tab.goto(link.replace(BASE, ''));
+			await until('word to look up', () =>
+				tab.evaluate(
+					`const word=[...document.querySelectorAll('.reading button.token')].find(b=>{const c=b.cloneNode(true);c.querySelectorAll('rt').forEach(e=>e.remove());return c.textContent==='学习';});if(!word)return false;word.click();return true;`
+				)
+			);
+			await until('word sheet', () =>
+				tab.evaluate(`return !!document.querySelector('.sheet button[aria-label="Cancel"]')`)
+			);
+			await tab.evaluate(`document.querySelector('.sheet button[aria-label="Cancel"]').click()`);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
+			);
+			await until('saved session', () =>
+				tab.evaluate(`return location.pathname.endsWith('/progress')`)
+			);
+			await tab.goto('/cards');
+			await until('card and pinyin', () =>
+				tab.evaluate(
+					`return document.querySelector('.hanzi')?.textContent==='学习' && document.querySelector('.sentence-pinyin')?.textContent.includes('wǒ')`
+				)
+			);
+			await tab.evaluate(`document.querySelector('.card').scrollIntoView({block:'start'})`);
+			const front = await tab.evaluate(
+				`return {word:document.querySelector('.hanzi').textContent,hidden:!document.querySelector('.answer'),pinyin:document.querySelector('.word-pinyin').textContent,width:document.documentElement.scrollWidth,viewport:innerWidth}`
+			);
+			let shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-card-front.png', Buffer.from(shot.data, 'base64'));
+			await tab.evaluate(`document.querySelector('.reveal').click()`);
+			await until('dictionary meaning', () =>
+				tab.evaluate(`return !!document.querySelector('.answer .meaning')`)
+			);
+			const back = await tab.evaluate(
+				`return {pinyin:document.querySelector('.word-pinyin').textContent,meaning:document.querySelector('.meaning').textContent,grades:[...document.querySelectorAll('.grade')].map(b=>b.textContent),width:document.documentElement.scrollWidth}`
+			);
+			for (const theme of ['light', 'dark']) {
+				await tab.send('Emulation.setEmulatedMedia', {
+					features: [{ name: 'prefers-color-scheme', value: theme }]
+				});
+				shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+				writeFileSync('/tmp/reader-card-back-' + theme + '.png', Buffer.from(shot.data, 'base64'));
+			}
+			await tab.evaluate(`document.querySelector('.g4').click()`);
+			await until('review recorded', () =>
+				tab.evaluate(
+					`return document.querySelector('.empty')?.textContent.includes('Done for now')`
+				)
+			);
+			return {
+				pass:
+					front.hidden &&
+					front.width === front.viewport &&
+					back.width === front.viewport &&
+					back.pinyin.includes('xué') &&
+					back.grades.join(',') === 'Again,Hard,Good,Easy',
+				front,
+				back,
+				reviewRecorded: true
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	async study() {
 		const { writeFileSync } = await import('node:fs');
 		const tab = await openTab('about:blank');

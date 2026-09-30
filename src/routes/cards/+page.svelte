@@ -48,6 +48,12 @@
 			py: i >= from && i < to && !revealed ? '' : (readings[i] ?? '')
 		}));
 	});
+	const wordReadings = $derived(
+		readings.slice(
+			current?.sentence?.wordFrom ?? 0,
+			current?.sentence?.wordTo ?? [...(current?.word ?? '')].length
+		)
+	);
 	let reviewed = $state(0);
 	let grading = $state(false);
 	let problem = $state<unknown>(null);
@@ -124,15 +130,17 @@
 				media.quick
 			);
 			const line = lines[sentence.line]?.text;
-			if (line) return show(lexemeId, line);
+			if (line) return show(lexemeId, sentence.text, line);
 		}
+		if (current?.lexemeId !== lexemeId || current.sentence?.text !== sentence.text) return;
 		const index = asked.push(sentence.text) - 1;
 		quick ??= quickTranslation(
 			() => asked,
 			(i) => quickEnglish[i] !== undefined,
 			(i, english) => {
 				quickEnglish[i] = english;
-				if (i === index || asked[i] === current?.sentence?.text) show(current!.lexemeId, english);
+				if (current && asked[i] === current.sentence?.text)
+					show(current.lexemeId, asked[i], english);
 			},
 			() => {}
 		);
@@ -140,8 +148,9 @@
 		quick.focus(index, true);
 	}
 
-	function show(lexemeId: number, english: string) {
-		if (current?.lexemeId === lexemeId) current = { ...current, english };
+	function show(lexemeId: number, sentenceText: string, english: string) {
+		if (current?.lexemeId === lexemeId && current.sentence?.text === sentenceText)
+			current = { ...current, english };
 	}
 
 	async function grade(value: 1 | 2 | 3 | 4) {
@@ -172,12 +181,13 @@
 	] as const;
 </script>
 
-{#snippet rubied(chars: { c: string; py: string }[])}{#each chars as ch, i (i)}{#if ch.py}<ruby
-				>{ch.c}<rt>{ch.py}</rt></ruby
-			>{:else}{ch.c}{/if}{/each}{/snippet}
-
-<h1>Cards</h1>
-<p><a href={resolve('/cards/tuning')}>Learning data</a></p>
+<div class="cards-heading">
+	<div>
+		<span class="eyebrow">A word at a time</span>
+		<h1>Cards</h1>
+	</div>
+	<a href={resolve('/cards/tuning')}>Learning data</a>
+</div>
 
 {#if problem}
 	<ErrorNotice error={problem} onretry={start} />
@@ -188,107 +198,269 @@
 		{today.counts.due} due · {today.counts.fresh} new{#if reviewed > 0}
 			· {reviewed} reviewed{/if}
 	</p>
-
 	{#if current}
-		<section class="card" aria-live="polite">
-			<!-- No whitespace inside: this is Chinese, and any gap in the markup would show. -->
-			<p class="sentence" lang="zh">
-				{@render rubied(characters.filter((ch) => ch.part === 'before'))}<mark
-					>{@render rubied(characters.filter((ch) => ch.part === 'word'))}</mark
-				>{@render rubied(characters.filter((ch) => ch.part === 'after'))}
-			</p>
-
-			{#if revealed}
-				<div class="answer">
-					{#await lookUp(current.word)}
-						<p class="muted">Looking up…</p>
-					{:then parts}
-						{#each parts as part (part.text)}
-							{#each part.entries.slice(0, 3) as entry, i (i)}
-								<p><span class="pinyin">{entry.pinyin}</span> {entry.meaning}</p>
-							{/each}
-						{:else}
-							<p class="muted">Not in the dictionary.</p>
-						{/each}
-					{/await}
-					{#if current.english}<p class="english" lang="en">{current.english}</p>{/if}
-				</div>
-				<div class="grades">
-					{#each GRADES as { value, label } (value)}
-						<button class="grade g{value}" disabled={grading} onclick={() => grade(value)}
-							>{label}</button
-						>
-					{/each}
-				</div>
-				<p class="muted">
-					Rate what you recalled before Show. Hard means you remembered with difficulty; choose
-					Again if you needed the answer.
+		<section class="card" aria-label="Reading flashcard">
+			<div class="card-face">
+				<p class="hanzi" lang="zh-Hans">{current.word}</p>
+				<p class="word-pinyin pinyin" aria-label="Word pronunciation">
+					{#if revealed}{wordReadings.filter(Boolean).join(' ')}{:else}<span class="recall-hint"
+							>Recall the pronunciation and meaning</span
+						>{/if}
 				</p>
-			{:else}
-				<button class="reveal" onclick={() => (revealed = true)}>Show</button>
-			{/if}
+				{#if revealed}
+					<div class="answer" aria-live="polite">
+						{#await lookUp(current.word, wordReadings)}
+							<p class="muted">Looking up…</p>
+						{:then parts}
+							{#each parts as part (part.text)}
+								{#if parts.length > 1}<p class="part-word" lang="zh-Hans">{part.text}</p>{/if}
+								{#each part.entries.slice(0, 3) as entry, i (i)}
+									<div class="definition">
+										{#if entry.pinyin.toLowerCase() !== wordReadings.join(' ').toLowerCase()}<span
+												class="pinyin alternate-reading">{entry.pinyin}</span
+											>{/if}
+										<p class="meaning">{entry.meaning}</p>
+									</div>
+								{/each}
+							{:else}<p class="muted">Not in the dictionary.</p>{/each}
+						{:catch error}<ErrorNotice {error} />{/await}
+					</div>
+				{/if}
+				{#if current.sentence}
+					<div class="example">
+						<span class="eyebrow">In context</span>
+						<p class="sentence" lang="zh-Hans">
+							{#each characters as ch, i (i)}{#if ch.part === 'word'}<mark>{ch.c}</mark
+									>{:else}{ch.c}{/if}{/each}
+						</p>
+						<p class="sentence-pinyin pinyin" aria-label="Sentence pronunciation">
+							{characters
+								.map((ch) => ch.py || (ch.part === 'word' && !revealed ? '…' : ch.c))
+								.join(' ')}
+						</p>
+						{#if revealed && current.english}<p class="english" lang="en">{current.english}</p>{/if}
+					</div>
+				{/if}
+			</div>
+			<div class="review-actions">
+				{#if revealed}
+					<div class="grades">
+						{#each GRADES as { value, label } (value)}<button
+								class="grade g{value}"
+								disabled={grading}
+								onclick={() => grade(value)}>{label}</button
+							>{/each}
+					</div>
+					<p class="grading-hint">
+						Again if you needed the answer. Hard if you recalled it with difficulty.
+					</p>
+				{:else}
+					<button class="reveal" onclick={() => (revealed = true)}>Show answer</button>
+				{/if}
+			</div>
 		</section>
 	{:else}
-		<p class="empty">
-			{reviewed > 0 ? 'Done for now.' : 'Nothing to review.'} Words you look up while reading or watching
-			become cards.
-		</p>
+		<div class="empty card-face">
+			<h2>{reviewed > 0 ? 'Done for now.' : 'Nothing to review.'}</h2>
+			<p>Words you look up while reading or watching become cards.</p>
+			<a href={resolve('/')}>Back to your library →</a>
+		</div>
 	{/if}
-
-	<label class="cap">
-		New cards a day
-		<input type="number" min="0" max="100" bind:value={cap} onchange={keepCap} />
-	</label>
+	<details class="review-settings">
+		<summary>Review settings</summary><label class="cap"
+			>New cards a day <input
+				type="number"
+				min="0"
+				max="100"
+				bind:value={cap}
+				onchange={keepCap}
+			/></label
+		>
+	</details>
 {/if}
 
 <style>
+	.cards-heading {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+	.cards-heading > a {
+		font-size: 0.8rem;
+		color: var(--muted);
+	}
 	.card {
-		margin: 1.5rem 0;
-		padding: 1.25rem 1rem;
-		border: 1px solid var(--rule);
-		border-radius: 12px;
+		margin: 1.25rem 0;
 	}
-	.sentence {
-		font-size: 1.6rem;
-		line-height: 1.6;
-		margin: 0 0 1rem;
+	.card-face {
+		padding: 1.5rem;
+		border: 1px solid #e5dcc7;
+		border-radius: 20px;
+		background: #fdf6e3;
+		color: #292b28;
+		overflow-wrap: anywhere;
 	}
-	mark {
-		background: color-mix(in srgb, var(--new) 55%, transparent);
-		color: inherit;
-		border-radius: 0.2em;
-	}
-	.answer {
-		margin-bottom: 1rem;
+	.hanzi {
+		font-family: Kaiti, 'KaiTi', 'STKaiti', 'Noto Serif CJK SC', serif;
+		font-size: clamp(3rem, 15vw, 4.875rem);
+		line-height: 1.3;
+		margin: 0;
+		letter-spacing: 0.03em;
 	}
 	.pinyin {
+		font-family: 'Gentium Plus', Georgia, serif;
+		color: #005500;
+		line-height: 1.6;
+	}
+	.word-pinyin {
+		font-size: 1.375rem;
+		margin: 0.35rem 0 1rem;
+		min-height: 2.2rem;
+	}
+	.recall-hint {
+		font-family: system-ui, sans-serif;
+		font-size: 0.82rem;
+		color: #687368;
+	}
+	.answer {
+		margin: 1rem 0 1.5rem;
+	}
+	.definition + .definition {
+		margin-top: 0.65rem;
+	}
+	.meaning,
+	.english {
+		font-family: Georgia, serif;
+		font-size: 1rem;
+		line-height: 1.7;
+		margin: 0.25rem 0;
+	}
+	.alternate-reading {
+		font-size: 1rem;
+	}
+	.part-word {
+		font-size: 1.3rem;
+		margin: 0.6rem 0 0.2rem;
+	}
+	.example {
+		border-top: 1px solid #ded6c4;
+		padding-top: 1.25rem;
+		margin-top: 1.25rem;
+	}
+	.sentence {
+		font-family: SimSun, 'Songti SC', 'Noto Serif CJK SC', serif;
+		font-size: 1.5rem;
+		line-height: 1.8;
+		margin: 0.5rem 0;
+	}
+	mark {
+		color: inherit;
+		background: transparent;
+		text-decoration: underline;
+		text-decoration-color: #7c9962;
+		text-decoration-thickness: 2px;
+		text-underline-offset: 0.22em;
 		font-weight: 600;
-		margin-right: 0.25rem;
+	}
+	.sentence-pinyin {
+		font-size: 1.2rem;
+		margin: 0.3rem 0 0.8rem;
 	}
 	.english {
-		color: var(--muted);
-		font-style: italic;
+		margin-top: 1rem;
+	}
+	.review-actions {
+		position: sticky;
+		bottom: calc(4.7rem + env(safe-area-inset-bottom));
+		background: var(--paper);
+		padding: 0.8rem 0 0.35rem;
+		z-index: 2;
 	}
 	.reveal {
 		width: 100%;
-		padding: 0.9rem;
+		min-height: 54px;
+		font-weight: 650;
 	}
 	.grades {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 0.5rem;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.45rem;
 	}
 	.grade {
-		padding: 0.9rem 0;
+		padding: 0.8rem 0.15rem;
+		min-height: 52px;
+		font-size: 0.95rem;
+		font-weight: 650;
+		border: 1px solid var(--rule);
+	}
+	.g1 {
+		background: #f6e6e3;
+		color: #8b3530;
+	}
+	.g2 {
+		background: #f4eddb;
+		color: #785915;
+	}
+	.g3 {
+		background: var(--accent);
+		color: var(--on-accent);
+	}
+	.g4 {
+		background: #e1edf4;
+		color: #285570;
+	}
+	.grading-hint {
+		font-size: 0.75rem;
+		line-height: 1.4;
+		color: var(--muted);
+		margin: 0.6rem 0 0.2rem;
+	}
+	.review-settings {
+		margin: 1.5rem 0;
+		color: var(--muted);
+		font-size: 0.85rem;
+	}
+	.review-settings summary {
+		cursor: pointer;
+		min-height: 44px;
+		padding: 0.5rem 0;
 	}
 	.cap {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.9rem;
-		color: var(--muted);
+		gap: 0.75rem;
 	}
 	.cap input {
 		width: 4.5rem;
+		min-height: 44px;
+	}
+	@media (prefers-color-scheme: dark) {
+		.card-face {
+			background: #242923;
+			color: #e6e8dc;
+			border-color: #424838;
+		}
+		.pinyin {
+			color: #a7d69e;
+		}
+		.recall-hint {
+			color: #a6b3a2;
+		}
+		.example {
+			border-color: #424838;
+		}
+		.g1 {
+			background: #462c2a;
+			color: #f0aea6;
+		}
+		.g2 {
+			background: #403721;
+			color: #e5cc8e;
+		}
+		.g4 {
+			background: #263b48;
+			color: #afd3e8;
+		}
 	}
 </style>
