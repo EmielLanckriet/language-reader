@@ -21,10 +21,11 @@ Independent check: baseline/candidate CLI output uses the same outcomes and disj
 ## Validation and delivery
 - [x] T009 Mutate relevant code to demonstrate failures; focused tests, type check and isolated browser verification. Record in specs/009-fsrs-tuning/quickstart.md.
 - [x] T010 Update docs/current-state.md and docs/anticipated-changes.md with evidence and remaining work.
-- [ ] T011 Deploy and verify installed phone behavior; record results in docs/current-state.md.
+- [x] T011 Deploy and verify installed phone behavior; record results in docs/current-state.md.
 
 Dependencies: T001–T004 → T005–T007 → T008 → T009–T011. No parallel implementation needed;
 US2 documentation can be drafted during US1 UI work. MVP is US1; this slice includes US2.
 Fitting and applying weights are explicitly later work, not claimed delivered by these tasks.
-T011 is pending: no physical phone attached (adb listed emulator-5554 only). No production deploy
-has been made; local validation does not satisfy the installed-phone gate.
+T011 completed 2026-09-30: deployed commit 4786e13, installed build 1790773958309 verified on
+Samsung A71. Cards → Learning data loaded without an error or horizontal overflow. No personal
+export or parameter changes were made during the phone check.

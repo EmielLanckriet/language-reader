@@ -9,7 +9,7 @@
 - [x] T007 [US3] Add weekly participation and continuation in src/lib/ui/StudyOverview.svelte.
 - [x] T008 Verify focused tests/mutations and isolated mobile browser; record in quickstart.md.
 - [x] T009 Update docs/current-state.md and docs/anticipated-changes.md.
-- [ ] T010 Deploy and validate on installed physical phone.
+- [x] T010 Deploy and validate on installed physical phone.
 
 Dependencies: T002 before T003/T004, then US1 UI; US2/US3 follow the overview API. No parallel
 agent work required. Each story has independent acceptance checks in spec.md. Phone gate remains

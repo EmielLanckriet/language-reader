@@ -22,7 +22,7 @@ A 56-input comparison of Reader OPUS, Mozilla/Bergamot and Google ML Kit is reco
 laptop, but all three made substantive meaning errors. ML Kit completed offline on an Android
 emulator; the physical phone was not used. No replacement engine has been adopted.
 
-## FSRS tuning foundation — local validation
+## FSRS tuning foundation — deployed
 
 Spec 009 adds **Cards → Learning data**, a read-only report/export of reviewed words' history,
 and `scripts/fsrs/evaluate.mjs` for laptop comparison of supplied FSRS-6 candidate weights.
@@ -40,12 +40,13 @@ it was corrected. The laptop CLI evaluated a synthetic 20-review history (19 eli
 15/4), including a candidate comparison; these are test results, not evidence of learning quality.
 No personal histories, active parameters or Anki data were changed by analysis.
 
-Not deployed or installed-phone validated: only the Android emulator was attached on 2026-09-30.
-No optimization runs on the phone. **Automatic fitting and reversible apply/rollback remain future
+Deployed on 2026-09-30 with commit `4786e13`; Cards → Learning data was opened successfully
+in the installed app on the Samsung A71. The report loaded without an error or horizontal overflow.
+No personal export was downloaded during this read-only phone check. No optimization runs on the phone. **Automatic fitting and reversible apply/rollback remain future
 work**; this slice supplies the data and evaluation foundation. A count alone does not establish
 enough data to fit 21 parameters, and repeatedly selecting on the same later period overfits it.
 
-## Study experience — local implementation
+## Study experience — deployed and phone checked
 
 Spec 010 refreshes the library, navigation and light/dark styling, adds continuation and a
 Progress screen, and replaces the transient attention modal with **Finish session** and durable,
@@ -67,8 +68,19 @@ The disposable mobile browser confirmed one study day, feedback persistence and 
 reload; light/dark screenshots were inspected. Saving feedback keeps its details open. See the
 [verification record](../specs/010-study-experience/quickstart.md).
 
-Deployment and installed physical-phone validation remain pending; adb reported no attached devices
-at the final check. These local changes are not yet certified on the phone.
+Deployed commit `4786e13` through [successful run 36719898322](https://github.com/EmielLanckriet/language-reader/actions/runs/36719898322).
+CI passed type checking, full lint, all 439 tests and the production build. On the Samsung A71,
+the installed app and its controlling service worker both reported published build `1790773958309`.
+Library, Progress and Learning data loaded in standalone mode at 411px without horizontal overflow;
+existing sessions were visible. Synthetic Finish → weekly credit → answer → reload → correction
+passed separately on the phone's isolated test origin with a disposable backup service. No synthetic
+learning events or feedback answers were submitted in the daily reader.
+
+Phone checks were lightweight, with no inference benchmark. Battery temperature readings ranged
+from 34.1°C at the start to 36.2°C at cleanup; this does not resolve the earlier freeze investigation.
+The daily Termux service was offline and was not updated in this UI release. Test servers and USB
+forward/reverse mappings were removed; `stay_on_while_plugged_in` was restored to `0`. Reader was
+left on its library screen.
 
 ## Product and architecture
 

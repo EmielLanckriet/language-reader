@@ -24,3 +24,15 @@ is separately recorded and cannot be inferred from an emulator or laptop result.
   fixed tab bar at the original viewport bottom. Those are expected capture/environment effects.
 - No attached device was reported by adb at the final check. Deployment and installed physical-phone
   validation remain pending; no synthetic activity was written to the daily reader.
+
+## Phone delivery — 2026-09-30
+
+Commit `4786e13` deployed successfully in GitHub Actions run `36719898322`; CI passed full lint,
+type checking, 439 tests and production build. Published and installed running build, plus active
+service worker, matched `1790773958309` on Samsung A71. Standalone Library/Progress rendered at
+411px without overflow. Existing sessions remained visible; no answers were submitted there.
+The synthetic `study` scenario separately passed on the isolated phone origin with its disposable
+service: one credited day and feedback corrected after reload. Desktop CDP full-page captures on
+Android repeated content; installed viewport captures and the physical screen were inspected instead.
+No model benchmark ran. Temporary USB mappings/services were removed and screen-awake setting
+restored to 0. The installed app was left on Library.

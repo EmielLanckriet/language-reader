@@ -25,3 +25,9 @@ export never changes database contents. Report installed-phone validation separa
 - CLI synthetic 20 reviews: 19 eligible, 15 development / 4 later; baseline and candidate use
   identical outcomes. Invalid candidate checks are covered in the focused tests.
 - Physical phone absent (only emulator attached). Not deployed or installed-phone validated.
+
+## Installed-phone check — 2026-09-30
+
+Commit `4786e13`, running build `1790773958309`, verified in the installed Samsung A71 app.
+Cards → Learning data loaded without an alert or horizontal overflow at 411px, with export
+available. No personal export was downloaded, no reviews submitted, and no parameters changed.
