@@ -44,6 +44,7 @@ const READER_CHANGES = new Set([
 	'assertState',
 	'removeDocument',
 	'importAnki',
+	'importCardExamples',
 	'undoAnkiImport',
 	'recordReview',
 	'correct'
@@ -273,8 +274,12 @@ function run(request: Request): unknown {
 			return repository.recordReview(
 				request.args[0],
 				request.args[1],
-				request.args[2] as Occurrence
+				request.args[2] as Occurrence,
+				undefined,
+				request.args[3]
 			);
+		case 'importCardExamples':
+			return repository.importCardExamples(request.args[0]);
 		case 'cardSentence':
 			return repository.cardSentence(request.args[0]);
 		case 'cardsToday':

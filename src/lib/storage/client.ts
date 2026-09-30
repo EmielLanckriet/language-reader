@@ -314,8 +314,20 @@ export class RepositoryClient {
 	}
 
 	/** A flashcard grade: earned, so it takes READER_CHANGES' path like a mark. */
-	recordReview(lexemeId: LexemeId, grade: number, shown?: Occurrence): Promise<void> {
-		return this.call<void>({ method: 'recordReview', args: [lexemeId, grade, shown] }).then(earned);
+	recordReview(
+		lexemeId: LexemeId,
+		grade: number,
+		shown?: Occurrence,
+		exampleKey?: string
+	): Promise<void> {
+		return this.call<void>({
+			method: 'recordReview',
+			args: [lexemeId, grade, shown, exampleKey]
+		}).then(earned);
+	}
+
+	importCardExamples(examples: unknown[]): Promise<number> {
+		return this.call<number>({ method: 'importCardExamples', args: [examples] }).then(earned);
 	}
 
 	cardSentence(lexemeId: LexemeId): Promise<CardSentence | undefined> {

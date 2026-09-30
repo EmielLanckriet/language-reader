@@ -103,6 +103,26 @@ worker build `1790774830873`, after refreshing the still-open old page. Both sen
 layouts were inspected. No real cards were graded. Test servers/mappings were removed and the USB
 screen-awake setting restored to 0. Reader was left on Cards.
 
+## Flashcard context and audio — implementation, phone validation pending
+
+Spec 011 prefers examples from actual, unwithdrawn Reader encounters, with original Anki examples
+as a fallback. Words without either are deferred from the queue without changing memory. Cards
+label their source, retain its identity with reviews, and offer separate word and sentence audio
+after reveal. Media examples expand to the full matching subtitle cue and play its bounded interval;
+removed/missing media leaves the text usable. Playback stops on grading, navigation and hiding.
+
+The supplementary Anki importer preserves text, translation, pinyin, original fields and recordings
+without modifying Anki or Reader scheduling. Example metadata survives logical backup; audio is
+stored separately and restored by reimporting the retained bundle. `scripts/anki/export_examples.py`
+creates the bundle from a read-only SQLite snapshot. Existing word recordings take priority over
+local Mandarin device TTS. No new phone model or paid service is involved.
+
+Local validation so far: 445 tests and type checking passed; four deliberate mutations were caught.
+The actual read-only export contains 2,126 matching examples and 4,033 audio files (~167 MiB), with
+no missing files; two notes whose example omits their headword were skipped. The bundle has been
+copied to phone Downloads. Deployment and actual import are pending. See
+[verification](../specs/011-context-audio-cards/quickstart.md) and [ADR-0035](adr/0035-card-context-and-audio.md).
+
 ## Product and architecture
 
 Reader is a personal Chinese reading and listening app for an Android phone. TypeScript/SvelteKit

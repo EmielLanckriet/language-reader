@@ -30,6 +30,7 @@ import { RULE } from '../domain/memory';
 import { studyWeek, type StudyOverview, type StudySession } from '../domain/study';
 import { projectStates, RETRACTED } from '../domain/state';
 import { MAX_RANGE, validateEncounter, type Encounter, type Modality } from '../domain/encounter';
+import { checkedExample, type AnkiExample } from '../domain/card-examples';
 import type { FsrsParameters } from '../domain/anki';
 import {
 	memoryOf,
@@ -85,7 +86,16 @@ function memoryFromRow(row: Row): Memory {
 
 /** A sentence a card shows its word in (research R9), in code points of its document. */
 export interface CardSentence {
-	documentId: DocumentId;
+	source: 'reader' | 'anki';
+	sourceTitle: string;
+	sourceKey: string;
+	available: boolean;
+	documentId?: DocumentId;
+	translation?: string;
+	wordAudio?: string;
+	sentenceAudio?: string;
+	lineText?: string;
+	lineFrom?: number;
 	/** The sentence's range in the document. */
 	from: number;
 	to: number;
@@ -100,7 +110,7 @@ export interface CardSentence {
 export interface CardsToday {
 	queue: Queue;
 	words: Record<LexemeId, string>;
-	counts: { due: number; fresh: number };
+	counts: { due: number; fresh: number; awaitingContext: number };
 }
 
 /** A card's sentence ends at these, and at a line break. */
@@ -173,7 +183,11 @@ import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
  * Sessions the reader withdrew (a test, a mistake): their encounters stay in the history, which is
  * append-only, but count for nothing in memory (ADR-0030).
  */
-const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn'`;
+const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn' AND session_id IS NOT NULL`;
+const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
+ WHERE e.document_id=t.document_id AND e.from_offset<=t.start AND e.to_offset>=t.end
+ AND e.kind IN ('read','played','lookup','check')
+ AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN})))`;
 
 const ATTENTIVELY_SEEN = `
   SELECT DISTINCT t.lexeme_id FROM encounter a
@@ -883,7 +897,8 @@ export class Repository {
 		lexemeId: LexemeId,
 		grade: number,
 		shown: Occurrence | undefined,
-		at: string = new Date().toISOString()
+		at: string = new Date().toISOString(),
+		exampleKey?: string
 	): void {
 		transact(this.db, () => {
 			this.appendEncounter(null, {
@@ -893,7 +908,7 @@ export class Repository {
 				...(shown
 					? { documentId: shown.documentId, fromOffset: shown.fromOffset, toOffset: shown.toOffset }
 					: {}),
-				detail: { skill: 'reading', grade }
+				detail: { skill: 'reading', grade, ...(exampleKey ? { exampleKey } : {}) }
 			});
 			this.recomputeMemory([lexemeId]);
 		});
@@ -1401,72 +1416,120 @@ export class Repository {
 		);
 	}
 
-	/**
-	 * The sentence a card shows its word in (research R9): where it was first looked up, then, after
-	 * each review, the next of its occurrences in library order, so reviews go through different
-	 * sentences. Undefined for a word in no document (an Anki word never met).
-	 */
+	/** Supplementary Anki context import never changes scheduling or creates reading evidence. */
+	importCardExamples(values: unknown[]): number {
+		if (!Array.isArray(values) || values.length > 30000) throw new Error('Invalid examples list.');
+		const examples = values.map(checkedExample);
+		return transact(this.db, () => {
+			const latest = new Map<string, string>();
+			for (const row of queryRows(
+				this.db,
+				"SELECT detail FROM encounter WHERE kind='anki-example' ORDER BY device_id,device_seq"
+			)) {
+				const data = JSON.parse(String(row.detail)) as AnkiExample;
+				latest.set(data.key, JSON.stringify(data));
+			}
+			let count = 0;
+			for (const example of examples) {
+				const json = JSON.stringify(example);
+				if (latest.get(example.key) === json) continue;
+				this.appendEncounter(null, {
+					kind: 'anki-example',
+					at: new Date().toISOString(),
+					lexemeId: this.findOrCreateLexeme('zh', example.word),
+					detail: { ...example }
+				});
+				latest.set(example.key, json);
+				count++;
+			}
+			return count;
+		});
+	}
+
+	private ankiExample(lexemeId: LexemeId): CardSentence | undefined {
+		const row = queryRows(
+			this.db,
+			"SELECT detail FROM encounter WHERE kind='anki-example' AND lexeme_id=? ORDER BY device_id DESC,device_seq DESC LIMIT 1",
+			[lexemeId]
+		)[0];
+		if (!row) return;
+		const e = checkedExample(JSON.parse(String(row.detail)));
+		const wordFrom = [...e.text.slice(0, e.text.indexOf(e.word))].length;
+		return {
+			source: 'anki',
+			sourceTitle: `Anki · ${e.profile}`,
+			sourceKey: `anki:${e.key}`,
+			available: true,
+			text: e.text,
+			from: 0,
+			to: [...e.text].length,
+			wordFrom,
+			wordTo: wordFrom + [...e.word].length,
+			line: 0,
+			translation: e.translation,
+			wordAudio: e.wordAudio,
+			sentenceAudio: e.sentenceAudio
+		};
+	}
+
+	/** Only retained, unwithdrawn encounter ranges qualify as a familiar Reader example. */
 	cardSentence(lexemeId: LexemeId): CardSentence | undefined {
 		const occurrences = queryRows(
 			this.db,
-			'SELECT document_id, start, end FROM token WHERE lexeme_id = ? ORDER BY document_id, start',
+			`SELECT t.document_id,t.start,t.end FROM token t
+          WHERE t.lexeme_id=? AND ${ENCOUNTERED_TOKEN} ORDER BY t.document_id,t.start`,
 			[lexemeId]
 		).map((row) => ({
 			documentId: Number(row.document_id),
 			start: Number(row.start),
 			end: Number(row.end)
 		}));
-		if (occurrences.length === 0) return undefined;
-
-		const at = (documentId: unknown, offset: unknown) =>
-			occurrences.findIndex(
-				(o) => o.documentId === Number(documentId) && o.start === Number(offset)
-			);
-		const lastShown = queryRows(
+		if (!occurrences.length) return this.ankiExample(lexemeId);
+		const at = (d: unknown, o: unknown) =>
+			occurrences.findIndex((v) => v.documentId === Number(d) && v.start === Number(o));
+		const last = queryRows(
 			this.db,
-			`SELECT document_id, from_offset FROM encounter WHERE lexeme_id = ? AND kind = 'review'
-       ORDER BY device_id, device_seq DESC LIMIT 1`,
+			`SELECT document_id,from_offset FROM encounter WHERE lexeme_id=? AND kind='review' ORDER BY device_id DESC,device_seq DESC LIMIT 1`,
 			[lexemeId]
 		)[0];
-		const firstLookup = queryRows(
+		const first = queryRows(
 			this.db,
-			`SELECT document_id, from_offset FROM encounter WHERE lexeme_id = ? AND kind = 'lookup'
-       ORDER BY device_id, device_seq LIMIT 1`,
+			`SELECT document_id,from_offset FROM encounter WHERE lexeme_id=? AND kind='lookup' AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN})) ORDER BY device_id,device_seq LIMIT 1`,
 			[lexemeId]
 		)[0];
-		let chosen = 0;
-		if (lastShown)
-			chosen =
-				(Math.max(at(lastShown.document_id, lastShown.from_offset), -1) + 1) % occurrences.length;
-		else if (firstLookup)
-			chosen = Math.max(at(firstLookup.document_id, firstLookup.from_offset), 0);
+		const chosen = last
+			? (Math.max(at(last.document_id, last.from_offset), -1) + 1) % occurrences.length
+			: first
+				? Math.max(at(first.document_id, first.from_offset), 0)
+				: 0;
 		const occurrence = occurrences[chosen];
-
-		const characters = codePointsOf(
-			String(
-				queryRows(this.db, 'SELECT raw_content FROM document WHERE id = ?', [
-					occurrence.documentId
-				])[0].raw_content
-			)
-		);
-		let from = occurrence.start;
-		while (from > 0 && characters[from - 1] !== '\n' && !SENTENCE_ENDS.has(characters[from - 1]))
-			from--;
-		let to = occurrence.end;
-		while (
-			to < characters.length &&
-			characters[to] !== '\n' &&
-			!SENTENCE_ENDS.has(characters[to - 1])
-		)
-			to++;
+		const doc = queryRows(this.db, 'SELECT raw_content,title,removed_at FROM document WHERE id=?', [
+			occurrence.documentId
+		])[0];
+		const chars = codePointsOf(String(doc.raw_content));
+		let from = occurrence.start,
+			to = occurrence.end;
+		while (from > 0 && chars[from - 1] !== '\n' && !SENTENCE_ENDS.has(chars[from - 1])) from--;
+		while (to < chars.length && chars[to] !== '\n' && !SENTENCE_ENDS.has(chars[to - 1])) to++;
+		let lineFrom = from,
+			lineTo = to;
+		while (lineFrom > 0 && chars[lineFrom - 1] !== '\n') lineFrom--;
+		while (lineTo < chars.length && chars[lineTo] !== '\n') lineTo++;
 		return {
+			source: 'reader',
+			sourceTitle: String(doc.title),
+			sourceKey: `reader:${occurrence.documentId}:${occurrence.start}`,
+			available: doc.removed_at === null,
 			documentId: occurrence.documentId,
 			from,
 			to,
-			text: characters.slice(from, to).join(''),
+			text: chars.slice(from, to).join(''),
 			wordFrom: occurrence.start - from,
 			wordTo: occurrence.end - from,
-			line: characters.slice(0, occurrence.start).filter((c) => c === '\n').length
+			line: chars.slice(0, occurrence.start).filter((c) => c === '\n').length,
+			lineText: chars.slice(lineFrom, lineTo).join(''),
+			lineFrom,
+			wordAudio: this.ankiExample(lexemeId)?.wordAudio
 		};
 	}
 
@@ -1477,6 +1540,14 @@ export class Repository {
 			`SELECT m.*, l.surface FROM memory m JOIN lexeme l ON l.id = m.lexeme_id
        WHERE m.skill = 'reading' AND m.card = 1`
 		);
+		const eligible = new Set(
+			queryRows(
+				this.db,
+				`SELECT DISTINCT t.lexeme_id FROM token t WHERE ${ENCOUNTERED_TOKEN}
+          UNION SELECT lexeme_id FROM encounter WHERE kind='anki-example' AND lexeme_id IS NOT NULL`
+			).map((row) => Number(row.lexeme_id))
+		);
+		const readyRows = rows.filter((row) => eligible.has(Number(row.lexeme_id)));
 		const frequency = new Map(
 			queryRows(
 				this.db,
@@ -1497,13 +1568,17 @@ export class Repository {
 			)[0].n
 		);
 		const queue = cardQueue(
-			rows.map((row) => ({ lexemeId: Number(row.lexeme_id), memory: memoryFromRow(row) })),
+			readyRows.map((row) => ({ lexemeId: Number(row.lexeme_id), memory: memoryFromRow(row) })),
 			{ frequency, firstReviewsToday, cap, now }
 		);
 		return {
 			queue,
 			words: Object.fromEntries(rows.map((row) => [Number(row.lexeme_id), String(row.surface)])),
-			counts: { due: queue.due.length, fresh: queue.fresh.length }
+			counts: {
+				due: queue.due.length,
+				fresh: queue.fresh.length,
+				awaitingContext: rows.length - readyRows.length
+			}
 		};
 	}
 

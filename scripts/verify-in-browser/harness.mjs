@@ -166,6 +166,108 @@ async function importFromTermux(tab, title) {
 }
 
 const scenarios = {
+	async cardaudio() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await tab.send('Network.enable');
+			await tab.send('Network.setBlockedURLs', { urls: ['*huggingface.co*', '*hf.co*'] });
+			await tab.send('Page.addScriptToEvaluateOnNewDocument', {
+				source: `const OriginalAudio=window.Audio;window.__cardAudio=[];window.Audio=function(...args){const audio=new OriginalAudio(...args);window.__cardAudio.push(audio);return audio;};`
+			});
+			await tab.goto('/diagnostics');
+			await until('Anki import', () =>
+				tab.evaluate(`return !!document.querySelector('input[aria-label="Anki export"]')`)
+			);
+			await tab.evaluate(
+				`const payload={format:2,profile:'Verification',collectionModified:'2020-01-01T00:00:00Z',exportedAt:'2020-01-01T00:00:00Z',words:[{word:'学习',level:'learning',stability:1,type:2,lapses:0,suspended:false,difficulty:5,lastReview:'2020-01-01T00:00:00Z'}]};const input=document.querySelector('input[aria-label="Anki export"]');const transfer=new DataTransfer();transfer.items.add(new File([JSON.stringify(payload)],'words.json'));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));`
+			);
+			await until('schedule preview', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Import')`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Import').click()`
+			);
+			await until('seed imported', () =>
+				tab.evaluate(`return document.body.textContent.includes('Imported:')`)
+			);
+			await tab.evaluate(`
+    const pcm=new ArrayBuffer(44+16000*2*2);const view=new DataView(pcm);const write=(at,text)=>[...text].forEach((c,i)=>view.setUint8(at+i,c.charCodeAt(0)));write(0,'RIFF');view.setUint32(4,pcm.byteLength-8,true);write(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,16000,true);view.setUint32(28,32000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);write(36,'data');view.setUint32(40,pcm.byteLength-44,true);
+    for(let i=0;i<32000;i++)view.setInt16(44+i*2,Math.sin(i*2*Math.PI*440/16000)*1000,true);
+    const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',pcm))].map(b=>b.toString(16).padStart(2,'0')).join('');const name=hash+'.wav';
+    const manifest={format:'reader-anki-examples',version:1,examples:[{key:'verification:1',profile:'Verification',noteId:'1',word:'学习',text:'我们学习中文。',translation:'We study Chinese.',pinyin:'wǒ men xué xí zhōng wén',original:{},wordAudio:name,sentenceAudio:name}],audio:[{name,id:hash,size:pcm.byteLength,mime:'audio/wav'}]};
+    const parts=[];for(const [entryName,data] of [['examples.json',new TextEncoder().encode(JSON.stringify(manifest))],['audio/'+name,new Uint8Array(pcm)]]){const h=new Uint8Array(512);const put=(at,text)=>h.set(new TextEncoder().encode(text),at);put(0,entryName);put(124,data.length.toString(8).padStart(11,'0')+'\\0');h.fill(32,148,156);h[156]=48;put(148,h.reduce((a,b)=>a+b,0).toString(8).padStart(6,'0')+'\\0 ');parts.push(h,data,new Uint8Array((512-data.length%512)%512));}parts.push(new Uint8Array(1024));
+    const transfer=new DataTransfer();transfer.items.add(new File(parts,'examples.tar'));const input=document.querySelector('input[accept=".tar"]');input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));
+   `);
+			await until('example preview', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Import examples and audio')`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Import examples and audio').click()`
+			);
+			await until('examples imported', () =>
+				tab.evaluate(`return document.body.textContent.includes('Examples ready.')`)
+			);
+			await tab.goto('/cards');
+			await until('Anki context', () =>
+				tab.evaluate(`return document.querySelector('.source')?.textContent.includes('Anki')`)
+			);
+			await tab.evaluate(`document.querySelector('.reveal').click()`);
+			await until('sentence audio ready', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Hear sentence')?.disabled===false`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Hear sentence').click()`
+			);
+			await until('audio playing', () =>
+				tab.evaluate(
+					`const error=document.querySelector('[role="status"].audio-note')?.textContent;if(error)throw new Error(error);if(window.__cardAudio.some(a=>!a.paused&&a.currentTime>0))return true;throw new Error(JSON.stringify(window.__cardAudio.map(a=>({paused:a.paused,time:a.currentTime,src:a.src,state:a.readyState,error:a.error?.message}))))`
+				)
+			);
+			await until('audio ended', () =>
+				tab.evaluate(`return window.__cardAudio.length>0&&window.__cardAudio.every(a=>a.paused)`)
+			);
+			const result = await tab.evaluate(
+				`return {source:document.querySelector('.source').textContent,english:document.querySelector('.english').textContent,width:document.documentElement.scrollWidth,viewport:innerWidth,recordings:window.__cardAudio.length}`
+			);
+			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-context-card.png', Buffer.from(shot.data, 'base64'));
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Hear word').click()`
+			);
+			await until('word audio playing', () =>
+				tab.evaluate(
+					`const error=document.querySelector('[role="status"].audio-note')?.textContent;if(error)throw new Error(error);if(window.__cardAudio.some(a=>!a.paused&&a.currentTime>0))return true;throw new Error(JSON.stringify(window.__cardAudio.map(a=>({paused:a.paused,time:a.currentTime,src:a.src,state:a.readyState,error:a.error?.message}))))`
+				)
+			);
+			await tab.evaluate(`document.querySelector('.g4').click()`);
+			await until('grade and stop', () =>
+				tab.evaluate(
+					`return !!document.querySelector('.empty')&&window.__cardAudio.every(a=>a.paused)`
+				)
+			);
+			return {
+				pass: result.english === 'We study Chinese.' && result.width <= result.viewport,
+				...result,
+				gradeStoppedPlayback: true
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async cardlayout() {
 		const { writeFileSync } = await import('node:fs');
 		const tab = await openTab('about:blank');
@@ -788,6 +890,7 @@ const scenarios = {
 						const word = sheet.querySelector('.word').getBoundingClientRect();
 						return { top: sheet.getBoundingClientRect().top, height: sheet.getBoundingClientRect().height, wordTop: word.top, scroll: sheet.scrollHeight > sheet.clientHeight };`)
 				);
+				await tab.evaluate(`document.querySelector('.card').scrollIntoView({block:'start'})`);
 				const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 				writeFileSync(`sheet-${name}.png`, Buffer.from(shot.data, 'base64'));
 				result[name] = box;

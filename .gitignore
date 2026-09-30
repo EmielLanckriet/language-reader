@@ -45,3 +45,6 @@ __pycache__/
 android/reader-start/build/
 anki-words.json
 reader-fsrs-data*.json
+
+# Personal Anki example/audio export bundles
+anki-examples*.tar

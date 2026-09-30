@@ -39,11 +39,23 @@ describe('a card’s sentence', () => {
 
 	it('is a different one after a review showed it, while the library has another', async () => {
 		const { repository, first, kan } = await library();
+		for (const doc of repository.listDocuments()) {
+			const text = repository.getDocument(doc.id).rawContent;
+			repository.recordEncounters(repository.startSession(doc.id, 'reading'), [
+				{
+					kind: 'read',
+					at: '2026-09-30T10:00:00Z',
+					documentId: doc.id,
+					fromOffset: 0,
+					toOffset: [...text].length
+				}
+			]);
+		}
 		const shown = [repository.cardSentence(kan.lexemeId!)!];
 		for (let i = 0; i < 2; i++) {
 			const last = shown.at(-1)!;
 			repository.recordReview(kan.lexemeId!, 3, {
-				documentId: last.documentId,
+				documentId: last.documentId!,
 				fromOffset: last.from + last.wordFrom,
 				toOffset: last.from + last.wordTo
 			});
@@ -89,6 +101,28 @@ describe('today’s cards', () => {
 		// 看 occurs three times in the library, 我 twice: the frequent one comes first.
 		expect(today.queue.fresh).toEqual([kan.lexemeId]);
 		expect(today.words[kan.lexemeId!]).toBe('看');
-		expect(today.counts).toEqual({ due: 0, fresh: 1 });
+		expect(today.counts).toEqual({ due: 0, fresh: 1, awaitingContext: 0 });
 	});
+});
+
+it('excludes unread occurrences and withdrawn encounters, including from the queue', async () => {
+	const { repository, first, kan } = await library();
+	expect(repository.cardSentence(kan.lexemeId!)).toBeUndefined();
+	const id = repository.startSession(first, 'reading');
+	repository.recordEncounters(id, [
+		{
+			kind: 'lookup',
+			at: '2026-09-30T10:00:00Z',
+			lexemeId: kan.lexemeId,
+			documentId: first,
+			fromOffset: 5,
+			toOffset: 6
+		}
+	]);
+	expect(repository.cardSentence(kan.lexemeId!)?.text).toBe('他看你。');
+	repository.recordReview(kan.lexemeId!, 3, { documentId: first, fromOffset: 5, toOffset: 6 });
+	expect(repository.cardSentence(kan.lexemeId!)?.text).toBe('他看你。');
+	repository.recordEncounters(id, [{ kind: 'withdrawn', at: '2026-09-30T11:00:00Z' }]);
+	expect(repository.cardSentence(kan.lexemeId!)).toBeUndefined();
+	expect(repository.cardsToday(10).counts.awaitingContext).toBe(1);
 });

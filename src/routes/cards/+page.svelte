@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { CardAudio, timedExample } from '$lib/media/card-audio';
+	import { exampleAudio } from '$lib/media/example-bundle';
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { lookUp } from '$lib/analyzer/lookup';
@@ -26,6 +28,34 @@
 		english?: string;
 	} | null>(null);
 	let revealed = $state(false);
+	let audio: CardAudio | undefined;
+	let playing = $state(false);
+	let audioProblem = $state('');
+	let sentenceClip = $state<{ file: Blob; start: number; end?: number } | null>(null);
+	let wordClip: File | undefined;
+	let request = 0;
+	$effect(() => {
+		audio = new CardAudio((active, error) => {
+			playing = active;
+			if (error) audioProblem = error;
+		});
+		// Voice discovery may complete asynchronously before the first pronunciation tap.
+		globalThis.speechSynthesis?.getVoices();
+		return () => {
+			request++;
+			audio?.dispose();
+		};
+	});
+	function playSentence() {
+		audioProblem = '';
+		if (sentenceClip) audio?.play(sentenceClip.file, sentenceClip.start, sentenceClip.end);
+	}
+	function playWord() {
+		audioProblem = '';
+		if (wordClip) audio?.play(wordClip);
+		else if (current) audio?.speak(current.word);
+	}
+
 	/** Pinyin per character of the card's sentence; the card's own word shows it only when revealed. */
 	let readings = $state<string[]>([]);
 	$effect(() => {
@@ -97,7 +127,13 @@
 
 	/** The next card: the queue, then a card answered Again once it is nearly due again. */
 	async function next() {
+		audio?.stop();
+		audioProblem = '';
+		sentenceClip = null;
+		wordClip = undefined;
+		const own = ++request;
 		revealed = false;
+		current = null;
 		const { repository } = await session();
 		let lexemeId = order.shift();
 		if (lexemeId === undefined) {
@@ -110,8 +146,15 @@
 			return;
 		}
 		const sentence = await repository.cardSentence(lexemeId);
-		current = { lexemeId, word: today.words[lexemeId], sentence };
-		void englishOf(lexemeId, sentence);
+		if (own !== request) return;
+		if (!sentence) {
+			current = null;
+			return;
+		}
+		current = { lexemeId, word: today.words[lexemeId], sentence, english: sentence.translation };
+		void prepareExample(own, lexemeId, sentence).catch((error) => {
+			if (own === request) audioProblem = String(error);
+		});
 	}
 
 	// --- The sentence's English: a video's own line, else the quick translator (ADR-0023). ---
@@ -120,10 +163,25 @@
 	const asked: string[] = [];
 	const quickEnglish: (string | undefined)[] = [];
 
-	async function englishOf(lexemeId: number, sentence: CardSentence | undefined) {
-		if (!sentence) return;
-		const media = await loadMedia(sentence.documentId).catch(() => null);
-		if (media) {
+	async function prepareExample(own: number, lexemeId: number, sentence: CardSentence) {
+		const [wordFile, sentenceFile, media] = await Promise.all([
+			sentence.wordAudio ? exampleAudio(sentence.wordAudio) : undefined,
+			sentence.sentenceAudio ? exampleAudio(sentence.sentenceAudio) : undefined,
+			sentence.documentId !== undefined ? loadMedia(sentence.documentId).catch(() => null) : null
+		]);
+		if (own !== request) return;
+		wordClip = wordFile;
+		if (sentenceFile) sentenceClip = { file: sentenceFile, start: 0 };
+		if (sentence.source === 'anki') return;
+		const timed = media && timedExample(sentence, media.cues);
+		if (timed && current) {
+			sentence = timed.sentence;
+			current = { ...current, sentence };
+			const file = media.sound ?? media.media;
+			if (file) sentenceClip = { file, start: timed.start, end: timed.end };
+		}
+
+		if (media && timed) {
 			const lines = englishFor(
 				media.cues.length,
 				llmByLine(media.cues, media.translation),
@@ -158,12 +216,16 @@
 		grading = true;
 		try {
 			const { repository } = await session();
-			const shown = current.sentence && {
-				documentId: current.sentence.documentId,
-				fromOffset: current.sentence.from + current.sentence.wordFrom,
-				toOffset: current.sentence.from + current.sentence.wordTo
-			};
-			await repository.recordReview(current.lexemeId, value, shown);
+			audio?.stop();
+			const shown =
+				current.sentence?.documentId !== undefined
+					? {
+							documentId: current.sentence.documentId,
+							fromOffset: current.sentence.from + current.sentence.wordFrom,
+							toOffset: current.sentence.from + current.sentence.wordTo
+						}
+					: undefined;
+			await repository.recordReview(current.lexemeId, value, shown, current.sentence?.sourceKey);
 			reviewed++;
 			await next();
 		} catch (error) {
@@ -229,6 +291,13 @@
 				{#if current.sentence}
 					<div class="example">
 						<span class="eyebrow">In context</span>
+						<p class="source">
+							{#if current.sentence.documentId !== undefined && current.sentence.available}<a
+									href={resolve('/read/[id]', { id: String(current.sentence.documentId) })}
+									>{current.sentence.sourceTitle}</a
+								>{:else}{current.sentence.sourceTitle}{#if !current.sentence.available}
+									· removed from library{/if}{/if}
+						</p>
 						<p class="sentence" lang="zh-Hans">
 							{#each characters as ch, i (i)}{#if ch.part === 'word'}<mark>{ch.c}</mark
 									>{:else}{ch.c}{/if}{/each}
@@ -244,6 +313,13 @@
 			</div>
 			<div class="review-actions">
 				{#if revealed}
+					<div class="audio-actions">
+						<button onclick={playWord}>Hear word</button>
+						<button onclick={playSentence} disabled={!sentenceClip}>Hear sentence</button>
+						{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
+					</div>
+					{#if !sentenceClip}<p class="audio-note">No recording available for this example.</p>{/if}
+					{#if audioProblem}<p class="audio-note" role="status">{audioProblem}</p>{/if}
 					<div class="grades">
 						{#each GRADES as { value, label } (value)}<button
 								class="grade g{value}"
@@ -266,6 +342,10 @@
 			<a href={resolve('/')}>Back to your library →</a>
 		</div>
 	{/if}
+	{#if today.counts.awaitingContext > 0}<p class="audio-note">
+			{today.counts.awaitingContext} words are waiting for an example. Encounter them in Reader or
+			<a href={resolve('/diagnostics')}>import your Anki examples</a>.
+		</p>{/if}
 	<details class="review-settings">
 		<summary>Review settings</summary><label class="cap"
 			>New cards a day <input
@@ -280,6 +360,27 @@
 {/if}
 
 <style>
+	.source,
+	.audio-note {
+		font-size: 0.78rem;
+		color: var(--muted);
+		line-height: 1.5;
+	}
+	.source a {
+		color: inherit;
+	}
+	.audio-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-bottom: 0.6rem;
+	}
+	.audio-actions button {
+		font-size: 0.85rem;
+		padding: 0.6rem 0.8rem;
+		min-height: 44px;
+	}
+
 	.cards-heading {
 		display: flex;
 		align-items: center;

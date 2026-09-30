@@ -9,6 +9,7 @@ import type { DocumentId, LexemeId } from './types';
 
 /** Free text in storage; these are the kinds this build writes. */
 export type EncounterKind =
+	| 'anki-example'
 	| 'study-time'
 	| 'session-end'
 	| 'read'
@@ -108,6 +109,11 @@ export function validateEncounter(encounter: Encounter): void {
 				fail('has no media times');
 			break;
 		case 'review':
+			if (
+				detail.exampleKey !== undefined &&
+				(typeof detail.exampleKey !== 'string' || detail.exampleKey.length > 1500)
+			)
+				fail('has an invalid example identity');
 			// A word in no document (an Anki word never met) is reviewed without a sentence.
 			if (encounter.lexemeId === undefined) fail('has no word');
 			if (encounter.documentId !== undefined) needsRange();

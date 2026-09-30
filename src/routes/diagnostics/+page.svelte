@@ -1,4 +1,5 @@
 <script lang="ts">
+	import AnkiExamples from '$lib/ui/AnkiExamples.svelte';
 	import { safeguards, type Safeguards } from '$lib/backup/safeguards';
 	import { latest, restore } from '$lib/backup/destination';
 	import StartTermux from '$lib/ui/StartTermux.svelte';
@@ -606,6 +607,8 @@
 	</ul>
 	<button class="secondary" onclick={clear}>Clear</button>
 {/if}
+
+<AnkiExamples />
 
 <style>
 	.sitting summary {

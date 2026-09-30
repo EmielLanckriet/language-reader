@@ -26,6 +26,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `probe` | What is actually on the page — buttons, links, text. Run this first when a selector fails, instead of guessing. |
 | `tuning` | Cards → Learning data, empty report and JSON export through the storage worker in a disposable profile. Use a verification-mode build. |
 | `study` | One minute of synthetic reading → Finish → weekly credit → feedback → reload → correction; 390px light/dark screenshots in `/tmp/reader-progress-{light,dark}.png` and `/tmp/reader-library-light.png`. Use a verification-mode build. |
+| `cardaudio` | Imports a synthetic Anki seed and example/audio archive, checks source and English, plays both recordings and confirms grading stops playback. Uses a disposable profile/service; blocks model downloads. |
 | `cardlayout` | Synthetic text lookup → flashcard front → answer → grade; checks hidden answers, pronunciation, meanings and mobile width. Front/light/dark screenshots in `/tmp/reader-card-*.png`. Use a verification-mode build. |
 | `boot` | Console output and uncaught exceptions during start-up. |
 | `firstload` | A first visit does not reload itself. Exists because it did, for 614 ms, and the reload was silently failing three other scenarios (research.md R21). |
