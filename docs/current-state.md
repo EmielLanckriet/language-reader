@@ -118,11 +118,14 @@ creates the bundle from a read-only SQLite snapshot. Existing word recordings ta
 local Mandarin device TTS. No new phone model or paid service is involved.
 
 Local validation so far: 445 tests and type checking passed; four deliberate mutations were caught.
-The actual read-only export contains 2,126 matching examples and 4,033 audio files (~167 MiB), with
-no missing files; two notes whose example omits their headword were skipped. The bundle has been
-copied to phone Downloads. Commit `6958c4a` deployed successfully through run `36725940137`;
-CI type/lint/tests/build and deployment passed. The isolated browser confirmed import, both audio
-controls and cancellation when grading at 390px. The phone is connected but locked, so installed-app
+The actual read-only export contains 2,126 matching examples and 4,032 non-empty audio files
+(~167 MiB); two notes whose example omits their headword were skipped and one empty recording is
+intentionally omitted. The bundle has been copied to phone Downloads. The initial phone selection
+exposed the empty clip and a slow per-header archive scan; no example metadata or audio was
+written. Commit `995ad68` retains the example while omitting empty audio and scans archive headers
+in 1 MiB chunks. It deployed successfully through run `36741318139`, whose CI type/lint/tests/build
+and deployment gates passed. The isolated browser confirmed import, both audio controls and
+cancellation when grading at 390px. The phone was later moved to its launcher, so installed-app
 validation and the actual import remain pending. Test servers/USB mappings were removed and the
 screen-awake setting restored to `0`. See
 [verification](../specs/011-context-audio-cards/quickstart.md) and [ADR-0035](adr/0035-card-context-and-audio.md).
