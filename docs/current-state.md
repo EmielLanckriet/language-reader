@@ -95,7 +95,13 @@ are checked against the current sentence before display. Scheduling and review w
 This is a reversible presentation fix under ADR-0031. Four existing card-storage tests, type checking,
 scoped lint, verification build and the isolated `cardlayout` browser scenario passed. The scenario
 imports synthetic text, looks up a word, checks front/reveal, and grades it to completion; light/dark
-390px screenshots were inspected. Deployment and this change's installed-phone check are pending.
+390px screenshots were inspected. Commit `9b54f8e` deployed through successful run `36721637830`
+(type/lint/tests/build gates passed). A redundant run of the same commit was cancelled.
+The isolated Samsung A71 check passed at 411px, including one synthetic grade, with model downloads
+blocked. Installed Reader then loaded the new card face and Show answer control under published
+worker build `1790774830873`, after refreshing the still-open old page. Both sentence and word-only
+layouts were inspected. No real cards were graded. Test servers/mappings were removed and the USB
+screen-awake setting restored to 0. Reader was left on Cards.
 
 ## Product and architecture
 
