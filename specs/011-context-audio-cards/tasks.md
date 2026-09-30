@@ -13,3 +13,5 @@ Dependencies: T001→T002→T003; T004→T005; T006→T007 after source/import c
 Independent checks: US1 excludes unread/withdrawn ranges; US2 imports/reimports/restores examples;
 US3 stops at clip end/visibility loss. T004 and T006 can be prepared independently, no parallel
 implementation needed. MVP is encountered examples; deliver all three stories together for phone use.
+
+T008 browser checks passed; physical-phone check awaits unlock. T009 deployment succeeded (`6958c4a`); bundle is in phone Downloads, daily-app import still pending.

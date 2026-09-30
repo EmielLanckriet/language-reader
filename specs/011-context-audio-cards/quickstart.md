@@ -21,3 +21,5 @@ Never restore personal data into test origin. Check installed build and preserve
   zero missing audio, two sentences omitting their headwords skipped. Copied to phone Downloads.
 - Physical-phone verification and daily Reader import are pending: the connected phone is locked.
   No synthetic reviews or examples were added to daily Reader.
+
+Deployment: commit `6958c4a`, successful [run 36725940137](https://github.com/EmielLanckriet/language-reader/actions/runs/36725940137). CI gates passed. Temporary servers/USB mappings were removed; phone screen-awake setting restored to `0`. Installed-phone acceptance is still pending unlock.
