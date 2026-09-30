@@ -34,4 +34,25 @@ class ExportExamplesTest(unittest.TestCase):
                 self.assertEqual(archive.extractfile('audio/'+example['wordAudio']).read(),b'word audio')
                 self.assertEqual(archive.extractfile('audio/'+example['sentenceAudio']).read(),b'sentence audio')
 
+    def test_omits_an_empty_recording_but_keeps_its_example(self):
+        spec = importlib.util.spec_from_file_location('export_examples', MODULE)
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); source = root/'collection.anki2'; media = root/'collection.media'; media.mkdir()
+            db=sqlite3.connect(source)
+            db.executescript('CREATE TABLE notetypes(id INTEGER,name TEXT);CREATE TABLE fields(ntid INTEGER,ord INTEGER,name TEXT);CREATE TABLE notes(id INTEGER,mid INTEGER,flds TEXT);CREATE TABLE cards(nid INTEGER,type INTEGER);')
+            db.execute("INSERT INTO notetypes VALUES(1,'HSK')")
+            names=['Simplified','SentenceSimplified','SentenceMeaning','SentencePinyin.1','Audio','SentenceAudio']
+            db.executemany('INSERT INTO fields VALUES(1,?,?)',enumerate(names))
+            db.execute('INSERT INTO notes VALUES(2,1,?)',('\x1f'.join(['学习','我们学习中文。','We study Chinese.','wǒ men xué xí zhōng wén','[sound:word.mp3]','[sound:empty.mp3]']),))
+            db.execute('INSERT INTO cards VALUES(2,2)');db.commit();db.close()
+            (media/'word.mp3').write_bytes(b'word audio');(media/'empty.mp3').write_bytes(b'')
+            output=root/'examples.tar'; report=module.export_examples(source,output,'Test')
+            self.assertEqual(report['missingAudio'],1)
+            with tarfile.open(output) as archive:
+                manifest=json.load(archive.extractfile('examples.json'))
+                self.assertEqual(len(manifest['audio']),1)
+                self.assertIn('wordAudio',manifest['examples'][0])
+                self.assertNotIn('sentenceAudio',manifest['examples'][0])
+
 if __name__=='__main__':unittest.main()

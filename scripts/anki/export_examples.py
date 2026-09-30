@@ -57,6 +57,8 @@ def export_examples(collection, output, profile):
             name=names[0];path=media/name
             if Path(name).name!=name or not path.is_file() or path.suffix.lower() not in MIME: missing+=1;continue
             data=path.read_bytes()
+            # Reader rejects empty clips. Keep the example, but do not give it an unusable audio reference.
+            if not data: missing+=1;continue
             if len(data)>32*1024*1024:raise ValueError(f'Audio clip too large: {name}')
             digest=hashlib.sha256(data).hexdigest(); stored=digest+path.suffix.lower()
             audio[stored]={'path':path,'size':len(data),'id':digest,'mime':MIME[path.suffix.lower()]};item[key]=stored

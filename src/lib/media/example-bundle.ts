@@ -13,6 +13,7 @@ export interface ExampleBundle {
 	audio: Asset[];
 }
 const MIB = 1024 * 1024;
+const HEADER_CACHE_BYTES = MIB;
 const MIME: Record<string, string> = {
 	mp3: 'audio/mpeg',
 	m4a: 'audio/mp4',
@@ -26,11 +27,25 @@ const decode = (bytes: Uint8Array) => new TextDecoder().decode(bytes).replace(/\
 export async function readExampleBundle(file: Blob): Promise<ExampleBundle> {
 	if (file.size > 2 * 1024 * MIB) throw new Error('This example bundle is too large.');
 	let offset = 0;
+	let cachedStart = -1;
+	let cached = new Uint8Array();
+	const headerAt = async (at: number) => {
+		const start = Math.floor(at / HEADER_CACHE_BYTES) * HEADER_CACHE_BYTES;
+		if (start !== cachedStart) {
+			cachedStart = start;
+			cached = new Uint8Array(
+				await file.slice(start, Math.min(start + HEADER_CACHE_BYTES, file.size)).arrayBuffer()
+			);
+		}
+		const relative = at - cachedStart;
+		if (relative + 512 > cached.length) throw new Error('Invalid or truncated bundle file.');
+		return cached.slice(relative, relative + 512);
+	};
 	let examples: AnkiExample[] | undefined;
 	const expected = new Map<string, Omit<Asset, 'blob'>>();
 	const found = new Map<string, Asset>();
 	while (offset + 512 <= file.size) {
-		const header = new Uint8Array(await file.slice(offset, offset + 512).arrayBuffer());
+		const header = await headerAt(offset);
 		if (header.every((byte) => byte === 0)) break;
 		const octal = (from: number, to: number) => {
 			const text = decode(header.slice(from, to)).trim();

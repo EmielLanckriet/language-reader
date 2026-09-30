@@ -62,3 +62,27 @@ it('reads a bounded bundle and rejects missing, duplicate and traversal audio en
 	).rejects.toThrow('Unexpected');
 	await expect(readExampleBundle(tar([file, ['../' + name, 'abc']]))).rejects.toThrow('Unexpected');
 });
+
+it('reads archive headers from bounded chunks rather than one storage request per recording', async () => {
+	const audio = Array.from({ length: 128 }, (_, i) => {
+		const id = i.toString(16).padStart(64, '0');
+		return { name: `${id}.mp3`, id, size: 1, mime: 'audio/mpeg' };
+	});
+	const archive = tar([
+		[
+			'examples.json',
+			JSON.stringify({ format: 'reader-anki-examples', version: 1, examples: [], audio })
+		],
+		...audio.map((entry) => [`audio/${entry.name}`, 'a'] as [string, string])
+	]);
+	const original = Blob.prototype.arrayBuffer;
+	let reads = 0;
+	vi.spyOn(Blob.prototype, 'arrayBuffer').mockImplementation(function (this: Blob) {
+		reads++;
+		return original.call(this);
+	});
+	await expect(readExampleBundle(archive)).resolves.toMatchObject({
+		audio: { length: audio.length }
+	});
+	expect(reads).toBeLessThan(4);
+});
