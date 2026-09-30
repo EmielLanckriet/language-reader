@@ -166,6 +166,149 @@ async function importFromTermux(tab, title) {
 }
 
 const scenarios = {
+	async study() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await tab.goto('/add');
+			await until('paste field', () => tab.evaluate('return !!document.querySelector("textarea")'));
+			await tab.evaluate(
+				`const area=document.querySelector('textarea');area.value='我们学习中文。今天有一点进步，明天继续。';area.dispatchEvent(new Event('input',{bubbles:true}));`
+			);
+			await until('save enabled', () => tab.evaluate(`return ${SAVE_BUTTON}?.disabled===false`));
+			await tab.evaluate(`${SAVE_BUTTON}.click()`);
+			const link = await until('saved text', () => tab.evaluate(`return ${READ_LINK}`));
+			await tab.goto(link.replace(BASE, ''));
+			await until('reading text', () =>
+				tab.evaluate(`return !!document.querySelector('.reading button.token')`)
+			);
+			await tab.evaluate(
+				`document.querySelector('.reading').scrollIntoView({block:'center'});window.studyStarted=Date.now();`
+			);
+			console.log('study: measuring one short visible reading session in disposable data');
+			await until(
+				'one minute of reading',
+				() => tab.evaluate('return Date.now()-window.studyStarted >= 65000'),
+				75000,
+				500
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
+			);
+			await until('saved session summary', () =>
+				tab.evaluate(
+					`return document.body.innerText.includes('Session saved.') && !!document.querySelector('.session-card')`
+				)
+			);
+			const complete = await tab.evaluate(
+				`return document.querySelectorAll('.week-days .complete').length`
+			);
+			if (complete !== 1) throw new Error(`Expected one study day, got ${complete}`);
+			await tab.evaluate(
+				`[...document.querySelectorAll('.answer-options button')].find(b=>b.textContent.includes('every unknown')).click()`
+			);
+			await until('answer saved', () =>
+				tab.evaluate(`return document.body.innerText.includes('Current answer: Yes')`)
+			);
+			await tab.goto('/progress');
+			await until('feedback survived reload', () =>
+				tab.evaluate(`return document.body.textContent.includes('Current answer: Yes')`)
+			);
+			await tab.evaluate(
+				`document.querySelector('.session-card').open=true;[...document.querySelectorAll('.answer-options button')].find(b=>b.textContent.includes('Only some')).click()`
+			);
+			await until('corrected answer', () =>
+				tab.evaluate(`return document.body.innerText.includes('Current answer: Only some')`)
+			);
+			for (const theme of ['light', 'dark']) {
+				await tab.send('Emulation.setEmulatedMedia', {
+					features: [{ name: 'prefers-color-scheme', value: theme }]
+				});
+				await tab.evaluate('window.scrollTo(0,0)');
+				const shot = await tab.send('Page.captureScreenshot', {
+					format: 'png',
+					captureBeyondViewport: true
+				});
+				writeFileSync(`/tmp/reader-progress-${theme}.png`, Buffer.from(shot.data, 'base64'));
+			}
+			await tab.goto('/');
+			await until('continue card', () =>
+				tab.evaluate(`return !!document.querySelector('.continue-card')`)
+			);
+			await tab.send('Emulation.setEmulatedMedia', {
+				features: [{ name: 'prefers-color-scheme', value: 'light' }]
+			});
+			const shot = await tab.send('Page.captureScreenshot', {
+				format: 'png',
+				captureBeyondViewport: true
+			});
+			writeFileSync('/tmp/reader-library-light.png', Buffer.from(shot.data, 'base64'));
+			const width = await tab.evaluate(
+				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
+			);
+			return {
+				pass: width.body <= width.viewport,
+				completedDays: complete,
+				feedback: 'corrected after reload',
+				width
+			};
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+	async tuning() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/cards');
+			await until('learning data link', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('a')].some(a => a.textContent === 'Learning data')`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('a')].find(a => a.textContent === 'Learning data').click()`
+			);
+			await until('empty learning report', () =>
+				tab.evaluate(`return document.body.innerText.includes('0 delayed recall observations')`)
+			);
+			// Observe the actual download payload; no personal data enters this disposable browser.
+			await tab.evaluate(`
+				const original = URL.createObjectURL;
+				URL.createObjectURL = function(blob) {
+					window.tuningExport = blob.text();
+					return original.call(URL, blob);
+				};
+				[...document.querySelectorAll('button')].find(b => b.textContent === 'Export learning data').click();
+			`);
+			const data = await tab.evaluate('return JSON.parse(await window.tuningExport)');
+			const pass =
+				data.format === 1 &&
+				data.rule === 'evidence-2' &&
+				data.scheduler === 'ts-fsrs@5.4.2' &&
+				data.words.length === 0;
+			return { pass, exportedWords: data.words.length, scheduler: data.scheduler };
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	// English for each line arrives from Termux and is revealed on tap. Plumbing only: run
 	// translate.py with TRANSLATE_STUB=1 on the fixture-media job (make-fixtures.sh), so each line
 	// reads "EN: <the Chinese>", and the reader service on 127.0.0.1:8765.

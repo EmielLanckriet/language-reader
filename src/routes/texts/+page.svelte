@@ -3,7 +3,11 @@
 	import Library from '$lib/ui/Library.svelte';
 </script>
 
-<h1>Texts</h1>
+<div class="section-heading">
+	<h1>Texts</h1>
+	<a class="add-link" href={resolve('/add')}>＋ Add</a>
+</div>
+<p class="subtitle">A few lines today. A little more understanding tomorrow.</p>
 
 <Library kind="text">
 	{#snippet empty()}

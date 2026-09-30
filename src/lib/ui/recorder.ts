@@ -106,10 +106,16 @@ export class Recorder {
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private engaged = 0;
 	private readSince: number | undefined;
+	private readingUntil = 0;
+	private visible = typeof document === 'undefined' || document.visibilityState === 'visible';
+	private ended = false;
 	private readonly onHide = () => {
-		if (document.visibilityState === 'hidden') void this.flush();
+		this.setVisible(document.visibilityState === 'visible');
 	};
-	private readonly onLeave = () => void this.flush();
+	private readonly onLeave = () => {
+		this.setVisible(false);
+		void this.flush();
+	};
 
 	constructor(
 		private readonly sink: EncounterSink,
@@ -128,12 +134,50 @@ export class Recorder {
 
 	/** How long the reader has read or played, for whether the attention question is worth asking. */
 	engagedMs(): number {
-		const reading = this.readSince === undefined ? 0 : this.now() - this.readSince;
-		return this.engaged + (this.chunk ? this.chunk.toMs - this.chunk.fromMs : 0) + reading;
+		const reading =
+			this.readSince === undefined
+				? 0
+				: Math.max(0, Math.min(this.now(), this.readingUntil) - this.readSince);
+		return (
+			this.engaged +
+			(this.chunk ? (this.chunk.toMs - this.chunk.fromMs) / this.chunk.speed : 0) +
+			reading
+		);
+	}
+
+	setVisible(visible: boolean): void {
+		const now = this.now();
+		this.settleReading(now);
+		this.visible = visible;
+		this.readSince = visible && this.lastRead && !this.ended ? now : undefined;
+		if (this.readSince !== undefined) this.readingUntil = now + 60000;
+		if (!visible) void this.flush();
+	}
+
+	private addTime(durationMs: number, end = this.now()): void {
+		let remaining = Math.max(0, Math.round(durationMs));
+		while (remaining > 0) {
+			const part = Math.min(remaining, 60000);
+			this.buffer.push({
+				kind: 'study-time',
+				at: new Date(end - remaining + part).toISOString(),
+				detail: { durationMs: part }
+			});
+			remaining -= part;
+		}
+	}
+
+	private settleReading(now = this.now()): void {
+		if (this.readSince === undefined) return;
+		const duration = Math.max(0, Math.min(now, this.readingUntil) - this.readSince);
+		this.engaged += duration;
+		this.addTime(duration, Math.min(now, this.readingUntil));
+		this.readSince = now;
 	}
 
 	/** Playback is at `mediaMs` in line `line`. Called on every timeupdate. */
 	playing(line: number, moment: MediaMoment): void {
+		if (this.ended) return;
 		const c = this.chunk;
 		const continuous =
 			c &&
@@ -192,7 +236,13 @@ export class Recorder {
 
 	/** The lines from `fromOffset` to `toOffset` of a text were on screen long enough to be read. */
 	read(fromOffset: number, toOffset: number): void {
-		this.readSince ??= this.now();
+		if (this.ended) return;
+		if (this.modality === 'reading' && this.visible) {
+			const now = this.now();
+			this.settleReading(now);
+			this.readSince = now;
+			this.readingUntil = now + 60000;
+		}
 		const key = `${fromOffset}-${toOffset}`;
 		if (key === this.lastRead) return;
 		this.lastRead = key;
@@ -231,6 +281,7 @@ export class Recorder {
 	 * write waits until the reader is back, and Android may kill the app first (a bike ride).
 	 */
 	flush(): Promise<void> {
+		this.settleReading();
 		this.splitPlaying();
 		this.stash();
 		this.flushing ??= this.write().finally(() => (this.flushing = undefined));
@@ -266,9 +317,14 @@ export class Recorder {
 	}
 
 	/** Leave the document: an open sheet counts as a lookup, and everything is written. */
-	async close(): Promise<void> {
+	async close(force = false): Promise<void> {
 		this.settle();
 		this.closeChunk();
+		this.settleReading();
+		this.readSince = undefined;
+		if (!this.ended && (force || this.session !== undefined || this.buffer.length > 0))
+			this.push({ kind: 'session-end' });
+		this.ended = true;
 		if (this.timer) clearInterval(this.timer);
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('visibilitychange', this.onHide, true);
@@ -276,6 +332,13 @@ export class Recorder {
 		}
 		await this.flush();
 		if (this.buffer.length > 0) await this.flush();
+	}
+
+	async finish(): Promise<number> {
+		await this.close(true);
+		if (this.buffer.length || this.inflight.length || this.session === undefined)
+			throw new Error('Your session has not been saved yet. Try Finish session again.');
+		return this.session;
 	}
 
 	private settle(outcome: { knew?: 'knew' | 'known'; chose?: string } = {}): void {
@@ -299,7 +362,9 @@ export class Recorder {
 		const c = this.chunk;
 		if (!c) return;
 		this.chunk = undefined;
-		this.engaged += c.toMs - c.fromMs;
+		const duration = (c.toMs - c.fromMs) / c.speed;
+		this.engaged += duration;
+		if (Number.isFinite(duration) && duration > 0) this.addTime(duration);
 		const from = this.lineRanges[c.fromLine];
 		const to = this.lineRanges[c.toLine];
 		if (!from || !to || c.toMs - c.fromMs < MIN_PLAYED_MS) return;

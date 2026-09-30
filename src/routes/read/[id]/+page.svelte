@@ -31,7 +31,6 @@
 	import { audioOnly } from '$lib/media/audio-track';
 	import { goto } from '$app/navigation';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
-	import { attention } from '$lib/ui/attention.svelte';
 	import { colourBand } from '$lib/domain/memory';
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { WordMemory } from '$lib/storage/client';
@@ -180,7 +179,6 @@
 		if (!document || !confirm(`Delete “${document.title}”? Your marks and history in it are kept.`))
 			return;
 		deleteProblem = null;
-		deleting = true;
 		try {
 			const { repository } = await session();
 			await recorder?.close();
@@ -290,8 +288,22 @@
 
 	let recorder = $state<Recorder | undefined>();
 	let player = $state<HTMLMediaElement | null>(null);
-	/** Set when the document is deleted: then there is nothing to ask about. */
-	let deleting = false;
+	let finishing = $state(false);
+	let finishProblem = $state<unknown>(null);
+	async function finishSession() {
+		if (!recorder || finishing) return;
+		finishing = true;
+		finishProblem = null;
+		player?.pause();
+		try {
+			const id = await recorder.finish();
+			await goto(resolve(`/progress?session=${id}`));
+		} catch (error) {
+			finishProblem = error;
+		} finally {
+			finishing = false;
+		}
+	}
 
 	const sink: EncounterSink = {
 		startSession: async (id, modality) => (await session()).repository.startSession(id, modality),
@@ -308,9 +320,7 @@
 			() => new Recorder(sink, id, playable ? 'media' : 'reading', lineRanges())
 		);
 		recorder = made;
-		deleting = false;
 		return () => {
-			if (!deleting) attention.ended(made);
 			void made.close();
 		};
 	});
@@ -668,16 +678,25 @@
 	<ErrorNotice error={problem} onretry={() => load(Number(page.params.id))} />
 {:else if document}
 	<h1 class:compact={media}>{document.title}</h1>
+	<div class="session-actions">
+		<button class="secondary" onclick={finishSession} disabled={finishing || !recorder}
+			>{finishing ? 'Saving session…' : 'Finish session'}</button
+		>
+		{#if finishProblem}<ErrorNotice error={finishProblem} onretry={finishSession} />{/if}
+	</div>
 	<!-- The version is a fingerprint of the analyzer's own behaviour, not a number anyone chose
 	     (ADR-0011), so it reads as opaque and is meant to. It is shown because it is the only way
 	     to tell whether this device's ICU segments like the one the comparison was run on. -->
-	<p class="subtitle" hidden={!!media}>
-		Segmented by {document.analyzer} · {document.analyzerVersion}{#if document.upgrade}<br />
-			<!-- Two stamps, because a document mid-upgrade genuinely has two: the words before the
+	<details class="reader-details" hidden={!!media}>
+		<summary>Text details</summary>
+		<p class="subtitle">
+			Segmented by {document.analyzer} · {document.analyzerVersion}{#if document.upgrade}<br />
+				<!-- Two stamps, because a document mid-upgrade genuinely has two: the words before the
 			     boundary came from one analyzer and the words after it from another (ADR-0016). A
 			     single stamp here would be describing part of the page and claiming all of it. -->
-			Upgrading to {document.upgrade.analyzer} — {percentUpgraded(document)}% done{/if}
-	</p>
+				Upgrading to {document.upgrade.analyzer} — {percentUpgraded(document)}% done{/if}
+		</p>
+	</details>
 
 	<!-- No whitespace between tokens: this is Chinese, and the browser would render any gap the
 	     markup contains. The awkward tag placement is load-bearing, not a formatting accident. -->

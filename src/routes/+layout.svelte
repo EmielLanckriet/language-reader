@@ -9,8 +9,6 @@
 	import SafeguardNotice from '$lib/ui/SafeguardNotice.svelte';
 	import TabBar from '$lib/ui/TabBar.svelte';
 	import TermuxStatus from '$lib/ui/TermuxStatus.svelte';
-	import AttentionSheet from '$lib/ui/AttentionSheet.svelte';
-	import { attention } from '$lib/ui/attention.svelte';
 	import { recoverUnsent } from '$lib/ui/recorder';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
@@ -26,7 +24,9 @@
 	// The library's five sections get the tab bar and Termux's status; reading a document or a
 	// video does not, so nothing sits over the text or the stage.
 	const tabbed = $derived(
-		['/', '/texts', '/cards', '/add', '/diagnostics'].includes(page.route.id ?? '')
+		['/', '/texts', '/cards', '/cards/tuning', '/progress', '/add', '/diagnostics'].includes(
+			page.route.id ?? ''
+		)
 	);
 
 	$effect(() => {
@@ -151,6 +151,3 @@
 	{@render children()}
 </main>
 {#if tabbed}<TabBar />{/if}
-{#if attention.pending}
-	<AttentionSheet onanswer={(answer) => void attention.answered()?.attention(answer)} />
-{/if}

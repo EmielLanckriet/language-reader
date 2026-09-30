@@ -227,6 +227,10 @@ function run(request: Request): unknown {
 			);
 		case 'getMemory':
 			return repository.getMemory(request.args[0]);
+		case 'tuningAnalysis':
+			return repository.tuningAnalysis();
+		case 'studyOverview':
+			return repository.studyOverview(request.args[0]);
 		case 'wordOccurrences':
 			return repository.wordOccurrences(request.args[0]);
 		case 'playedThrough':

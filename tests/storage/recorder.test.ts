@@ -54,7 +54,7 @@ describe('the recorder', () => {
 
 		const rows = queryRows(
 			db,
-			'SELECT kind, lexeme_id, media_ms, detail FROM encounter ORDER BY device_seq'
+			"SELECT kind, lexeme_id, media_ms, detail FROM encounter WHERE kind NOT IN ('study-time','session-end') ORDER BY device_seq"
 		);
 		expect(rows.map((row) => row.kind)).toEqual(['played', 'lookup', 'played', 'replay', 'check']);
 		expect(rows[0]).toMatchObject({ media_ms: 0, detail: '{"toMs":6000}' });
@@ -113,11 +113,11 @@ describe('the recorder', () => {
 		expect(await recoverUnsent(sink, () => clock + 10_000)).toBe(0);
 		// The app was killed; a later start writes it, once.
 		clock += 120_000;
-		expect(await recoverUnsent(sink, () => clock)).toBe(2);
+		expect(await recoverUnsent(sink, () => clock)).toBe(4);
 		expect(await recoverUnsent(sink, () => clock)).toBe(0);
 		const rows = queryRows(
 			db,
-			'SELECT kind, text_visible, detail FROM encounter ORDER BY device_seq'
+			"SELECT kind, text_visible, detail FROM encounter WHERE kind='played' ORDER BY device_seq"
 		);
 		expect(rows).toEqual([
 			{ kind: 'played', text_visible: 0, detail: '{"toMs":6000}' },

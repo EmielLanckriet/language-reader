@@ -9,6 +9,8 @@ import type { DocumentId, LexemeId } from './types';
 
 /** Free text in storage; these are the kinds this build writes. */
 export type EncounterKind =
+	| 'study-time'
+	| 'session-end'
 	| 'read'
 	| 'played'
 	| 'seek'
@@ -80,6 +82,15 @@ export function validateEncounter(encounter: Encounter): void {
 	};
 
 	switch (encounter.kind) {
+		case 'study-time':
+			if (
+				typeof detail.durationMs !== 'number' ||
+				!Number.isFinite(detail.durationMs) ||
+				detail.durationMs <= 0 ||
+				detail.durationMs > 60000
+			)
+				fail('has no duration between 0 and 60000 ms');
+			break;
 		case 'lookup':
 		case 'check':
 			needsWord();

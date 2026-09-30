@@ -44,3 +44,4 @@ chrome*.log
 __pycache__/
 android/reader-start/build/
 anki-words.json
+reader-fsrs-data*.json

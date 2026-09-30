@@ -46,6 +46,29 @@ the specifications. It is corrected as of 2026-09-02 to match them: **slice 0** 
 001, the label is fixed rather than the claim. Two rows made claims that were simply false and are
 corrected below, marked **Was wrong**.
 
+## FSRS tuning additions (2026-09-30, spec 009)
+
+| Anticipated change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| Fit FSRS weights and encounter strengths jointly | High | Cheap while raw encounters retained | Read-only evaluation foundation now; fitting deferred |
+| In-context comprehension probes | Medium | Expensive if prompt/assistance facts lost | Define earned probe protocol before collection; keep existing raw encounters |
+| More flashcard prompt types | High | Expensive if histories conflated | Skill already distinct; add prompt identity before new types collect data |
+| Apply and roll back personal parameters | High | Cheap before first application write | Defer application contract; never overwrite earned history |
+
+See [ADR-0033](adr/0033-fsrs-tuning-outcomes.md). The current evidence-2 policy stays in place;
+explicit flashcard recall is the measured outcome, while implicit encounters remain interventions.
+
+## Study experience additions (2026-09-30, spec 010)
+
+| Anticipated change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| Adjustable weekly target | High | Cheap | Derive progress from activity; defer preference UI |
+| Daily streaks and milestones | Medium | Cheap with retained activity | Defer |
+| Better engagement estimates | High | Old measurements unrecoverable | Retain measured duration encounters now; improve future collection separately |
+
+See [ADR-0034](adr/0034-study-sessions-and-weekly-progress.md). Rewards use participation, independent
+of grades and lookup feedback. Review prompt identity remains covered by spec 009 above.
+
 ## Product Direction
 
 Stated 2026-09-02, and recorded here because nothing else in the repository carried it: **the

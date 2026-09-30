@@ -61,6 +61,8 @@ export interface WordHistory {
 export interface Evidence {
 	at: string;
 	rating: Grade;
+	/** Present only for an actual answer, never an inferred encounter rating. */
+	review?: Pick<Ordered, 'deviceId' | 'deviceSeq'>;
 }
 
 export interface SkillEvidence {
@@ -169,7 +171,11 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			found[skillOf(event)].evidence.push({ at: event.at, rating: HARD });
 		} else if (event?.kind === 'review') {
 			const skill = event.detail.skill as Skill;
-			found[skill].evidence.push({ at: event.at, rating: event.detail.grade as Grade });
+			found[skill].evidence.push({
+				at: event.at,
+				rating: event.detail.grade as Grade,
+				review: { deviceId: event.deviceId, deviceSeq: event.deviceSeq }
+			});
 		} else if (exposure) {
 			const skill = skillOf(exposure);
 			if (history.answers.get(exposure.sessionId) !== 'all') continue;
@@ -183,9 +189,9 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 
 const schedulers = new Map<string, FSRS>();
 
-function scheduler(parameters?: FsrsParameters): FSRS {
+function scheduler(parameters?: FsrsParameters, cache = true): FSRS {
 	const key = parameters ? JSON.stringify(parameters) : 'default';
-	let made = schedulers.get(key);
+	let made = cache ? schedulers.get(key) : undefined;
 	if (!made) {
 		// Fuzz off: a replay must be deterministic (SC-007). Short-term on: an Again comes back in minutes.
 		made = fsrs(
@@ -195,7 +201,7 @@ function scheduler(parameters?: FsrsParameters): FSRS {
 				...(parameters ? { w: parameters.weights, request_retention: parameters.retention } : {})
 			})
 		);
-		schedulers.set(key, made);
+		if (cache) schedulers.set(key, made);
 	}
 	return made;
 }
@@ -223,16 +229,67 @@ function seededCard(f: FSRS, seed: AnkiSeed): Card {
 }
 
 /** ts-fsrs over one skill's evidence; undefined without seed or evidence. */
-function fold(f: FSRS, skill: SkillEvidence): Card | undefined {
+function fold(
+	f: FSRS,
+	skill: SkillEvidence,
+	observe?: (evidence: Evidence, card: Card | undefined, now: Date, dated: boolean) => void
+): Card | undefined {
 	let card = skill.seed ? seededCard(f, skill.seed) : undefined;
 	let latest = card?.last_review?.getTime() ?? -Infinity;
-	for (const { at, rating } of skill.evidence) {
+	let dated = skill.seed?.dateKnown ?? true;
+	for (const evidence of skill.evidence) {
+		const { at, rating } = evidence;
 		// History order decides; a clock that went back only shortens nothing to below zero.
 		latest = Math.max(latest, new Date(at).getTime());
 		const now = new Date(latest);
+		observe?.(evidence, card, now, dated);
 		card = f.next(card ?? createEmptyCard(now), now, rating).card;
+		dated = true;
 	}
 	return card;
+}
+
+export interface ReviewPrediction {
+	deviceId: string;
+	deviceSeq: number;
+	at: string;
+	skill: Skill;
+	rating: Grade;
+	probability: number | null;
+	seeded: boolean;
+	excluded?: 'no-prior-memory' | 'undated-seed' | 'short-delay';
+}
+
+/** Retrospective evaluation under the current rule; measure BEFORE applying each answer. */
+export function reviewPredictions(
+	history: WordHistory,
+	parameters?: FsrsParameters
+): ReviewPrediction[] {
+	const found = evidenceFor(history);
+	const f = scheduler(parameters, false);
+	const predictions: ReviewPrediction[] = [];
+	for (const skill of ['reading', 'listening'] as const) {
+		fold(f, found[skill], (evidence, card, now, dated) => {
+			if (!evidence.review) return;
+			const excluded = !card?.last_review
+				? 'no-prior-memory'
+				: !dated
+					? 'undated-seed'
+					: now.getTime() - card.last_review.getTime() < DAY_MS
+						? 'short-delay'
+						: undefined;
+			predictions.push({
+				...evidence.review,
+				at: evidence.at,
+				skill,
+				rating: evidence.rating,
+				probability: excluded ? null : f.get_retrievability(card!, now, false),
+				seeded: found[skill].seed !== undefined,
+				...(excluded ? { excluded } : {})
+			});
+		});
+	}
+	return predictions;
 }
 
 /** A word's memory in each skill it has one in. */

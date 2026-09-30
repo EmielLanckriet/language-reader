@@ -5,11 +5,14 @@
  */
 
 :root {
-	--ink: #1a1a1a;
-	--paper: #fdfdfb;
-	--muted: #6b6b6b;
-	--rule: #e2e2dd;
-	--accent: #2f5d8a;
+	--ink: #213732;
+	--paper: #f5f6f2;
+	--surface: #ffffff;
+	--muted: #63736c;
+	--rule: #dde5df;
+	--accent: #286b5c;
+	--accent-soft: #e7f1e9;
+	--on-accent: #ffffff;
 	--danger: #8a2f2f;
 
 	/* Word states. Deliberately distinguishable without relying on hue alone: underline weight
@@ -29,11 +32,14 @@
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--ink: #e8e8e4;
-		--paper: #16181a;
-		--muted: #9a9a95;
-		--rule: #2e3134;
-		--accent: #7fb0e0;
+		--ink: #e5eee8;
+		--paper: #151d1b;
+		--surface: #1e2925;
+		--muted: #a6b8af;
+		--rule: #34463d;
+		--accent: #94d3b8;
+		--accent-soft: #2b4035;
+		--on-accent: #18382b;
 		--danger: #e08b8b;
 		--unknown: #e07070;
 		--learning: #e0aa55;
@@ -67,7 +73,7 @@ body {
 }
 
 main {
-	max-width: 42rem;
+	max-width: 46rem;
 	margin: 0 auto;
 	padding: 1rem 1rem 4rem;
 }
@@ -78,7 +84,9 @@ main.tabbed {
 }
 
 h1 {
-	font-size: 1.35rem;
+	font-size: 1.9rem;
+	letter-spacing: -0.04em;
+	line-height: 1.25;
 	margin: 0 0 0.25rem;
 }
 
@@ -105,9 +113,9 @@ button,
 
 button {
 	background: var(--accent);
-	color: var(--paper);
+	color: var(--on-accent);
 	border: none;
-	border-radius: 8px;
+	border-radius: 12px;
 	padding: 0.65rem 1.1rem;
 }
 
@@ -457,4 +465,164 @@ ruby rt {
 	color: var(--muted);
 	font-weight: normal;
 	user-select: none;
+}
+
+.eyebrow {
+	display: block;
+	font-size: 0.7rem;
+	font-weight: 650;
+	letter-spacing: 0.09em;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin-bottom: 0.35rem;
+}
+
+.notices {
+	max-width: 46rem;
+	margin: 0 auto;
+	padding: 0.75rem 1rem 0;
+	display: grid;
+	gap: 0.5rem;
+}
+.notices:empty {
+	display: none;
+}
+.notices .notice {
+	margin: 0;
+	padding: 0.6rem 0.8rem;
+	font-size: 0.8rem;
+}
+.notices > p[role='status'] {
+	margin: 0;
+	padding: 0.4rem 0.7rem;
+	border-radius: 8px;
+	background: var(--accent-soft);
+	font-size: 0.72rem;
+}
+.reader-details {
+	font-size: 0.8rem;
+	color: var(--muted);
+	margin: 0.5rem 0 1rem;
+}
+.reader-details summary {
+	cursor: pointer;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+}
+.section-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+.section-heading h2 {
+	font-size: 1.15rem;
+	margin: 0.5rem 0;
+}
+.add-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	padding: 0.4rem 0.8rem;
+	border: 1px solid var(--rule);
+	border-radius: 12px;
+	color: var(--accent);
+	text-decoration: none;
+	background: var(--surface);
+	white-space: nowrap;
+}
+.collection {
+	display: grid;
+	gap: 1rem;
+	margin-top: 1rem;
+}
+.collection li {
+	border: 1px solid var(--rule);
+	border-radius: 18px;
+	overflow: hidden;
+	background: var(--surface);
+}
+.collection a {
+	padding: 1rem;
+}
+.collection a.with-picture {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	gap: 0;
+}
+.collection .frame {
+	width: 100%;
+	border-radius: 0;
+}
+.collection .picture {
+	width: 100%;
+	border-radius: 0;
+	aspect-ratio: 16/9;
+}
+.collection .placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.5rem;
+	background: linear-gradient(135deg, var(--accent-soft), var(--rule));
+	color: var(--accent);
+	font-size: 3rem;
+}
+.placeholder .play-symbol {
+	display: grid;
+	place-items: center;
+	width: 3rem;
+	height: 3rem;
+	font-size: 1rem;
+	border-radius: 50%;
+	background: var(--surface);
+}
+.with-picture .text {
+	padding: 1rem;
+	width: 100%;
+}
+.document-title {
+	display: block;
+	font-weight: 650;
+	font-size: 1.05rem;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+.collection .english-title {
+	margin: 0.25rem 0 0.5rem;
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+.collection .meta {
+	font-size: 0.75rem;
+	margin: 0.5rem 0;
+}
+.collection .watched {
+	background: var(--accent);
+}
+.session-actions {
+	margin: 0.8rem 0 1rem;
+}
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 4px;
+}
+@media (min-width: 600px) {
+	.video-collection {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation: none !important;
+		transition: none !important;
+	}
 }

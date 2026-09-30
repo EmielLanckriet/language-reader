@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { loadMedia } from '$lib/media/store';
@@ -176,6 +177,7 @@
 			>{:else}{ch.c}{/if}{/each}{/snippet}
 
 <h1>Cards</h1>
+<p><a href={resolve('/cards/tuning')}>Learning data</a></p>
 
 {#if problem}
 	<ErrorNotice error={problem} onretry={start} />
@@ -218,6 +220,10 @@
 						>
 					{/each}
 				</div>
+				<p class="muted">
+					Rate what you recalled before Show. Hard means you remembered with difficulty; choose
+					Again if you needed the answer.
+				</p>
 			{:else}
 				<button class="reveal" onclick={() => (revealed = true)}>Show</button>
 			{/if}

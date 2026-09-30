@@ -15,6 +15,8 @@ export type Call =
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'getMemory'; args: [number[]] }
+	| { method: 'tuningAnalysis'; args: [] }
+	| { method: 'studyOverview'; args: [string] }
 	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }
 	| { method: 'deletedWithHistory'; args: [] }

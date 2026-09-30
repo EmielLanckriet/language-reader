@@ -25,16 +25,39 @@
 	});
 </script>
 
-<div class="termux" data-termux={running === null ? 'unknown' : running ? 'running' : 'stopped'}>
-	{#if running}
-		<span class="dot on" aria-hidden="true"></span> Termux running
-	{:else if running === false}
-		<span class="dot" aria-hidden="true"></span> Termux not running
-		<StartTermux onstarted={check} />
-	{/if}
-</div>
+<details class="service-status">
+	<summary
+		>Device service <span>{running === null ? 'Checking…' : running ? 'Connected' : 'Offline'}</span
+		></summary
+	>
+	<div class="termux" data-termux={running === null ? 'unknown' : running ? 'running' : 'stopped'}>
+		{#if running}
+			<span class="dot on" aria-hidden="true"></span> Termux running
+		{:else if running === false}
+			<span class="dot" aria-hidden="true"></span> Termux not running
+			<StartTermux onstarted={check} />
+		{/if}
+	</div>
+</details>
 
 <style>
+	.service-status {
+		font-size: 0.75rem;
+		color: var(--muted);
+		margin: 0 0 1rem;
+	}
+	summary {
+		cursor: pointer;
+		min-height: 44px;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	summary span {
+		border: 1px solid var(--rule);
+		border-radius: 20px;
+		padding: 0 0.5rem;
+	}
 	.termux {
 		display: flex;
 		align-items: center;

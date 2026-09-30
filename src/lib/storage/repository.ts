@@ -25,6 +25,9 @@ import {
 } from '../domain/corrections';
 import { codePointsOf } from '../domain/offsets';
 import { assertion, inHistoryOrder } from '../domain/history';
+import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain/tuning';
+import { RULE } from '../domain/memory';
+import { studyWeek, type StudyOverview, type StudySession } from '../domain/study';
 import { projectStates, RETRACTED } from '../domain/state';
 import { MAX_RANGE, validateEncounter, type Encounter, type Modality } from '../domain/encounter';
 import type { FsrsParameters } from '../domain/anki';
@@ -938,6 +941,33 @@ export class Repository {
 		return { preset, weights, retention };
 	}
 
+	/** Read-only evaluation snapshot. Original encounters remain authoritative, including withdrawals. */
+	tuningDataset(): TuningDataset {
+		const words = queryRows(
+			this.db,
+			`SELECT DISTINCT lexeme_id FROM encounter
+			WHERE kind = 'review' AND lexeme_id IS NOT NULL
+			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN})) ORDER BY lexeme_id`
+		).map((row) => {
+			const id = Number(row.lexeme_id);
+			const history = this.wordHistory(id);
+			return { id, history: { ...history, answers: [...history.answers] } };
+		});
+		return {
+			format: 1,
+			rule: RULE,
+			scheduler: TUNING_SCHEDULER,
+			exportedAt: new Date().toISOString(),
+			parameters: this.currentParameters(),
+			words
+		};
+	}
+
+	tuningAnalysis() {
+		const data = this.tuningDataset();
+		return { data, report: evaluateDataset(data) };
+	}
+
 	/** Everything in the history that bears on one word (contracts/evidence-rule.md). */
 	private wordHistory(lexemeId: LexemeId): WordHistory {
 		const ordered = (row: Row) => ({
@@ -1145,6 +1175,53 @@ export class Repository {
 	}
 
 	/** The latest sessions and what happened in them, newest first, for Diagnostics. */
+	studyOverview(timeZone: string, now = new Date()): StudyOverview {
+		const recent = queryRows(
+			this.db,
+			`SELECT kind, at, detail FROM encounter
+			WHERE kind IN ('study-time','review') AND at >= ?
+			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`,
+			[new Date(now.getTime() - 9 * 86400000).toISOString()]
+		).map((row) => ({
+			kind: String(row.kind),
+			at: String(row.at),
+			detail: JSON.parse(String(row.detail))
+		}));
+		const sessions: StudySession[] = queryRows(
+			this.db,
+			`SELECT s.id, s.document_id, s.modality, s.started_at, d.title, d.removed_at,
+			MAX(CASE WHEN e.kind NOT IN ('attention','withdrawn') THEN e.at END) AS last_at,
+			SUM(CASE WHEN e.kind='study-time' THEN json_extract(e.detail,'$.durationMs') ELSE 0 END) AS activity_ms,
+			SUM(CASE WHEN e.kind='played' THEN MAX(0,json_extract(e.detail,'$.toMs')-e.media_ms) ELSE 0 END) AS played_ms,
+			MAX(CASE WHEN e.kind='session-end' THEN 1 ELSE 0 END) AS ended,
+			(SELECT detail FROM encounter a WHERE a.session_id=s.id AND a.kind='attention' ORDER BY a.device_id DESC,a.device_seq DESC LIMIT 1) AS answer
+			FROM session s JOIN document d ON d.id=s.document_id JOIN encounter e ON e.session_id=s.id
+			WHERE s.id NOT IN (${WITHDRAWN}) GROUP BY s.id
+			HAVING activity_ms >= 30000 OR played_ms >= 30000 OR ended=1 OR answer IS NOT NULL
+			ORDER BY last_at DESC`
+		).map((row) => ({
+			id: Number(row.id),
+			documentId: Number(row.document_id),
+			title: String(row.title),
+			modality: String(row.modality),
+			startedAt: String(row.started_at),
+			lastAt: String(row.last_at),
+			activityMs: Number(row.activity_ms),
+			ended: row.ended === 1,
+			answered: row.answer !== null,
+			answer: row.answer === null ? null : JSON.parse(String(row.answer)).answer,
+			available: row.removed_at === null
+		}));
+		const resume = sessions.find((s) => s.available);
+		return {
+			week: studyWeek(recent, timeZone, now),
+			sessions,
+			resume: resume
+				? { documentId: resume.documentId, title: resume.title, modality: resume.modality }
+				: null
+		};
+	}
+
 	recentEncounters(sessions = 3): RecentSession[] {
 		return queryRows(
 			this.db,

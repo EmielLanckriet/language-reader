@@ -111,7 +111,7 @@
 {:else if documents.length === 0}
 	{@render empty(total === 0)}
 {:else}
-	<ul class="library">
+	<ul class="library collection" class:video-collection={kind === 'video'}>
 		{#each documents as document (document.id)}
 			{@const share = shares.get(document.id)}
 			<li>
@@ -125,7 +125,9 @@
 							{#if pictures[document.id]}
 								<img class="picture" src={pictures[document.id]} alt="" />
 							{:else}
-								<span class="picture"></span>
+								<span class="picture placeholder" aria-hidden="true"
+									><span>文</span><span class="play-symbol">▶</span></span
+								>
 							{/if}
 							{#if watched}
 								<span class="track" title={`Watched to ${percent(watched)}`}>
@@ -135,7 +137,7 @@
 						</span>
 					{/if}
 					<span class="text">
-						{document.title}
+						<strong class="document-title">{document.title}</strong>
 						{#if english[document.id]}
 							<span class="english-title">{english[document.id]}</span>
 						{/if}

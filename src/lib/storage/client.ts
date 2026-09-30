@@ -7,6 +7,8 @@
  */
 
 import type { AnkiExport } from '../domain/anki';
+import type { TuningDataset, TuningReport } from '../domain/tuning';
+import type { StudyOverview } from '../domain/study';
 
 import { RejectedInput } from '../content/types';
 import type { CopyBody } from '../backup/format';
@@ -266,6 +268,14 @@ export class RepositoryClient {
 
 	getMemory(lexemeIds: LexemeId[]): Promise<WordMemory> {
 		return this.call({ method: 'getMemory', args: [lexemeIds] });
+	}
+
+	tuningAnalysis(): Promise<{ data: TuningDataset; report: TuningReport }> {
+		return this.call({ method: 'tuningAnalysis', args: [] });
+	}
+
+	studyOverview(timeZone: string): Promise<StudyOverview> {
+		return this.call({ method: 'studyOverview', args: [timeZone] });
 	}
 
 	readHistory(): Promise<HistoryEntry[]> {

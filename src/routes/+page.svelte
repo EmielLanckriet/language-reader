@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StudyOverview from '$lib/ui/StudyOverview.svelte';
 	import { resolve } from '$app/paths';
 	import Library from '$lib/ui/Library.svelte';
 	import { latest, restore } from '$lib/backup/destination';
@@ -127,7 +128,13 @@
 	}
 </script>
 
-<h1>Videos</h1>
+<span class="eyebrow">Make room for a little Chinese</span>
+<div class="section-heading">
+	<h1>Your library</h1>
+	<a class="add-link" href={resolve('/add')}>＋ Add</a>
+</div>
+<StudyOverview />
+<div class="section-heading"><h2>Videos</h2></div>
 
 {#if transcribing.length > 0}
 	<section class="fresh" aria-label="Being transcribed">

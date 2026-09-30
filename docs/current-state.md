@@ -15,6 +15,61 @@ These changes require **both** the website update and a separate Termux script u
 and thermal validation are not yet confirmed. Do not repeat heavy phone benchmarks to verify them.
 The earlier phone smoke checks below do not certify safety after this incident.
 
+## Offline translation comparison
+
+A 56-input comparison of Reader OPUS, Mozilla/Bergamot and Google ML Kit is recorded in
+[offline translation comparison](offline-translation-comparison.md). Mozilla was faster on the
+laptop, but all three made substantive meaning errors. ML Kit completed offline on an Android
+emulator; the physical phone was not used. No replacement engine has been adopted.
+
+## FSRS tuning foundation — local validation
+
+Spec 009 adds **Cards → Learning data**, a read-only report/export of reviewed words' history,
+and `scripts/fsrs/evaluate.mjs` for laptop comparison of supplied FSRS-6 candidate weights.
+The user confirmed explicit recall as the first measured outcome: Again=failure;
+Hard/Good/Easy=success. Existing attentive-encounter scheduling is unchanged. Passive encounters
+remain state updates, never measured labels. Predictions are scored before applying the answer;
+first, undated and less-than-24h observations are excluded from delayed-retention scores.
+Chronological earlier/later periods and separate reading/listening metrics expose data limitations.
+See [ADR-0033](adr/0033-fsrs-tuning-outcomes.md) and [usage](../scripts/fsrs/README.md).
+
+Local validation: 51 focused tests passed, seven deliberate mutations were detected, type checking
+and scoped lint passed, verification build passed, and a disposable-browser check exercised Cards
+navigation, the empty report and JSON export. The browser check caught an initial-load bug before
+it was corrected. The laptop CLI evaluated a synthetic 20-review history (19 eligible, split
+15/4), including a candidate comparison; these are test results, not evidence of learning quality.
+No personal histories, active parameters or Anki data were changed by analysis.
+
+Not deployed or installed-phone validated: only the Android emulator was attached on 2026-09-30.
+No optimization runs on the phone. **Automatic fitting and reversible apply/rollback remain future
+work**; this slice supplies the data and evaluation foundation. A count alone does not establish
+enough data to fit 21 parameters, and repeatedly selecting on the same later period overfits it.
+
+## Study experience — local implementation
+
+Spec 010 refreshes the library, navigation and light/dark styling, adds continuation and a
+Progress screen, and replaces the transient attention modal with **Finish session** and durable,
+optional feedback. The question now asks specifically whether every unknown word was looked up;
+answers can be corrected later without deleting the original encounter.
+
+A Monday–Sunday five-day goal counts a day after one minute of tracked reading/listening or five
+card answers. Grades and lookup answers do not affect rewards. Visible reading is capped at one
+minute after the last interaction; listening uses continuous playback adjusted for speed, excluding
+seeks and pauses. This estimates participation, not attention or comprehension. Activity and session
+endings are retained as encounters; weekly totals are derived, and withdrawn sessions are excluded.
+Historical reading durations are not invented. See [ADR-0034](adr/0034-study-sessions-and-weekly-progress.md).
+
+Focused validation covers activity limits, playback speed, duplicate close/retry, feedback replay,
+withdrawal, timezone boundaries and backup restore. A browser check exposed a millisecond-loss bug
+at the one-minute threshold; recording now uses one clock reading per interval and has a regression
+test. All 34 focused tests, type checking, scoped lint/formatting and the verification build passed.
+The disposable mobile browser confirmed one study day, feedback persistence and correction after
+reload; light/dark screenshots were inspected. Saving feedback keeps its details open. See the
+[verification record](../specs/010-study-experience/quickstart.md).
+
+Deployment and installed physical-phone validation remain pending; adb reported no attached devices
+at the final check. These local changes are not yet certified on the phone.
+
 ## Product and architecture
 
 Reader is a personal Chinese reading and listening app for an Android phone. TypeScript/SvelteKit
