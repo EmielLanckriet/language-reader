@@ -6,6 +6,7 @@
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { loadMedia } from '$lib/media/store';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
+	import { humanLines } from '$lib/media/translation';
 	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import { readingsOf } from '$lib/analyzer/pronounce';
@@ -182,10 +183,12 @@
 		}
 
 		if (media && timed) {
+			// A person's English first (spec 012); a card shows English even where reading hides it.
 			const lines = englishFor(
 				media.cues.length,
 				llmByLine(media.cues, media.translation),
-				media.quick
+				media.quick,
+				humanLines(media)
 			);
 			const line = lines[sentence.line]?.text;
 			if (line) return show(lexemeId, sentence.text, line);

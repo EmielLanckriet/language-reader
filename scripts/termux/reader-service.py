@@ -165,6 +165,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.reply(204)
 
+    def put_choice(self, job):
+        """The tracks Reader imported (spec 012, contracts/bundle-and-service.md): stored, then the
+        chosen Chinese track is translated, unless the reader wants no English or will transcribe."""
+        folder = os.path.join(self.root, 'downloads', job)
+        if not job or '/' in job or job.startswith('.') or not os.path.isdir(folder):
+            return self.reply(404, {'error': 'no such job'})
+        raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        try:
+            choice = json.loads(raw)
+            with open(os.path.join(folder, 'tracks.json'), encoding='utf-8') as file:
+                files = {track.get('file') for track in json.load(file)}
+        except (OSError, ValueError):
+            return self.reply(400, {'error': 'not a choice for a job with tracks'})
+        if (not isinstance(choice, dict) or set(choice) != {'chinese', 'english'}
+                or choice['chinese'] not in files | {'transcribe'}
+                or choice['english'] not in files | {'machine', 'none'}):
+            return self.reply(400, {'error': 'not a choice among this job\'s tracks'})
+        target = os.path.join(folder, 'choice.json')
+        with open(target + '.part', 'w', encoding='utf-8') as file:
+            json.dump(choice, file)
+        os.replace(target + '.part', target)
+        if choice['chinese'] != 'transcribe' and choice['english'] != 'none' and not translating(folder):
+            subprocess.Popen([sys.executable, TRANSLATE, folder], start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.reply(204)
+
     def do_PUT(self):
         path = self.path.split('?')[0]
         if path == '/busy':
@@ -175,6 +201,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.reply(204)
         if path.startswith('/downloads/') and path.endswith('/media.zh.vtt'):
             return self.put_transcript(path[len('/downloads/'):-len('/media.zh.vtt')])
+        if path.startswith('/downloads/') and path.endswith('/choice.json'):
+            return self.put_choice(path[len('/downloads/'):-len('/choice.json')])
         if path != '/backup':
             return self.reply(404)
         raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))

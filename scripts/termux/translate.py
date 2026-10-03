@@ -47,8 +47,13 @@ TIMING = re.compile(r'(\d+:)?\d{1,2}:\d{2}[.,]\d{3}\s+-->\s+(\d+:)?\d{1,2}:\d{2}
 
 def cues(path):
     """(timing, text) per cue: the same cues, in the same order, that the app parses."""
+    with open(path, encoding='utf-8') as file:
+        return cues_in(file.read())
+
+
+def cues_in(source):
     found, previous = [], ''
-    for block in open(path, encoding='utf-8').read().replace('\r', '').split('\n\n'):
+    for block in source.replace('\r', '').split('\n\n'):
         lines = block.split('\n')
         at = next((i for i, line in enumerate(lines) if TIMING.search(line)), None)
         if at is None:
@@ -209,30 +214,109 @@ def source(job):
     # present marker still means a transcript is on its way.
     if os.path.exists(os.path.join(job, 'transcribing.json')):
         return os.path.join(job, 'media.zh.vtt'), True
+    # Spec 012: the track the reader chose, or the default when Reader will not ask; nothing while a
+    # choice is still to be made, so the phone never translates a track that is not read.
+    choice = read_json(os.path.join(job, 'choice.json'))
+    if choice and choice.get('chinese') not in (None, 'transcribe'):
+        return os.path.join(job, choice['chinese']), False
+    tracks = job_tracks(job)
+    if tracks and not choice:
+        if choice_needed(tracks):
+            return None, False
+        chinese, _ = default_choice(tracks)
+        if chinese:
+            return os.path.join(job, chinese), False
     tracks = [path for path in glob.glob(os.path.join(job, 'media.*.vtt')) if not path.endswith('.en.vtt')]
     return (min(tracks, key=preference) if tracks else None), False
+
+
+def read_json(path):
+    try:
+        with open(path, encoding='utf-8') as file:
+            return json.load(file)
+    except (OSError, ValueError):
+        return None
+
+
+def job_tracks(job):
+    """The job's downloaded tracks (tracks.json, spec 012), classified; [] for an older job."""
+    described = read_json(os.path.join(job, 'tracks.json')) or []
+    tracks = []
+    for track in described:
+        path = os.path.join(job, track.get('file', ''))
+        if re.fullmatch(r'track(-auto)?\.[^/]+\.vtt', track.get('file', '')) and os.path.exists(path):
+            with open(path, encoding='utf-8') as file:
+                tracks.append(dict(track, text=file.read()))
+    return classify_tracks(tracks)
 
 
 HAN = re.compile('[\u3400-\u9fff\uf900-\ufaff\U00020000-\U0003ffff]')
 
 
-def mixed(path):
-    """Whether most cues carry a line without Chinese beside a Chinese one (pinyin or English)."""
-    with open(path, encoding='utf-8') as file:
-        blocks = file.read().replace('\r', '').split('\n\n')
-    cues = hits = 0
-    for block in blocks:
+def cue_lines(source):
+    """Each cue's lines without markup, for telling what kind of track this is."""
+    found = []
+    for block in source.replace('\r', '').split('\n\n'):
         lines = block.split('\n')
         at = next((i for i, line in enumerate(lines) if TIMING.search(line)), None)
         if at is None:
             continue
         text = [t for t in (re.sub(r'<[^>]*>', '', line).strip() for line in lines[at + 1:]) if t]
-        if not text:
-            continue
-        cues += 1
-        if any(HAN.search(t) for t in text) and any(not HAN.search(t) and re.search(r'[^\W\d_]{2}', t) for t in text):
-            hits += 1
-    return cues > 0 and hits / cues > 0.3
+        if text:
+            found.append(text)
+    return found
+
+
+def mixed_share(source):
+    """Share of cues with a line without Chinese beside a Chinese one (a pinyin or English line)."""
+    found = cue_lines(source)
+    hits = sum(1 for text in found if any(HAN.search(t) for t in text)
+               and any(not HAN.search(t) and re.search(r'[^\W\d_]{2}', t) for t in text))
+    return hits / len(found) if found else 0
+
+
+def mixed(path):
+    with open(path, encoding='utf-8') as file:
+        return mixed_share(file.read()) > 0.3
+
+
+def classify_tracks(tracks):
+    """classifyTracks in src/lib/media/subtitles.ts: tracks are dicts with file, lang, name, kind and
+    text. Chinese tracks come first in the order they are preferred, copies marked duplicate_of."""
+    classified = []
+    for track in tracks:
+        found = cue_lines(track['text'])
+        chinese = bool(found) and sum(1 for text in found if any(HAN.search(t) for t in text)) / len(found) > 0.5
+        classified.append(dict(track, chinese=chinese, mixed=chinese and mixed_share(track['text']) > 0.3,
+                               english=not chinese and bool(re.match(r'en\b', track['lang'], re.I))))
+    chinese = sorted((t for t in classified if t['chinese']),
+                     key=lambda t: (t['mixed'], t['kind'] != 'human', names(t['file'])[0]))
+    seen = {}
+    for track in chinese:
+        lines = '\n'.join(text for _, text in cues_in(track['text']))
+        if lines in seen:
+            track['duplicate_of'] = seen[lines]
+        else:
+            seen[lines] = track['file']
+    return chinese + [t for t in classified if not t['chinese']]
+
+
+def human_english(tracks):
+    return sorted((t for t in tracks if t['english'] and t['kind'] == 'human'), key=lambda t: t['lang'] != 'en')
+
+
+def default_choice(tracks):
+    """(Chinese file or None, English file or 'machine'), as defaultChoice in the app."""
+    chinese = next((t['file'] for t in tracks if t['chinese']), None)
+    english = human_english(tracks)
+    return chinese, english[0]['file'] if english else 'machine'
+
+
+def choice_needed(tracks):
+    """Whether Reader asks before importing (spec 012), as choiceNeeded in the app."""
+    clean = [t for t in tracks if t['chinese'] and not t['mixed'] and t['kind'] == 'human'
+             and not t.get('duplicate_of')]
+    return len(clean) >= 2 or bool(human_english(tracks))
 
 
 def preference(path):
@@ -256,11 +340,45 @@ def write(path, text):
     os.replace(path + '.part', path)
 
 
+def span(timing):
+    """(start, end) in seconds of a cue timing line."""
+    def seconds(stamp):
+        parts = stamp.strip().replace(',', '.').split(':')
+        return sum(float(part) * 60 ** i for i, part in enumerate(reversed(parts)))
+    start, end = timing.split('-->')
+    return seconds(start), seconds(end)
+
+
+def covered(chinese, english):
+    """The Chinese lines a human English track puts a line under: humanByLine in the app
+    (src/lib/translation/lines.ts), each English cue under the line it overlaps most, else nearest."""
+    lines = [span(timing) for timing, _ in chinese]
+    found = set()
+    for timing, _ in english:
+        start, end = span(timing)
+        if lines:
+            found.add(max(range(len(lines)), key=lambda i: (min(lines[i][1], end) - max(lines[i][0], start), -i)))
+    return found
+
+
+def uncovered(job, available):
+    """The lines left to translate (spec 012): all of them, unless the reader chose a human English
+    track, which already gives the lines it covers."""
+    english = (read_json(os.path.join(job, 'choice.json')) or {}).get('english', 'machine')
+    if english in ('machine', 'none') or not os.path.exists(os.path.join(job, english)):
+        return available
+    skip = covered(available, cues(os.path.join(job, english)))
+    return [line for i, line in enumerate(available) if i not in skip]
+
+
 def main(job):
     done = []
     while True:
         track, growing = source(job)
         available = cues(track) if track and os.path.exists(track) else []
+        # Only once complete: while a transcript grows, which line a cue lands under can still move.
+        if not growing:
+            available = uncovered(job, available)
         pending = available[len(done):]
         # Not while a transcript is still being written: the two shared the phone's four cores, and the
         # transcript, which the reader is waiting for, took 6:50 against 4:20 without this beside it.
@@ -298,6 +416,10 @@ def locked(job):
 
 
 if __name__ == '__main__':
+    if sys.argv[1] == '--check-choice':
+        # termux-url-opener asks before translating a fresh download: 'needed' means wait for Reader.
+        print('needed' if choice_needed(job_tracks(sys.argv[2])) else 'none')
+        sys.exit(0)
     if locked(sys.argv[1]):
         try:
             main(sys.argv[1])

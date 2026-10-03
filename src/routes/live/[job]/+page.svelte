@@ -5,8 +5,8 @@
 	import { resolve } from '$app/paths';
 	import { fallbackAnalyzer } from '$lib/analyzer/active';
 	import { codePointsOf } from '$lib/domain/offsets';
-	import type { Cue } from '$lib/media/subtitles';
-	import { isPlayable, loadPending } from '$lib/media/store';
+	import { parseSubtitles, type Cue } from '$lib/media/subtitles';
+	import { ENGLISH_SETTING, isPlayable, loadPending, type EnglishSetting } from '$lib/media/store';
 	import { titleIn } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
@@ -16,7 +16,7 @@
 	import { lines as cut } from '$lib/speech/lines';
 	import type { JobState } from '$lib/speech/transcriber';
 	import type { Token } from '$lib/speech/windows';
-	import { englishFor } from '$lib/translation/lines';
+	import { englishFor, humanByLine } from '$lib/translation/lines';
 	import {
 		quickTranslation,
 		type QuickStatus,
@@ -47,7 +47,23 @@
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
 	let quickStatus = $state<QuickStatus | undefined>();
-	const english = $derived(englishFor(cues.length, [], quickLines));
+	/** The downloaded English track the reader chose at import, if any (spec 012), and "none". */
+	let humanCues = $state<Cue[]>([]);
+	let noEnglish = $state(false);
+	$effect(() => {
+		const setting = files.find((file) => file.name === ENGLISH_SETTING);
+		if (!setting) return;
+		void setting.text().then(async (text) => {
+			const chosen: EnglishSetting = JSON.parse(text);
+			noEnglish = chosen.source === 'none';
+			const track =
+				chosen.source === 'track' ? files.find((file) => file.name === chosen.file) : undefined;
+			humanCues = track ? parseSubtitles(await track.text()) : [];
+		});
+	});
+	const english = $derived(
+		noEnglish ? [] : englishFor(cues.length, [], quickLines, humanByLine(cues, humanCues))
+	);
 
 	$effect(() => {
 		if (!media) return;

@@ -3,7 +3,7 @@
  * could not read a file Termux shared, and Samsung Internet's installed app is no share target.
  */
 
-import { importBundle, type Imported } from './import';
+import { importBundle, type Imported, type TrackChoice } from './import';
 import { importedJobs } from './store';
 
 import { SERVICE } from '$lib/media/service-address';
@@ -47,9 +47,32 @@ export async function newFromTermux(): Promise<TermuxJob[] | 'unreachable'> {
 	return listed.filter((job) => !imported.has(job.job));
 }
 
-export async function importJob(job: TermuxJob): Promise<Imported> {
+export async function fetchBundle(job: TermuxJob): Promise<Blob> {
 	const response = await fetch(`${SERVICE}/downloads/${encodeURIComponent(job.job)}/bundle.tar`);
 	if (!response.ok)
 		throw new Error(`Termux could not hand over "${job.title}" (${response.status}).`);
-	return importBundle(await response.blob(), job.title);
+	return response.blob();
+}
+
+export async function importJob(
+	job: TermuxJob,
+	bundle?: Blob,
+	choice?: TrackChoice
+): Promise<Imported> {
+	return importBundle(bundle ?? (await fetchBundle(job)), job.title, choice);
+}
+
+/**
+ * Tells Termux what the reader chose (spec 012, contracts/bundle-and-service.md), so it translates
+ * the track that is read and only the lines the chosen English leaves uncovered. Termux translates
+ * nothing for such a job until this arrives.
+ */
+export async function reportChoice(job: string, choice: TrackChoice): Promise<void> {
+	const response = await fetch(`${SERVICE}/downloads/${encodeURIComponent(job)}/choice.json`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(choice)
+	});
+	if (!response.ok)
+		throw new Error(`Termux did not take the subtitle choice (${response.status}).`);
 }

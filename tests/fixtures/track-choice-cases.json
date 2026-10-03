@@ -1,0 +1,217 @@
+{
+	"about": "Shared by tests/media/track-choice.test.ts and scripts/termux/test_translate.py (spec 012, research R5): the app and Termux must agree on the default tracks and on whether a choice is asked.",
+	"cases": [
+		{
+			"name": "Jun: one clean and one pinyin track",
+			"tracks": [
+				{
+					"file": "track.zh-Hans.vtt",
+					"lang": "zh-Hans",
+					"name": "Chinese (Simplified)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\nDào le zhōngguó cái fāxiàn wǒ de zhōngwén yǒuduōchà,\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\ndiǎncān dōu bùxíng.\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\nXiǎng zhǎo dōngxī bìxū jìnrù zhōngguó de xìtǒng lǐ,\n"
+				},
+				{
+					"file": "track.zh.vtt",
+					"lang": "zh",
+					"name": "Chinese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "two different clean Chinese tracks",
+			"tracks": [
+				{
+					"file": "track.zh.vtt",
+					"lang": "zh",
+					"name": "Chinese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n我到了中国以后才发现，\n\n00:00:02.000 --> 00:00:04.000\n我的中文真的很差。\n\n00:00:04.000 --> 00:00:06.000\n连点餐都不行。\n"
+				},
+				{
+					"file": "track.zh-Hans.vtt",
+					"lang": "zh-Hans",
+					"name": "Chinese (Simplified)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh-Hans.vtt",
+				"english": "machine",
+				"needed": true
+			}
+		},
+		{
+			"name": "clean Chinese and human English",
+			"tracks": [
+				{
+					"file": "track.zh.vtt",
+					"lang": "zh",
+					"name": "Chinese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				},
+				{
+					"file": "track.en.vtt",
+					"lang": "en",
+					"name": "English",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nArriving in China, I found out how bad my Chinese was.\n\n00:00:02.000 --> 00:00:04.000\nI could not even order food.\n\n00:00:04.000 --> 00:00:06.000\nTo find things you must enter the Chinese system.\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh.vtt",
+				"english": "track.en.vtt",
+				"needed": true
+			}
+		},
+		{
+			"name": "identical zh and zh-Hans copies",
+			"tracks": [
+				{
+					"file": "track.zh.vtt",
+					"lang": "zh",
+					"name": "Chinese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				},
+				{
+					"file": "track.zh-Hans.vtt",
+					"lang": "zh-Hans",
+					"name": "Chinese (Simplified)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh-Hans.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "simplified and traditional clean tracks",
+			"tracks": [
+				{
+					"file": "track.zh-Hant.vtt",
+					"lang": "zh-Hant",
+					"name": "Chinese (Traditional)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中國才發現我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n點餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找東西必須進入中國的系統裡，\n"
+				},
+				{
+					"file": "track.zh-Hans.vtt",
+					"lang": "zh-Hans",
+					"name": "Chinese (Simplified)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh-Hans.vtt",
+				"english": "machine",
+				"needed": true
+			}
+		},
+		{
+			"name": "only automatic Chinese",
+			"tracks": [
+				{
+					"file": "track-auto.zh.vtt",
+					"lang": "zh",
+					"name": "",
+					"kind": "automatic",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track-auto.zh.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "human preferred over automatic",
+			"tracks": [
+				{
+					"file": "track-auto.zh-Hans.vtt",
+					"lang": "zh-Hans",
+					"name": "",
+					"kind": "automatic",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n我到了中国以后才发现，\n\n00:00:02.000 --> 00:00:04.000\n我的中文真的很差。\n\n00:00:04.000 --> 00:00:06.000\n连点餐都不行。\n"
+				},
+				{
+					"file": "track.zh-TW.vtt",
+					"lang": "zh-TW",
+					"name": "Chinese (Taiwan)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中國才發現我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n點餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找東西必須進入中國的系統裡，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh-TW.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "only a mixed track",
+			"tracks": [
+				{
+					"file": "track.zh-Hans.vtt",
+					"lang": "zh-Hans",
+					"name": "Chinese (Simplified)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\nDào le zhōngguó cái fāxiàn wǒ de zhōngwén yǒuduōchà,\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\ndiǎncān dōu bùxíng.\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\nXiǎng zhǎo dōngxī bìxū jìnrù zhōngguó de xìtǒng lǐ,\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh-Hans.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "pre-012 bundle, no manifest",
+			"tracks": [
+				{
+					"file": "media.zh-CN.vtt",
+					"lang": "zh-CN",
+					"name": "",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "media.zh-CN.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "no Chinese, human English only",
+			"tracks": [
+				{
+					"file": "track.en.vtt",
+					"lang": "en",
+					"name": "English",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nArriving in China, I found out how bad my Chinese was.\n\n00:00:02.000 --> 00:00:04.000\nI could not even order food.\n\n00:00:04.000 --> 00:00:06.000\nTo find things you must enter the Chinese system.\n"
+				}
+			],
+			"expect": {
+				"chinese": null,
+				"english": "track.en.vtt",
+				"needed": true
+			}
+		}
+	]
+}

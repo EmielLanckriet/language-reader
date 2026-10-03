@@ -3,9 +3,17 @@
 	import { resolve } from '$app/paths';
 	import Library from '$lib/ui/Library.svelte';
 	import { latest, restore } from '$lib/backup/destination';
-	import { downloadState, importJob, newFromTermux, type TermuxJob } from '$lib/media/termux';
+	import {
+		downloadState,
+		fetchBundle,
+		importJob,
+		newFromTermux,
+		reportChoice,
+		type TermuxJob
+	} from '$lib/media/termux';
 	import { dismissJob, listPending, loadPending } from '$lib/media/store';
-	import { titleIn } from '$lib/media/import';
+	import { planImport, titleIn, type ImportPlan, type TrackChoice } from '$lib/media/import';
+	import TrackChoiceSheet from '$lib/ui/TrackChoice.svelte';
 	import { transcriber } from '$lib/speech/app';
 	import type { JobState } from '$lib/speech/transcriber';
 	import Progress from '$lib/ui/Progress.svelte';
@@ -51,21 +59,54 @@
 		fresh = fresh.filter((other) => other.job !== job.job);
 	}
 
+	/** A download whose tracks the reader is choosing (spec 012): nothing is imported meanwhile. */
+	let asking = $state<{ job: TermuxJob; bundle: Blob; plan: ImportPlan } | null>(null);
+
 	async function openJob(job: TermuxJob) {
 		opening = job.job;
 		openProblem = null;
 		try {
-			const imported = await importJob(job);
-			await goto(
-				'pending' in imported
-					? resolve('/live/[job]', { job: imported.pending })
-					: resolve('/read/[id]', { id: String(imported.documentId) })
-			);
+			const bundle = await fetchBundle(job);
+			const plan = await planImport(bundle);
+			if (plan.needed) {
+				asking = { job, bundle, plan };
+				return;
+			}
+			await finishImport(job, bundle);
 		} catch (error) {
 			openProblem = error instanceof Error ? error.message : String(error);
 		} finally {
 			opening = null;
 		}
+	}
+
+	async function chooseTracks(choice: TrackChoice) {
+		if (!asking) return;
+		const { job, bundle } = asking;
+		asking = null;
+		opening = job.job;
+		try {
+			await finishImport(job, bundle, choice);
+		} catch (error) {
+			openProblem = error instanceof Error ? error.message : String(error);
+		} finally {
+			opening = null;
+		}
+	}
+
+	async function finishImport(job: TermuxJob, bundle: Blob, choice?: TrackChoice) {
+		const imported = await importJob(job, bundle, choice);
+		// The import stands even if Termux missed the choice; it then translates nothing yet.
+		if (choice) {
+			await reportChoice(job.job, choice).catch((error) => {
+				openProblem = error instanceof Error ? error.message : String(error);
+			});
+		}
+		await goto(
+			'pending' in imported
+				? resolve('/live/[job]', { job: imported.pending })
+				: resolve('/read/[id]', { id: String(imported.documentId) })
+		);
 	}
 
 	// Videos Reader is still transcribing (spec 008): they run on any page, so they are listed here to
@@ -148,6 +189,15 @@
 			{/each}
 		</ul>
 	</section>
+{/if}
+
+{#if asking}
+	<TrackChoiceSheet
+		title={asking.job.title}
+		plan={asking.plan}
+		onconfirm={chooseTracks}
+		onclose={() => (asking = null)}
+	/>
 {/if}
 
 {#if fresh.length > 0}

@@ -58,6 +58,58 @@ class Source(unittest.TestCase):
         self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
 
 
+class ChosenSource(unittest.TestCase):
+    def job(self, tracks):
+        import json
+        job = tempfile.mkdtemp()
+        for file, text in tracks.items():
+            with open(os.path.join(job, file), 'w', encoding='utf-8') as out:
+                out.write(f'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n{text}\n')
+        manifest = [{'file': f, 'lang': f.split('.')[1], 'name': '', 'kind': 'human'} for f in tracks]
+        with open(os.path.join(job, 'tracks.json'), 'w', encoding='utf-8') as out:
+            json.dump(manifest, out)
+        return job
+
+    def test_nothing_is_translated_until_the_reader_chooses(self):
+        job = self.job({'track.zh.vtt': '点餐都不行。', 'track.en.vtt': 'Ordering food was impossible.'})
+        self.assertEqual(source(job), (None, False))
+        with open(os.path.join(job, 'choice.json'), 'w', encoding='utf-8') as out:
+            out.write('{"chinese": "track.zh.vtt", "english": "machine"}')
+        self.assertEqual(source(job), (os.path.join(job, 'track.zh.vtt'), False))
+
+    def test_the_default_is_translated_when_nothing_is_asked(self):
+        job = self.job({'track.zh-Hans.vtt': '点餐都不行。\ndiǎncān dōu bùxíng.', 'track.zh.vtt': '点餐都不行。'})
+        self.assertEqual(source(job), (os.path.join(job, 'track.zh.vtt'), False))
+
+
+class UncoveredLines(unittest.TestCase):
+    def test_only_lines_the_chosen_english_leaves_are_translated(self):
+        import json, subprocess, sys
+        job = tempfile.mkdtemp()
+        chinese = ''.join(f'00:00:0{i}.000 --> 00:00:0{i + 1}.000\n第{i}行\n\n' for i in range(3))
+        english = ('00:00:00.000 --> 00:00:01.000\nLine zero\n\n'
+                   '00:00:02.100 --> 00:00:03.000\nLine two\n\n')
+        files = {'track.zh.vtt': 'WEBVTT\n\n' + chinese, 'track.en.vtt': 'WEBVTT\n\n' + english}
+        for name, text in files.items():
+            with open(os.path.join(job, name), 'w', encoding='utf-8') as out:
+                out.write(text)
+        with open(os.path.join(job, 'tracks.json'), 'w') as out:
+            json.dump([{'file': f, 'lang': f.split('.')[1], 'name': '', 'kind': 'human'} for f in files], out)
+        with open(os.path.join(job, 'choice.json'), 'w') as out:
+            json.dump({'chinese': 'track.zh.vtt', 'english': 'track.en.vtt'}, out)
+        env = dict(os.environ, TRANSLATE_STUB='1', READER_BUSY=os.path.join(job, 'no-busy'),
+                   READER_MODEL_LOCK=os.path.join(job, 'model.lock'))
+        here = os.path.dirname(os.path.abspath(__file__))
+        subprocess.run([sys.executable, os.path.join(here, 'translate.py'), job], env=env, check=True, timeout=30)
+        with open(os.path.join(job, 'media.en.vtt'), encoding='utf-8') as out:
+            translated = out.read()
+        self.assertIn('第1行', translated)
+        self.assertNotIn('第0行', translated)
+        self.assertNotIn('第2行', translated)
+        with open(os.path.join(job, 'translate.json')) as out:
+            self.assertEqual(json.load(out)['total'], 1)
+
+
 class Cues(unittest.TestCase):
     def test_timing_is_kept_whole(self):
         # a7a6b86 shadowed TIMING with a bare '-->' and every English cue lost its times.
@@ -66,6 +118,25 @@ class Cues(unittest.TestCase):
         with open(path, 'w', encoding='utf-8') as file:
             file.write('WEBVTT\n\n00:00:02.800 --> 00:00:04.000\n点餐都不行。\n')
         self.assertEqual(translate.cues(path), [('00:00:02.800 --> 00:00:04.000', '点餐都不行。')])
+
+
+class TrackChoice(unittest.TestCase):
+    # The table tests/media/track-choice.test.ts also runs: the app and Termux must agree (spec 012).
+    TABLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tests', 'fixtures',
+                         'track-choice-cases.json')
+
+    def test_shared_cases(self):
+        import json
+        with open(self.TABLE, encoding='utf-8') as file:
+            cases = json.load(file)['cases']
+        for case in cases:
+            with self.subTest(case['name']):
+                tracks = [dict(t, text=t['vtt']) for t in case['tracks']]
+                classified = translate.classify_tracks(tracks)
+                chinese, english = translate.default_choice(classified)
+                self.assertEqual(chinese, case['expect']['chinese'])
+                self.assertEqual(english, case['expect']['english'])
+                self.assertEqual(translate.choice_needed(classified), case['expect']['needed'])
 
 
 class ModelBudget(unittest.TestCase):

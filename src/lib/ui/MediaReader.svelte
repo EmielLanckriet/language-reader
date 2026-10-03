@@ -515,6 +515,9 @@
 							class="english-line"
 							class:blurred={blurEnglish && unblurred !== currentLine}
 							class:quick={translations[currentLine]?.source === 'quick'}
+							title={translations[currentLine]?.source === 'human'
+								? "From the video's English subtitles"
+								: undefined}
 							lang="en"
 							onclick={showEnglish}
 							>{translations[currentLine]?.text ??
@@ -596,7 +599,11 @@
 				>{/if}{#if showAll || revealed.includes(i)}{#if translations[i]}<span
 						class="english"
 						class:quick={translations[i]?.source === 'quick'}
-						title={translations[i]?.source === 'quick' ? 'Quick translation' : undefined}
+						title={translations[i]?.source === 'quick'
+							? 'Quick translation'
+							: translations[i]?.source === 'human'
+								? "From the video's English subtitles"
+								: undefined}
 						lang="en">{translations[i]?.text}</span
 					>{:else if askable && cues[i]}<span class="english pending">translating…</span
 					>{/if}{/if}{#if onjoin && i + 1 < cues.length}<button

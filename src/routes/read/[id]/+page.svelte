@@ -14,17 +14,20 @@
 	import { joinWithNext, splitAt } from '$lib/domain/corrections';
 	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 	import { upgradeOf } from '$lib/storage/upgrades';
-	import { loadMedia, type StoredMedia } from '$lib/media/store';
+	import { loadMedia, type EnglishSetting, type StoredMedia } from '$lib/media/store';
+	import { reportChoice } from '$lib/media/termux';
+	import { parseSubtitles } from '$lib/media/subtitles';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
-	import { followTranslation, jobOf } from '$lib/media/translation';
+	import { followTranslation, humanLines as humanOf, jobOf } from '$lib/media/translation';
 	import {
 		saveMedia,
 		removeMedia,
 		dismissJob,
 		readMediaJson,
 		writeMediaJson,
+		ENGLISH_SETTING,
 		QUICK_ENGLISH,
 		SOUND_ONLY
 	} from '$lib/media/store';
@@ -88,7 +91,53 @@
 	let quickLines = $state<(string | null)[]>([]);
 	let quick = $state<QuickTranslation | undefined>();
 	let quickStatus = $state<QuickStatus | undefined>();
-	const english = $derived(media ? englishFor(media.cues.length, llmLines, quickLines) : []);
+	/** A person's English from a downloaded track the reader chose (spec 012): shown first. */
+	const humanLines = $derived(media ? humanOf(media) : []);
+	/** Set when the reader switches to machine English after a human track: Termux translates the
+	 lines it had left, and the page follows that even though some English is already kept. */
+	let refollow = $state(false);
+	const englishTracks = $derived(media?.tracks.filter((t) => /^en\b/i.test(t.lang)) ?? []);
+	let englishProblem = $state<string | null>(null);
+
+	/** US4: which English this video shows. Derived data only: marks and history are untouched. */
+	async function switchEnglish(value: string) {
+		const id = documentId;
+		if (!media || id === undefined) return;
+		const setting: EnglishSetting =
+			value === 'machine' || value === 'none'
+				? { source: value }
+				: { source: 'track', file: value };
+		englishProblem = null;
+		await saveMedia(id, [{ name: ENGLISH_SETTING, blob: new Blob([JSON.stringify(setting)]) }]);
+		const job = jobOf(media.meta);
+		// The Termux name of the track this document reads: the one whose lines are its lines.
+		const lines = media.cues.map((cue) => cue.text).join('\n');
+		const chinese = media.tracks.find(
+			(t) =>
+				parseSubtitles(t.text)
+					.map((cue) => cue.text)
+					.join('\n') === lines
+		)?.file;
+		if (job && chinese && value === 'machine') {
+			await reportChoice(job, { chinese, english: 'machine' }).catch((error) => {
+				englishProblem = error instanceof Error ? error.message : String(error);
+			});
+			refollow = true;
+		}
+		media = await loadMedia(id);
+	}
+
+	/** The reader chose no English for this video: nothing shown, nothing translated. */
+	const noEnglish = $derived(media?.english.source === 'none');
+	/** Every line has a person's English: the translators have nothing to add. */
+	const allHuman = $derived(
+		media !== null &&
+			media.cues.length > 0 &&
+			humanLines.filter(Boolean).length === media.cues.length
+	);
+	const english = $derived(
+		media && !noEnglish ? englishFor(media.cues.length, llmLines, quickLines, humanLines) : []
+	);
 
 	$effect(() => {
 		const current = media;
@@ -96,7 +145,13 @@
 		if (!current || id === undefined) return;
 		llmCues = current.translation;
 		const job = jobOf(current.meta);
-		if (current.translation.length > 0 || !job) return;
+		const partial = untrack(() => refollow);
+		if (
+			(current.translation.length > 0 && !partial) ||
+			!job ||
+			untrack(() => noEnglish || allHuman)
+		)
+			return;
 		return followTranslation(job, (cues, done, vtt) => {
 			llmCues = cues;
 			if (done) void saveMedia(id, [{ name: 'media.en.vtt', blob: new Blob([vtt]) }]);
@@ -111,6 +166,7 @@
 		// The LLM has every line already: nothing for the quick model to add. Its finished file can
 		// still have gaps, lines it could not place, and those are the quick model's.
 		if (llmByLine(current.cues, current.translation).every(Boolean)) return;
+		if (untrack(() => noEnglish || allHuman)) return;
 
 		let unsaved = 0;
 		const save = () => {
@@ -124,7 +180,7 @@
 		const translator = untrack(() =>
 			quickTranslation(
 				() => chinese,
-				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
+				(i) => Boolean(humanLines[i] || llmLines[i]?.trim() || quickLines[i]),
 				(i, text) => {
 					const next = [...quickLines];
 					next[i] = text;
@@ -259,7 +315,12 @@
 			if (texts.length === 0) return undefined;
 			return {
 				text: texts.join(' '),
-				source: parts.every((part) => part?.source === 'llm') ? 'llm' : 'quick'
+				// The roughest part names the whole: one quick line makes the clause quick.
+				source: parts.some((part) => part?.source === 'quick')
+					? 'quick'
+					: parts.some((part) => part?.source === 'llm')
+						? 'llm'
+						: 'human'
 			};
 		})
 	);
@@ -784,6 +845,25 @@
 		/>
 	{/if}
 
+	{#if englishTracks.length > 0 && media}
+		<p class="english-choice">
+			<label>
+				English
+				<select
+					value={media.english.source === 'track' ? media.english.file : media.english.source}
+					onchange={(event) => void switchEnglish(event.currentTarget.value)}
+				>
+					{#each englishTracks as track (track.file)}
+						<option value={track.file}>{track.name || track.lang} (the video's own)</option>
+					{/each}
+					<option value="machine">Machine translation</option>
+					<option value="none">None</option>
+				</select>
+			</label>
+			{#if englishProblem}<span role="alert">{englishProblem}</span>{/if}
+		</p>
+	{/if}
+
 	<p class="delete">
 		<button onclick={deleteDocument}>Delete this document</button>
 		{#if deleteProblem}<span role="alert">{deleteProblem}</span>{/if}
@@ -791,6 +871,16 @@
 {/if}
 
 <style>
+	.english-choice {
+		margin-top: 2rem;
+		font-size: 0.9rem;
+	}
+
+	.english-choice select {
+		margin-left: 0.5rem;
+		min-height: 44px;
+	}
+
 	.delete {
 		margin-top: 3rem;
 		font-size: 0.85rem;

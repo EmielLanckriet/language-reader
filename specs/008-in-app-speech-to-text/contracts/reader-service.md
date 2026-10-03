@@ -41,3 +41,8 @@ and `translate.json` as today, and Reader's `followTranslation` picks them up.
   translation beside transcription took a 30 s window from 22 s to 55 s: the LLM's 4 threads and
   the decoder's 2 shared the phone's 2 fast cores. 90 s, not 45: Chrome runs a hidden page's timers
   about once a minute, and transcription carries on while the page is hidden.
+
+## Later changes
+
+Spec 012 adds `tracks.json` and `track*.vtt` to bundles, `PUT /downloads/<job>/choice.json`, and
+translate.py's choice of source track: [contract](../../012-subtitle-track-choice/contracts/bundle-and-service.md).

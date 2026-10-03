@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { chooseChineseTrack, parseSubtitles } from '../../src/lib/media/subtitles';
+import { classifyTracks, defaultChoice, parseSubtitles } from '../../src/lib/media/subtitles';
+
+function chooseChineseTrack(tracks: { name: string; text: string }[]) {
+	const file = defaultChoice(
+		classifyTracks(
+			tracks.map(({ name, text }) => ({ file: name, lang: '', name: '', kind: 'human', text }))
+		)
+	).chinese;
+	return tracks.find((track) => track.name === file);
+}
 
 // The first cues of Jun - Stickynote Chinese, xEoY1KyrYls: human tracks zh ("Chinese") and
 // zh-Hans ("Chinese (Simplified)"), the latter with a pinyin line under every line.

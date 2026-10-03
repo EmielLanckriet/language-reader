@@ -6,7 +6,7 @@
  * directory exists, so there is nothing to keep in step.
  */
 
-import { parseSubtitles, type Cue } from './subtitles';
+import { parseSubtitles, type Cue, type SubtitleTrack } from './subtitles';
 
 export interface StoredMedia {
 	media: File | undefined;
@@ -18,7 +18,15 @@ export interface StoredMedia {
 	meta: Record<string, unknown>;
 	/** The video's sound as an audio-only file, once made (SOUND_ONLY). */
 	sound?: File;
+	/** Every downloaded subtitle track (spec 012), with its text; empty for older documents. */
+	tracks: SubtitleTrack[];
+	/** Which English the reader shows (ENGLISH_SETTING). Derived; absent means machine. */
+	english: EnglishSetting;
 }
+
+/** The English a media document shows (spec 012): a human track, the translators, or none. */
+export type EnglishSetting =
+	{ source: 'track'; file: string } | { source: 'machine' } | { source: 'none' };
 
 async function mediaRoot(): Promise<FileSystemDirectoryHandle> {
 	const root = await navigator.storage.getDirectory();
@@ -163,14 +171,29 @@ export async function writeMediaJson(
 	await writeJsonIn(await directoryAt([String(documentId)], true), name, value);
 }
 
-/** A Chinese subtitle track: any .vtt or .srt except the English one translate.py writes. */
+/**
+ * The Chinese track a document is read from: any .vtt or .srt except the English one translate.py
+ * writes and the downloaded tracks kept beside it (spec 012), which are only candidates.
+ */
 export function isSubtitle(name: string): boolean {
-	return /\.(vtt|srt)$/i.test(name) && !isTranslation(name);
+	return /\.(vtt|srt)$/i.test(name) && !isTranslation(name) && !isTrack(name);
 }
 
+/** The machine English translate.py writes; never a downloaded human English track. */
 export function isTranslation(name: string): boolean {
-	return /\.en\.vtt$/i.test(name);
+	return /\.en\.vtt$/i.test(name) && !isTrack(name);
 }
+
+/** A downloaded subtitle track as termux-url-opener names it: track.<lang>.vtt, track-auto.<lang>.vtt. */
+export function isTrack(name: string): boolean {
+	return /^track(-auto)?\.[^/]+\.vtt$/i.test(name);
+}
+
+/** What termux-url-opener says about each downloaded track. */
+export const TRACKS = 'tracks.json';
+
+/** The reader's English choice for a document (EnglishSetting). */
+export const ENGLISH_SETTING = 'english.json';
 
 /** Kept apart from the LLM's media.en.vtt, so neither translator can overwrite the other. */
 export const QUICK_ENGLISH = 'quick-english.json';
@@ -196,7 +219,17 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	} catch {
 		return null;
 	}
-	const found: StoredMedia = { media: undefined, cues: [], translation: [], quick: [], meta: {} };
+	const found: StoredMedia = {
+		media: undefined,
+		cues: [],
+		translation: [],
+		quick: [],
+		meta: {},
+		tracks: [],
+		english: { source: 'machine' }
+	};
+	let manifest: Omit<SubtitleTrack, 'text'>[] = [];
+	const texts = new Map<string, string>();
 	for await (const handle of directory.values()) {
 		if (handle.kind !== 'file') continue;
 		const file = await (handle as FileSystemFileHandle).getFile();
@@ -206,7 +239,14 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 		else if (isTranslation(file.name)) found.translation = parseSubtitles(await file.text());
 		else if (file.name === 'meta.json') found.meta = JSON.parse(await file.text());
 		else if (file.name === QUICK_ENGLISH) found.quick = JSON.parse(await file.text());
+		else if (file.name === TRACKS) manifest = JSON.parse(await file.text());
+		else if (file.name === ENGLISH_SETTING) found.english = JSON.parse(await file.text());
+		else if (isTrack(file.name)) texts.set(file.name, await file.text());
 	}
+	found.tracks = manifest.flatMap((track) => {
+		const text = texts.get(track.file);
+		return text === undefined ? [] : [{ ...track, text }];
+	});
 	return found;
 }
 

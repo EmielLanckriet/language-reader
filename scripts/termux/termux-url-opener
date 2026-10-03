@@ -26,9 +26,12 @@ work="$HOME/downloads/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$work"
 cd "$work"
 
-# 480p keeps a 20-minute video around 100 MB. Only original-language tracks: asking for YouTube's
-# machine-translated variants (zh-Hant-zh-CN, ...) as well got rate-limited (HTTP 429). The app
-# sees human and automatic tracks and prefers human; nothing is decided here.
+# 480p keeps a 20-minute video around 100 MB. Subtitles in two passes (spec 012, research R1):
+# every human track in any language with the video, as track.<lang>.vtt; then automatic Chinese,
+# as track-auto.<lang>.vtt, only when no human Chinese arrived. --write-subs never asks for YouTube's
+# machine-translated variants (zh-Hant-zh-CN, en from zh, ...), which got rate-limited (HTTP 429).
+# Which track to read, and whether to ask the reader, is decided by the app (and by translate.py's
+# copy of the same rule); nothing is decided here.
 # --ignore-errors: a failed subtitle must not cost the video.
 # --write-thumbnail: YouTube's picture for the library, as media.jpg (ffmpeg converts it).
 # Through python3: the zipapp's /usr/bin/env shebang fails when Termux starts this from a share.
@@ -40,7 +43,7 @@ python3 "$(command -v yt-dlp)" \
 	--js-runtimes node \
 	-f 'bv*[height<=480][ext=mp4]+ba[ext=m4a]/b[height<=480]/b' \
 	--merge-output-format mp4 \
-	--write-subs --write-auto-subs --sub-langs 'zh,zh-CN,zh-Hans,zh-SG,zh-TW,zh-Hant,zh-HK' --sub-format vtt \
+	--write-subs --sub-langs 'all,-live_chat' --sub-format vtt -o 'subtitle:track.%(ext)s' \
 	--sleep-subtitles 2 --ignore-errors \
 	--write-info-json --no-write-playlist-metafiles --no-playlist \
 	--write-thumbnail --convert-thumbnails jpg \
@@ -57,7 +60,28 @@ for line in sys.stdin:
                        "percent": float(percent.group())}, file, ensure_ascii=False)
         os.replace("progress.json.part", "progress.json")
 ' || echo "yt-dlp reported an error; packing whatever arrived."
+if ! ls track.zh*.vtt >/dev/null 2>&1; then
+	python3 "$(command -v yt-dlp)" --js-runtimes node --skip-download --no-playlist \
+		--write-auto-subs --sub-langs 'zh,zh-CN,zh-Hans,zh-SG,zh-TW,zh-Hant,zh-HK' --sub-format vtt \
+		--sleep-subtitles 2 --ignore-errors -o 'subtitle:track-auto.%(ext)s' "$url" ||
+		echo "yt-dlp could not fetch automatic Chinese subtitles."
+fi
 printf '{"stage": "packing"}' >progress.json
+
+# tracks.json: each track's language, YouTube name and kind, which only the info json knows.
+if ls track*.vtt >/dev/null 2>&1; then
+	python3 - <<'PY'
+import glob, json, os, re
+info = json.load(open('media.info.json')) if os.path.exists('media.info.json') else {}
+tracks = []
+for path in sorted(glob.glob('track*.vtt')):
+    kind, lang = re.match(r'(track(?:-auto)?)\.(.+)\.vtt$', path).groups()
+    kind = 'automatic' if kind == 'track-auto' else 'human'
+    listed = info.get('subtitles' if kind == 'human' else 'automatic_captions', {}).get(lang) or [{}]
+    tracks.append({'file': path, 'lang': lang, 'name': listed[0].get('name') or '', 'kind': kind})
+json.dump(tracks, open('tracks.json', 'w'), ensure_ascii=False)
+PY
+fi
 
 # The info json is large and mostly noise; keep only what the app shows.
 if [ -f media.info.json ]; then
@@ -88,9 +112,11 @@ echo "$work/bundle.tar"
 # The wake lock is Termux's only one, and the service needs it for as long as it runs, so it is taken
 # and never released here: an unlock at the end of a job used to leave the service to be frozen.
 command -v termux-wake-lock >/dev/null && termux-wake-lock
-# English for each line of a downloaded track; a video without one is translated when Reader's
-# transcript arrives (the reader service starts translate.py then).
-if ls media.*.vtt >/dev/null 2>&1 && command -v llama-completion >/dev/null; then
+# English for each line of a downloaded track, but only when Reader will not ask which tracks to use
+# (spec 012): then translation waits for Reader's choice, which the reader service receives. A video
+# without subtitles is translated when Reader's transcript arrives (the service starts it then too).
+if ls track*.vtt >/dev/null 2>&1 && command -v llama-completion >/dev/null &&
+	[ "$(python3 ~/bin/translate.py --check-choice "$work")" = none ]; then
 	python3 ~/bin/translate.py "$work" &
 fi
 # Also waits for the service, when this job started it (see the top; if the service was

@@ -166,6 +166,143 @@ async function importFromTermux(tab, title) {
 }
 
 const scenarios = {
+	// Spec 012 (make-fixtures.sh's fixture-tracks-*, a reader service on the build's port with
+	// READER_TRANSLATE=scripts/termux/translate.py TRANSLATE_STUB=1). Four checks in one tab:
+	// a clean+mixed download imports without asking; a human English track asks, with defaults;
+	// leaving the question imports nothing; the English switch changes only the English.
+	async tracks() {
+		let tab = await openTab('about:blank');
+		const linesShown = `[...document.querySelectorAll('.lines p')].length`;
+		try {
+			// US1: no question, clean text.
+			await importFromTermux(tab, 'Test clip, clean and mixed tracks');
+			const clean = await until(
+				'the clean track to open without a question',
+				() =>
+					tab.evaluate(`
+						if (document.querySelector('[role=dialog]')) return { asked: true };
+						if (!location.pathname.includes('/read/')) return null;
+						const lines = [...document.querySelectorAll('.lines p')].map((p) => p.textContent);
+						return lines.length > 5 ? { asked: false, lines: lines.length, roman: lines.filter((l) => l.includes('roman line')).length } : null;
+					`),
+				60000,
+				250
+			);
+
+			// A fresh tab: clearing storage under an open video (whose sound and quick English are still
+			// being saved) is not something a reader does, and it blocked the library here.
+			await tab.close();
+			tab = await openTab('about:blank');
+
+			// US2: the question, with the defaults chosen; leaving it imports nothing.
+			await importFromTermux(tab, 'Test clip, human English');
+			const asked = await until('the subtitle question', () =>
+				tab.evaluate(`
+					const sheet = document.querySelector('[role=dialog][aria-label^="Choose subtitles"]');
+					if (!sheet) return null;
+					const checked = (name) => sheet.querySelector('input[name=' + name + ']:checked')?.value;
+					return { chinese: checked('chinese'), english: checked('english'), options: sheet.querySelectorAll('input').length };
+				`)
+			);
+			await tab.evaluate(
+				`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return true;`
+			);
+			const left = await until('the question to close, nothing imported', () =>
+				tab.evaluate(`
+					if (document.querySelector('[role=dialog]')) return null;
+					const listed = [...document.querySelectorAll('.fresh li')].some((li) => li.textContent.includes('Test clip, human English'));
+					return { onLibrary: !location.pathname.includes('/read/'), listed };
+				`)
+			);
+
+			// US2 again, confirmed; US3: human lines first, the uncovered line machine-made.
+			await tab.evaluate(`
+				[...document.querySelectorAll('.fresh li')].find((li) => li.textContent.includes('Test clip, human English')).querySelector('button').click();
+				return true;
+			`);
+			await until('the question again', () =>
+				tab.evaluate(`
+					const button = [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Import');
+					if (!button) return null;
+					button.click();
+					return true;
+				`)
+			);
+			const english = await until(
+				'human English beside the Chinese, the uncovered line translated',
+				() =>
+					tab.evaluate(`
+						if (!location.pathname.includes('/read/')) return null;
+						const all = document.querySelector('.all-english input');
+						if (!all) return null;
+						if (!all.checked) all.click();
+						const lines = [...document.querySelectorAll('.lines p')];
+						const texts = lines.map((p) => p.querySelector('.english')?.textContent ?? '');
+						if (!texts[1]) return null;
+						return {
+							first: texts[0], second: texts[1], third: texts[2],
+							humanTitle: lines[0].querySelector('.english')?.title ?? ''
+						};
+					`),
+				60000,
+				250
+			);
+			const choice = await tab.evaluate(`
+				return fetch('http://127.0.0.1:18765/downloads/fixture-tracks-english/choice.json').then((r) => r.ok ? r.json() : null);
+			`);
+
+			// US4: switching the English leaves the Chinese lines as they were.
+			const before = await tab.evaluate(`return ${linesShown}`);
+			await tab.evaluate(`
+				const select = document.querySelector('.english-choice select');
+				select.value = 'none';
+				select.dispatchEvent(new Event('change', { bubbles: true }));
+				return true;
+			`);
+			const none = await until('no English after choosing None', () =>
+				tab.evaluate(
+					`return document.querySelectorAll('.lines .english').length === 0 ? { lines: ${linesShown} } : null;`
+				)
+			);
+			await tab.goto(
+				(await tab.evaluate('return location.pathname')).replace(/^\/language-reader/, '')
+			);
+			const kept = await until('the choice to survive a reload', () =>
+				tab.evaluate(`
+					const select = document.querySelector('.english-choice select');
+					return select ? { value: select.value, lines: ${linesShown} } : null;
+				`)
+			);
+			return {
+				pass:
+					clean.asked === false &&
+					clean.roman === 0 &&
+					asked.chinese === 'track.zh.vtt' &&
+					asked.english === 'track.en.vtt' &&
+					left.onLibrary &&
+					left.listed &&
+					english.first === 'Human English for line 1' &&
+					english.third === 'Human English for lines 2 and 3' &&
+					!english.second.startsWith('Human') &&
+					english.humanTitle.includes('English subtitles') &&
+					choice?.english === 'track.en.vtt' &&
+					none.lines === before &&
+					kept.value === 'none' &&
+					kept.lines === before,
+				clean,
+				asked,
+				left,
+				english,
+				choice,
+				before,
+				none,
+				kept
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async cardaudio() {
 		const { writeFileSync } = await import('node:fs');
 		const tab = await openTab('about:blank');

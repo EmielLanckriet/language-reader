@@ -79,5 +79,50 @@ class TakingATranscript(unittest.TestCase):
         self.assertEqual(self.put('job-1', 'not subtitles'), 400)
 
 
+class TakingAChoice(TakingATranscript):
+    """Spec 012: Reader reports the tracks it imported; Termux translates only then."""
+
+    def setUp(self):
+        super().setUp()
+        import json
+        for name in ('track.zh.vtt', 'track.en.vtt'):
+            with open(os.path.join(self.job, name), 'w', encoding='utf-8') as file:
+                file.write(VTT)
+        with open(os.path.join(self.job, 'tracks.json'), 'w', encoding='utf-8') as file:
+            json.dump([{'file': 'track.zh.vtt', 'lang': 'zh', 'name': '', 'kind': 'human'},
+                       {'file': 'track.en.vtt', 'lang': 'en', 'name': '', 'kind': 'human'}], file)
+
+    def choose(self, job, body):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1])
+        connection.request('PUT', f'/downloads/{job}/choice.json', body=body.encode('utf-8'),
+                           headers={'Content-Type': 'application/json'})
+        return connection.getresponse().status
+
+    def started(self):
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            if os.path.exists(os.path.join(self.job, 'runs')):
+                return True
+            time.sleep(0.05)
+        return False
+
+    def test_stores_the_choice_and_starts_translating(self):
+        self.assertEqual(self.choose('job-1', '{"chinese": "track.zh.vtt", "english": "machine"}'), 204)
+        with open(os.path.join(self.job, 'choice.json'), encoding='utf-8') as file:
+            self.assertIn('track.zh.vtt', file.read())
+        self.assertTrue(self.started())
+
+    def test_starts_nothing_for_no_english_or_a_transcript_to_come(self):
+        self.assertEqual(self.choose('job-1', '{"chinese": "track.zh.vtt", "english": "none"}'), 204)
+        self.assertEqual(self.choose('job-1', '{"chinese": "transcribe", "english": "machine"}'), 204)
+        self.assertFalse(self.started())
+
+    def test_refuses_what_the_job_does_not_have(self):
+        self.assertEqual(self.choose('job-1', '{"chinese": "track.fr.vtt", "english": "machine"}'), 400)
+        self.assertEqual(self.choose('job-1', '{"chinese": "track.zh.vtt", "english": "../x"}'), 400)
+        self.assertEqual(self.choose('job-1', 'not json'), 400)
+        self.assertEqual(self.choose('no-such-job', '{"chinese": "transcribe", "english": "none"}'), 404)
+
+
 if __name__ == '__main__':
     unittest.main()
