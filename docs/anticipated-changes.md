@@ -829,3 +829,13 @@ hand-marking rule that produced it was written by the same person who generated 
 it says a numeral plus its measure word is one word — precisely the convention the model does not
 share. The reader reading their own material is a better judge of whether 一 · 个 is irritating than
 a 140-word score on generated text.
+
+## What Spec 013 Planning Settled — 2026-10-04
+
+| Change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| A per-word listening outcome (e.g. a "didn't catch it" headphone press) | medium | cheap — a new encounter kind | Defer |
+| Engagement answers (watched/listened, attentive) as a fitted covariate | medium | cheap — already recorded | Defer |
+| Refitting on a schedule | medium | cheap — same fit | Defer |
+| Separate review weights per skill | medium | cheap — the parameter set is versioned | Defer |
+| Per-moment helped intervals instead of whole-session blur-off | low | cheap — derived from retained encounters | Defer ([ADR-0037](adr/0037-in-context-outcomes-and-fitted-rules.md)) |
