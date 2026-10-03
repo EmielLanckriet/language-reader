@@ -69,6 +69,15 @@ explicit flashcard recall is the measured outcome, while implicit encounters rem
 See [ADR-0034](adr/0034-study-sessions-and-weekly-progress.md). Rewards use participation, independent
 of grades and lookup feedback. Review prompt identity remains covered by spec 009 above.
 
+## Subtitle track additions (2026-10-03, spec 012)
+
+| Anticipated change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| Use a pinyin track's readings to correct heteronyms | High | Cheap if mixed tracks are retained | Retain every downloaded track; no parsing now |
+| Split a Chinese+English track into text and translation | Medium | Cheap with retained tracks | Defer |
+| Translations into languages other than English | Low | Cheap: track language is recorded | Record language codes only |
+| Remember a per-channel track preference | Medium | Cheap: uploader already in meta.json | Defer |
+
 ## Product Direction
 
 Stated 2026-09-02, and recorded here because nothing else in the repository carried it: **the
