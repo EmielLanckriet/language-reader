@@ -143,10 +143,11 @@ export function choiceNeeded(tracks: ClassifiedTrack[]): boolean {
  * One cue per timed block, its text on one line.
  *
  * YouTube's automatic captions repeat each line in the next cue as they roll up, so a line equal to
- * the one before it is dropped. The line index is what ties the text to its time: line i of the
+ * the one before it is dropped, unless `keepRepeats`: a human translator repeats a line on purpose,
+ * under each of the cues it covers. The line index is what ties the text to its time: line i of the
  * document is cue i, which is why a cue's text must never contain a newline.
  */
-export function parseSubtitles(source: string): Cue[] {
+export function parseSubtitles(source: string, { keepRepeats = false } = {}): Cue[] {
 	const cues: Cue[] = [];
 	let previous = '';
 	for (const block of source.replace(/\r/g, '').split(/\n{2,}/)) {
@@ -157,7 +158,8 @@ export function parseSubtitles(source: string): Cue[] {
 		const fresh = lines
 			.slice(at + 1)
 			.map((line) => line.replace(/<[^>]*>/g, '').trim())
-			.filter((line) => line && line !== previous);
+			// Across cues a repeat may be deliberate; inside one cue a doubled line never is.
+			.filter((line, i, all) => line && line !== all[i - 1] && (keepRepeats || line !== previous));
 		if (fresh.length === 0) continue;
 		previous = fresh[fresh.length - 1];
 		cues.push({

@@ -65,7 +65,7 @@
 			machineWanted = chosen.source === 'machine';
 			const track =
 				chosen.source === 'track' ? files.find((file) => file.name === chosen.file) : undefined;
-			humanCues = track ? parseSubtitles(await track.text()) : [];
+			humanCues = track ? parseSubtitles(await track.text(), { keepRepeats: true }) : [];
 		});
 	});
 	// A chosen human English track is shown alone, its gaps included (spec 012, clarified 2026-10-03).

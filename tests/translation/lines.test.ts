@@ -90,6 +90,15 @@ describe('matching a human English track to Chinese lines (spec 012, research R3
 		);
 	});
 
+	it('shows a repeated line once when both copies land under the same line', () => {
+		const zh = [{ start: 0, end: 4 }];
+		const en = [
+			{ start: 0, end: 2, text: 'It rhymes.' },
+			{ start: 2, end: 4, text: 'It rhymes.' }
+		];
+		expect(humanByLine(zh, en)).toEqual(['It rhymes.']);
+	});
+
 	it('maps identically timed tracks one to one', () => {
 		fc.assert(
 			fc.property(spans, (chinese) => {

@@ -56,5 +56,5 @@ export function humanLines(
 	const setting = media.english;
 	if (setting.source !== 'track') return [];
 	const track = media.tracks.find((t) => t.file === setting.file);
-	return track ? humanByLine(media.cues, parseSubtitles(track.text)) : [];
+	return track ? humanByLine(media.cues, parseSubtitles(track.text, { keepRepeats: true })) : [];
 }

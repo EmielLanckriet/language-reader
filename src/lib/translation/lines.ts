@@ -65,7 +65,8 @@ export function humanByLine(
 				best = i;
 			}
 		});
-		lines[best].push(cue.text);
+		// A translator's repeat of a line, when both copies land here, is shown once.
+		if (lines[best].at(-1) !== cue.text) lines[best].push(cue.text);
 	}
 	return lines.map((texts) => (texts.length > 0 ? texts.join(' ') : undefined));
 }

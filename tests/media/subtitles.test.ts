@@ -72,6 +72,21 @@ describe('parsing subtitles', () => {
 		]);
 	});
 
+	it("keeps a human track's deliberate repeats when asked", () => {
+		// A translator repeats one English line under the two Chinese cues it covers (MediaStorm,
+		// JiD2SK2Yav0); dropping it as a rolled-up repeat left the second Chinese line empty.
+		const source =
+			'WEBVTT\n\n00:01:22.600 --> 00:01:23.720\nThen, there is something to discuss.\n\n00:01:23.720 --> 00:01:24.720\nThen, there is something to discuss.\n';
+		expect(parseSubtitles(source, { keepRepeats: true })).toHaveLength(2);
+		expect(parseSubtitles(source)).toHaveLength(1);
+	});
+
+	it('collapses a line written twice inside one cue, repeats kept or not', () => {
+		const source =
+			'WEBVTT\n\n00:04:51.380 --> 00:04:53.719\nspec sheets ever seen.\nspec sheets ever seen.\n';
+		expect(parseSubtitles(source, { keepRepeats: true })[0].text).toBe('spec sheets ever seen.');
+	});
+
 	it('drops the rolled-up repeat in automatic captions', () => {
 		const cues = parseSubtitles(
 			'WEBVTT\n\n00:00:01.000 --> 00:00:03.000\n我们\n\n00:00:03.000 --> 00:00:05.000\n我们\n去吃饭\n\n00:00:05.000 --> 00:00:05.010\n去吃饭\n'
