@@ -1,0 +1,285 @@
+{
+	"engine": "Transformers.js 4.3.0 OPUS q8, beam 3, native CPU one thread (quality control only)",
+	"rows": [
+		{
+			"id": "tariff-00",
+			"translation": "- What?",
+			"ms": 232.89947699999993
+		},
+		{
+			"id": "tariff-01",
+			"translation": "Friends.",
+			"ms": 88.91704500000014
+		},
+		{
+			"id": "tariff-02",
+			"translation": "February of this year",
+			"ms": 178.8212349999999
+		},
+		{
+			"id": "tariff-03",
+			"translation": "The Supreme Court of America.",
+			"ms": 229.31089900000006
+		},
+		{
+			"id": "tariff-04",
+			"translation": "Not Trump.",
+			"ms": 142.6657250000003
+		},
+		{
+			"id": "tariff-05",
+			"translation": "Tariff policy",
+			"ms": 118.27989600000001
+		},
+		{
+			"id": "tariff-06",
+			"translation": "Is it illegal?",
+			"ms": 150.2852969999999
+		},
+		{
+			"id": "tariff-07",
+			"translation": "Then he was a big guy last year.",
+			"ms": 295.14018699999997
+		},
+		{
+			"id": "tariff-08",
+			"translation": "Launched",
+			"ms": 92.78575300000011
+		},
+		{
+			"id": "tariff-09",
+			"translation": "Global tariff battles",
+			"ms": 147.56472799999983
+		},
+		{
+			"id": "tariff-10",
+			"translation": "Is it all for nothing?",
+			"ms": 204.26743700000043
+		},
+		{
+			"id": "tariff-11",
+			"translation": "It's been a year.",
+			"ms": 228.15970500000003
+		},
+		{
+			"id": "tariff-12",
+			"translation": "The customs duties collected.",
+			"ms": 194.87165100000038
+		},
+		{
+			"id": "tariff-13",
+			"translation": "Do we have to go back?",
+			"ms": 251.4189269999997
+		},
+		{
+			"id": "tariff-14",
+			"translation": "We haven't talked about American customs in a while, huh?",
+			"ms": 449.3753939999997
+		},
+		{
+			"id": "tariff-15",
+			"translation": "But this is one.",
+			"ms": 174.7208610000007
+		},
+		{
+			"id": "tariff-16",
+			"translation": "The big thing that's shattering the global trade landscape.",
+			"ms": 454.8111909999998
+		},
+		{
+			"id": "tariff-17",
+			"translation": "So let's follow up today.",
+			"ms": 277.5958989999999
+		},
+		{
+			"id": "tariff-18",
+			"translation": "Look at this mess.",
+			"ms": 179.59577799999988
+		},
+		{
+			"id": "tariff-19",
+			"translation": "United States",
+			"ms": 97.23369400000047
+		},
+		{
+			"id": "tariff-joined-00",
+			"translation": "S-Friends.",
+			"ms": 258.3821589999998
+		},
+		{
+			"id": "tariff-joined-01",
+			"translation": "The United States Supreme Court last February ruled Trump's customs policy illegal.",
+			"ms": 606.6839369999998
+		},
+		{
+			"id": "tariff-joined-02",
+			"translation": "So, he's been in the middle of a global tariff war last year?",
+			"ms": 676.806603
+		},
+		{
+			"id": "tariff-joined-03",
+			"translation": "Do the tax collected during the year have to be reversed?",
+			"ms": 546.3803059999991
+		},
+		{
+			"id": "tariff-joined-04",
+			"translation": "We haven't talked about American customs for a long time.",
+			"ms": 506.8582470000001
+		},
+		{
+			"id": "tariff-joined-05",
+			"translation": "But this is a big thing that is disturbing the global trade landscape, so let's follow it up today.",
+			"ms": 768.6377620000003
+		},
+		{
+			"id": "tariff-joined-06",
+			"translation": "Look at the after-all-American.",
+			"ms": 307.30073599999923
+		},
+		{
+			"id": "cooking-00",
+			"translation": "Hello, everyone.",
+			"ms": 149.01452700000118
+		},
+		{
+			"id": "cooking-01",
+			"translation": "I'm Wang Kong.",
+			"ms": 207.80748400000084
+		},
+		{
+			"id": "cooking-02",
+			"translation": "I'll share with you this video with the people about the food.",
+			"ms": 477.2837069999987
+		},
+		{
+			"id": "cooking-03",
+			"translation": "Tomato-fried eggs.",
+			"ms": 235.40572099999918
+		},
+		{
+			"id": "cooking-04",
+			"translation": "First we'll be ready for two tomatoes.",
+			"ms": 327.2855120000004
+		},
+		{
+			"id": "cooking-05",
+			"translation": "Cut the floor and then cut into even sizes of a roller blade.",
+			"ms": 515.2457279999999
+		},
+		{
+			"id": "cooking-06",
+			"translation": "It can be bigger.",
+			"ms": 204.15045699999973
+		},
+		{
+			"id": "cooking-07",
+			"translation": "It'll be better.",
+			"ms": 218.94812600000114
+		},
+		{
+			"id": "cooking-08",
+			"translation": "Then we'll put three eggs in the bowl.",
+			"ms": 367.90833999999995
+		},
+		{
+			"id": "cooking-09",
+			"translation": "And add a little bit of salt to the diet.",
+			"ms": 401.3190259999992
+		},
+		{
+			"id": "cooking-10",
+			"translation": "I'll add a gram of vinegar.",
+			"ms": 491.7231500000016
+		},
+		{
+			"id": "cooking-11",
+			"translation": "And then we'll go in one direction and we'll have a smooth backup.",
+			"ms": 612.2938919999997
+		},
+		{
+			"id": "cooking-12",
+			"translation": "The purpose of white vinegar is to remove the smell of eggs and increase their taste.",
+			"ms": 573.03456
+		},
+		{
+			"id": "cooking-13",
+			"translation": "First we'll heat the pot.",
+			"ms": 270.212504000001
+		},
+		{
+			"id": "cooking-14",
+			"translation": "The boiler is hot and the boiler is filled with a suitable amount of oil.",
+			"ms": 548.5107289999996
+		},
+		{
+			"id": "cooking-15",
+			"translation": "Slid the pot and pour the hot oil out.",
+			"ms": 361.2953089999992
+		},
+		{
+			"id": "cooking-16",
+			"translation": "And a little bit of oil.",
+			"ms": 243.4749619999984
+		},
+		{
+			"id": "cooking-17",
+			"translation": "The boiling fluid will be ready after 40% of the heat.",
+			"ms": 444.63597200000004
+		},
+		{
+			"id": "cooking-18",
+			"translation": "I'll fry the egg fluid to a fixed mode for a minute.",
+			"ms": 498.14244399999734
+		},
+		{
+			"id": "cooking-19",
+			"translation": "Just turn the eggs over and fry the scent.",
+			"ms": 322.6470109999973
+		},
+		{
+			"id": "cooking-joined-00",
+			"translation": "Hello, everybody. I'm Wang Kong.",
+			"ms": 414.17609000000084
+		},
+		{
+			"id": "cooking-joined-01",
+			"translation": "I'm sharing this video with you about the increased tomato fried eggs.",
+			"ms": 483.0087910000002
+		},
+		{
+			"id": "cooking-joined-02",
+			"translation": "First we're ready to get two tomatoes ready.",
+			"ms": 352.406880999999
+		},
+		{
+			"id": "cooking-joined-03",
+			"translation": "It would be better to cut off the floor and then cut into even sizes of a roller blade, which would be slightly larger.",
+			"ms": 961.3234449999982
+		},
+		{
+			"id": "cooking-joined-04",
+			"translation": "Then we put three eggs in the bowl and a little salt into a gram of white vinegar and then we mix it in one direction.",
+			"ms": 1024.0158869999977
+		},
+		{
+			"id": "cooking-joined-05",
+			"translation": "The purpose of white vinegar is to remove the smell of eggs and to increase their taste.",
+			"ms": 647.2798730000031
+		},
+		{
+			"id": "cooking-joined-06",
+			"translation": "First we heat the boilers and then we add the right amount of oil-sliding pans.",
+			"ms": 720.2161139999989
+		},
+		{
+			"id": "cooking-joined-07",
+			"translation": "The boiler is then poured out of the hot oil and added a little bit of the oil.",
+			"ms": 701.0358269999997
+		},
+		{
+			"id": "cooking-joined-08",
+			"translation": "After 40% of the heat, the boiling fluid will be boiled and the boil will be fried for a minute, the egg fluid will be fried to the scheduled halfway point and the eggs will be turned over to the fragrance.",
+			"ms": 1604.603793000002
+		}
+	]
+}

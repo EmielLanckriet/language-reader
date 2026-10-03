@@ -1,0 +1,354 @@
+[
+	{
+		"id": "tariff-00",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "Hi~"
+	},
+	{
+		"id": "tariff-01",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "朋友们"
+	},
+	{
+		"id": "tariff-02",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "今年2月份"
+	},
+	{
+		"id": "tariff-03",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "美国那个最高法院"
+	},
+	{
+		"id": "tariff-04",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "不是判特朗普的"
+	},
+	{
+		"id": "tariff-05",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "关税政策"
+	},
+	{
+		"id": "tariff-06",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "违法了吗"
+	},
+	{
+		"id": "tariff-07",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "那他去年轰轰烈烈"
+	},
+	{
+		"id": "tariff-08",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "发起的"
+	},
+	{
+		"id": "tariff-09",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "全球关税战"
+	},
+	{
+		"id": "tariff-10",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "都白整了吗"
+	},
+	{
+		"id": "tariff-11",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "辛苦折腾一年"
+	},
+	{
+		"id": "tariff-12",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "收上来的关税"
+	},
+	{
+		"id": "tariff-13",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "难道都得退回去吗"
+	},
+	{
+		"id": "tariff-14",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "咱好久没聊美国关税了哈"
+	},
+	{
+		"id": "tariff-15",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "但这个毕竟是一个"
+	},
+	{
+		"id": "tariff-16",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "搅动全球贸易格局的大事"
+	},
+	{
+		"id": "tariff-17",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "所以咱今天来跟进一下"
+	},
+	{
+		"id": "tariff-18",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "看看这么折腾一通之后"
+	},
+	{
+		"id": "tariff-19",
+		"kind": "cue",
+		"topic": "tariff",
+		"text": "美国"
+	},
+	{
+		"id": "tariff-joined-00",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-00", "tariff-01"],
+		"text": "Hi~朋友们。"
+	},
+	{
+		"id": "tariff-joined-01",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-02", "tariff-03", "tariff-04", "tariff-05", "tariff-06"],
+		"text": "今年2月份美国那个最高法院不是判特朗普的关税政策违法了吗。"
+	},
+	{
+		"id": "tariff-joined-02",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-07", "tariff-08", "tariff-09", "tariff-10"],
+		"text": "那他去年轰轰烈烈发起的全球关税战都白整了吗。"
+	},
+	{
+		"id": "tariff-joined-03",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-11", "tariff-12", "tariff-13"],
+		"text": "辛苦折腾一年收上来的关税难道都得退回去吗。"
+	},
+	{
+		"id": "tariff-joined-04",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-14"],
+		"text": "咱好久没聊美国关税了哈。"
+	},
+	{
+		"id": "tariff-joined-05",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-15", "tariff-16", "tariff-17"],
+		"text": "但这个毕竟是一个搅动全球贸易格局的大事所以咱今天来跟进一下。"
+	},
+	{
+		"id": "tariff-joined-06",
+		"kind": "joined",
+		"topic": "tariff",
+		"cue_ids": ["tariff-18", "tariff-19"],
+		"text": "看看这么折腾一通之后美国。"
+	},
+	{
+		"id": "cooking-00",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "哈喽大家好"
+	},
+	{
+		"id": "cooking-01",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "我是王刚"
+	},
+	{
+		"id": "cooking-02",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "本期视频我跟大家分享一道加重菜"
+	},
+	{
+		"id": "cooking-03",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "番茄炒鸡蛋"
+	},
+	{
+		"id": "cooking-04",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "首先我们准备熟透的西红柿两个"
+	},
+	{
+		"id": "cooking-05",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "切掉地之后再切成大小均匀的滚刀块备用"
+	},
+	{
+		"id": "cooking-06",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "可以稍微切大一些"
+	},
+	{
+		"id": "cooking-07",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "这样口感会更好"
+	},
+	{
+		"id": "cooking-08",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "然后我们在碗中打入鸡蛋三个"
+	},
+	{
+		"id": "cooking-09",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "再加入少许的食用盐"
+	},
+	{
+		"id": "cooking-10",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "加入白醋一克"
+	},
+	{
+		"id": "cooking-11",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "然后顺着一个方向搅拌均匀备用"
+	},
+	{
+		"id": "cooking-12",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "加白醋的目的是去除鸡蛋的腥味和增加鲜味"
+	},
+	{
+		"id": "cooking-13",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "首先我们把锅烧热"
+	},
+	{
+		"id": "cooking-14",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "锅烧热之后加入适量的油滑锅"
+	},
+	{
+		"id": "cooking-15",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "滑好锅之后将热油倒出"
+	},
+	{
+		"id": "cooking-16",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "再加入少许的底油"
+	},
+	{
+		"id": "cooking-17",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "油温四成热之后将打好的蛋液下锅"
+	},
+	{
+		"id": "cooking-18",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "开小火煎一分钟将蛋液煎至定型"
+	},
+	{
+		"id": "cooking-19",
+		"kind": "cue",
+		"topic": "cooking",
+		"text": "中途再将鸡蛋翻过来炒香即可"
+	},
+	{
+		"id": "cooking-joined-00",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-00", "cooking-01"],
+		"text": "哈喽大家好我是王刚。"
+	},
+	{
+		"id": "cooking-joined-01",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-02", "cooking-03"],
+		"text": "本期视频我跟大家分享一道加重菜番茄炒鸡蛋。"
+	},
+	{
+		"id": "cooking-joined-02",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-04"],
+		"text": "首先我们准备熟透的西红柿两个。"
+	},
+	{
+		"id": "cooking-joined-03",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-05", "cooking-06", "cooking-07"],
+		"text": "切掉地之后再切成大小均匀的滚刀块备用可以稍微切大一些这样口感会更好。"
+	},
+	{
+		"id": "cooking-joined-04",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-08", "cooking-09", "cooking-10", "cooking-11"],
+		"text": "然后我们在碗中打入鸡蛋三个再加入少许的食用盐加入白醋一克然后顺着一个方向搅拌均匀备用。"
+	},
+	{
+		"id": "cooking-joined-05",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-12"],
+		"text": "加白醋的目的是去除鸡蛋的腥味和增加鲜味。"
+	},
+	{
+		"id": "cooking-joined-06",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-13", "cooking-14"],
+		"text": "首先我们把锅烧热锅烧热之后加入适量的油滑锅。"
+	},
+	{
+		"id": "cooking-joined-07",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-15", "cooking-16"],
+		"text": "滑好锅之后将热油倒出再加入少许的底油。"
+	},
+	{
+		"id": "cooking-joined-08",
+		"kind": "joined",
+		"topic": "cooking",
+		"cue_ids": ["cooking-17", "cooking-18", "cooking-19"],
+		"text": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。"
+	}
+]

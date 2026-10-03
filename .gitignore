@@ -48,3 +48,11 @@ reader-fsrs-data*.json
 
 # Personal Anki example/audio export bundles
 anki-examples*.tar
+
+# The ML Kit emulator benchmark's Gradle state and build output (scripts/compare-translators/README.md)
+scripts/compare-translators/android/.gradle/
+scripts/compare-translators/android/app/build/
+scripts/compare-translators/android/build/
+scripts/compare-translators/android/local.properties
+# Copied in before each emulator build (scripts/compare-translators/README.md)
+scripts/compare-translators/android/app/src/main/assets/corpus.json

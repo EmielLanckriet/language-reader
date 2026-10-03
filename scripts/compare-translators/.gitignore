@@ -1,0 +1,3 @@
+android/.gradle/
+android/**/build/
+android/app/src/main/assets/corpus.json

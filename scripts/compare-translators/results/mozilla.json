@@ -1,0 +1,792 @@
+{
+	"engine": "Mozilla zh-Hans-en 2.1; Bergamot npm 0.4.9 WASM, one worker",
+	"baseline_rss": 47448064,
+	"rows": [
+		{
+			"id": "tariff-00",
+			"round": 0,
+			"translation": "Hi~",
+			"ms": 25.947539000000006,
+			"rss": 803549184
+		},
+		{
+			"id": "tariff-01",
+			"round": 0,
+			"translation": "Friends",
+			"ms": 31.287354999999934,
+			"rss": 808660992
+		},
+		{
+			"id": "tariff-02",
+			"round": 0,
+			"translation": "February this year.",
+			"ms": 52.02356099999997,
+			"rss": 814690304
+		},
+		{
+			"id": "tariff-03",
+			"round": 0,
+			"translation": "The U.S. Supreme Court.",
+			"ms": 59.29918399999997,
+			"rss": 816918528
+		},
+		{
+			"id": "tariff-04",
+			"round": 0,
+			"translation": "Not to Judge Trump.",
+			"ms": 37.51367499999992,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-05",
+			"round": 0,
+			"translation": "Tariff policy",
+			"ms": 27.64426400000002,
+			"rss": 818057216
+		},
+		{
+			"id": "tariff-06",
+			"round": 0,
+			"translation": "Is it illegal?",
+			"ms": 25.86289899999997,
+			"rss": 819367936
+		},
+		{
+			"id": "tariff-07",
+			"round": 0,
+			"translation": "He was strong last year.",
+			"ms": 37.42334400000004,
+			"rss": 797188096
+		},
+		{
+			"id": "tariff-08",
+			"round": 0,
+			"translation": "Initied",
+			"ms": 17.916861000000154,
+			"rss": 799154176
+		},
+		{
+			"id": "tariff-09",
+			"round": 0,
+			"translation": "The Global Tariff War",
+			"ms": 25.046847999999954,
+			"rss": 802037760
+		},
+		{
+			"id": "tariff-10",
+			"round": 0,
+			"translation": "Are they all white?",
+			"ms": 24.743465000000015,
+			"rss": 803872768
+		},
+		{
+			"id": "tariff-11",
+			"round": 0,
+			"translation": "Hard work for a year.",
+			"ms": 27.104503999999906,
+			"rss": 803872768
+		},
+		{
+			"id": "tariff-12",
+			"round": 0,
+			"translation": "The tariffs.",
+			"ms": 19.093934999999874,
+			"rss": 803872768
+		},
+		{
+			"id": "tariff-13",
+			"round": 0,
+			"translation": "Do they all have to go back?",
+			"ms": 31.805593999999928,
+			"rss": 803872768
+		},
+		{
+			"id": "tariff-14",
+			"round": 0,
+			"translation": "We haven’t talked about U.S. tariffs in a long time.",
+			"ms": 62.100594,
+			"rss": 803872768
+		},
+		{
+			"id": "tariff-15",
+			"round": 0,
+			"translation": "But this one, after all, is one.",
+			"ms": 38.009641999999985,
+			"rss": 804003840
+		},
+		{
+			"id": "tariff-16",
+			"round": 0,
+			"translation": "Disrupting the global trade pattern",
+			"ms": 39.29418899999973,
+			"rss": 804528128
+		},
+		{
+			"id": "tariff-17",
+			"round": 0,
+			"translation": "So let’s follow up today.",
+			"ms": 39.326548999999886,
+			"rss": 816586752
+		},
+		{
+			"id": "tariff-18",
+			"round": 0,
+			"translation": "Look at that after a twist.",
+			"ms": 35.55411400000003,
+			"rss": 818946048
+		},
+		{
+			"id": "tariff-19",
+			"round": 0,
+			"translation": "American",
+			"ms": 12.15367600000036,
+			"rss": 819470336
+		},
+		{
+			"id": "tariff-joined-00",
+			"round": 0,
+			"translation": "Hi~ my friends.",
+			"ms": 25.125257000000147,
+			"rss": 821698560
+		},
+		{
+			"id": "tariff-joined-01",
+			"round": 0,
+			"translation": "In February this year, the US Supreme Court did not judge Trump's tariff policy to be illegal.",
+			"ms": 71.755811,
+			"rss": 803246080
+		},
+		{
+			"id": "tariff-joined-02",
+			"round": 0,
+			"translation": "Is the global tariff war he launched last year?",
+			"ms": 43.175680000000284,
+			"rss": 805212160
+		},
+		{
+			"id": "tariff-joined-03",
+			"round": 0,
+			"translation": "Do you have to go back to the tariffs that have been collected in a year?",
+			"ms": 57.53780599999982,
+			"rss": 805343232
+		},
+		{
+			"id": "tariff-joined-04",
+			"round": 0,
+			"translation": "We haven’t talked about U.S. tariffs in a long time.",
+			"ms": 51.63926500000025,
+			"rss": 806260736
+		},
+		{
+			"id": "tariff-joined-05",
+			"round": 0,
+			"translation": "But after all, this is a big thing that stirs the global trade pattern, so let's follow up today.",
+			"ms": 75.38252199999988,
+			"rss": 806260736
+		},
+		{
+			"id": "tariff-joined-06",
+			"round": 0,
+			"translation": "Look at the United States after such a toss.",
+			"ms": 43.62050999999974,
+			"rss": 813469696
+		},
+		{
+			"id": "cooking-00",
+			"round": 0,
+			"translation": "Hello everyone.",
+			"ms": 21.967151000000285,
+			"rss": 815173632
+		},
+		{
+			"id": "cooking-01",
+			"round": 0,
+			"translation": "I am King Gang.",
+			"ms": 21.965508000000227,
+			"rss": 815566848
+		},
+		{
+			"id": "cooking-02",
+			"round": 0,
+			"translation": "This video I share with you aggravating food.",
+			"ms": 36.655795000000126,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-03",
+			"round": 0,
+			"translation": "Tomato scrambled eggs",
+			"ms": 21.872913000000153,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-04",
+			"round": 0,
+			"translation": "First of all, we prepare two ripe tomatoes.",
+			"ms": 36.60063100000025,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-05",
+			"round": 0,
+			"translation": "Cut off the ground and then cut into a uniform size of the hole block spare",
+			"ms": 50.033642999999756,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-06",
+			"round": 0,
+			"translation": "You can cut a little bigger.",
+			"ms": 23.040949000000182,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-07",
+			"round": 0,
+			"translation": "This taste will be better.",
+			"ms": 19.692795999999817,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-08",
+			"round": 0,
+			"translation": "Then we broke into the bowl three eggs.",
+			"ms": 27.643522999999732,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-09",
+			"round": 0,
+			"translation": "Add a little more salt.",
+			"ms": 22.893059999999878,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-10",
+			"round": 0,
+			"translation": "Add one gram of white vinegar",
+			"ms": 28.487816999999723,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-11",
+			"round": 0,
+			"translation": "Then stir in one direction and evenly spare",
+			"ms": 34.136727000000064,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-12",
+			"round": 0,
+			"translation": "The purpose of white vinegar is to remove the fishy smell of eggs and increase the gami taste.",
+			"ms": 65.9083169999999,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-13",
+			"round": 0,
+			"translation": "First, let’s heat the pot.",
+			"ms": 30.92622300000039,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-14",
+			"round": 0,
+			"translation": "After the pot is hot, add the right amount of oil slider.",
+			"ms": 43.47881299999972,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-15",
+			"round": 0,
+			"translation": "Slide the pan and pour the hot oil out.",
+			"ms": 37.495600999999624,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-16",
+			"round": 0,
+			"translation": "Add a little more oil.",
+			"ms": 23.66573900000003,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-17",
+			"round": 0,
+			"translation": "After 40% of the oil temperature is hot, the egg liquid will be hit under the pot.",
+			"ms": 54.91756799999985,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-18",
+			"round": 0,
+			"translation": "Open a small fire for a minute to fry the egg to the shape",
+			"ms": 49.62561199999982,
+			"rss": 815697920
+		},
+		{
+			"id": "cooking-19",
+			"round": 0,
+			"translation": "Turn the eggs over in the middle of the sense.",
+			"ms": 45.55723799999987,
+			"rss": 816615424
+		},
+		{
+			"id": "cooking-joined-00",
+			"round": 0,
+			"translation": "Hello everyone, I'm the king.",
+			"ms": 36.02347099999997,
+			"rss": 817139712
+		},
+		{
+			"id": "cooking-joined-01",
+			"round": 0,
+			"translation": "In this video, I share with you the agglited vegetable tomato scrambled eggs.",
+			"ms": 58.231596999999965,
+			"rss": 817139712
+		},
+		{
+			"id": "cooking-joined-02",
+			"round": 0,
+			"translation": "First of all, we prepare two ripe tomatoes.",
+			"ms": 36.594798999999966,
+			"rss": 817139712
+		},
+		{
+			"id": "cooking-joined-03",
+			"round": 0,
+			"translation": "Cut off the ground and then cut into a uniform size of the hole block spare can be slightly cut a little larger so the taste will be better.",
+			"ms": 87.17757000000029,
+			"rss": 817139712
+		},
+		{
+			"id": "cooking-joined-04",
+			"round": 0,
+			"translation": "Then we pour the eggs in the bowl three and add a little more edible salt to add a gram of white vinegar and stir in one direction to spare it evenly.",
+			"ms": 121.026613,
+			"rss": 817139712
+		},
+		{
+			"id": "cooking-joined-05",
+			"round": 0,
+			"translation": "The purpose of white vinegar is to remove the fishy smell of eggs and increase the gami taste.",
+			"ms": 64.56938799999989,
+			"rss": 817270784
+		},
+		{
+			"id": "cooking-joined-06",
+			"round": 0,
+			"translation": "First of all, we will add the right amount of oil slider after the hot pot is hot.",
+			"ms": 62.10834900000009,
+			"rss": 817270784
+		},
+		{
+			"id": "cooking-joined-07",
+			"round": 0,
+			"translation": "After the smoothing pan, pour out the hot oil and add a little of the bottom oil.",
+			"ms": 60.42061199999989,
+			"rss": 817270784
+		},
+		{
+			"id": "cooking-joined-08",
+			"round": 0,
+			"translation": "After 40% of the oil temperature is hot, the egg liquid will be fried in the pan for a minute to fry the egg liquid until the sting is in the middle of the shape and then the egg can be turned over and fried.",
+			"ms": 155.53835899999967,
+			"rss": 817270784
+		},
+		{
+			"id": "tariff-00",
+			"round": 1,
+			"translation": "Hi~",
+			"ms": 11.738320999999814,
+			"rss": 817401856
+		},
+		{
+			"id": "tariff-01",
+			"round": 1,
+			"translation": "Friends",
+			"ms": 10.339108000000124,
+			"rss": 817401856
+		},
+		{
+			"id": "tariff-02",
+			"round": 1,
+			"translation": "February this year.",
+			"ms": 16.59643700000015,
+			"rss": 817401856
+		},
+		{
+			"id": "tariff-03",
+			"round": 1,
+			"translation": "The U.S. Supreme Court.",
+			"ms": 20.84849799999938,
+			"rss": 817401856
+		},
+		{
+			"id": "tariff-04",
+			"round": 1,
+			"translation": "Not to Judge Trump.",
+			"ms": 19.264377000000422,
+			"rss": 817532928
+		},
+		{
+			"id": "tariff-05",
+			"round": 1,
+			"translation": "Tariff policy",
+			"ms": 13.88000700000066,
+			"rss": 817664000
+		},
+		{
+			"id": "tariff-06",
+			"round": 1,
+			"translation": "Is it illegal?",
+			"ms": 17.744927000000644,
+			"rss": 817664000
+		},
+		{
+			"id": "tariff-07",
+			"round": 1,
+			"translation": "He was strong last year.",
+			"ms": 24.12472600000001,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-08",
+			"round": 1,
+			"translation": "Initied",
+			"ms": 13.440386000000217,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-09",
+			"round": 1,
+			"translation": "The Global Tariff War",
+			"ms": 18.462401000000682,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-10",
+			"round": 1,
+			"translation": "Are they all white?",
+			"ms": 19.860922999999275,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-11",
+			"round": 1,
+			"translation": "Hard work for a year.",
+			"ms": 22.631125000000793,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-12",
+			"round": 1,
+			"translation": "The tariffs.",
+			"ms": 15.244073000000753,
+			"rss": 817795072
+		},
+		{
+			"id": "tariff-13",
+			"round": 1,
+			"translation": "Do they all have to go back?",
+			"ms": 26.521843999999874,
+			"rss": 817926144
+		},
+		{
+			"id": "tariff-14",
+			"round": 1,
+			"translation": "We haven’t talked about U.S. tariffs in a long time.",
+			"ms": 44.40821699999924,
+			"rss": 817926144
+		},
+		{
+			"id": "tariff-15",
+			"round": 1,
+			"translation": "But this one, after all, is one.",
+			"ms": 26.139352000000144,
+			"rss": 817926144
+		},
+		{
+			"id": "tariff-16",
+			"round": 1,
+			"translation": "Disrupting the global trade pattern",
+			"ms": 27.272562000000107,
+			"rss": 818057216
+		},
+		{
+			"id": "tariff-17",
+			"round": 1,
+			"translation": "So let’s follow up today.",
+			"ms": 27.17429600000014,
+			"rss": 818057216
+		},
+		{
+			"id": "tariff-18",
+			"round": 1,
+			"translation": "Look at that after a twist.",
+			"ms": 24.740490000000136,
+			"rss": 818188288
+		},
+		{
+			"id": "tariff-19",
+			"round": 1,
+			"translation": "American",
+			"ms": 9.377932999999757,
+			"rss": 818188288
+		},
+		{
+			"id": "tariff-joined-00",
+			"round": 1,
+			"translation": "Hi~ my friends.",
+			"ms": 19.052977000000283,
+			"rss": 818188288
+		},
+		{
+			"id": "tariff-joined-01",
+			"round": 1,
+			"translation": "In February this year, the US Supreme Court did not judge Trump's tariff policy to be illegal.",
+			"ms": 62.606941000000006,
+			"rss": 818188288
+		},
+		{
+			"id": "tariff-joined-02",
+			"round": 1,
+			"translation": "Is the global tariff war he launched last year?",
+			"ms": 45.13665300000048,
+			"rss": 818188288
+		},
+		{
+			"id": "tariff-joined-03",
+			"round": 1,
+			"translation": "Do you have to go back to the tariffs that have been collected in a year?",
+			"ms": 54.55570400000033,
+			"rss": 818319360
+		},
+		{
+			"id": "tariff-joined-04",
+			"round": 1,
+			"translation": "We haven’t talked about U.S. tariffs in a long time.",
+			"ms": 47.699664999999186,
+			"rss": 818319360
+		},
+		{
+			"id": "tariff-joined-05",
+			"round": 1,
+			"translation": "But after all, this is a big thing that stirs the global trade pattern, so let's follow up today.",
+			"ms": 66.25288700000056,
+			"rss": 818319360
+		},
+		{
+			"id": "tariff-joined-06",
+			"round": 1,
+			"translation": "Look at the United States after such a toss.",
+			"ms": 35.10175999999956,
+			"rss": 818319360
+		},
+		{
+			"id": "cooking-00",
+			"round": 1,
+			"translation": "Hello everyone.",
+			"ms": 17.505043999999543,
+			"rss": 818450432
+		},
+		{
+			"id": "cooking-01",
+			"round": 1,
+			"translation": "I am King Gang.",
+			"ms": 17.339390999999523,
+			"rss": 818450432
+		},
+		{
+			"id": "cooking-02",
+			"round": 1,
+			"translation": "This video I share with you aggravating food.",
+			"ms": 36.19984400000067,
+			"rss": 818450432
+		},
+		{
+			"id": "cooking-03",
+			"round": 1,
+			"translation": "Tomato scrambled eggs",
+			"ms": 30.103307999999743,
+			"rss": 818581504
+		},
+		{
+			"id": "cooking-04",
+			"round": 1,
+			"translation": "First of all, we prepare two ripe tomatoes.",
+			"ms": 35.991399999999885,
+			"rss": 818581504
+		},
+		{
+			"id": "cooking-05",
+			"round": 1,
+			"translation": "Cut off the ground and then cut into a uniform size of the hole block spare",
+			"ms": 56.93464800000038,
+			"rss": 818581504
+		},
+		{
+			"id": "cooking-06",
+			"round": 1,
+			"translation": "You can cut a little bigger.",
+			"ms": 21.572454999999536,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-07",
+			"round": 1,
+			"translation": "This taste will be better.",
+			"ms": 20.493007000000034,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-08",
+			"round": 1,
+			"translation": "Then we broke into the bowl three eggs.",
+			"ms": 27.53527800000029,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-09",
+			"round": 1,
+			"translation": "Add a little more salt.",
+			"ms": 22.130349999999453,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-10",
+			"round": 1,
+			"translation": "Add one gram of white vinegar",
+			"ms": 26.703136999999515,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-11",
+			"round": 1,
+			"translation": "Then stir in one direction and evenly spare",
+			"ms": 30.368961000000127,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-12",
+			"round": 1,
+			"translation": "The purpose of white vinegar is to remove the fishy smell of eggs and increase the gami taste.",
+			"ms": 59.021028000000115,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-13",
+			"round": 1,
+			"translation": "First, let’s heat the pot.",
+			"ms": 25.24761699999999,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-14",
+			"round": 1,
+			"translation": "After the pot is hot, add the right amount of oil slider.",
+			"ms": 39.14477700000043,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-15",
+			"round": 1,
+			"translation": "Slide the pan and pour the hot oil out.",
+			"ms": 34.58228800000052,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-16",
+			"round": 1,
+			"translation": "Add a little more oil.",
+			"ms": 24.743344999999863,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-17",
+			"round": 1,
+			"translation": "After 40% of the oil temperature is hot, the egg liquid will be hit under the pot.",
+			"ms": 49.65913499999988,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-18",
+			"round": 1,
+			"translation": "Open a small fire for a minute to fry the egg to the shape",
+			"ms": 46.43487600000026,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-19",
+			"round": 1,
+			"translation": "Turn the eggs over in the middle of the sense.",
+			"ms": 38.6019409999999,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-joined-00",
+			"round": 1,
+			"translation": "Hello everyone, I'm the king.",
+			"ms": 30.504636000000573,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-joined-01",
+			"round": 1,
+			"translation": "In this video, I share with you the agglited vegetable tomato scrambled eggs.",
+			"ms": 54.32741299999998,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-joined-02",
+			"round": 1,
+			"translation": "First of all, we prepare two ripe tomatoes.",
+			"ms": 36.70071999999982,
+			"rss": 818712576
+		},
+		{
+			"id": "cooking-joined-03",
+			"round": 1,
+			"translation": "Cut off the ground and then cut into a uniform size of the hole block spare can be slightly cut a little larger so the taste will be better.",
+			"ms": 86.97067900000002,
+			"rss": 818110464
+		},
+		{
+			"id": "cooking-joined-04",
+			"round": 1,
+			"translation": "Then we pour the eggs in the bowl three and add a little more edible salt to add a gram of white vinegar and stir in one direction to spare it evenly.",
+			"ms": 121.0228159999997,
+			"rss": 818110464
+		},
+		{
+			"id": "cooking-joined-05",
+			"round": 1,
+			"translation": "The purpose of white vinegar is to remove the fishy smell of eggs and increase the gami taste.",
+			"ms": 66.35460000000057,
+			"rss": 818110464
+		},
+		{
+			"id": "cooking-joined-06",
+			"round": 1,
+			"translation": "First of all, we will add the right amount of oil slider after the hot pot is hot.",
+			"ms": 66.15806900000007,
+			"rss": 818110464
+		},
+		{
+			"id": "cooking-joined-07",
+			"round": 1,
+			"translation": "After the smoothing pan, pour out the hot oil and add a little of the bottom oil.",
+			"ms": 61.6621869999999,
+			"rss": 818110464
+		},
+		{
+			"id": "cooking-joined-08",
+			"round": 1,
+			"translation": "After 40% of the oil temperature is hot, the egg liquid will be fried in the pan for a minute to fry the egg liquid until the sting is in the middle of the shape and then the egg can be turned over and fried.",
+			"ms": 157.99027999999998,
+			"rss": 818110464
+		}
+	],
+	"load_and_warmup_ms": 1658.933871,
+	"max_rss_kib": 803336
+}

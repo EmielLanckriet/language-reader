@@ -1,0 +1,141 @@
+{
+ "date": "2026-10-03",
+ "host": "AMD Ryzen 7 PRO 4750U, Linux 6.8, Node 24.20.0; 4 inference threads per engine; load average ~0.5 at start",
+ "items_sha256": "50b680982d57b65351b86763c30202eef8d7d0bf8dad931c9670475059bac560",
+ "models": {
+  "qwen": {
+   "name": "unsloth/Qwen3-1.7B-GGUF Q4_K_M (the Termux translation model)",
+   "runtime": "llama.cpp server b11374, CPU",
+   "file": {
+    "bytes": 1107409472,
+    "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"
+   }
+  },
+  "laya": {
+   "name": "convaiinnovations/laya multilingual/ (mmBERT-base, 322M), exported to fp32 ONNX with receptron/laya export_onnx.py at 6478649",
+   "runtime": "@receptron/laya 0.1.2 on onnxruntime-node, special tokens patched to come from tokenizer_config.json",
+   "file": {
+    "bytes": 1291400722,
+    "sha256": "549a6e17e4bfdf24b6343f240f67ab7ffea47976b785ca06f5a4517fc1e7ab66"
+   },
+   "tokenizer": {
+    "bytes": 34363188,
+    "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f"
+   }
+  }
+ },
+ "baselines": {
+  "forced": {
+   "scored": 37,
+   "chance": 8.83410200910201,
+   "first_listed_sense": 10
+  },
+  "none": {
+   "scored": 40,
+   "chance": 8.464082993030361,
+   "first_listed_sense": 10
+  },
+  "meta": {
+   "scored": 42,
+   "chance": 8.392291042291042,
+   "first_listed_sense": 10
+  }
+ },
+ "summary": {
+  "qwen": {
+   "load_ms": 1809.062754,
+   "peak_process_rss_mib": 3038.80859375,
+   "forced": {
+    "correct": 26,
+    "scored": 37,
+    "errors": [],
+    "meta_picks": {},
+    "mean_top_probability_when_right": 0.9628644355284497,
+    "mean_top_probability_when_wrong": 0.9984716516008144,
+    "same_picks_between_rounds": true,
+    "median_ms": 1483.7068509999954,
+    "p95_ms": 2758.9624699999986,
+    "median_input_tokens": 157,
+    "min_letter_mass": 0.9944742853452065
+   },
+   "none": {
+    "correct": 14,
+    "scored": 40,
+    "errors": [],
+    "meta_picks": {
+     "none": 28
+    },
+    "mean_top_probability_when_right": 0.990082644321976,
+    "mean_top_probability_when_wrong": 0.9576837809426226,
+    "same_picks_between_rounds": true,
+    "median_ms": 1574.303528999997,
+    "p95_ms": 2966.7237170000153,
+    "median_input_tokens": 161,
+    "min_letter_mass": 0.7432698146501117
+   },
+   "meta": {
+    "correct": 12,
+    "scored": 42,
+    "errors": [],
+    "meta_picks": {
+     "none": 25,
+     "compositional": 2,
+     "segment": 2
+    },
+    "mean_top_probability_when_right": 0.9625360560965824,
+    "mean_top_probability_when_wrong": 0.9538559343358463,
+    "same_picks_between_rounds": true,
+    "median_ms": 1952.5423520000186,
+    "p95_ms": 3257.3737700000056,
+    "median_input_tokens": 200,
+    "min_letter_mass": 0.9500492853076453
+   }
+  },
+  "laya": {
+   "load_ms": 3728.6672820000003,
+   "peak_process_rss_mib": 2382.92578125,
+   "forced": {
+    "correct": 16,
+    "scored": 37,
+    "errors": [],
+    "meta_picks": {},
+    "mean_top_probability_when_right": 0.34876875,
+    "mean_top_probability_when_wrong": 0.4552238095238096,
+    "same_picks_between_rounds": true,
+    "median_ms": 155.45056699999986,
+    "p95_ms": 255.96918899999946,
+    "median_input_tokens": 149
+   },
+   "none": {
+    "correct": 13,
+    "scored": 40,
+    "errors": [],
+    "meta_picks": {
+     "none": 8
+    },
+    "mean_top_probability_when_right": 0.32383846153846146,
+    "mean_top_probability_when_wrong": 0.3613888888888889,
+    "same_picks_between_rounds": true,
+    "median_ms": 164.44049200000154,
+    "p95_ms": 257.6006359999992,
+    "median_input_tokens": 157
+   },
+   "meta": {
+    "correct": 9,
+    "scored": 42,
+    "errors": [],
+    "meta_picks": {
+     "segment": 6,
+     "none": 9
+    },
+    "mean_top_probability_when_right": 0.27426666666666666,
+    "mean_top_probability_when_wrong": 0.31845757575757583,
+    "same_picks_between_rounds": true,
+    "median_ms": 206.6983160000018,
+    "p95_ms": 298.31096499999694,
+    "median_input_tokens": 193
+   }
+  }
+ },
+ "method": "Second-round results; each call is one forward pass with probabilities over all options. Variants: forced (senses only), none (+ none fits), meta (+ none, not a whole word, and for multi-character words compositional). Items without an acceptable answer in a variant are unscored there. Gold sets were labelled by Claude and await review."
+}

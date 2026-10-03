@@ -1,0 +1,56 @@
+[
+	{
+		"name": "vocab.zhen.spm",
+		"schema": 1753211664028,
+		"toLang": "en",
+		"version": "2.1",
+		"fileType": "vocab",
+		"fromLang": "zh-Hans",
+		"attachment": {
+			"hash": "dff594318ab7d8b7b60b844ab98ebe6b932ae8045fab15235404c787715965b3",
+			"size": 1359697,
+			"filename": "vocab.zhen.spm",
+			"location": "main-workspace/translations-models/17ff5d42-6d4c-42f8-ad3c-b8042b5bafa7.spm",
+			"mimetype": "text/plain"
+		},
+		"filter_expression": "env.appinfo.OS == 'Android' ",
+		"id": "1a4f9d3a-5bd4-4f95-b131-2498f7881479",
+		"last_modified": 1753213325754
+	},
+	{
+		"name": "model.zhen.intgemm.alphas.bin",
+		"schema": 1753211657032,
+		"toLang": "en",
+		"version": "2.1",
+		"fileType": "model",
+		"fromLang": "zh-Hans",
+		"attachment": {
+			"hash": "5cd149601802fc8a18124a1c1306144dbbedc058630c4ddb2d53aa76fa9c7c06",
+			"size": 43977787,
+			"filename": "model.zhen.intgemm.alphas.bin",
+			"location": "main-workspace/translations-models/715efbde-c974-4696-981a-83c0c5f82ad5.bin",
+			"mimetype": "application/octet-stream"
+		},
+		"filter_expression": "env.appinfo.OS == 'Android' ",
+		"id": "059aad51-2c2a-47da-8a41-6087f4c0af04",
+		"last_modified": 1753213325749
+	},
+	{
+		"name": "lex.50.50.zhen.s2t.bin",
+		"schema": 1753211645124,
+		"toLang": "en",
+		"version": "2.1",
+		"fileType": "lex",
+		"fromLang": "zh-Hans",
+		"attachment": {
+			"hash": "8524dd4c93ffd7f0ae7be32f77a7c14fea7cdbbebe34ea6ad0ec368d5ddd8b13",
+			"size": 9219192,
+			"filename": "lex.50.50.zhen.s2t.bin",
+			"location": "main-workspace/translations-models/ae5f53d2-59ec-4aad-944d-999e50d6a65c.bin",
+			"mimetype": "application/octet-stream"
+		},
+		"filter_expression": "env.appinfo.OS == 'Android' ",
+		"id": "0e4e57bd-95b4-4c37-b24a-1b38ba634b8b",
+		"last_modified": 1753213325742
+	}
+]

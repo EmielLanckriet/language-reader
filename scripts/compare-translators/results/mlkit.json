@@ -1,0 +1,790 @@
+{
+	"engine": "ML Kit 17.0.3",
+	"baseline_pss_kib": 30558,
+	"rows": [
+		{
+			"id": "tariff-00",
+			"round": 0,
+			"translation": "Hi ~",
+			"ms": 675.53659,
+			"pss_kib": 110371
+		},
+		{
+			"id": "tariff-01",
+			"round": 0,
+			"translation": "Friends",
+			"ms": 8.901501,
+			"pss_kib": 110455
+		},
+		{
+			"id": "tariff-02",
+			"round": 0,
+			"translation": "February this year",
+			"ms": 68.151104,
+			"pss_kib": 112375
+		},
+		{
+			"id": "tariff-03",
+			"round": 0,
+			"translation": "The Supreme Court of the United States",
+			"ms": 83.179665,
+			"pss_kib": 113523
+		},
+		{
+			"id": "tariff-04",
+			"round": 0,
+			"translation": "Not a trick",
+			"ms": 50.490953,
+			"pss_kib": 114203
+		},
+		{
+			"id": "tariff-05",
+			"round": 0,
+			"translation": "Tariff policy",
+			"ms": 47.745616,
+			"pss_kib": 114759
+		},
+		{
+			"id": "tariff-06",
+			"round": 0,
+			"translation": "Is it illegal?",
+			"ms": 61.823838,
+			"pss_kib": 115073
+		},
+		{
+			"id": "tariff-07",
+			"round": 0,
+			"translation": "Then he spent hard last year.",
+			"ms": 77.522289,
+			"pss_kib": 115071
+		},
+		{
+			"id": "tariff-08",
+			"round": 0,
+			"translation": "Initiated",
+			"ms": 31.012899,
+			"pss_kib": 115303
+		},
+		{
+			"id": "tariff-09",
+			"round": 0,
+			"translation": "Global Tariff War",
+			"ms": 53.130189,
+			"pss_kib": 107927
+		},
+		{
+			"id": "tariff-10",
+			"round": 0,
+			"translation": "Are you more than white?",
+			"ms": 23.756675,
+			"pss_kib": 104419
+		},
+		{
+			"id": "tariff-11",
+			"round": 0,
+			"translation": "Hard work toss for a year",
+			"ms": 27.397776,
+			"pss_kib": 104343
+		},
+		{
+			"id": "tariff-12",
+			"round": 0,
+			"translation": "Received tariffs",
+			"ms": 24.015712,
+			"pss_kib": 103531
+		},
+		{
+			"id": "tariff-13",
+			"round": 0,
+			"translation": "Do you have to returned?",
+			"ms": 27.921401,
+			"pss_kib": 103519
+		},
+		{
+			"id": "tariff-14",
+			"round": 0,
+			"translation": "I haven't talked to the United States for a long time.",
+			"ms": 55.957138,
+			"pss_kib": 103791
+		},
+		{
+			"id": "tariff-15",
+			"round": 0,
+			"translation": "But this is a one after all.",
+			"ms": 31.578904,
+			"pss_kib": 103823
+		},
+		{
+			"id": "tariff-16",
+			"round": 0,
+			"translation": "Growing a big event of global trade pattern",
+			"ms": 41.753751,
+			"pss_kib": 103463
+		},
+		{
+			"id": "tariff-17",
+			"round": 0,
+			"translation": "So I will follow up today.",
+			"ms": 31.13614,
+			"pss_kib": 103527
+		},
+		{
+			"id": "tariff-18",
+			"round": 0,
+			"translation": "Look after this is so tossing",
+			"ms": 41.380058,
+			"pss_kib": 103595
+		},
+		{
+			"id": "tariff-19",
+			"round": 0,
+			"translation": "United States",
+			"ms": 0.418678,
+			"pss_kib": 103655
+		},
+		{
+			"id": "tariff-joined-00",
+			"round": 0,
+			"translation": "Hi ~ friends.",
+			"ms": 24.810197,
+			"pss_kib": 103787
+		},
+		{
+			"id": "tariff-joined-01",
+			"round": 0,
+			"translation": "Did the US Supreme Court in February this year are not illegal.",
+			"ms": 81.517547,
+			"pss_kib": 103971
+		},
+		{
+			"id": "tariff-joined-02",
+			"round": 0,
+			"translation": "The global tariff war in the vigorous launch last year is white.",
+			"ms": 60.469119,
+			"pss_kib": 104135
+		},
+		{
+			"id": "tariff-joined-03",
+			"round": 0,
+			"translation": "Is it necessary to retreat?",
+			"ms": 41.218253,
+			"pss_kib": 104219
+		},
+		{
+			"id": "tariff-joined-04",
+			"round": 0,
+			"translation": "I haven't talked about the United States for a long time.",
+			"ms": 48.55544,
+			"pss_kib": 104319
+		},
+		{
+			"id": "tariff-joined-05",
+			"round": 0,
+			"translation": "But this is a big event that agresizes the global trade pattern, so I will follow it today.",
+			"ms": 80.267635,
+			"pss_kib": 104486
+		},
+		{
+			"id": "tariff-joined-06",
+			"round": 0,
+			"translation": "Look at the United States after you are tossing.",
+			"ms": 41.873326,
+			"pss_kib": 104590
+		},
+		{
+			"id": "cooking-00",
+			"round": 0,
+			"translation": "Hello, everyone",
+			"ms": 24.887723,
+			"pss_kib": 104766
+		},
+		{
+			"id": "cooking-01",
+			"round": 0,
+			"translation": "I am Wang Gang",
+			"ms": 24.546151,
+			"pss_kib": 104842
+		},
+		{
+			"id": "cooking-02",
+			"round": 0,
+			"translation": "I am sharing a weightless dish with you.",
+			"ms": 54.999917,
+			"pss_kib": 104902
+		},
+		{
+			"id": "cooking-03",
+			"round": 0,
+			"translation": "Tomato fried egg",
+			"ms": 33.541037,
+			"pss_kib": 104978
+		},
+		{
+			"id": "cooking-04",
+			"round": 0,
+			"translation": "First we prepare two cooked tomatoes",
+			"ms": 45.337975,
+			"pss_kib": 105134
+		},
+		{
+			"id": "cooking-05",
+			"round": 0,
+			"translation": "After cutting, cut the size of the hob block standby",
+			"ms": 55.839306,
+			"pss_kib": 105166
+		},
+		{
+			"id": "cooking-06",
+			"round": 0,
+			"translation": "Can be slightly cut",
+			"ms": 25.67785,
+			"pss_kib": 105322
+		},
+		{
+			"id": "cooking-07",
+			"round": 0,
+			"translation": "This kind of mouth is better",
+			"ms": 24.895898,
+			"pss_kib": 105414
+		},
+		{
+			"id": "cooking-08",
+			"round": 0,
+			"translation": "Then we put the eggs in the bowl.",
+			"ms": 41.407109,
+			"pss_kib": 105458
+		},
+		{
+			"id": "cooking-09",
+			"round": 0,
+			"translation": "Add a little edible salt",
+			"ms": 27.438744,
+			"pss_kib": 105534
+		},
+		{
+			"id": "cooking-10",
+			"round": 0,
+			"translation": "Add a white vinegar",
+			"ms": 28.128611,
+			"pss_kib": 105538
+		},
+		{
+			"id": "cooking-11",
+			"round": 0,
+			"translation": "Then stir well in one direction.",
+			"ms": 36.025291,
+			"pss_kib": 105642
+		},
+		{
+			"id": "cooking-12",
+			"round": 0,
+			"translation": "The purpose of adding carrier is to remove the smell of eggs and increased taste.",
+			"ms": 69.570766,
+			"pss_kib": 105754
+		},
+		{
+			"id": "cooking-13",
+			"round": 0,
+			"translation": "First, we will heat the pot.",
+			"ms": 30.418511,
+			"pss_kib": 105858
+		},
+		{
+			"id": "cooking-14",
+			"round": 0,
+			"translation": "Add the right amount of oil jug after heat",
+			"ms": 68.957111,
+			"pss_kib": 106010
+		},
+		{
+			"id": "cooking-15",
+			"round": 0,
+			"translation": "Pour the hot oil after slipping the pot",
+			"ms": 37.785123,
+			"pss_kib": 106062
+		},
+		{
+			"id": "cooking-16",
+			"round": 0,
+			"translation": "Add a little base oil",
+			"ms": 23.182153,
+			"pss_kib": 106162
+		},
+		{
+			"id": "cooking-17",
+			"round": 0,
+			"translation": "The oil temperature is 10% heat, and the laying egg liquid will be placed.",
+			"ms": 81.378165,
+			"pss_kib": 106250
+		},
+		{
+			"id": "cooking-18",
+			"round": 0,
+			"translation": "Open a small frying in a minute",
+			"ms": 73.680009,
+			"pss_kib": 106338
+		},
+		{
+			"id": "cooking-19",
+			"round": 0,
+			"translation": "Turn the eggs over the middle of the way",
+			"ms": 48.989687,
+			"pss_kib": 106426
+		},
+		{
+			"id": "cooking-joined-00",
+			"round": 0,
+			"translation": "Hello, everyone, I am Wang Gang.",
+			"ms": 39.846611,
+			"pss_kib": 106490
+		},
+		{
+			"id": "cooking-joined-01",
+			"round": 0,
+			"translation": "This video I share with you a weightless vegetable tomato scrambled egg.",
+			"ms": 93.257188,
+			"pss_kib": 106578
+		},
+		{
+			"id": "cooking-joined-02",
+			"round": 0,
+			"translation": "First we are preparing to have two cherry tomatoes.",
+			"ms": 75.44534,
+			"pss_kib": 106734
+		},
+		{
+			"id": "cooking-joined-03",
+			"round": 0,
+			"translation": "After cutting away, cut into a size uniform roller block spare can be slightly cut, some such a sense of mouth is better.",
+			"ms": 102.900735,
+			"pss_kib": 106954
+		},
+		{
+			"id": "cooking-joined-04",
+			"round": 0,
+			"translation": "Then we were added to the two eggs and added a little edible salt to the white vinegar and then stirred in one direction and mixed.",
+			"ms": 107.556025,
+			"pss_kib": 107214
+		},
+		{
+			"id": "cooking-joined-05",
+			"round": 0,
+			"translation": "The purpose of jet vinegar is to remove the smell of eggs and increase the taste.",
+			"ms": 77.839356,
+			"pss_kib": 107342
+		},
+		{
+			"id": "cooking-joined-06",
+			"round": 0,
+			"translation": "First we add an appropriate amount of oil jug after heating the pot hot pot.",
+			"ms": 80.633543,
+			"pss_kib": 107434
+		},
+		{
+			"id": "cooking-joined-07",
+			"round": 0,
+			"translation": "After slipping the pot, pour the hot oil out and add a little bottom oil.",
+			"ms": 57.130526,
+			"pss_kib": 107550
+		},
+		{
+			"id": "cooking-joined-08",
+			"round": 0,
+			"translation": "After the oil temperature is 40% heat, the hidden egg liquid will be opened in a small fire in a minute, fry the egg liquid until the middle, turn the eggs over and saute the fragrance.",
+			"ms": 142.33963,
+			"pss_kib": 107814
+		},
+		{
+			"id": "tariff-00",
+			"round": 1,
+			"translation": "Hi ~",
+			"ms": 29.900827,
+			"pss_kib": 107962
+		},
+		{
+			"id": "tariff-01",
+			"round": 1,
+			"translation": "Friends",
+			"ms": 0.576184,
+			"pss_kib": 108066
+		},
+		{
+			"id": "tariff-02",
+			"round": 1,
+			"translation": "February this year",
+			"ms": 29.405144,
+			"pss_kib": 108566
+		},
+		{
+			"id": "tariff-03",
+			"round": 1,
+			"translation": "The Supreme Court of the United States",
+			"ms": 51.392569,
+			"pss_kib": 108447
+		},
+		{
+			"id": "tariff-04",
+			"round": 1,
+			"translation": "Not a trick",
+			"ms": 35.995215,
+			"pss_kib": 108481
+		},
+		{
+			"id": "tariff-05",
+			"round": 1,
+			"translation": "Tariff policy",
+			"ms": 36.175915,
+			"pss_kib": 108637
+		},
+		{
+			"id": "tariff-06",
+			"round": 1,
+			"translation": "Is it illegal?",
+			"ms": 51.83967,
+			"pss_kib": 108753
+		},
+		{
+			"id": "tariff-07",
+			"round": 1,
+			"translation": "Then he spent hard last year.",
+			"ms": 58.425904,
+			"pss_kib": 108853
+		},
+		{
+			"id": "tariff-08",
+			"round": 1,
+			"translation": "Initiated",
+			"ms": 12.13224,
+			"pss_kib": 109001
+		},
+		{
+			"id": "tariff-09",
+			"round": 1,
+			"translation": "Global Tariff War",
+			"ms": 39.354406,
+			"pss_kib": 109101
+		},
+		{
+			"id": "tariff-10",
+			"round": 1,
+			"translation": "Are you more than white?",
+			"ms": 37.965542,
+			"pss_kib": 109241
+		},
+		{
+			"id": "tariff-11",
+			"round": 1,
+			"translation": "Hard work toss for a year",
+			"ms": 27.175658,
+			"pss_kib": 109245
+		},
+		{
+			"id": "tariff-12",
+			"round": 1,
+			"translation": "Received tariffs",
+			"ms": 22.882108,
+			"pss_kib": 109429
+		},
+		{
+			"id": "tariff-13",
+			"round": 1,
+			"translation": "Do you have to returned?",
+			"ms": 44.555333,
+			"pss_kib": 109269
+		},
+		{
+			"id": "tariff-14",
+			"round": 1,
+			"translation": "I haven't talked to the United States for a long time.",
+			"ms": 45.193052,
+			"pss_kib": 109469
+		},
+		{
+			"id": "tariff-15",
+			"round": 1,
+			"translation": "But this is a one after all.",
+			"ms": 29.534788,
+			"pss_kib": 109549
+		},
+		{
+			"id": "tariff-16",
+			"round": 1,
+			"translation": "Growing a big event of global trade pattern",
+			"ms": 68.534456,
+			"pss_kib": 109721
+		},
+		{
+			"id": "tariff-17",
+			"round": 1,
+			"translation": "So I will follow up today.",
+			"ms": 40.944999,
+			"pss_kib": 109805
+		},
+		{
+			"id": "tariff-18",
+			"round": 1,
+			"translation": "Look after this is so tossing",
+			"ms": 43.272438,
+			"pss_kib": 109769
+		},
+		{
+			"id": "tariff-19",
+			"round": 1,
+			"translation": "United States",
+			"ms": 0.643561,
+			"pss_kib": 109893
+		},
+		{
+			"id": "tariff-joined-00",
+			"round": 1,
+			"translation": "Hi ~ friends.",
+			"ms": 23.949016,
+			"pss_kib": 110093
+		},
+		{
+			"id": "tariff-joined-01",
+			"round": 1,
+			"translation": "Did the US Supreme Court in February this year are not illegal.",
+			"ms": 85.613054,
+			"pss_kib": 110225
+		},
+		{
+			"id": "tariff-joined-02",
+			"round": 1,
+			"translation": "The global tariff war in the vigorous launch last year is white.",
+			"ms": 57.413118,
+			"pss_kib": 110369
+		},
+		{
+			"id": "tariff-joined-03",
+			"round": 1,
+			"translation": "Is it necessary to retreat?",
+			"ms": 40.33439,
+			"pss_kib": 110517
+		},
+		{
+			"id": "tariff-joined-04",
+			"round": 1,
+			"translation": "I haven't talked about the United States for a long time.",
+			"ms": 72.716255,
+			"pss_kib": 110697
+		},
+		{
+			"id": "tariff-joined-05",
+			"round": 1,
+			"translation": "But this is a big event that agresizes the global trade pattern, so I will follow it today.",
+			"ms": 104.691375,
+			"pss_kib": 110869
+		},
+		{
+			"id": "tariff-joined-06",
+			"round": 1,
+			"translation": "Look at the United States after you are tossing.",
+			"ms": 43.036485,
+			"pss_kib": 111073
+		},
+		{
+			"id": "cooking-00",
+			"round": 1,
+			"translation": "Hello, everyone",
+			"ms": 25.856866,
+			"pss_kib": 111249
+		},
+		{
+			"id": "cooking-01",
+			"round": 1,
+			"translation": "I am Wang Gang",
+			"ms": 44.437962,
+			"pss_kib": 111385
+		},
+		{
+			"id": "cooking-02",
+			"round": 1,
+			"translation": "I am sharing a weightless dish with you.",
+			"ms": 61.708371,
+			"pss_kib": 111513
+		},
+		{
+			"id": "cooking-03",
+			"round": 1,
+			"translation": "Tomato fried egg",
+			"ms": 34.481827,
+			"pss_kib": 111473
+		},
+		{
+			"id": "cooking-04",
+			"round": 1,
+			"translation": "First we prepare two cooked tomatoes",
+			"ms": 47.661808,
+			"pss_kib": 111705
+		},
+		{
+			"id": "cooking-05",
+			"round": 1,
+			"translation": "After cutting, cut the size of the hob block standby",
+			"ms": 75.73761,
+			"pss_kib": 111845
+		},
+		{
+			"id": "cooking-06",
+			"round": 1,
+			"translation": "Can be slightly cut",
+			"ms": 49.730461,
+			"pss_kib": 111785
+		},
+		{
+			"id": "cooking-07",
+			"round": 1,
+			"translation": "This kind of mouth is better",
+			"ms": 24.895077,
+			"pss_kib": 111917
+		},
+		{
+			"id": "cooking-08",
+			"round": 1,
+			"translation": "Then we put the eggs in the bowl.",
+			"ms": 45.246043,
+			"pss_kib": 112021
+		},
+		{
+			"id": "cooking-09",
+			"round": 1,
+			"translation": "Add a little edible salt",
+			"ms": 55.494077,
+			"pss_kib": 112141
+		},
+		{
+			"id": "cooking-10",
+			"round": 1,
+			"translation": "Add a white vinegar",
+			"ms": 30.368687,
+			"pss_kib": 112325
+		},
+		{
+			"id": "cooking-11",
+			"round": 1,
+			"translation": "Then stir well in one direction.",
+			"ms": 39.323839,
+			"pss_kib": 112441
+		},
+		{
+			"id": "cooking-12",
+			"round": 1,
+			"translation": "The purpose of adding carrier is to remove the smell of eggs and increased taste.",
+			"ms": 75.32286,
+			"pss_kib": 112525
+		},
+		{
+			"id": "cooking-13",
+			"round": 1,
+			"translation": "First, we will heat the pot.",
+			"ms": 32.660299,
+			"pss_kib": 112669
+		},
+		{
+			"id": "cooking-14",
+			"round": 1,
+			"translation": "Add the right amount of oil jug after heat",
+			"ms": 43.870324,
+			"pss_kib": 112785
+		},
+		{
+			"id": "cooking-15",
+			"round": 1,
+			"translation": "Pour the hot oil after slipping the pot",
+			"ms": 36.450271,
+			"pss_kib": 112905
+		},
+		{
+			"id": "cooking-16",
+			"round": 1,
+			"translation": "Add a little base oil",
+			"ms": 22.884393,
+			"pss_kib": 113041
+		},
+		{
+			"id": "cooking-17",
+			"round": 1,
+			"translation": "The oil temperature is 10% heat, and the laying egg liquid will be placed.",
+			"ms": 63.328689,
+			"pss_kib": 113269
+		},
+		{
+			"id": "cooking-18",
+			"round": 1,
+			"translation": "Open a small frying in a minute",
+			"ms": 64.726089,
+			"pss_kib": 113417
+		},
+		{
+			"id": "cooking-19",
+			"round": 1,
+			"translation": "Turn the eggs over the middle of the way",
+			"ms": 50.263734,
+			"pss_kib": 113569
+		},
+		{
+			"id": "cooking-joined-00",
+			"round": 1,
+			"translation": "Hello, everyone, I am Wang Gang.",
+			"ms": 38.518022,
+			"pss_kib": 113637
+		},
+		{
+			"id": "cooking-joined-01",
+			"round": 1,
+			"translation": "This video I share with you a weightless vegetable tomato scrambled egg.",
+			"ms": 91.050576,
+			"pss_kib": 113793
+		},
+		{
+			"id": "cooking-joined-02",
+			"round": 1,
+			"translation": "First we are preparing to have two cherry tomatoes.",
+			"ms": 55.265176,
+			"pss_kib": 114021
+		},
+		{
+			"id": "cooking-joined-03",
+			"round": 1,
+			"translation": "After cutting away, cut into a size uniform roller block spare can be slightly cut, some such a sense of mouth is better.",
+			"ms": 123.168674,
+			"pss_kib": 114309
+		},
+		{
+			"id": "cooking-joined-04",
+			"round": 1,
+			"translation": "Then we were added to the two eggs and added a little edible salt to the white vinegar and then stirred in one direction and mixed.",
+			"ms": 107.82446,
+			"pss_kib": 114485
+		},
+		{
+			"id": "cooking-joined-05",
+			"round": 1,
+			"translation": "The purpose of jet vinegar is to remove the smell of eggs and increase the taste.",
+			"ms": 107.088516,
+			"pss_kib": 114649
+		},
+		{
+			"id": "cooking-joined-06",
+			"round": 1,
+			"translation": "First we add an appropriate amount of oil jug after heating the pot hot pot.",
+			"ms": 91.583268,
+			"pss_kib": 114837
+		},
+		{
+			"id": "cooking-joined-07",
+			"round": 1,
+			"translation": "After slipping the pot, pour the hot oil out and add a little bottom oil.",
+			"ms": 91.126619,
+			"pss_kib": 114989
+		},
+		{
+			"id": "cooking-joined-08",
+			"round": 1,
+			"translation": "After the oil temperature is 40% heat, the hidden egg liquid will be opened in a small fire in a minute, fry the egg liquid until the middle, turn the eggs over and saute the fragrance.",
+			"ms": 153.635716,
+			"pss_kib": 115265
+		}
+	]
+}

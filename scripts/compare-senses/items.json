@@ -1,0 +1,922 @@
+[
+ {
+  "id": "00-判",
+  "source": "tariff-joined-01",
+  "sentence": "今年2月份美国那个最高法院不是判特朗普的关税政策违法了吗。",
+  "word": "判",
+  "start": 15,
+  "senses": [
+   "pan4: (bound form) to differentiate; to distinguish",
+   "pan4: (bound form) clearly (different)",
+   "pan4: to judge; to decide; to grade",
+   "pan4: (of a judge) to sentence"
+  ],
+  "gold": [
+   2,
+   3
+  ],
+  "goldMeta": [],
+  "note": "the court ruled the tariff policy illegal"
+ },
+ {
+  "id": "01-那",
+  "source": "tariff-joined-02",
+  "sentence": "那他去年轰轰烈烈发起的全球关税战都白整了吗。",
+  "word": "那",
+  "start": 0,
+  "senses": [
+   "Na1: surname Na",
+   "Nuo2: surname Nuo",
+   "na3: variant of 哪[na3]",
+   "na4: (specifier) that; the; those (colloquial pr. [nei4])",
+   "na4: (pronoun) that (referring to persons, things or situations)",
+   "na4: then (in that case)",
+   "nuo2: (archaic) many",
+   "nuo2: beautiful",
+   "nuo2: how",
+   "nuo2: old variant of 挪[nuo2]"
+  ],
+  "gold": [
+   5
+  ],
+  "goldMeta": [],
+  "note": "sentence-initial 那: then, in that case"
+ },
+ {
+  "id": "02-发起",
+  "source": "tariff-joined-02",
+  "sentence": "那他去年轰轰烈烈发起的全球关税战都白整了吗。",
+  "word": "发起",
+  "start": 8,
+  "senses": [
+   "fa1 qi3: to originate",
+   "fa1 qi3: to initiate",
+   "fa1 qi3: to launch (an attack, an initiative etc)",
+   "fa1 qi3: to start",
+   "fa1 qi3: to propose sth (for the first time)"
+  ],
+  "gold": [
+   1,
+   2,
+   3
+  ],
+  "goldMeta": [],
+  "note": "launched a trade war; \"launch (an attack, an initiative)\" fits best"
+ },
+ {
+  "id": "03-战",
+  "source": "tariff-joined-02",
+  "sentence": "那他去年轰轰烈烈发起的全球关税战都白整了吗。",
+  "word": "战",
+  "start": 15,
+  "senses": [
+   "zhan4: to fight",
+   "zhan4: fight",
+   "zhan4: war",
+   "zhan4: battle"
+  ],
+  "gold": [
+   2,
+   3
+  ],
+  "goldMeta": [],
+  "note": "tariff war"
+ },
+ {
+  "id": "04-白",
+  "source": "tariff-joined-02",
+  "sentence": "那他去年轰轰烈烈发起的全球关税战都白整了吗。",
+  "word": "白",
+  "start": 17,
+  "senses": [
+   "Bai2: surname Bai",
+   "Bai2: Bai ethnic group",
+   "bai2: white",
+   "bai2: in vain",
+   "bai2: free of charge",
+   "bai2: (bound form) (of facts, the truth, a situation) clear; evident (e.g. 真相大白[zhen1 xiang4 da4 bai2])",
+   "bai2: (bound form) plain; without additions (e.g. 白飯|白饭[bai2 fan4])",
+   "bai2: (bound form) to explain; to state (e.g. 辯白|辩白[bian4 bai2])",
+   "bai2: (bound form) to give a disdainful look (e.g. 白了他一眼[bai2 le5 ta1 yi1 yan3])",
+   "bai2: (bound form) vernacular (e.g. 白話|白话[bai2 hua4])",
+   "bai2: (bound form) spoken lines in opera (e.g. 念白[nian4 bai2])",
+   "bai2: (bound form) reactionary; anti-communist (e.g. 白區|白区[bai2 qu1])"
+  ],
+  "gold": [
+   3
+  ],
+  "goldMeta": [],
+  "note": "白整: done in vain"
+ },
+ {
+  "id": "05-整",
+  "source": "tariff-joined-02",
+  "sentence": "那他去年轰轰烈烈发起的全球关税战都白整了吗。",
+  "word": "整",
+  "start": 18,
+  "senses": [
+   "zheng3: (bound form) whole; complete; entire; (before a measure word) whole; (before or after number + measure word) exactly",
+   "zheng3: (bound form) in good order; tidy; neat",
+   "zheng3: (bound form) to put in order; to straighten",
+   "zheng3: (bound form) to repair; to mend; to renovate",
+   "zheng3: (coll.) to fix sb; to give sb a hard time; to mess with sb",
+   "zheng3: (dialect) to tinker with; to do sth to"
+  ],
+  "gold": [
+   5
+  ],
+  "goldMeta": [],
+  "note": "colloquial/dialect \"to do\" in 白整"
+ },
+ {
+  "id": "06-折腾",
+  "source": "tariff-joined-03",
+  "sentence": "辛苦折腾一年收上来的关税难道都得退回去吗。",
+  "word": "折腾",
+  "start": 2,
+  "senses": [
+   "zhe1 teng5: to toss from side to side (e.g. sleeplessly)",
+   "zhe1 teng5: to repeat sth over and over again",
+   "zhe1 teng5: to torment sb",
+   "zhe1 teng5: to play crazy",
+   "zhe1 teng5: to squander (time, money)"
+  ],
+  "gold": [
+   1,
+   4
+  ],
+  "goldMeta": [
+   "none"
+  ],
+  "note": "a year of hard toil and fuss; no exact sense, nearest two accepted"
+ },
+ {
+  "id": "07-收",
+  "source": "tariff-joined-03",
+  "sentence": "辛苦折腾一年收上来的关税难道都得退回去吗。",
+  "word": "收",
+  "start": 6,
+  "senses": [
+   "shou1: to receive",
+   "shou1: to accept",
+   "shou1: to collect",
+   "shou1: to put away",
+   "shou1: to restrain",
+   "shou1: to stop",
+   "shou1: in care of (used on address line after name)"
+  ],
+  "gold": [
+   2
+  ],
+  "goldMeta": [],
+  "note": "tariffs collected"
+ },
+ {
+  "id": "08-得",
+  "source": "tariff-joined-03",
+  "sentence": "辛苦折腾一年收上来的关税难道都得退回去吗。",
+  "word": "得",
+  "start": 15,
+  "senses": [
+   "de2: to obtain",
+   "de2: to get",
+   "de2: to gain",
+   "de2: to catch (a disease)",
+   "de2: proper",
+   "de2: suitable",
+   "de2: proud",
+   "de2: contented",
+   "de2: to allow",
+   "de2: to permit",
+   "de2: ready",
+   "de2: finished",
+   "de4: used in 得瑟[de4 se5]",
+   "de5: structural particle: used after a verb (or adjective as main verb), linking it to following phrase indicating effect, degree, possibility etc",
+   "dei3: to have to",
+   "dei3: must",
+   "dei3: ought to",
+   "dei3: to need to"
+  ],
+  "gold": [
+   14,
+   15,
+   17
+  ],
+  "goldMeta": [],
+  "note": "dei3: will they have to be refunded"
+ },
+ {
+  "id": "09-咱",
+  "source": "tariff-joined-04",
+  "sentence": "咱好久没聊美国关税了哈。",
+  "word": "咱",
+  "start": 0,
+  "senses": [
+   "zan2: variant of 咱[zan2]",
+   "za2: see 咱[zan2]",
+   "zan2: I or me",
+   "zan2: we (including both the speaker and the person spoken to)",
+   "zan2: variant of 咱[zan2]"
+  ],
+  "gold": [
+   3
+  ],
+  "goldMeta": [],
+  "note": "inclusive we, addressing viewers"
+ },
+ {
+  "id": "10-聊",
+  "source": "tariff-joined-04",
+  "sentence": "咱好久没聊美国关税了哈。",
+  "word": "聊",
+  "start": 4,
+  "senses": [
+   "liao2: (coll.) to chat",
+   "liao2: (literary) temporarily; for a while",
+   "liao2: (literary) somewhat; slightly",
+   "liao2: (literary) to depend upon"
+  ],
+  "gold": [
+   0
+  ],
+  "goldMeta": [],
+  "note": "to chat about"
+ },
+ {
+  "id": "11-哈",
+  "source": "tariff-joined-04",
+  "sentence": "咱好久没聊美国关税了哈。",
+  "word": "哈",
+  "start": 10,
+  "senses": [
+   "Ha1: abbr. for 哈薩克斯坦|哈萨克斯坦[Ha1 sa4 ke4 si1 tan3], Kazakhstan",
+   "Ha1: abbr. for 哈爾濱|哈尔滨[Ha1 er3 bin1], Harbin",
+   "ha1: (interj.) ha!",
+   "ha1: (onom. for laughter)",
+   "ha1: (slang) to be infatuated with; to adore",
+   "ha1: (bound form) husky (dog) (abbr. for 哈士奇[ha1 shi4 qi2])",
+   "ha3: a Pekinese; a pug",
+   "ha3: (dialect) to scold"
+  ],
+  "gold": [],
+  "goldMeta": [
+   "none"
+  ],
+  "note": "sentence-final softening particle; CC-CEDICT has no such sense"
+ },
+ {
+  "id": "12-大事",
+  "source": "tariff-joined-05",
+  "sentence": "但这个毕竟是一个搅动全球贸易格局的大事所以咱今天来跟进一下。",
+  "word": "大事",
+  "start": 17,
+  "senses": [
+   "da4 shi4: major event",
+   "da4 shi4: major political event (war or change of regime)",
+   "da4 shi4: major social event (wedding or funeral)",
+   "da4 shi4: (do sth) in a big way",
+   "da4 shi4: CL:件[jian4],樁|桩[zhuang1]"
+  ],
+  "gold": [
+   0
+  ],
+  "goldMeta": [],
+  "note": "a major event shaking global trade"
+ },
+ {
+  "id": "13-跟",
+  "source": "cooking-joined-01",
+  "sentence": "本期视频我跟大家分享一道加重菜番茄炒鸡蛋。",
+  "word": "跟",
+  "start": 5,
+  "senses": [
+   "gen1: heel",
+   "gen1: to follow closely",
+   "gen1: to go with",
+   "gen1: (of a woman) to marry sb",
+   "gen1: with",
+   "gen1: compared with",
+   "gen1: to",
+   "gen1: towards",
+   "gen1: and (joining two nouns)"
+  ],
+  "gold": [
+   4,
+   6
+  ],
+  "goldMeta": [],
+  "note": "share with everyone"
+ },
+ {
+  "id": "14-道",
+  "source": "cooking-joined-01",
+  "sentence": "本期视频我跟大家分享一道加重菜番茄炒鸡蛋。",
+  "word": "道",
+  "start": 11,
+  "senses": [
+   "dao4: road; path (CL:條|条[tiao2],股[gu3])",
+   "dao4: (bound form) way; reason; principle",
+   "dao4: (bound form) a skill; an art; a specialization",
+   "dao4: (Daoism) the Way; the Dao",
+   "dao4: to say (introducing a direct quotation, as in a novel)",
+   "dao4: (bound form) to express; to extend (polite words)",
+   "dao4: classifier for long thin things (rivers, cracks, shadows etc), barriers (walls, doors etc), questions (in an exam etc), commands, courses in a meal, steps in a process",
+   "dao4: (old) circuit (administrative division)"
+  ],
+  "gold": [
+   6
+  ],
+  "goldMeta": [],
+  "note": "classifier for a dish/course"
+ },
+ {
+  "id": "15-熟透",
+  "source": "cooking-joined-02",
+  "sentence": "首先我们准备熟透的西红柿两个。",
+  "word": "熟透",
+  "start": 6,
+  "senses": [
+   "shu2 tou4: completely ripe",
+   "shu2 tou4: ripened",
+   "shu2 tou4: well-cooked"
+  ],
+  "gold": [
+   0,
+   1
+  ],
+  "goldMeta": [],
+  "note": "fully ripe tomatoes"
+ },
+ {
+  "id": "16-切",
+  "source": "cooking-joined-03",
+  "sentence": "切掉地之后再切成大小均匀的滚刀块备用可以稍微切大一些这样口感会更好。",
+  "word": "切",
+  "start": 0,
+  "senses": [
+   "qie1: to cut; to slice; to carve",
+   "qie1: (math.) tangential",
+   "qie4: definitely; absolutely (not)",
+   "qie4: (scoffing or dismissive interjection) Yeah, right.; Tut!",
+   "qie4: to grind",
+   "qie4: (bound form) close to",
+   "qie4: (bound form) eager",
+   "qie4: to correspond to",
+   "qie4: (used to indicate that the fanqie 反切[fan3 qie4] system should be applied to the previous two characters)"
+  ],
+  "gold": [
+   0
+  ],
+  "goldMeta": [],
+  "note": "to cut"
+ },
+ {
+  "id": "17-块",
+  "source": "cooking-joined-03",
+  "sentence": "切掉地之后再切成大小均匀的滚刀块备用可以稍微切大一些这样口感会更好。",
+  "word": "块",
+  "start": 15,
+  "senses": [
+   "kuai4: lump; chunk; piece",
+   "kuai4: classifier for pieces of cloth, cake, soap etc",
+   "kuai4: (coll.) classifier for money and currency units"
+  ],
+  "gold": [
+   0
+  ],
+  "goldMeta": [],
+  "note": "chunks"
+ },
+ {
+  "id": "18-打入",
+  "source": "cooking-joined-04",
+  "sentence": "然后我们在碗中打入鸡蛋三个再加入少许的食用盐加入白醋一克然后顺着一个方向搅拌均匀备用。",
+  "word": "打入",
+  "start": 7,
+  "senses": [
+   "da3 ru4: to penetrate; to break into (a market, social group etc); to infiltrate (enemy ranks etc)",
+   "da3 ru4: to banish to; to relegate to",
+   "da3 ru4: to insert; to inject",
+   "da3 ru4: to crack (an egg) into (a bowl etc)"
+  ],
+  "gold": [
+   3
+  ],
+  "goldMeta": [],
+  "note": "crack eggs into the bowl"
+ },
+ {
+  "id": "19-加入",
+  "source": "cooking-joined-04",
+  "sentence": "然后我们在碗中打入鸡蛋三个再加入少许的食用盐加入白醋一克然后顺着一个方向搅拌均匀备用。",
+  "word": "加入",
+  "start": 14,
+  "senses": [
+   "jia1 ru4: to become a member",
+   "jia1 ru4: to join",
+   "jia1 ru4: to mix into",
+   "jia1 ru4: to participate in",
+   "jia1 ru4: to add in"
+  ],
+  "gold": [
+   2,
+   4
+  ],
+  "goldMeta": [],
+  "note": "add salt"
+ },
+ {
+  "id": "20-加",
+  "source": "cooking-joined-05",
+  "sentence": "加白醋的目的是去除鸡蛋的腥味和增加鲜味。",
+  "word": "加",
+  "start": 0,
+  "senses": [
+   "Jia1: Canada (abbr. for 加拿大[Jia1 na2 da4])",
+   "Jia1: surname Jia",
+   "jia1: to add",
+   "jia1: (math.) plus",
+   "jia1: to increase; to augment",
+   "jia1: (used before a disyllabic verb, often after an adverb like 不[bu4], 大[da4], 稍[shao1] etc, to indicate that the action applies to sth previously mentioned, as in 稍加改良[shao1 jia1 gai3 liang2] \"make some minor improvements to (it)\")"
+  ],
+  "gold": [
+   2
+  ],
+  "goldMeta": [],
+  "note": "add vinegar"
+ },
+ {
+  "id": "21-烧",
+  "source": "cooking-joined-06",
+  "sentence": "首先我们把锅烧热锅烧热之后加入适量的油滑锅。",
+  "word": "烧",
+  "start": 6,
+  "senses": [
+   "shao1: to burn; to set on fire",
+   "shao1: to heat (over a fire); to boil (water, tea etc)",
+   "shao1: to braise",
+   "shao1: to cook; to prepare food",
+   "shao1: to run a fever",
+   "shao1: fever",
+   "shao1: (coll.) to become full of oneself; to get carried away"
+  ],
+  "gold": [
+   1
+  ],
+  "goldMeta": [],
+  "note": "heat the wok"
+ },
+ {
+  "id": "22-滑",
+  "source": "cooking-joined-06",
+  "sentence": "首先我们把锅烧热锅烧热之后加入适量的油滑锅。",
+  "word": "滑",
+  "start": 19,
+  "senses": [
+   "Hua2: surname Hua",
+   "hua2: to slip; to slide",
+   "hua2: slippery; smooth",
+   "hua2: sly; slippery; not to be trusted"
+  ],
+  "gold": [
+   2
+  ],
+  "goldMeta": [
+   "none",
+   "segment"
+  ],
+  "note": "滑锅: coat the wok with oil; nearest is \"slippery; smooth\""
+ },
+ {
+  "id": "23-将",
+  "source": "cooking-joined-07",
+  "sentence": "滑好锅之后将热油倒出再加入少许的底油。",
+  "word": "将",
+  "start": 5,
+  "senses": [
+   "jiang1: will",
+   "jiang1: shall",
+   "jiang1: to use",
+   "jiang1: to take",
+   "jiang1: to checkmate",
+   "jiang1: just a short while ago",
+   "jiang1: (introduces object of main verb, used in the same way as 把[ba3])",
+   "jiang4: (bound form) a general",
+   "jiang4: (literary) to command; to lead",
+   "jiang4: (Chinese chess) general (on the black side, equivalent to a king in Western chess)",
+   "qiang1: to desire",
+   "qiang1: to invite",
+   "qiang1: to request"
+  ],
+  "gold": [
+   6
+  ],
+  "goldMeta": [],
+  "note": "object marker like 把"
+ },
+ {
+  "id": "24-好",
+  "source": "cooking-joined-07",
+  "sentence": "滑好锅之后将热油倒出再加入少许的底油。",
+  "word": "好",
+  "start": 1,
+  "senses": [
+   "hao3: good",
+   "hao3: appropriate; proper",
+   "hao3: all right!",
+   "hao3: (before a verb) easy to",
+   "hao3: (before a verb) good to",
+   "hao3: (before an adjective for exclamatory effect) so",
+   "hao3: (verb complement indicating completion)",
+   "hao3: (of two people) close; on intimate terms",
+   "hao3: (after a form of address) hello",
+   "hao4: to be fond of; to have a tendency to; to be prone to"
+  ],
+  "gold": [
+   6
+  ],
+  "goldMeta": [],
+  "note": "滑好锅: completion complement"
+ },
+ {
+  "id": "25-倒",
+  "source": "cooking-joined-07",
+  "sentence": "滑好锅之后将热油倒出再加入少许的底油。",
+  "word": "倒",
+  "start": 8,
+  "senses": [
+   "dao3: to fall; to collapse; to lie horizontally",
+   "dao3: to fail; to go bankrupt",
+   "dao3: to overthrow",
+   "dao3: to change (trains or buses)",
+   "dao3: to move around",
+   "dao3: to resell at a profit",
+   "dao4: to invert; to place upside down or frontside back",
+   "dao4: to pour out",
+   "dao4: to tip out; to dump",
+   "dao4: inverted; upside down; reversed",
+   "dao4: to go backward",
+   "dao4: contrary to what one might expect; but; yet"
+  ],
+  "gold": [
+   7,
+   8
+  ],
+  "goldMeta": [],
+  "note": "pour the hot oil out"
+ },
+ {
+  "id": "26-底",
+  "source": "cooking-joined-07",
+  "sentence": "滑好锅之后将热油倒出再加入少许的底油。",
+  "word": "底",
+  "start": 16,
+  "senses": [
+   "de5: (equivalent to 的 as possessive particle)",
+   "di3: bottom; base",
+   "di3: background; foundation",
+   "di3: copy (of a manuscript or receipt etc) kept as a record",
+   "di3: (suffix) end of a year or month",
+   "di3: (math.) radix; base (abbr. for 底數|底数[di3 shu4])"
+  ],
+  "gold": [
+   1
+  ],
+  "goldMeta": [
+   "segment"
+  ],
+  "note": "底油: base oil left in the wok"
+ },
+ {
+  "id": "27-成",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "成",
+  "start": 3,
+  "senses": [
+   "Cheng2: surname Cheng",
+   "Cheng2: short name for Chengdu 成都[Cheng2 du1]",
+   "cheng2: to succeed",
+   "cheng2: to finish",
+   "cheng2: to complete",
+   "cheng2: to accomplish",
+   "cheng2: to become",
+   "cheng2: to turn into",
+   "cheng2: to be all right",
+   "cheng2: OK!",
+   "cheng2: one tenth"
+  ],
+  "gold": [
+   10
+  ],
+  "goldMeta": [],
+  "note": "四成热: 40% hot, tenths"
+ },
+ {
+  "id": "28-打",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "打",
+  "start": 8,
+  "senses": [
+   "da2: (loanword) dozen",
+   "da2: Taiwan pr. [da3]",
+   "da3: a semantically light, transitive verb that is combined with various grammatical objects to form compound verbs and verb-object phrases with a diverse range of meanings (e.g. 打傘|打伞[da3 san3] \"to hold an umbrella\", 打電話|打电话[da3 dian4 hua4] \"to make a phone call\", 打針|打针[da3 zhen1] \"to get an injection\", 打手套[da3 shou3 tao4] \"to knit gloves\", 打氣|打气[da3 qi4] \"to inflate\")",
+   "da3: to hit; to strike",
+   "da3: to fight",
+   "da3: (coll.) from; since (as in 打那以後|打那以后[da3 na4 yi3 hou4] \"since then\")"
+  ],
+  "gold": [
+   2
+  ],
+  "goldMeta": [],
+  "note": "beat the eggs; the light-verb sense is nearest"
+ },
+ {
+  "id": "29-开",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "开",
+  "start": 15,
+  "senses": [
+   "kai1: to open (transitive or intransitive)",
+   "kai1: (of ships, vehicles, troops etc) to start",
+   "kai1: to turn on; to put in operation; to operate; to run",
+   "kai1: to boil",
+   "kai1: to write out (a prescription, check, invoice etc)",
+   "kai1: (directional complement) away; off",
+   "kai1: carat (gold)",
+   "kai1: abbr. for Kelvin, 開爾文|开尔文[Kai1 er3 wen2]",
+   "kai1: abbr. for 開本|开本[kai1 ben3], book format"
+  ],
+  "gold": [
+   2
+  ],
+  "goldMeta": [],
+  "note": "turn on a low flame"
+ },
+ {
+  "id": "30-火",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "火",
+  "start": 17,
+  "senses": [
+   "Huo3: surname Huo",
+   "huo3: fire",
+   "huo3: urgent",
+   "huo3: ammunition",
+   "huo3: fiery or flaming",
+   "huo3: internal heat (Chinese medicine)",
+   "huo3: hot (popular)",
+   "huo3: classifier for military units (old)",
+   "huo3: Kangxi radical 86"
+  ],
+  "gold": [
+   1
+  ],
+  "goldMeta": [],
+  "note": "flame, heat"
+ },
+ {
+  "id": "31-翻",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "翻",
+  "start": 35,
+  "senses": [
+   "fan1: to turn over",
+   "fan1: to flip over",
+   "fan1: to overturn",
+   "fan1: to rummage through",
+   "fan1: to translate",
+   "fan1: to decode",
+   "fan1: to double",
+   "fan1: to climb over or into",
+   "fan1: to cross",
+   "fan1: variant of 翻[fan1]"
+  ],
+  "gold": [
+   0,
+   1
+  ],
+  "goldMeta": [],
+  "note": "flip the egg over"
+ },
+ {
+  "id": "32-香",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "香",
+  "start": 39,
+  "senses": [
+   "xiang1: fragrant",
+   "xiang1: sweet smelling",
+   "xiang1: aromatic",
+   "xiang1: savory or appetizing",
+   "xiang1: (to eat) with relish",
+   "xiang1: (of sleep) sound",
+   "xiang1: perfume or spice",
+   "xiang1: joss or incense stick",
+   "xiang1: CL:根[gen1]"
+  ],
+  "gold": [
+   0,
+   2,
+   3
+  ],
+  "goldMeta": [],
+  "note": "炒香: fry until fragrant"
+ },
+ {
+  "id": "33-即可",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "即可",
+  "start": 40,
+  "senses": [
+   "ji2 ke3: equivalent to 就可以",
+   "ji2 ke3: can then (do sth)",
+   "ji2 ke3: can immediately (do sth)",
+   "ji2 ke3: (do sth) and that will suffice"
+  ],
+  "gold": [
+   0,
+   3
+  ],
+  "goldMeta": [],
+  "note": "and that is done"
+ },
+ {
+  "id": "34-刚",
+  "source": "cooking-joined-00",
+  "sentence": "哈喽大家好我是王刚。",
+  "word": "刚",
+  "start": 8,
+  "senses": [
+   "gang1: (literary) hard; firm; strong",
+   "gang1: exactly; precisely",
+   "gang1: barely; only just",
+   "gang1: just; only a short while ago"
+  ],
+  "gold": [],
+  "goldMeta": [
+   "segment"
+  ],
+  "note": "part of the name 王刚"
+ },
+ {
+  "id": "35-特",
+  "source": "tariff-joined-01",
+  "sentence": "今年2月份美国那个最高法院不是判特朗普的关税政策违法了吗。",
+  "word": "特",
+  "start": 16,
+  "senses": [
+   "te4: special",
+   "te4: unique",
+   "te4: distinguished",
+   "te4: especially",
+   "te4: unusual",
+   "te4: very",
+   "te4: abbr. for 特克斯[te4 ke4 si1], tex"
+  ],
+  "gold": [],
+  "goldMeta": [
+   "segment"
+  ],
+  "note": "part of the name 特朗普"
+ },
+ {
+  "id": "36-加重",
+  "source": "cooking-joined-01",
+  "sentence": "本期视频我跟大家分享一道加重菜番茄炒鸡蛋。",
+  "word": "加重",
+  "start": 12,
+  "senses": [
+   "jia1 zhong4: to make heavier",
+   "jia1 zhong4: to emphasize",
+   "jia1 zhong4: (of an illness etc) to become more serious",
+   "jia1 zhong4: to aggravate (a bad situation)",
+   "jia1 zhong4: to increase (a burden, punishment etc)"
+  ],
+  "gold": [],
+  "goldMeta": [
+   "none",
+   "segment"
+  ],
+  "note": "ASR error for 家常菜, home-style dish"
+ },
+ {
+  "id": "37-滚刀",
+  "source": "cooking-joined-03",
+  "sentence": "切掉地之后再切成大小均匀的滚刀块备用可以稍微切大一些这样口感会更好。",
+  "word": "滚刀",
+  "start": 13,
+  "senses": [
+   "gun3 dao1: (engineering) gear hob (cutting tool used in manufacturing gears)"
+  ],
+  "gold": [],
+  "goldMeta": [
+   "none",
+   "segment",
+   "compositional"
+  ],
+  "note": "滚刀块: roll-cut chunks, not a gear hob"
+ },
+ {
+  "id": "38-白",
+  "source": "cooking-joined-04",
+  "sentence": "然后我们在碗中打入鸡蛋三个再加入少许的食用盐加入白醋一克然后顺着一个方向搅拌均匀备用。",
+  "word": "白",
+  "start": 24,
+  "senses": [
+   "Bai2: surname Bai",
+   "Bai2: Bai ethnic group",
+   "bai2: white",
+   "bai2: in vain",
+   "bai2: free of charge",
+   "bai2: (bound form) (of facts, the truth, a situation) clear; evident (e.g. 真相大白[zhen1 xiang4 da4 bai2])",
+   "bai2: (bound form) plain; without additions (e.g. 白飯|白饭[bai2 fan4])",
+   "bai2: (bound form) to explain; to state (e.g. 辯白|辩白[bian4 bai2])",
+   "bai2: (bound form) to give a disdainful look (e.g. 白了他一眼[bai2 le5 ta1 yi1 yan3])",
+   "bai2: (bound form) vernacular (e.g. 白話|白话[bai2 hua4])",
+   "bai2: (bound form) spoken lines in opera (e.g. 念白[nian4 bai2])",
+   "bai2: (bound form) reactionary; anti-communist (e.g. 白區|白区[bai2 qu1])"
+  ],
+  "gold": [
+   2
+  ],
+  "goldMeta": [
+   "segment"
+  ],
+  "note": "part of 白醋, white vinegar"
+ },
+ {
+  "id": "39-熟",
+  "source": "cooking-joined-02",
+  "sentence": "首先我们准备熟透的西红柿两个。",
+  "word": "熟",
+  "start": 6,
+  "senses": [
+   "shu2: ripe; mature",
+   "shu2: thoroughly cooked; done",
+   "shu2: familiar; acquainted",
+   "shu2: experienced; skilled",
+   "shu2: (of sleep etc) deep; profound",
+   "shu2: also pr. [shou2]"
+  ],
+  "gold": [
+   0
+  ],
+  "goldMeta": [
+   "segment"
+  ],
+  "note": "part of 熟透, fully ripe"
+ },
+ {
+  "id": "40-期",
+  "source": "cooking-joined-01",
+  "sentence": "本期视频我跟大家分享一道加重菜番茄炒鸡蛋。",
+  "word": "期",
+  "start": 1,
+  "senses": [
+   "qi1: variant of 期[qi1]",
+   "qi1: period",
+   "qi1: cycle",
+   "qi1: a period of time",
+   "qi1: phase",
+   "qi1: stage",
+   "qi1: classifier for issues of a periodical, courses of study",
+   "qi1: time",
+   "qi1: term",
+   "qi1: period",
+   "qi1: to hope",
+   "qi1: Taiwan pr. [qi2]"
+  ],
+  "gold": [
+   6
+  ],
+  "goldMeta": [
+   "segment"
+  ],
+  "note": "part of 本期, this episode"
+ },
+ {
+  "id": "41-翻过",
+  "source": "cooking-joined-08",
+  "sentence": "油温四成热之后将打好的蛋液下锅开小火煎一分钟将蛋液煎至定型中途再将鸡蛋翻过来炒香即可。",
+  "word": "翻过",
+  "start": 35,
+  "senses": [
+   "fan1 guo4: to turn over",
+   "fan1 guo4: to transform"
+  ],
+  "gold": [
+   0
+  ],
+  "goldMeta": [
+   "compositional"
+  ],
+  "note": "翻过来: flip over, 翻 plus directional 过"
+ }
+]

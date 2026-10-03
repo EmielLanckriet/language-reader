@@ -74,6 +74,11 @@ same-reading homographs (花 flower / to spend) are an open problem. For the dis
 correction layer (the reader fixing a reading once, remembered per word or per occurrence) or the
 contextual model already on the device could improve it.
 
+2026-10-03, measured (`scripts/compare-pinyin/`): pinyin-pro 91.1% on the CPP benchmark, 22/30 on
+everyday sentences. g2pM (1.6 MB) 97.3% on CPP but 20/30 everyday and none of the five errors above.
+The pip g2pW model (607 MB BERT) fixes all five and gets 28/30, but follows Taiwan readings
+(差不多 chā, 和 hàn) and mishandles simplified 干; a mainland-trained model is not what pip ships.
+
 ## Word meanings in context — parked
 
 2026-09-27: the word sheet now ranks CC-CEDICT senses (names, variants and archaic senses last; the

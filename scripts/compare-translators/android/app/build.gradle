@@ -1,0 +1,7 @@
+plugins { id 'com.android.application' }
+android {
+ namespace 'io.reader.translationbench'
+ compileSdk 35
+ defaultConfig { applicationId 'io.reader.translationbench'; minSdk 23; targetSdk 35; versionCode 1; versionName '1' }
+}
+dependencies { implementation 'com.google.mlkit:translate:17.0.3' }

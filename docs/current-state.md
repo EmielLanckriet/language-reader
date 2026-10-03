@@ -46,6 +46,14 @@ A 56-input comparison of Reader OPUS, Mozilla/Bergamot and Google ML Kit is reco
 laptop, but all three made substantive meaning errors. ML Kit completed offline on an Android
 emulator; the physical phone was not used. No replacement engine has been adopted.
 
+## Sense picker comparison
+
+A 42-item laptop comparison of choosing the CC-CEDICT sense of a word in context is recorded in
+[sense picker comparison](sense-picker-comparison.md). Forced to choose among real senses, the
+Termux Qwen3-1.7B model got 26/37; offered "none of these fits" it chose that for most words.
+Laya multilingual, an open Jev-style model, was ten times faster but near the first-sense baseline.
+Gold labels are Claude's and await review; the phone was not used. Nothing was adopted.
+
 ## FSRS tuning foundation — deployed
 
 Spec 009 adds **Cards → Learning data**, a read-only report/export of reviewed words' history,

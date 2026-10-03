@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-30",
+  "host": "AMD Ryzen 7 PRO 4750U, Linux 6.8, Node 24.20.0",
+  "android": "Android 15 API 35 x86_64 emulator; ML Kit translate 17.0.3",
+  "corpus_sha256": "adc85726333a00501f4c890eac49ead10910ae38867d4babcc749f6bddd57b20",
+  "opus_files": {
+    "tokenizer.json": {
+      "bytes": 6381339,
+      "sha256": "b306d0301cf280bfd647d7067b5ade2a97b987e6d678df110703c002433643ff"
+    },
+    "onnx/encoder_model_quantized.onnx": {
+      "bytes": 52899742,
+      "sha256": "84d5e171b626bc8b6b220d022ac58696e9528c25deeacca62b5cbf4364547a99"
+    },
+    "onnx/decoder_model_merged_quantized.onnx": {
+      "bytes": 60212804,
+      "sha256": "c6b7f04ff1ba0fbd1bf6852599b4c0cad6fe512d57cd887f44ef36cf705424cb"
+    }
+  },
+  "summary": {
+    "opus": {
+      "median_ms": 359.149536500001,
+      "p95_ms": 1003.3121610000017,
+      "total_ms": 23746.83575399999,
+      "identical_outputs_between_rounds": true,
+      "peak_process_rss_mib": 826.12890625
+    },
+    "mozilla": {
+      "median_ms": 27.4039200000002,
+      "p95_ms": 86.97067900000002,
+      "total_ms": 2082.219820000003,
+      "identical_outputs_between_rounds": true,
+      "peak_process_rss_mib": 784.5078125
+    },
+    "mlkit": {
+      "median_ms": 44.496647499999995,
+      "p95_ms": 107.82446,
+      "total_ms": 2917.364016,
+      "identical_outputs_between_rounds": true,
+      "max_sampled_pss_mib": 112.6005859375
+    },
+    "beam": {
+      "median_ms": 324.96626149999884,
+      "p95_ms": 961.3234449999982,
+      "total_ms": 22238.176390999994
+    }
+  },
+  "method": "Sequential engine runs; second round timing; main OPUS and Mozilla use WASM. ML Kit uses emulator; timings and memory not directly comparable to host WASM. Beam control uses native CPU and is quality-only. Emulator reported no active default network during ML Kit translation. Physical phone not used."
+}
