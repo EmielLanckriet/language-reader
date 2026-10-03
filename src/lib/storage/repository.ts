@@ -1196,7 +1196,7 @@ export class Repository {
 	}
 
 	/** The latest sessions and what happened in them, newest first, for Diagnostics. */
-	studyOverview(timeZone: string, now = new Date()): StudyOverview {
+	studyOverview(timeZone: string, now = new Date(), dayEndHour = 0): StudyOverview {
 		const recent = queryRows(
 			this.db,
 			`SELECT kind, at, detail FROM encounter
@@ -1237,7 +1237,7 @@ export class Repository {
 		}));
 		const resume = sessions.find((s) => s.available);
 		return {
-			week: studyWeek(recent, timeZone, now),
+			week: studyWeek(recent, timeZone, now, dayEndHour),
 			sessions,
 			resume: resume
 				? { documentId: resume.documentId, title: resume.title, modality: resume.modality }

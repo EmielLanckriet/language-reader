@@ -21,19 +21,33 @@ export interface StudySession {
 	available: boolean;
 }
 
-/** Calendar arithmetic uses UTC dates as date labels, not 24-hour jumps through local DST. */
-export function studyWeek(events: StudyEvent[], timeZone: string, now = new Date()) {
+/**
+ * Calendar arithmetic uses UTC dates as date labels, not 24-hour jumps through local DST. A day
+ * ends at `dayEndHour` on the local clock (asked for 2026-10-04): activity before it belongs to
+ * the day before, and a week runs from that hour on Monday.
+ */
+export function studyWeek(
+	events: StudyEvent[],
+	timeZone: string,
+	now = new Date(),
+	dayEndHour = 0
+) {
 	const formatter = new Intl.DateTimeFormat('en-CA', {
 		timeZone,
 		year: 'numeric',
 		month: '2-digit',
-		day: '2-digit'
+		day: '2-digit',
+		hour: '2-digit',
+		hourCycle: 'h23'
 	});
 	const dateOf = (date: Date) => {
 		const parts = formatter.formatToParts(date);
-		return ['year', 'month', 'day']
-			.map((kind) => parts.find((p) => p.type === kind)!.value)
-			.join('-');
+		const part = (kind: string) => parts.find((p) => p.type === kind)!.value;
+		const label = `${part('year')}-${part('month')}-${part('day')}`;
+		if (Number(part('hour')) >= dayEndHour) return label;
+		const before = new Date(`${label}T00:00:00Z`);
+		before.setUTCDate(before.getUTCDate() - 1);
+		return before.toISOString().slice(0, 10);
 	};
 	const today = dateOf(now);
 	const monday = new Date(`${today}T00:00:00Z`);

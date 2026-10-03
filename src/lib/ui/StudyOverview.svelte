@@ -31,6 +31,29 @@
 		{ value: 'partly', label: 'Partly' },
 		{ value: 'no', label: 'No' }
 	];
+	/** When a study day ends, on this device only (asked for 2026-10-04; 4 AM unless changed). */
+	const DAY_END_HOURS = [0, 1, 2, 3, 4, 5, 6];
+	let dayEndHour = $state(readDayEnd());
+	function readDayEnd(): number {
+		try {
+			const kept = Number(localStorage.getItem('reader.dayEndHour'));
+			return localStorage.getItem('reader.dayEndHour') !== null && DAY_END_HOURS.includes(kept)
+				? kept
+				: 4;
+		} catch {
+			return 4;
+		}
+	}
+	function setDayEnd(hour: number) {
+		dayEndHour = hour;
+		try {
+			localStorage.setItem('reader.dayEndHour', String(hour));
+		} catch {
+			// Not kept: this visit still uses it.
+		}
+		void load();
+	}
+	const hourLabel = (hour: number) => (hour === 0 ? 'Midnight' : `${hour} AM`);
 	const duration = (ms: number) =>
 		ms < 60000
 			? `${Math.floor(ms / 1000)} sec`
@@ -49,7 +72,8 @@
 		try {
 			const { repository } = await session();
 			const result = await repository.studyOverview(
-				Intl.DateTimeFormat().resolvedOptions().timeZone
+				Intl.DateTimeFormat().resolvedOptions().timeZone,
+				dayEndHour
 			);
 			if (!disposed && request === generation) {
 				if (overview === null) {
@@ -141,6 +165,14 @@
 				? 'Your weekly goal is complete. Nicely done.'
 				: 'One minute of reading or listening, or five card answers, makes a study day.'}
 		</p>
+		{#if full}<label class="day-end"
+				>A day ends at <select
+					value={dayEndHour}
+					onchange={(event) => setDayEnd(Number(event.currentTarget.value))}
+					>{#each DAY_END_HOURS as hour (hour)}<option value={hour}>{hourLabel(hour)}</option
+						>{/each}</select
+				></label
+			>{/if}
 		{#if !full}<a class="text-link" href={resolve('/progress')}
 				>View your sessions <span aria-hidden="true">↗</span></a
 			>{/if}
@@ -322,6 +354,21 @@
 		font-size: 0.82rem;
 		color: var(--muted);
 		margin: 0.75rem 0;
+	}
+	.day-end {
+		display: block;
+		font-size: 0.82rem;
+		color: var(--muted);
+		margin: 0 0 0.75rem;
+	}
+	.day-end select {
+		font: inherit;
+		color: var(--ink, inherit);
+		background: var(--surface, transparent);
+		border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+		border-radius: 6px;
+		padding: 0.2rem 0.4rem;
+		margin-left: 0.25rem;
 	}
 	.text-link {
 		font-size: 0.85rem;

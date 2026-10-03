@@ -3,7 +3,7 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Player buttons and listening feedback — local
+## Player buttons, listening feedback and day end — deployed, not phone checked
 
 Asked for on 2026-10-04 after a bike ride. ◀ now always goes to the previous line and ↻ always
 restarts the current one; ↻'s double press is gone. Headphone buttons were already 2× = replay,
@@ -12,6 +12,11 @@ restarts the current one; ↻'s double press is gone. Headphone buttons were alr
 wins). These answers are recorded only: they change no memory, and the screen-visibility guess
 still decides reading vs listening evidence (reader's choice). Validation: 477 tests, an
 `engagement` storage test that caught a mutation, and the `listened` browser scenario.
+
+Progress → This week has "A day ends at" (midnight–6 AM, default 4 AM, kept per device). Activity
+before that local hour counts toward the day before, and the week starts at that hour on Monday.
+Judged by the local clock hour, so DST nights stay right; a test covers the spring-forward night
+where a fixed shift would be wrong. Weekly credit is derived, so changing it rewrites no history.
 
 ## Subtitle track choice — deployed and phone checked
 

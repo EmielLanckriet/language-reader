@@ -274,8 +274,8 @@ export class RepositoryClient {
 		return this.call({ method: 'tuningAnalysis', args: [] });
 	}
 
-	studyOverview(timeZone: string): Promise<StudyOverview> {
-		return this.call({ method: 'studyOverview', args: [timeZone] });
+	studyOverview(timeZone: string, dayEndHour: number): Promise<StudyOverview> {
+		return this.call({ method: 'studyOverview', args: [timeZone, dayEndHour] });
 	}
 
 	readHistory(): Promise<HistoryEntry[]> {

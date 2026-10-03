@@ -16,7 +16,7 @@ export type Call =
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'tuningAnalysis'; args: [] }
-	| { method: 'studyOverview'; args: [string] }
+	| { method: 'studyOverview'; args: [string, number] }
 	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }
 	| { method: 'deletedWithHistory'; args: [] }

@@ -930,6 +930,29 @@ const scenarios = {
 				await tab.evaluate(`document.querySelector('.session-card').open=true; return true;`);
 				return (await pressed()) === 'Only listened,Partly' ? true : null;
 			});
+			// A zone where it is now about 2 AM: the day-end setting must move "today" back a day.
+			const offset = ((((2 - new Date().getUTCHours()) % 24) + 36) % 24) - 12;
+			await tab.send('Emulation.setTimezoneOverride', {
+				timezoneId: offset === 0 ? 'Etc/GMT' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`
+			});
+			const today = () =>
+				until('the week', () =>
+					tab.evaluate(
+						`return document.querySelector('.week-days .today')?.getAttribute('aria-label')?.split(',')[0] ? { day: document.querySelector('.week-days .today').getAttribute('aria-label').split(':')[0], hour: document.querySelector('.day-end select')?.value } : null`
+					)
+				);
+			await tab.goto('/progress');
+			const byFour = await today();
+			await tab.evaluate(
+				`const s=document.querySelector('.day-end select'); s.value='0'; s.dispatchEvent(new Event('change',{bubbles:true})); return true;`
+			);
+			const byMidnight = await until('today to move', async () => {
+				const now = await today();
+				return now.day !== byFour.day ? now : null;
+			});
+			await tab.goto('/progress');
+			const kept = await today();
+			const dayEnd = byFour.hour === '4' && kept.hour === '0' && kept.day === byMidnight.day;
 			const shot = await tab.send('Page.captureScreenshot', {
 				format: 'png',
 				captureBeyondViewport: true
@@ -939,7 +962,10 @@ const scenarios = {
 				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
 			);
 			return {
-				pass: buttons && width.body <= width.viewport,
+				pass: buttons && dayEnd && width.body <= width.viewport,
+				byFour,
+				byMidnight,
+				kept,
 				start,
 				back,
 				played,

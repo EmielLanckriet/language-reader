@@ -231,7 +231,7 @@ function run(request: Request): unknown {
 		case 'tuningAnalysis':
 			return repository.tuningAnalysis();
 		case 'studyOverview':
-			return repository.studyOverview(request.args[0]);
+			return repository.studyOverview(request.args[0], undefined, request.args[1]);
 		case 'wordOccurrences':
 			return repository.wordOccurrences(request.args[0]);
 		case 'playedThrough':

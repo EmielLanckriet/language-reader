@@ -66,3 +66,22 @@ it('refuses impossible activity chunks before persistence', () => {
 		})
 	).not.toThrow();
 });
+
+it('counts activity before the chosen hour toward the day before, by the local clock', () => {
+	const at = (iso: string) => ({ kind: 'study-time', at: iso, detail: { durationMs: 60000 } });
+	const done = (events: ReturnType<typeof at>[], now: string, hour: number) =>
+		studyWeek(events, 'Europe/Brussels', new Date(now), hour)
+			.days.filter((d) => d.done)
+			.map((d) => d.date);
+	// 03:30 and 04:30 Brussels summer time on Wednesday 30 September.
+	const night = [at('2026-09-30T01:30:00Z')];
+	expect(done(night, '2026-09-30T12:00:00Z', 4)).toEqual(['2026-09-29']);
+	expect(done(night, '2026-09-30T12:00:00Z', 0)).toEqual(['2026-09-30']);
+	expect(done([at('2026-09-30T02:30:00Z')], '2026-09-30T12:00:00Z', 4)).toEqual(['2026-09-30']);
+	// The night clocks go forward, 04:30 local is 02:30Z: a fixed four-hour shift would say Saturday.
+	expect(done([at('2027-03-28T02:30:00Z')], '2027-03-28T12:00:00Z', 4)).toEqual(['2027-03-28']);
+	// At 03:00 on a Monday, with the day ending at 4, it is still Sunday of the week before.
+	const monday = studyWeek([], 'Europe/Brussels', new Date('2026-10-05T01:00:00Z'), 4);
+	expect(monday.today).toBe('2026-10-04');
+	expect(monday.days[0].date).toBe('2026-09-28');
+});
