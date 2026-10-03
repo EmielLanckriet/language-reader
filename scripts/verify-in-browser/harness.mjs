@@ -899,6 +899,7 @@ const scenarios = {
 			const replayed = await at();
 			await press('Replay this line');
 			const again = await at();
+			await tab.evaluate(`document.querySelector('.english-line').click(); return true;`);
 			const buttons =
 				back.line !== start.line &&
 				back.time < start.time &&
@@ -958,11 +959,24 @@ const scenarios = {
 				captureBeyondViewport: true
 			});
 			writeFileSync('/tmp/reader-listened.png', Buffer.from(shot.data, 'base64'));
+			await tab.goto('/diagnostics');
+			const recorded = await until('the session on Diagnostics', () =>
+				tab.evaluate(`
+					const sitting = document.querySelector('.sitting');
+					if (!sitting) return null;
+					return [...sitting.querySelectorAll('.encounters li')].map((li) => li.textContent.replace(/\\s+/g, ' ').trim());
+				`)
+			);
+			const english =
+				/^setting.*"name":"stage","value":true/.test(recorded[0]) &&
+				/^setting.*"name":"blurEnglish","value":true/.test(recorded[1]) &&
+				recorded.some((line) => line.startsWith('translation'));
 			const width = await tab.evaluate(
 				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
 			);
 			return {
-				pass: buttons && dayEnd && width.body <= width.viewport,
+				pass: buttons && dayEnd && english && width.body <= width.viewport,
+				recorded: recorded.slice(0, 4),
 				byFour,
 				byMidnight,
 				kept,

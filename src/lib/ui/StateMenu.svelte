@@ -22,6 +22,7 @@
 		provenance,
 		onchoose,
 		onknew,
+		ontranslate,
 		onclose,
 		memory,
 		parameters,
@@ -40,6 +41,8 @@
 		onchoose: (state: string) => void;
 		/** The reader only checked a word they knew: a check, not a lookup (spec 007). */
 		onknew?: () => void;
+		/** The sentence's translation was opened: its words were helped (2026-10-04). */
+		ontranslate?: () => void;
 		onclose: () => void;
 		/** The word's memory per skill (spec 007, FR-018), shown in plain words. */
 		memory?: Partial<Record<Skill, Memory>>;
@@ -174,6 +177,7 @@
 				<!-- eslint-disable svelte/no-navigation-without-resolve -->
 				<a
 					href={translateUrl}
+					onclick={() => ontranslate?.()}
 					class="icon tap"
 					target="_blank"
 					rel="noreferrer"

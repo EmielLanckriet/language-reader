@@ -96,6 +96,7 @@ const MIN_PLAYED_MS = 250;
 export class Recorder {
 	private session: number | undefined;
 	private buffer: Encounter[] = [];
+	private opening: Encounter[] = [];
 	private chunk: OpenChunk | undefined;
 	private open: { word: WordAt; moment?: MediaMoment; at: string } | undefined;
 	private lastRead = '';
@@ -226,8 +227,26 @@ export class Recorder {
 		});
 	}
 
-	translation(line: number, source: string | undefined): void {
-		this.push({ kind: 'translation', documentId: this.documentId, detail: { line, source } });
+	/**
+	 * English was put on screen for a line, or (`range`) for a sentence of a text. Its range lets the
+	 * evidence rule leave the untapped words under it unscored (asked for 2026-10-04).
+	 */
+	translation(
+		line: number | undefined,
+		source: string | undefined,
+		range = line === undefined ? undefined : this.lineRanges[line]
+	): void {
+		this.push({
+			kind: 'translation',
+			documentId: this.documentId,
+			...(range ? { fromOffset: range[0], toOffset: range[1] } : {}),
+			detail: line === undefined ? { source } : { line, source }
+		});
+	}
+
+	/** A setting as the session opened, written with its first batch: opening alone writes nothing. */
+	noteAtStart(name: string, value: unknown): void {
+		this.opening.push({ kind: 'setting', at: this.stamp(), detail: { name, value } });
 	}
 
 	setting(name: string, value: unknown): void {
@@ -297,7 +316,7 @@ export class Recorder {
 	}
 
 	private stash(): void {
-		const unsent = [...this.inflight, ...this.buffer];
+		const unsent = [...this.inflight, ...(this.buffer.length ? this.opening : []), ...this.buffer];
 		try {
 			if (unsent.length === 0) localStorage.removeItem(this.stashKey);
 			else
@@ -395,7 +414,8 @@ export class Recorder {
 
 	private async write(): Promise<void> {
 		if (this.buffer.length === 0) return;
-		const batch = this.buffer;
+		const batch = [...this.opening, ...this.buffer];
+		this.opening = [];
 		this.buffer = [];
 		this.inflight = batch;
 		try {

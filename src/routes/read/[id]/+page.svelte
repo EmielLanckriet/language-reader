@@ -679,12 +679,17 @@
 	}
 
 	/** The subtitle line, or the sentence, the token sits in: what gets sent to be translated. */
-	function sentenceAround(token: Token): string {
+	function sentenceRange(token: Token): [number, number] {
 		const ends = media ? /\n/ : /[\n。！？!?]/;
 		let from = token.start;
 		while (from > 0 && !ends.test(characters[from - 1])) from--;
 		let to = token.end;
 		while (to < characters.length && !ends.test(characters[to - 1] ?? '')) to++;
+		return [from, to];
+	}
+
+	function sentenceAround(token: Token): string {
+		const [from, to] = sentenceRange(token);
 		return characters.slice(from, to).join('').trim();
 	}
 
@@ -844,6 +849,8 @@
 				recorder?.closed({ knew: 'knew' });
 				menuClosed();
 			}}
+			ontranslate={() =>
+				recorder?.translation(undefined, 'google-translate', sentenceRange(chosen!))}
 			onclose={menuClosed}
 		/>
 	{/if}

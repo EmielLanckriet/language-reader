@@ -13,7 +13,7 @@
 <script lang="ts">
 	import type { Cue } from '$lib/media/subtitles';
 	import type { English } from '$lib/translation/lines';
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
 	import type { Recorder } from './recorder';
 
@@ -380,9 +380,23 @@
 		requestAnimationFrame(watchLineEnd);
 	}
 
+	/**
+	 * What English the session opens with, since both are remembered across sessions: in the stage
+	 * with blur off, every line's English is on screen (2026-10-04).
+	 */
+	$effect(() => {
+		const opened = recorder;
+		if (!opened) return;
+		untrack(() => {
+			opened.noteAtStart('stage', stage);
+			opened.noteAtStart('blurEnglish', blurEnglish);
+		});
+	});
+
 	function setStage(on: boolean) {
 		stage = on;
 		keep('reader.stage', on);
+		recorder?.setting('stage', on);
 		if (!on && document.fullscreenElement) void document.exitFullscreen();
 	}
 

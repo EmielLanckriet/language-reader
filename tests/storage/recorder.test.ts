@@ -9,6 +9,42 @@ import { buildHistory } from '../backup/support';
 // and writes it once.
 
 describe('the recorder', () => {
+	it('writes where English was visible: the opening state first, and each reveal with its range', async () => {
+		const written: Parameters<Repository['recordEncounters']>[1] = [];
+		const sink = {
+			startSession: async () => 1,
+			recordEncounters: async (_s: number, batch: typeof written) => void written.push(...batch)
+		};
+		const recorder = new Recorder(sink, 7, 'media', [
+			[0, 3],
+			[4, 6]
+		]);
+		recorder.noteAtStart('blurEnglish', false);
+		await recorder.flush();
+		// Opening a video and leaving records nothing, so no empty session.
+		expect(written).toEqual([]);
+		for (let ms = 0; ms <= 1000; ms += 250)
+			recorder.playing(0, { mediaMs: ms, speed: 1, textVisible: true });
+		recorder.translation(1, 'quick');
+		recorder.translation(undefined, 'google-translate', [0, 3]);
+		await recorder.close();
+		const shown = written.filter((e) => e.kind === 'setting' || e.kind === 'translation');
+		expect(written[0]).toMatchObject({
+			kind: 'setting',
+			detail: { name: 'blurEnglish', value: false }
+		});
+		expect(shown.slice(1)).toMatchObject([
+			{ kind: 'translation', documentId: 7, fromOffset: 4, toOffset: 6, detail: { line: 1 } },
+			{
+				kind: 'translation',
+				documentId: 7,
+				fromOffset: 0,
+				toOffset: 3,
+				detail: { source: 'google-translate' }
+			}
+		]);
+	});
+
 	it('writes a lookup, a check, a replay and the played stretches in order, each once', async () => {
 		const db = await freshDatabase();
 		const repository = new Repository(db);

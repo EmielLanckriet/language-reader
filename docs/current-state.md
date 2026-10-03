@@ -18,6 +18,14 @@ before that local hour counts toward the day before, and the week starts at that
 Judged by the local clock hour, so DST nights stay right; a test covers the spring-forward night
 where a fixed shift would be wrong. Weekly credit is derived, so changing it rewrites no history.
 
+Recording of visible English, so a later evidence rule can leave words under shown English
+neither success nor failure (reader's rule, 2026-10-04; planned for spec 013, not yet applied):
+reveals now carry their line's offsets (older ones only a line index), a video session records
+its opening stage/blur state (written only with its first real encounter), stage toggles are
+recorded, and opening the word sheet's Google Translate link records the sentence's range. The
+current evidence-2 rule still gives such words a Good. The Google link wiring was not
+browser-checked (it leaves the app); the recorder test covers its range.
+
 ## Subtitle track choice — deployed and phone checked
 
 Spec 012 (ADR-0036): Termux downloads every human subtitle track plus automatic Chinese only when no
