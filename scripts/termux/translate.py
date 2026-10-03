@@ -213,9 +213,37 @@ def source(job):
     return (min(tracks, key=preference) if tracks else None), False
 
 
+HAN = re.compile('[\u3400-\u9fff\uf900-\ufaff\U00020000-\U0003ffff]')
+TIMING = re.compile(r'-->')
+
+
+def mixed(path):
+    """Whether most cues carry a line without Chinese beside a Chinese one (pinyin or English)."""
+    with open(path, encoding='utf-8') as file:
+        blocks = file.read().replace('\r', '').split('\n\n')
+    cues = hits = 0
+    for block in blocks:
+        lines = block.split('\n')
+        at = next((i for i, line in enumerate(lines) if TIMING.search(line)), None)
+        if at is None:
+            continue
+        text = [t for t in (re.sub(r'<[^>]*>', '', line).strip() for line in lines[at + 1:]) if t]
+        if not text:
+            continue
+        cues += 1
+        if any(HAN.search(t) for t in text) and any(not HAN.search(t) and re.search(r'[^\W\d_]{2}', t) for t in text):
+            hits += 1
+    return cues > 0 and hits / cues > 0.3
+
+
 def preference(path):
-    """The app's order (src/lib/media/import.ts), so the English lines up with the track it shows."""
+    """The app's order (chooseChineseTrack in src/lib/media/subtitles.ts), so the English lines up
+    with the track it shows: clean before mixed, then simplified before traditional."""
     name = os.path.basename(path)
+    return (mixed(path),) + names(name)
+
+
+def names(name):
     if re.search(r'zh-(CN|Hans|SG)\b', name, re.I):
         return (0, name)
     if re.search(r'\.zh\.', name, re.I):

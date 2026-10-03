@@ -44,6 +44,19 @@ class Source(unittest.TestCase):
             file.write('WEBVTT\n\n00:00:00.200 --> 00:00:01.000\n上海\n')
         self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
 
+    def test_the_clean_track_the_app_shows_is_translated(self):
+        # Jun - Stickynote Chinese: zh-Hans carries a pinyin line under each line, zh is clean, and
+        # the app imports zh (src/lib/media/subtitles.ts, chooseChineseTrack).
+        job = tempfile.mkdtemp()
+        tracks = {
+            'media.zh-Hans.vtt': '点餐都不行。\ndiǎncān dōu bùxíng.',
+            'media.zh.vtt': '点餐都不行。',
+        }
+        for name, cue in tracks.items():
+            with open(os.path.join(job, name), 'w', encoding='utf-8') as file:
+                file.write(f'WEBVTT\n\n00:00:02.800 --> 00:00:04.000\n{cue}\n')
+        self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
+
 
 class ModelBudget(unittest.TestCase):
     def test_running_model_is_killed_when_memory_falls(self):
