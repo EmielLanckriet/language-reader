@@ -83,13 +83,18 @@ function rank(a: ClassifiedTrack, b: ClassifiedTrack): number {
 export function classifyTracks(tracks: SubtitleTrack[]): ClassifiedTrack[] {
 	const classified = tracks.map((track) => {
 		const cues = cueLines(track.text);
+		// Japanese is written largely in Chinese characters: the language code has to agree.
 		const chinese =
-			cues.length > 0 && cues.filter((text) => text.some(han)).length / cues.length > 0.5;
+			(track.lang === '' || /^zh\b/i.test(track.lang)) &&
+			cues.length > 0 &&
+			cues.filter((text) => text.some(han)).length / cues.length > 0.5;
 		return {
 			...track,
 			chinese,
 			mixed: chinese && mixedShare(track.text) > 0.3,
-			english: !chinese && /^en\b/i.test(track.lang)
+			// English-coded learner tracks often carry Chinese and pinyin too: those are not English.
+			english:
+				/^en\b/i.test(track.lang) && cues.filter((text) => text.some(han)).length <= cues.length / 2
 		};
 	});
 	const chinese = classified.filter((track) => track.chinese).sort(rank);

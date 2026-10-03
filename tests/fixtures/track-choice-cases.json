@@ -212,6 +212,54 @@
 				"english": "track.en.vtt",
 				"needed": true
 			}
+		},
+		{
+			"name": "a Japanese track written in kanji is not Chinese",
+			"tracks": [
+				{
+					"file": "track.ja.vtt",
+					"lang": "ja",
+					"name": "Japanese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n中国に着いて才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				},
+				{
+					"file": "track.zh.vtt",
+					"lang": "zh",
+					"name": "Chinese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh.vtt",
+				"english": "machine",
+				"needed": false
+			}
+		},
+		{
+			"name": "an English-coded track that is really Chinese with pinyin is not English",
+			"tracks": [
+				{
+					"file": "track.en-US.vtt",
+					"lang": "en-US",
+					"name": "English (+Pinyin)",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\nDào le zhōngguó cái fāxiàn wǒ de zhōngwén yǒuduōchà,\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\ndiǎncān dōu bùxíng.\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\nXiǎng zhǎo dōngxī bìxū jìnrù zhōngguó de xìtǒng lǐ,\n"
+				},
+				{
+					"file": "track.zh.vtt",
+					"lang": "zh",
+					"name": "Chinese",
+					"kind": "human",
+					"vtt": "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\n到了中国才发现我的中文有多差，\n\n00:00:02.000 --> 00:00:04.000\n点餐都不行。\n\n00:00:04.000 --> 00:00:06.000\n想找东西必须进入中国的系统里，\n"
+				}
+			],
+			"expect": {
+				"chinese": "track.zh.vtt",
+				"english": "machine",
+				"needed": false
+			}
 		}
 	]
 }

@@ -286,9 +286,13 @@ def classify_tracks(tracks):
     classified = []
     for track in tracks:
         found = cue_lines(track['text'])
-        chinese = bool(found) and sum(1 for text in found if any(HAN.search(t) for t in text)) / len(found) > 0.5
+        # Japanese is written largely in Chinese characters: the language code has to agree.
+        chinese = (track['lang'] == '' or bool(re.match(r'zh\b', track['lang'], re.I))) and bool(found) \
+            and sum(1 for text in found if any(HAN.search(t) for t in text)) / len(found) > 0.5
         classified.append(dict(track, chinese=chinese, mixed=chinese and mixed_share(track['text']) > 0.3,
-                               english=not chinese and bool(re.match(r'en\b', track['lang'], re.I))))
+                               # English-coded learner tracks often carry Chinese and pinyin: not English.
+                               english=bool(re.match(r'en\b', track['lang'], re.I)) and
+                               sum(1 for text in found if any(HAN.search(t) for t in text)) <= len(found) / 2))
     chinese = sorted((t for t in classified if t['chinese']),
                      key=lambda t: (t['mixed'], t['kind'] != 'human', names(t['file'])[0]))
     seen = {}
