@@ -7,7 +7,8 @@ reader. Short fixtures (90 s clips, small synthetic histories).
 
 1. `npx vitest run tests/domain/evidence.test.ts tests/storage/helped.test.ts` — property test
    (SC-001): helped words never succeed or gain; every tap is a failure; undone taps vanish;
-   Known-from-sheet is not a tap. Mutate the helped check and the undo filter; both must go red.
+   a tap closed by choosing Known is still a tap; a tap under shown English is still a failure.
+   Mutate the helped check and the undo filter; both must go red.
 2. `npm run verify:browser -- listened` (fixture service on 18765): reveal a line, finish with
    "every unknown word", export; the revealed line's words have `helped: true`.
 3. Word sheet: tap → **Undo tap** → Diagnostics shows `tap-undone`, no lookup.

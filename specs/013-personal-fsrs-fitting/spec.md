@@ -220,3 +220,5 @@ same export, within tolerance; cancel mid-fit leaves nothing changed.
   is open; undoing cancels the card it created (an existing card stays).
 - Q: Why fit on the laptop when Anki fits on the phone? → A: laptop first to validate, then a
   bounded, cancellable fit in Reader (Story 4) from the same code, after measuring it on the phone.
+- Q: Is a tap closed by marking the word Known still a tap? → A: yes; every tap is a tap. With
+  English shown, untapped words are never successes but taps still count as failures.

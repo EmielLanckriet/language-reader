@@ -26,9 +26,10 @@ first expressed in the existing fold, then reproduced exactly by the engine as i
 `recorder.opened` only holds the tap in memory; `closed` → `settle` writes `lookup` or `check`
 when the sheet closes (`src/lib/ui/recorder.ts:281-377`). Decision: undo while the sheet is open
 drops the pending tap and writes a `tap-undone` encounter (kept as a fact: how often taps are
-mistaken), never a lookup. Checks with `knew: 'knew'` count as taps under `evidence-3`; a sheet
-closed by choosing **Known** or **Ignored** (`knew: 'known'`, `+page.svelte:610`) is a status
-decision, not a failure to understand, and is not a tap. The "I knew it" button is removed.
+mistaken), never a lookup. Every check counts as a tap under `evidence-3`, including a sheet
+closed by choosing **Known** (`knew: 'known'`, `+page.svelte:610`): the reader would not have
+tapped a word they knew (2026-10-04). The "I knew it" button is removed and every closed tap is
+recorded as a lookup.
 
 ## R4. FSRS-6 and the fit
 

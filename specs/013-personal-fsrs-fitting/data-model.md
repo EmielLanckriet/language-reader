@@ -17,11 +17,11 @@ backups already carry); everything else is derived.
 | Item | From | Fields |
 |---|---|---|
 | `review` | review encounter | skill, grade |
-| `tap` | lookup, or check with `knew: 'knew'`, not followed by `tap-undone` | session |
+| `tap` | lookup or check, not undone | session |
 | `seen` | read/played stretches of a session | skill, session, `answer`, `helped` (every occurrence helped), `textVisible` |
 
-`evidence-3` (Story 1) = `evidence-2` with: checks with `knew: 'knew'` are taps; a `seen` item
-gives its Good only if not `helped`; Known/Ignored-from-sheet closes are not taps.
+`evidence-3` (Story 1) = `evidence-2` with: every check is a tap; a `seen` item gives its Good
+only if not `helped`. A tap stays a failure whether or not English was shown.
 
 ## Derived: outcomes (scored, never stored)
 
