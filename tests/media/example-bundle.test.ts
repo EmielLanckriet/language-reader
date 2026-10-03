@@ -1,6 +1,11 @@
 import { expect, it, vi } from 'vitest';
 vi.mock('../../src/lib/storage/session', () => ({ session: vi.fn() }));
-import { importExampleBundle, readExampleBundle } from '../../src/lib/media/example-bundle';
+import { session } from '../../src/lib/storage/session';
+import {
+	exampleAudio,
+	importExampleBundle,
+	readExampleBundle
+} from '../../src/lib/media/example-bundle';
 function tar(files: [string, string][]) {
 	const parts: Uint8Array[] = [];
 	for (const [name, text] of files) {
@@ -43,19 +48,14 @@ it('reads a bounded bundle and rejects missing, duplicate and traversal audio en
 		audio: [{ name, id: 'a'.repeat(64), size: 3, mime: 'audio/mpeg' }]
 	};
 	const file: [string, string] = ['examples.json', JSON.stringify(manifest)];
-	vi.stubGlobal('navigator', {
-		storage: { getDirectory: async () => ({ getDirectoryHandle: async () => ({}) }) }
-	});
-	try {
-		await expect(
-			importExampleBundle(tar([file, ['audio/' + name, 'abc']]), () => {})
-		).rejects.toThrow('damaged');
-	} finally {
-		vi.unstubAllGlobals();
-	}
-	const bundle = await readExampleBundle(tar([file, ['audio/' + name, 'abc']]));
+	const archive = tar([file, ['audio/' + name, 'abc']]);
+	const bundle = await readExampleBundle(archive);
 	expect(bundle.examples[0].text).toBe('你好。');
-	expect(await bundle.audio[0].blob.text()).toBe('abc');
+	expect(
+		await archive
+			.slice(bundle.audio[0].offset, bundle.audio[0].offset + bundle.audio[0].size)
+			.text()
+	).toBe('abc');
 	await expect(readExampleBundle(tar([file]))).rejects.toThrow('Incomplete');
 	await expect(
 		readExampleBundle(tar([file, ['audio/' + name, 'abc'], ['audio/' + name, 'abc']]))
@@ -85,4 +85,54 @@ it('reads archive headers from bounded chunks rather than one storage request pe
 		audio: { length: audio.length }
 	});
 	expect(reads).toBeLessThan(4);
+});
+
+it('keeps a validated archive as one OPFS file before saving example metadata', async () => {
+	const name = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad.mp3';
+	const archive = tar([
+		[
+			'examples.json',
+			JSON.stringify({
+				format: 'reader-anki-examples',
+				version: 1,
+				examples: [],
+				audio: [{ name, id: name.slice(0, 64), size: 3, mime: 'audio/mpeg' }]
+			})
+		],
+		[`audio/${name}`, 'abc']
+	]);
+	const files = new Map<string, Blob>();
+	const root = {
+		getFileHandle: async (name: string, options?: { create?: boolean }) => {
+			if (!options?.create && !files.has(name)) throw new Error('not found');
+			return {
+				getFile: async () => files.get(name)!,
+				createWritable: async () => ({
+					write: async (value: Blob | string) =>
+						files.set(name, typeof value === 'string' ? new Blob([value]) : value),
+					close: async () => {}
+				}),
+				move: async (destination: string) => {
+					files.set(destination, files.get(name)!);
+					files.delete(name);
+				}
+			};
+		},
+		removeEntry: async (name: string) => files.delete(name)
+	};
+	vi.stubGlobal('navigator', {
+		storage: { getDirectory: async () => ({ getDirectoryHandle: async () => root }) }
+	});
+	const imported = vi.fn(() => 0);
+	vi.mocked(session).mockResolvedValue({ repository: { importCardExamples: imported } } as never);
+	try {
+		await expect(importExampleBundle(archive, () => {})).resolves.toBe(0);
+		const bundles = [...files.entries()].filter(([name]) => name.startsWith('anki-bundle-'));
+		expect(bundles).toHaveLength(1);
+		expect(bundles[0][1].size).toBe(archive.size);
+		expect(await (await exampleAudio(name))?.text()).toBe('abc');
+		expect(imported).toHaveBeenCalledWith([]);
+	} finally {
+		vi.unstubAllGlobals();
+	}
 });

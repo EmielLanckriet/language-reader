@@ -32,7 +32,7 @@
 	let playing = $state(false);
 	let audioProblem = $state('');
 	let sentenceClip = $state<{ file: Blob; start: number; end?: number } | null>(null);
-	let wordClip: File | undefined;
+	let wordClip: Blob | undefined;
 	let request = 0;
 	$effect(() => {
 		audio = new CardAudio((active, error) => {
