@@ -65,8 +65,8 @@ Independent test: switch English on an imported document; marks, encounters and 
 - [X] T026 [P] Write docs/adr/0036-subtitle-tracks-chosen-at-import.md (track naming, choice protocol, app-before-Termux deployment order)
 - [X] T027 [P] Update specs/008-in-app-speech-to-text/contracts/reader-service.md with a pointer to the 012 contract. Backup unchanged by decision (ADR-0036: derived English setting, versioned format); recorded as an accepted limitation instead
 - [X] T028 Run vitest, Python unittest, type check, lint and the affected `verify:browser` scenarios (quickstart.md laptop checks 1–4)
-- [ ] T029 Deploy the app, then the Termux scripts (setup/update), then run quickstart.md phone checks 1–3 in one batch; record the video with a human English track used for check 2 in quickstart.md
-- [ ] T030 Update docs/current-state.md with the result, including what was and was not verified on the phone
+- [X] T029 Deploy the app, then the Termux scripts (setup/update), then run quickstart.md phone checks 1–3 in one batch; record the video with a human English track used for check 2 in quickstart.md
+- [X] T030 Update docs/current-state.md with the result, including what was and was not verified on the phone
 
 ## Revision after the phone check (2026-10-03)
 

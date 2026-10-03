@@ -3,6 +3,30 @@
 Updated 2026-09-30. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Subtitle track choice — deployed and phone checked
+
+Spec 012 (ADR-0036): Termux downloads every human subtitle track plus automatic Chinese only when no
+human Chinese arrived, as `track.<lang>.vtt` with `tracks.json`. Reader picks the clean Chinese
+track by content (Jun's pinyin track is named "Chinese (Simplified)") and asks only when there are
+two different clean human Chinese tracks or a human English track. A chosen human English track is
+matched to Chinese lines by time and shown alone: the reader decided that lines its maker left
+untranslated stay empty, so nothing is machine-translated beside it (cards still fall back). Termux
+translates at once only when nothing is asked; otherwise after Reader reports the choice.
+
+Local validation: 466 app tests and the Termux suite, a shared case table run by both languages,
+mutation checks, type check, lint, and the `tracks` and `media` browser scenarios (the subtitle
+question fits 390 px). Phone (Samsung A71, 2026-10-03, app `ad5dbaa`, Termux scripts from the same
+commit): two Jun videos imported without a question from the clean track; Grace Mandarin
+kOr5UuoKwQg asked, imported with its human English (181 of 188 lines; 7 left empty) and Termux
+translated nothing. One Jun translation was stopped by the resource guard (ADR-0032) while a second
+download ran; `translate.log` in each job now records why. Not phone-checked: switching English
+later, "Transcribe it myself" with a human track, and two clean Chinese tracks.
+
+Findings: Jun and Lazy Chinese put their English inside a Chinese+pinyin+English track, which counts
+as mixed Chinese, so their human English is not offered (splitting is an anticipated change). Grace
+Mandarin's Chinese track carries traditional and simplified lines per cue; both scripts end up in the
+text, as the mixed-track test does not catch two Chinese lines.
+
 ## Phone freeze incident — open validation
 
 The reader reported a hot, unresponsive phone on 2026-09-29 that recovered after battery depletion.
