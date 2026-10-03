@@ -91,8 +91,8 @@ and every word's memory is recomputed. Later they can return to any previous set
 - Sessions before 2026-10-04 have no record of opening with blur off: they count as blurred unless
   a blur-off toggle was recorded in them (the reader normally keeps English blurred).
 - A tap is a tap: the "I knew it" qualification goes. Checks recorded before this count as taps.
-- A mistaken tap can be undone in the word sheet; an undone tap counts as untapped. Undoing is
-  recorded beside the tap, which itself stays in the history.
+- A mistaken tap can be undone while its word sheet is open; an undone tap counts as untapped and
+  creates no card. Undoing is recorded beside the tap, which itself stays in the history.
 - Words met only while listening with the screen off: inputs only, never outcomes.
 - Withdrawn sessions contribute nothing; segmentation corrections change which word an outcome
   belongs to on recompute, never the recorded encounter.
@@ -109,8 +109,10 @@ and every word's memory is recomputed. Later they can return to any previous set
   untapped-word credit in scheduling; it is neither success nor failure.
 - **FR-013**: Tapping a word MUST record only that it was tapped; the word sheet no longer asks
   whether it was known. Existing checks are treated as taps.
-- **FR-014**: The reader MUST be able to undo a mistaken tap from the word sheet; an undone tap is
-  treated as untapped everywhere, and the undo is append-only.
+- **FR-014**: While the word sheet is still open, the reader MUST be able to undo the tap that
+  opened it; an undone tap is treated as untapped everywhere, including not making the word a card
+  (a word that was already a card stays one). The undo is append-only. Once the sheet is closed,
+  the tap stands.
 - **FR-003**: In a session answered "every unknown word", an untapped, unhelped word met with the
   text visible is an in-context success; in any non-withdrawn session, a lookup is an in-context
   failure. Untapped words in other sessions are unscored.
@@ -128,9 +130,10 @@ and every word's memory is recomputed. Later they can return to any previous set
   previous sets, allow returning to any of them, and include all of this in backups.
 - **FR-010**: Applying or rolling back MUST NOT alter any recorded encounter, review or mark.
 - **FR-011**: Session engagement answers (watched/listened, attentive) stay record-only.
-- **FR-012**: Reader MUST refuse to apply a set unless its report shows it predicted the
-  later period better than the current set, with enough outcomes for a verdict. Rolling back to a
-  set that was active before is always allowed.
+- **FR-012**: Reader MUST refuse to apply a set unless its report shows that, on the later period,
+  it predicted in-context reading outcomes better than the current set, with enough of them for a
+  verdict, and predicted card outcomes no worse (judged only when there are enough card outcomes).
+  Rolling back to a set that was active before is always allowed.
 
 ### Key Entities
 
@@ -185,3 +188,7 @@ and every word's memory is recomputed. Later they can return to any previous set
   only, with a way to undo a mistaken tap. Past checks count as taps.
 - Q: May a set that did not predict better be applied? → A: no; only a set that beat the current
   one on the later period with enough data. Rolling back to an earlier active set stays allowed.
+- Q: Which predictions decide whether a set "predicted better"? → A: in-context reading outcomes
+  decide; card outcomes must be no worse.
+- Q: How long can a tap be undone, and does undoing cancel its card? → A: only while the word sheet
+  is open; undoing cancels the card it created (an existing card stays).
