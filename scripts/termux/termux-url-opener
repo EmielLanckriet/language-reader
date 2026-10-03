@@ -115,9 +115,19 @@ command -v termux-wake-lock >/dev/null && termux-wake-lock
 # English for each line of a downloaded track, but only when Reader will not ask which tracks to use
 # (spec 012): then translation waits for Reader's choice, which the reader service receives. A video
 # without subtitles is translated when Reader's transcript arrives (the service starts it then too).
-if ls track*.vtt >/dev/null 2>&1 && command -v llama-completion >/dev/null &&
-	[ "$(python3 ~/bin/translate.py --check-choice "$work")" = none ]; then
-	python3 ~/bin/translate.py "$work" &
+# translate.log keeps the decision and translate.py's own output: this window closes with the job, and
+# a translation that never started left no trace (2026-10-03). No "exit" line means it was killed.
+if ls track*.vtt >/dev/null 2>&1; then
+	choice=$(python3 ~/bin/translate.py --check-choice "$work" 2>>translate.log) || true
+	llama=$(command -v llama-completion || true)
+	echo "$(date '+%F %T') choice=[$choice] llama=[$llama]" >>translate.log
+	if [ "$choice" = none ] && [ -n "$llama" ]; then
+		(
+			python3 ~/bin/translate.py "$work"
+			echo "$(date '+%F %T') translate.py exit $?"
+		) >>translate.log 2>&1 &
+		echo "$(date '+%F %T') started translate.py" >>translate.log
+	fi
 fi
 # Also waits for the service, when this job started it (see the top; if the service was
 # already running, reader-service-up returned at once).
