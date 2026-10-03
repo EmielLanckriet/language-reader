@@ -82,6 +82,29 @@ and every word's memory is recomputed. Later they can return to any previous set
    it was under the previous set.
 4. **Given** a backup restored on another device, **When** opened, **Then** the same set is active.
 
+---
+
+### User Story 4 - Fit in Reader on the phone (Priority: P4)
+
+Once the fit is validated on the laptop and measured on the phone, the reader taps "Fit" in
+Reader. The same fit as the laptop command runs in the background, can be cancelled, stops if the
+phone is hot or busy, and ends in the same report and the same apply rule as Story 3. The laptop
+command remains for experiments.
+
+**Why this priority**: removes the export/import round trip and allows refitting at will, but
+only after the fit is proven and its phone cost measured (ADR-0032).
+
+**Independent Test**: on the phone, fit the reader's history; same parameters as the laptop on the
+same export, within tolerance; cancel mid-fit leaves nothing changed.
+
+**Acceptance Scenarios**:
+
+1. **Given** the same history, **When** fitted in Reader and on the laptop, **Then** both reports
+   agree within rounding.
+2. **Given** a fit in progress, **When** the reader cancels or the resource guard stops it, **Then**
+   nothing is applied or recorded as a set.
+3. **Given** a finished fit, **When** shown, **Then** applying follows FR-012.
+
 ### Edge Cases
 
 - A word occurs several times in a session: one outcome per word per session; a lookup anywhere
@@ -125,7 +148,9 @@ and every word's memory is recomputed. Later they can return to any previous set
 - **FR-007**: The fit MUST use only earlier-period outcomes and MUST be scored on later-period
   outcomes against the current rule and the Anki-imported weights, with a stated minimum number of
   outcomes per type below which no verdict is given.
-- **FR-008**: Fitting runs on the laptop. The phone only recomputes memory under a chosen set.
+- **FR-008**: The fit MUST be one implementation that runs both as a laptop command and inside
+  Reader. Reader's fit (Story 4) runs in the background under the resource guard (ADR-0032), is
+  cancellable, and ships only after the laptop fit is validated and its phone cost measured.
 - **FR-009**: Reader MUST record which parameter set is active and every change of it, keep
   previous sets, allow returning to any of them, and include all of this in backups.
 - **FR-010**: Applying or rolling back MUST NOT alter any recorded encounter, review or mark.
@@ -155,6 +180,8 @@ and every word's memory is recomputed. Later they can return to any previous set
 - **SC-003**: For the reader's real export, the report gives later-period scores for each outcome
   type and skill with enough data, or says "too little data", in under 10 minutes on the laptop.
 - **SC-004**: Applying then rolling back yields memory identical, field for field, to before.
+- **SC-006**: A fit of the reader's history in Reader on the Samsung A71 finishes in under 2
+  minutes, stops within 1 second of cancelling, and leaves the app usable meanwhile.
 - **SC-005**: Recomputing memory after applying finishes on the Samsung A71 for the reader's
   collection in under 30 seconds, with the app usable meanwhile.
 
@@ -175,7 +202,6 @@ and every word's memory is recomputed. Later they can return to any previous set
 | A per-word listening outcome (e.g. a "didn't catch it" headphone press) | Medium | Cheap; new encounter kind | Defer |
 | Engagement answers as a fitted covariate | Medium | Cheap; already recorded | Defer (FR-011) |
 | Refitting on a schedule | Medium | Cheap; same command | Defer |
-| Fitting on the phone | Low | Expensive (heat, ADR-0032) | Ignore |
 | Separate review weights per skill | Medium | Cheap; parameter set is versioned | Defer |
 
 ## Clarifications
@@ -192,3 +218,5 @@ and every word's memory is recomputed. Later they can return to any previous set
   decide; card outcomes must be no worse.
 - Q: How long can a tap be undone, and does undoing cancel its card? → A: only while the word sheet
   is open; undoing cancels the card it created (an existing card stays).
+- Q: Why fit on the laptop when Anki fits on the phone? → A: laptop first to validate, then a
+  bounded, cancellable fit in Reader (Story 4) from the same code, after measuring it on the phone.
