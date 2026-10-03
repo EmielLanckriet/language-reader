@@ -26,6 +26,8 @@ const valid: Encounter[] = [
 	{ kind: 'setting', at, detail: { name: 'speed', value: 0.75 } },
 	{ kind: 'attention', at, detail: { answer: 'all' } },
 	{ kind: 'attention', at, detail: { answer: null } },
+	{ kind: 'engagement', at, detail: { mode: 'listened', attentive: 'yes' } },
+	{ kind: 'engagement', at, detail: { mode: null, attentive: 'partly' } },
 	{ kind: 'review', at, ...word, detail: { skill: 'reading', grade: 3 } },
 	{ kind: 'review', at, lexemeId: 7, detail: { skill: 'reading', grade: 3 } },
 	{ kind: 'something-a-later-build-writes', at }
@@ -57,6 +59,15 @@ const invalid: [string, Encounter][] = [
 	],
 	['an attention answer not offered', { kind: 'attention', at, detail: { answer: 'mostly' } }],
 	['an attention without an answer field', { kind: 'attention', at, detail: {} }],
+	[
+		'an engagement mode not offered',
+		{ kind: 'engagement', at, detail: { mode: 'skimmed', attentive: null } }
+	],
+	[
+		'an engagement attentiveness not offered',
+		{ kind: 'engagement', at, detail: { mode: 'watched', attentive: true } }
+	],
+	['an engagement without its fields', { kind: 'engagement', at, detail: {} }],
 	[
 		'text visibility that is not a yes or no',
 		{ kind: 'lookup', at, ...word, textVisible: 2 as unknown as boolean }

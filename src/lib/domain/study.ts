@@ -1,4 +1,4 @@
-import type { AttentionAnswer } from './encounter';
+import type { AttentionAnswer, Engagement } from './encounter';
 
 export interface StudyEvent {
 	kind: string;
@@ -16,6 +16,8 @@ export interface StudySession {
 	ended: boolean;
 	answered: boolean;
 	answer: AttentionAnswer;
+	/** How the reader says they took it in, when they said; the latest saying wins. */
+	engagement: Engagement | null;
 	available: boolean;
 }
 

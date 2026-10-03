@@ -105,6 +105,45 @@ it('keeps feedback across reopen, appends corrections, excludes withdrawals and 
 	}
 });
 
+it('keeps how a session was taken in beside its lookup answer, changing neither memory nor its end', async () => {
+	const db = await freshDatabase();
+	try {
+		const repo = new Repository(db);
+		const [id] = await buildHistory(repo, ['你好'], []);
+		const session = repo.startSession(id, 'media');
+		const at = '2026-10-04T10:00:00Z';
+		const later = '2026-10-04T18:00:00Z';
+		repo.recordEncounters(session, [
+			{
+				kind: 'played',
+				at,
+				documentId: id,
+				fromOffset: 0,
+				toOffset: 2,
+				mediaMs: 0,
+				textVisible: false,
+				detail: { toMs: 40000 }
+			},
+			{ kind: 'session-end', at },
+			{ kind: 'attention', at, detail: { answer: 'all' } }
+		]);
+		const memory = () => queryRows(db, 'SELECT * FROM memory ORDER BY lexeme_id, skill');
+		const before = memory();
+		repo.recordEncounters(session, [
+			{ kind: 'engagement', at: later, detail: { mode: 'watched', attentive: null } },
+			{ kind: 'engagement', at: later, detail: { mode: 'listened', attentive: 'partly' } }
+		]);
+		expect(memory()).toEqual(before);
+		expect(repo.studyOverview('Europe/Brussels', new Date(later)).sessions[0]).toMatchObject({
+			answer: 'all',
+			lastAt: at,
+			engagement: { mode: 'listened', attentive: 'partly' }
+		});
+	} finally {
+		db.close();
+	}
+});
+
 it('records only visible non-idle reading time and closes once, with recoverable write errors', async () => {
 	let clock = Date.parse('2026-09-30T10:00:00Z');
 	const events: Parameters<Repository['recordEncounters']>[1] = [];

@@ -4,7 +4,7 @@
 	import { session } from '$lib/storage/session';
 	import { EARNED_CHANGE } from '$lib/storage/client';
 	import type { StudyOverview } from '$lib/domain/study';
-	import type { AttentionAnswer } from '$lib/domain/encounter';
+	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
 	import ErrorNotice from './ErrorNotice.svelte';
 	let { full = false }: { full?: boolean } = $props();
 	let overview = $state<StudyOverview | null>(null);
@@ -21,6 +21,15 @@
 		{ value: 'some', label: 'Only some' },
 		{ value: 'none', label: 'I wasn’t tracking unknown words' },
 		{ value: null, label: 'Skip / not sure' }
+	];
+	const modes: { value: Engagement['mode']; label: string }[] = [
+		{ value: 'watched', label: 'Watched' },
+		{ value: 'listened', label: 'Only listened' }
+	];
+	const attention: { value: Engagement['attentive']; label: string }[] = [
+		{ value: 'yes', label: 'Yes' },
+		{ value: 'partly', label: 'Partly' },
+		{ value: 'no', label: 'No' }
 	];
 	const duration = (ms: number) =>
 		ms < 60000
@@ -74,7 +83,7 @@
 			clearInterval(timer);
 		};
 	});
-	async function answer(id: number, value: AttentionAnswer) {
+	async function save(id: number, encounter: Omit<Encounter, 'at'>) {
 		if (saving !== null) return;
 		saving = id;
 		saveProblem = null;
@@ -82,9 +91,7 @@
 		try {
 			await (
 				await session()
-			).repository.recordEncounters(id, [
-				{ kind: 'attention', at: new Date().toISOString(), detail: { answer: value } }
-			]);
+			).repository.recordEncounters(id, [{ ...encounter, at: new Date().toISOString() }]);
 			await load();
 			saved = 'Saved. You can change this answer whenever you need to.';
 		} catch (error) {
@@ -93,6 +100,14 @@
 			saving = null;
 		}
 	}
+	const answer = (id: number, value: AttentionAnswer) =>
+		save(id, { kind: 'attention', detail: { answer: value } });
+	/** Both fields each time, so the latest engagement alone says the whole answer. */
+	const engage = (id: number, current: Engagement | null, change: Partial<Engagement>) =>
+		save(id, {
+			kind: 'engagement',
+			detail: { mode: null, attentive: null, ...current, ...change }
+		});
 </script>
 
 {#if problem}<ErrorNotice error={problem} onretry={load} />
@@ -182,9 +197,38 @@
 				<summary
 					><strong>{entry.title}</strong><span
 						>{when(entry.lastAt)} · {duration(entry.activityMs)} recorded</span
-					><small>{entry.answered ? 'Feedback saved · edit' : 'Optional feedback'}</small></summary
+					><small
+						>{entry.answered || entry.engagement
+							? 'Feedback saved · edit'
+							: 'Optional feedback'}</small
+					></summary
 				>
 				<div class="session-body">
+					{#if entry.modality === 'media'}
+						<p class="question">Did you watch, or only listen?</p>
+						<div class="answer-options">
+							{#each modes as option (option.label)}<button
+									class="secondary"
+									class:chosen={entry.engagement?.mode === option.value}
+									aria-pressed={entry.engagement?.mode === option.value}
+									disabled={saving !== null}
+									onclick={() => engage(entry.id, entry.engagement, { mode: option.value })}
+									>{option.label}</button
+								>{/each}
+						</div>
+						<p class="question">Were you paying attention?</p>
+						<div class="answer-options">
+							{#each attention as option (option.label)}<button
+									class="secondary"
+									class:chosen={entry.engagement?.attentive === option.value}
+									aria-pressed={entry.engagement?.attentive === option.value}
+									disabled={saving !== null}
+									onclick={() => engage(entry.id, entry.engagement, { attentive: option.value })}
+									>{option.label}</button
+								>{/each}
+						</div>
+						<p class="muted">Kept as a note for now; it does not change your cards.</p>
+					{/if}
 					<p class="question">Did you look up every word you didn’t understand?</p>
 					<p class="muted">
 						This helps interpret untapped words. It does not affect your weekly goal.

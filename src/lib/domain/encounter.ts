@@ -21,6 +21,8 @@ export type EncounterKind =
 	| 'translation'
 	| 'setting'
 	| 'attention'
+	/** Afterwards, how the reader took a session in; recorded only, never evidence (2026-10-04). */
+	| 'engagement'
 	| 'review'
 	/** The reader took the session back (ADR-0030): its encounters count for nothing. */
 	| 'withdrawn'
@@ -30,6 +32,10 @@ export type EncounterKind =
 export type Modality = 'reading' | 'media';
 export type Skill = 'reading' | 'listening';
 export type AttentionAnswer = 'all' | 'some' | 'none' | null;
+export interface Engagement {
+	mode: 'watched' | 'listened' | null;
+	attentive: 'yes' | 'partly' | 'no' | null;
+}
 
 export interface Encounter {
 	kind: EncounterKind | string;
@@ -56,6 +62,8 @@ export class InvalidEncounter extends Error {
 }
 
 const ATTENTION_ANSWERS = ['all', 'some', 'none', null];
+const ENGAGEMENT_MODES = ['watched', 'listened', null];
+const ENGAGEMENT_ATTENTION = ['yes', 'partly', 'no', null];
 
 /**
  * Refuse an encounter missing what its kind needs. Unknown kinds pass: a newer build may write
@@ -131,6 +139,15 @@ export function validateEncounter(encounter: Encounter): void {
 		case 'attention':
 			if (!('answer' in detail) || !ATTENTION_ANSWERS.includes(detail.answer as string | null))
 				fail('has no answer the reader was offered');
+			break;
+		case 'engagement':
+			if (!('mode' in detail) || !ENGAGEMENT_MODES.includes(detail.mode as string | null))
+				fail('has no mode the reader was offered');
+			if (
+				!('attentive' in detail) ||
+				!ENGAGEMENT_ATTENTION.includes(detail.attentive as string | null)
+			)
+				fail('has no attentiveness the reader was offered');
 			break;
 	}
 }

@@ -1,7 +1,17 @@
 # Current state
 
-Updated 2026-09-30. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Player buttons and listening feedback — local
+
+Asked for on 2026-10-04 after a bike ride. ◀ now always goes to the previous line and ↻ always
+restarts the current one; ↻'s double press is gone. Headphone buttons were already 2× = replay,
+3× = previous line. A video session's feedback now also asks "Watched / Only listened" and
+"Paying attention? Yes / Partly / No", stored as an append-only `engagement` encounter (latest
+wins). These answers are recorded only: they change no memory, and the screen-visibility guess
+still decides reading vs listening evidence (reader's choice). Validation: 477 tests, an
+`engagement` storage test that caught a mutation, and the `listened` browser scenario.
 
 ## Subtitle track choice — deployed and phone checked
 

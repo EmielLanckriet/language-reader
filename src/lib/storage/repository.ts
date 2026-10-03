@@ -41,7 +41,7 @@ import {
 	type Memory,
 	type WordHistory
 } from '../domain/memory';
-import type { AttentionAnswer, Skill } from '../domain/encounter';
+import type { AttentionAnswer, Engagement, Skill } from '../domain/encounter';
 import { cardQueue, type Queue } from '../domain/queue';
 import {
 	type Database,
@@ -183,6 +183,12 @@ import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
  * Sessions the reader withdrew (a test, a mistake): their encounters stay in the history, which is
  * append-only, but count for nothing in memory (ADR-0030).
  */
+/** Checked when written, but a restored copy is not, so a missing field reads as not answered. */
+function engagementOf(detail: string): Engagement {
+	const { mode, attentive } = JSON.parse(detail);
+	return { mode: mode ?? null, attentive: attentive ?? null };
+}
+
 const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn' AND session_id IS NOT NULL`;
 const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
  WHERE e.document_id=t.document_id AND e.from_offset<=t.start AND e.to_offset>=t.end
@@ -1205,14 +1211,15 @@ export class Repository {
 		const sessions: StudySession[] = queryRows(
 			this.db,
 			`SELECT s.id, s.document_id, s.modality, s.started_at, d.title, d.removed_at,
-			MAX(CASE WHEN e.kind NOT IN ('attention','withdrawn') THEN e.at END) AS last_at,
+			MAX(CASE WHEN e.kind NOT IN ('attention','engagement','withdrawn') THEN e.at END) AS last_at,
 			SUM(CASE WHEN e.kind='study-time' THEN json_extract(e.detail,'$.durationMs') ELSE 0 END) AS activity_ms,
 			SUM(CASE WHEN e.kind='played' THEN MAX(0,json_extract(e.detail,'$.toMs')-e.media_ms) ELSE 0 END) AS played_ms,
 			MAX(CASE WHEN e.kind='session-end' THEN 1 ELSE 0 END) AS ended,
-			(SELECT detail FROM encounter a WHERE a.session_id=s.id AND a.kind='attention' ORDER BY a.device_id DESC,a.device_seq DESC LIMIT 1) AS answer
+			(SELECT detail FROM encounter a WHERE a.session_id=s.id AND a.kind='attention' ORDER BY a.device_id DESC,a.device_seq DESC LIMIT 1) AS answer,
+			(SELECT detail FROM encounter g WHERE g.session_id=s.id AND g.kind='engagement' ORDER BY g.device_id DESC,g.device_seq DESC LIMIT 1) AS engagement
 			FROM session s JOIN document d ON d.id=s.document_id JOIN encounter e ON e.session_id=s.id
 			WHERE s.id NOT IN (${WITHDRAWN}) GROUP BY s.id
-			HAVING activity_ms >= 30000 OR played_ms >= 30000 OR ended=1 OR answer IS NOT NULL
+			HAVING activity_ms >= 30000 OR played_ms >= 30000 OR ended=1 OR answer IS NOT NULL OR engagement IS NOT NULL
 			ORDER BY last_at DESC`
 		).map((row) => ({
 			id: Number(row.id),
@@ -1225,6 +1232,7 @@ export class Repository {
 			ended: row.ended === 1,
 			answered: row.answer !== null,
 			answer: row.answer === null ? null : JSON.parse(String(row.answer)).answer,
+			engagement: row.engagement === null ? null : engagementOf(String(row.engagement)),
 			available: row.removed_at === null
 		}));
 		const resume = sessions.find((s) => s.available);

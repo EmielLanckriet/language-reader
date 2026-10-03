@@ -842,6 +842,122 @@ const scenarios = {
 		}
 	},
 
+	// ◀ goes to the line before and ↻ replays this one, a quick second ↻ too (2026-10-04); a video
+	// session's "watched or listened" and "attentive" answers save and survive a reload.
+	async listened() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the video to be playable',
+				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				30000,
+				250
+			);
+			const at = () =>
+				tab.evaluate(`
+					const video = document.querySelector('video');
+					return { time: video.currentTime, line: document.querySelector('.media.stage .subtitles .chinese')?.textContent ?? null };
+				`);
+			const press = (label) =>
+				tab.evaluate(`
+					document.querySelector('button[aria-label="${label}"]').click();
+					await new Promise((r) => setTimeout(r, 300));
+					document.querySelector('video').pause();
+					await new Promise((r) => setTimeout(r, 200));
+					return true;
+				`);
+			await tab.evaluate(`
+				const video = document.querySelector('video');
+				video.muted = true;
+				video.currentTime = 16;
+				await video.play();
+				await new Promise((r) => setTimeout(r, 700));
+				video.pause();
+				await new Promise((r) => setTimeout(r, 200));
+				return true;
+			`);
+			const start = await at();
+			await press('Previous line');
+			const back = await at();
+			await tab.evaluate(`
+				const video = document.querySelector('video');
+				await video.play();
+				await new Promise((r) => setTimeout(r, 1200));
+				video.pause();
+				return true;
+			`);
+			const played = await at();
+			await press('Replay this line');
+			const replayed = await at();
+			await press('Replay this line');
+			const again = await at();
+			const buttons =
+				back.line !== start.line &&
+				back.time < start.time &&
+				replayed.line === played.line &&
+				replayed.time < played.time &&
+				again.line === replayed.line;
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
+			);
+			await until('saved session summary', () =>
+				tab.evaluate(`return !!document.querySelector('.session-card[open]')`)
+			);
+			const choose = (text) =>
+				tab.evaluate(
+					`[...document.querySelectorAll('.session-card[open] .answer-options button')].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click(); return true;`
+				);
+			const pressed = () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('.session-card .answer-options button[aria-pressed="true"]')].map(b=>b.textContent.trim()).sort().join(',')`
+				);
+			await choose('Only listened');
+			await until('mode saved', async () => ((await pressed()) === 'Only listened' ? true : null));
+			await choose('Partly');
+			await until('attention saved', async () =>
+				(await pressed()) === 'Only listened,Partly' ? true : null
+			);
+			await tab.goto('/progress');
+			await until('answers survived reload', async () => {
+				await tab.evaluate(`document.querySelector('.session-card').open=true; return true;`);
+				return (await pressed()) === 'Only listened,Partly' ? true : null;
+			});
+			const shot = await tab.send('Page.captureScreenshot', {
+				format: 'png',
+				captureBeyondViewport: true
+			});
+			writeFileSync('/tmp/reader-listened.png', Buffer.from(shot.data, 'base64'));
+			const width = await tab.evaluate(
+				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
+			);
+			return {
+				pass: buttons && width.body <= width.viewport,
+				start,
+				back,
+				played,
+				replayed,
+				again,
+				width
+			};
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// A share shows up while it is still downloading, and a tap on it opens it once it is done.
 	// DOWNLOADS is the served fixtures' downloads folder (make-fixtures.sh); this adds a job there
 	// with only a progress file, then gives it fixture-media's finished bundle.

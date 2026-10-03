@@ -413,21 +413,19 @@
 			recorder?.translation(sourceOf(currentLine), translations[currentLine]?.source);
 	}
 
-	/** ◀ goes to the start of this line when more than a second in, as Language Reactor does. */
+	/**
+	 * ◀ goes to the line before; ↻ starts this one again. Asked for 2026-10-04, replacing ◀'s
+	 * Language Reactor behaviour and ↻'s double press, which went to the line before.
+	 */
 	function previous() {
-		const media = active();
-		if (!media || currentLine < 0) return;
-		const into = media.currentTime - cues[currentLine].start;
-		seek(into > 1 || currentLine === 0 ? currentLine : currentLine - 1);
+		if (currentLine < 0) return;
+		replayFrom('previous-button', true);
 	}
 
-	/** When ↻ was last pressed: a second press soon after goes to the line before (asked for 2026-09-27). */
-	let replayedAt = 0;
 	function replay() {
-		const again = performance.now() - replayedAt < 1500;
-		replayedAt = performance.now();
-		recorder?.replay(sourceOf(currentLine), again && currentLine > 0, moment().mediaMs);
-		seek(again && currentLine > 0 ? currentLine - 1 : currentLine);
+		if (currentLine < 0) return;
+		recorder?.replay(sourceOf(currentLine), false, moment().mediaMs);
+		seek(currentLine);
 	}
 
 	function tap(line: number, word: LineWord) {
@@ -534,9 +532,7 @@
 							>
 							<div class="moves">
 								<button onclick={previous} aria-label="Previous line">◀</button>
-								<button onclick={replay} aria-label="Replay this line (twice: the line before)"
-									>↻</button
-								>
+								<button onclick={replay} aria-label="Replay this line">↻</button>
 								<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
 							</div>
 							{#if onjoin && currentLine >= 0}
