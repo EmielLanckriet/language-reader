@@ -103,7 +103,7 @@ worker build `1790774830873`, after refreshing the still-open old page. Both sen
 layouts were inspected. No real cards were graded. Test servers/mappings were removed and the USB
 screen-awake setting restored to 0. Reader was left on Cards.
 
-## Flashcard context and audio — deployed, phone import pending
+## Flashcard context and audio — deployed and phone checked
 
 Spec 011 prefers examples from actual, unwithdrawn Reader encounters, with original Anki examples
 as a fallback. Words without either are deferred from the queue without changing memory. Cards
@@ -117,17 +117,25 @@ stored separately and restored by reimporting the retained bundle. `scripts/anki
 creates the bundle from a read-only SQLite snapshot. Existing word recordings take priority over
 local Mandarin device TTS. No new phone model or paid service is involved.
 
-Local validation so far: 445 tests and type checking passed; four deliberate mutations were caught.
+Local validation: 447 tests and type checking passed; four deliberate mutations were caught.
 The actual read-only export contains 2,126 matching examples and 4,032 non-empty audio files
 (~167 MiB); two notes whose example omits their headword were skipped and one empty recording is
 intentionally omitted. The bundle has been copied to phone Downloads. The initial phone selection
 exposed the empty clip and a slow per-header archive scan; no example metadata or audio was
 written. Commit `995ad68` retains the example while omitting empty audio and scans archive headers
-in 1 MiB chunks. It deployed successfully through run `36741318139`, whose CI type/lint/tests/build
-and deployment gates passed. The isolated browser confirmed import, both audio controls and
-cancellation when grading at 390px. The phone was later moved to its launcher, so installed-app
-validation and the actual import remain pending. Test servers/USB mappings were removed and the
-screen-awake setting restored to `0`. See
+in 1 MiB chunks. The first actual write was stopped at 21 of 4,032 files because the one-file-per-
+clip OPFS design was too slow to leave running on the phone; since metadata is committed last, it
+did not add examples to the queue. Commit `fa2cda6` instead stores the selected archive once and
+indexes its clips by offset, so a card reads and hash-checks only the clip it needs.
+
+Run `37107896213` deployed `fa2cda6` successfully. On the Samsung A71, the installed app reported
+build `1791014104698`, validated the 167 MiB archive (2,126 examples and 4,032 audio clips), and
+completed the one-file import with “Examples ready.” The phone remained at 32.5–32.6°C during the
+check. A real existing card for 丁 showed its retained Anki example and both audio controls; the
+sentence control was invoked without grading the card. The browser verification had separately
+confirmed actual playback and grade cancellation. No synthetic review was submitted in the daily
+Reader. The temporary debugger mapping was removed; the existing USB screen-awake setting was left
+at `2`. See
 [verification](../specs/011-context-audio-cards/quickstart.md) and [ADR-0035](adr/0035-card-context-and-audio.md).
 
 ## Product and architecture
