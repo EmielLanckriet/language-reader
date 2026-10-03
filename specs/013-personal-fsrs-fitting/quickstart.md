@@ -14,6 +14,13 @@ reader. Short fixtures (90 s clips, small synthetic histories).
 3. Word sheet: tap → **Undo tap** → Diagnostics shows `tap-undone`, no lookup.
 4. `node scripts/fsrs/evaluate.mjs export.json` reports `card` and `in-context` separately.
 
+Recorded 2026-10-04: 497 tests, type check and lint pass. Mutations caught: removing the helped
+skip in `evidenceFor` (2 tests red), forcing every exposure unhelped in `wordHistory` (storage test
+red), typing every prediction as `card` (4 tuning tests red), and the parameter ordering fix
+(two-device test red before it). Browser: `listened` and `encounters` pass on a verification build;
+`encounters` needed three repairs from specs 010–011 (Cancel by label, the attention question on
+Progress, the sheet's memory line).
+
 ## Story 2 — fit on the laptop
 
 1. `npx vitest run tests/domain/fsrs6.test.ts` — own engine equals ts-fsrs `next_state` to 1e-6

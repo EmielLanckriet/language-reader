@@ -23,6 +23,8 @@ export type EncounterKind =
 	| 'attention'
 	/** Afterwards, how the reader took a session in; recorded only, never evidence (2026-10-04). */
 	| 'engagement'
+	/** A tap undone while its sheet was open: no lookup was written (spec 013). */
+	| 'tap-undone'
 	| 'review'
 	/** The reader took the session back (ADR-0030): its encounters count for nothing. */
 	| 'withdrawn'
@@ -102,6 +104,7 @@ export function validateEncounter(encounter: Encounter): void {
 			break;
 		case 'lookup':
 		case 'check':
+		case 'tap-undone':
 			needsWord();
 			break;
 		case 'read':

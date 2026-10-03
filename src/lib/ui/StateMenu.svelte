@@ -21,7 +21,7 @@
 		current,
 		provenance,
 		onchoose,
-		onknew,
+		onundo,
 		ontranslate,
 		onclose,
 		memory,
@@ -40,7 +40,8 @@
 		provenance?: string;
 		onchoose: (state: string) => void;
 		/** The reader only checked a word they knew: a check, not a lookup (spec 007). */
-		onknew?: () => void;
+		/** The tap was a mistake: close without it counting (spec 013). */
+		onundo?: () => void;
 		/** The sentence's translation was opened: its words were helped (2026-10-04). */
 		ontranslate?: () => void;
 		onclose: () => void;
@@ -186,8 +187,8 @@
 				>
 				<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{/if}
-			{#if onknew}
-				<button class="icon" onclick={onknew} aria-label="I knew it" title="I knew it">✓</button>
+			{#if onundo}
+				<button class="icon" onclick={onundo} aria-label="Undo tap" title="Undo tap">↶</button>
 			{/if}
 			{#if onjoin}
 				<button

@@ -13,29 +13,33 @@ setup. Each story ends deployed and phone-checked (Constitution I).
 
 ## Phase 2: Foundational
 
-- [ ] T003 Write a failing test that the latest `anki-parameters` across two device ids is chosen by `at`, then device id, then sequence, in tests/storage/memory.test.ts
-- [ ] T004 Fix the ordering in `currentParameters` and `recordParameters` (ORDER BY at DESC, device_id DESC, device_seq DESC) in src/lib/storage/repository.ts
+- [x] T003 Write a failing test that the latest `anki-parameters` across two device ids is chosen by `at`, then device id, then sequence, in tests/storage/memory.test.ts
+- [x] T004 Fix the ordering in `currentParameters` and `recordParameters` (ORDER BY at DESC, device_id DESC, device_seq DESC) in src/lib/storage/repository.ts
 
 ## Phase 3: User Story 1 — Shown English never counts as understanding (P1)
 
 Goal: `evidence-3` in production; undo tap; format-2 export; in-context outcomes reported.
+
+Done 2026-10-04 with two simplifications: an undone tap is never written (the sheet is still open),
+so the rule needs no undo filter; and format 2 is format 1's shape plus `helped` on exposures,
+not a separate item stream (tests live in tests/domain/memory.test.ts rather than evidence.test.ts).
 Independent test: quickstart Story 1 passes; Cards → Learning data shows card and in-context rows.
 
-- [ ] T005 [P] [US1] Write failing tests for helped spans in tests/domain/helped.test.ts: a `translation` encounter's offsets cover its words; a reveal with only `detail.line` maps to that line's range from the document text; an opening or later `setting` with `stage: true` and `blurEnglish: false`, or `showAllEnglish: true`, helps the whole session; a session with no setting counts as blurred
-- [ ] T006 [P] [US1] Write failing property tests (fast-check, `size: 'max'`) for `evidence-3` in tests/domain/evidence.test.ts: a helped `seen` never yields a Good; every lookup or check (any `knew` value) yields Again for both skills once per session; a `tap-undone` makes its tap vanish; a tap under shown English still yields Again; with no help and no checks the result equals `evidence-2`
-- [ ] T007 [US1] Implement `helpedSpans(session encounters, line ranges)` returning ranges or whole-session help in src/lib/domain/helped.ts
-- [ ] T008 [US1] Implement `evidence-3` in src/lib/domain/memory.ts: set `RULE = 'evidence-3'`; treat every `check` as a tap; drop taps followed in the same session by `tap-undone` for the same word and offsets; give a `seen` exposure its Good only when `exposure.helped` is false; extend `Exposure` with `helped: boolean`
-- [ ] T009 [US1] Write a failing storage test in tests/storage/helped.test.ts: a media session answered `all` with line 1 revealed exports line-1 words as helped and others not; memory of a line-1 word gains nothing from it
-- [ ] T010 [US1] In src/lib/storage/repository.ts `wordHistory`, compute `helped` per (session, word) with `helpedSpans` over the session's `translation` and `setting` encounters and the document's line ranges (split the stored text on `\n`), keeping exposures unhelped if any covering occurrence lies outside every helped span; include `tap-undone` encounters among events
-- [ ] T011 [US1] Add `cancel()` to `Recorder` that drops the pending tap and pushes `{ kind: 'tap-undone', lexemeId, documentId, fromOffset, toOffset }`; record every `closed()` as `lookup` (never `check`); add a recorder case to tests/storage/recorder.test.ts first, in src/lib/ui/recorder.ts
-- [ ] T012 [US1] Validate `tap-undone` (needs word and offsets) in src/lib/domain/encounter.ts with cases in tests/domain/encounter.test.ts
-- [ ] T013 [US1] Remove the "I knew it" button and add **Undo tap** (calls `onundo`) in src/lib/ui/StateMenu.svelte; wire `onundo={() => { recorder?.cancel(); menuClosed(); }}` and drop `onknew` in src/routes/read/[id]/+page.svelte
-- [ ] T014 [P] [US1] Write failing tests for format 2 and in-context outcomes in tests/domain/tuning.test.ts: outcome table of data-model.md (first tap per word per session = 0; unhelped reading `seen` in an `all` session with no tap = 1; listening never an outcome); metrics split by outcome type and skill; format 1 still validates
-- [ ] T015 [US1] Implement item stream and outcomes in src/lib/domain/items.ts and format 2 plus in-context metrics in src/lib/domain/tuning.ts per contracts/export-and-fit.md
-- [ ] T016 [US1] Export format 2 from `tuningDataset` (all words with review, tap or seen items) in src/lib/storage/repository.ts and extend tests/storage/tuning.test.ts first
-- [ ] T017 [US1] Show card and in-context rows per skill in src/routes/cards/tuning/+page.svelte; accept format 1 and 2 in scripts/fsrs/evaluate.mjs and document in scripts/fsrs/README.md
-- [ ] T018 [US1] Extend the `listened` scenario: reveal a line, finish "every unknown word", export, assert `helped` on that line's words; tap a word, Undo tap, assert `tap-undone` on Diagnostics, in scripts/verify-in-browser/harness.mjs
-- [ ] T019 [US1] Mutate the helped check (T008) and the undo filter (T008) once each, confirm red, restore; run full tests, type check, lint; record in specs/013-personal-fsrs-fitting/quickstart.md
+- [x] T005 [P] [US1] Write failing tests for helped spans in tests/domain/helped.test.ts: a `translation` encounter's offsets cover its words; a reveal with only `detail.line` maps to that line's range from the document text; an opening or later `setting` with `stage: true` and `blurEnglish: false`, or `showAllEnglish: true`, helps the whole session; a session with no setting counts as blurred
+- [x] T006 [P] [US1] Write failing property tests (fast-check, `size: 'max'`) for `evidence-3` in tests/domain/evidence.test.ts: a helped `seen` never yields a Good; every lookup or check (any `knew` value) yields Again for both skills once per session; a `tap-undone` makes its tap vanish; a tap under shown English still yields Again; with no help and no checks the result equals `evidence-2`
+- [x] T007 [US1] Implement `helpedSpans(session encounters, line ranges)` returning ranges or whole-session help in src/lib/domain/helped.ts
+- [x] T008 [US1] Implement `evidence-3` in src/lib/domain/memory.ts: set `RULE = 'evidence-3'`; treat every `check` as a tap; drop taps followed in the same session by `tap-undone` for the same word and offsets; give a `seen` exposure its Good only when `exposure.helped` is false; extend `Exposure` with `helped: boolean`
+- [x] T009 [US1] Write a failing storage test in tests/storage/helped.test.ts: a media session answered `all` with line 1 revealed exports line-1 words as helped and others not; memory of a line-1 word gains nothing from it
+- [x] T010 [US1] In src/lib/storage/repository.ts `wordHistory`, compute `helped` per (session, word) with `helpedSpans` over the session's `translation` and `setting` encounters and the document's line ranges (split the stored text on `\n`), keeping exposures unhelped if any covering occurrence lies outside every helped span; include `tap-undone` encounters among events
+- [x] T011 [US1] Add `cancel()` to `Recorder` that drops the pending tap and pushes `{ kind: 'tap-undone', lexemeId, documentId, fromOffset, toOffset }`; record every `closed()` as `lookup` (never `check`); add a recorder case to tests/storage/recorder.test.ts first, in src/lib/ui/recorder.ts
+- [x] T012 [US1] Validate `tap-undone` (needs word and offsets) in src/lib/domain/encounter.ts with cases in tests/domain/encounter.test.ts
+- [x] T013 [US1] Remove the "I knew it" button and add **Undo tap** (calls `onundo`) in src/lib/ui/StateMenu.svelte; wire `onundo={() => { recorder?.cancel(); menuClosed(); }}` and drop `onknew` in src/routes/read/[id]/+page.svelte
+- [x] T014 [P] [US1] Write failing tests for format 2 and in-context outcomes in tests/domain/tuning.test.ts: outcome table of data-model.md (first tap per word per session = 0; unhelped reading `seen` in an `all` session with no tap = 1; listening never an outcome); metrics split by outcome type and skill; format 1 still validates
+- [x] T015 [US1] Implement item stream and outcomes in src/lib/domain/items.ts and format 2 plus in-context metrics in src/lib/domain/tuning.ts per contracts/export-and-fit.md
+- [x] T016 [US1] Export format 2 from `tuningDataset` (all words with review, tap or seen items) in src/lib/storage/repository.ts and extend tests/storage/tuning.test.ts first
+- [x] T017 [US1] Show card and in-context rows per skill in src/routes/cards/tuning/+page.svelte; accept format 1 and 2 in scripts/fsrs/evaluate.mjs and document in scripts/fsrs/README.md
+- [x] T018 [US1] Extend the `listened` scenario: reveal a line, finish "every unknown word", export, assert `helped` on that line's words; tap a word, Undo tap, assert `tap-undone` on Diagnostics, in scripts/verify-in-browser/harness.mjs
+- [x] T019 [US1] Mutate the helped check (T008) and the undo filter (T008) once each, confirm red, restore; run full tests, type check, lint; record in specs/013-personal-fsrs-fitting/quickstart.md
 - [ ] T020 [US1] Deploy; on the A71 check the word sheet (Undo tap, no "I knew it") and Learning data; update docs/current-state.md
 
 ## Phase 4: User Story 2 — Fit personal parameters on the laptop (P2)

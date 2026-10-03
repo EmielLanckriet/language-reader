@@ -24,6 +24,7 @@ import {
 	type Part
 } from '../domain/corrections';
 import { codePointsOf } from '../domain/offsets';
+import { helpOf, isHelped, lineRangesOf, type Help } from '../domain/helped';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain/tuning';
 import { RULE } from '../domain/memory';
@@ -923,7 +924,9 @@ export class Repository {
 	/**
 	 * The words whose memory a batch of encounters can change (research R6): the word of a lookup,
 	 * check or review, and for an attention answer every word the session's stretches covered
-	 * (evidence-2 starts a memory for a word met untapped in an attentive session).
+	 * (evidence-2 starts a memory for a word met untapped in an attentive session). English shown
+	 * once the session is answered touches them too: it takes that credit back (evidence-3). Before
+	 * the answer it needs nothing, as nothing was credited yet.
 	 */
 	private touchedBy(sessionId: number, encounters: Encounter[]): Set<LexemeId> {
 		const touched = new Set<LexemeId>();
@@ -936,7 +939,15 @@ export class Repository {
 					[sessionId]
 				))
 					touched.add(Number(row.lexeme_id));
-			if (encounter.kind !== 'attention' && encounter.kind !== 'withdrawn') continue;
+			const shownAfterAnswer =
+				(encounter.kind === 'translation' || encounter.kind === 'setting') &&
+				queryRows(
+					this.db,
+					`SELECT 1 FROM encounter WHERE session_id = ? AND kind = 'attention' LIMIT 1`,
+					[sessionId]
+				).length > 0;
+			if (encounter.kind !== 'attention' && encounter.kind !== 'withdrawn' && !shownAfterAnswer)
+				continue;
 			for (const row of queryRows(
 				this.db,
 				`SELECT DISTINCT t.lexeme_id FROM encounter e
@@ -950,12 +961,42 @@ export class Repository {
 		return touched;
 	}
 
+	/** Where English was shown in each session of these exposure rows (helped.ts). */
+	private englishShown(rows: Row[]): Map<number, Help> {
+		const help = new Map<number, Help>();
+		const lines = new Map<number, [number, number][]>();
+		for (const row of rows) {
+			const session = Number(row.session_id);
+			if (help.has(session)) continue;
+			const documentId = Number(row.document_id);
+			if (!lines.has(documentId)) {
+				const raw = queryRows(this.db, 'SELECT raw_content FROM document WHERE id = ?', [
+					documentId
+				])[0]?.raw_content;
+				lines.set(documentId, lineRangesOf(codePointsOf(String(raw ?? ''))));
+			}
+			const shown = queryRows(
+				this.db,
+				`SELECT kind, from_offset, to_offset, detail FROM encounter
+         WHERE session_id = ? AND kind IN ('translation', 'setting') ORDER BY device_id, device_seq`,
+				[session]
+			).map((encounter) => ({
+				kind: String(encounter.kind),
+				...(encounter.from_offset === null ? {} : { fromOffset: Number(encounter.from_offset) }),
+				...(encounter.to_offset === null ? {} : { toOffset: Number(encounter.to_offset) }),
+				detail: JSON.parse(String(encounter.detail))
+			}));
+			help.set(session, helpOf(shown, lines.get(documentId)!));
+		}
+		return help;
+	}
+
 	/** The parameters the latest Anki import brought, or none (then ts-fsrs's defaults). */
 	private currentParameters(): FsrsParameters | undefined {
 		const latest = queryRows(
 			this.db,
 			`SELECT detail FROM encounter WHERE kind = 'anki-parameters'
-       ORDER BY device_id, device_seq DESC LIMIT 1`
+       ORDER BY at DESC, device_id DESC, device_seq DESC LIMIT 1`
 		)[0];
 		if (!latest) return undefined;
 		const { preset, weights, retention } = JSON.parse(String(latest.detail));
@@ -964,18 +1005,22 @@ export class Repository {
 
 	/** Read-only evaluation snapshot. Original encounters remain authoritative, including withdrawals. */
 	tuningDataset(): TuningDataset {
+		// Every word with an outcome to score (spec 013): a review, a tap, or a reading in a session
+		// answered "every unknown word". Words met only otherwise could not be scored.
 		const words = queryRows(
 			this.db,
-			`SELECT DISTINCT lexeme_id FROM encounter
-			WHERE kind = 'review' AND lexeme_id IS NOT NULL
-			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN})) ORDER BY lexeme_id`
+			`SELECT lexeme_id FROM encounter
+			WHERE kind IN ('review', 'lookup', 'check') AND lexeme_id IS NOT NULL
+			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))
+			UNION SELECT lexeme_id FROM (${ATTENTIVELY_SEEN})
+			ORDER BY lexeme_id`
 		).map((row) => {
 			const id = Number(row.lexeme_id);
 			const history = this.wordHistory(id);
 			return { id, history: { ...history, answers: [...history.answers] } };
 		});
 		return {
-			format: 1,
+			format: 2,
 			rule: RULE,
 			scheduler: TUNING_SCHEDULER,
 			exportedAt: new Date().toISOString(),
@@ -1024,22 +1069,41 @@ export class Repository {
 			kind: String(row.kind),
 			detail: JSON.parse(String(row.detail))
 		}));
-		// One exposure per session and text visibility, the earliest: evidence-2 counts a word met in a
+		// One exposure per session and text visibility, the earliest: the rule counts a word met in a
 		// session at most once, and a session's every 5 s chunk covering the word made this the cost
 		// of recomputing a busy word (measured 2026-09-27: 1.2 s a session at 20,000 encounters).
-		const exposures = queryRows(
+		// Grouped by occurrence too, so that whether English was shown over each one can be asked.
+		const rows = queryRows(
 			this.db,
-			`SELECT e.session_id, s.modality, e.text_visible, MIN(e.device_seq) AS device_seq,
-              e.device_id, MIN(e.at) AS at
+			`SELECT e.session_id, s.modality, s.document_id, e.text_visible, MIN(e.device_seq) AS device_seq,
+              e.device_id, MIN(e.at) AS at, t.start, t."end"
        FROM token t
        JOIN encounter e ON e.document_id = t.document_id
                        AND e.from_offset < t.end AND e.from_offset > t.start - ${MAX_RANGE}
                        AND e.to_offset > t.start AND e.kind IN ('read', 'played')
        JOIN session s ON s.id = e.session_id
        WHERE t.lexeme_id = ? AND e.session_id NOT IN (${WITHDRAWN})
-       GROUP BY e.session_id, e.text_visible, e.device_id`,
+       GROUP BY e.session_id, e.text_visible, e.device_id, t.start`,
 			[lexemeId]
-		).map((row) => ({ ...ordered(row), ...optional(row) }) as Exposure);
+		);
+		const helpIn = this.englishShown(rows);
+		const grouped = new Map<string, Exposure>();
+		for (const row of rows) {
+			const key = `${row.session_id} ${row.text_visible} ${row.device_id}`;
+			const helped = isHelped(
+				helpIn.get(Number(row.session_id))!,
+				Number(row.start),
+				Number(row.end)
+			);
+			const kept = grouped.get(key);
+			if (!kept) grouped.set(key, { ...ordered(row), ...optional(row), helped } as Exposure);
+			else {
+				// Helped only if every occurrence was; the earliest stands for the group.
+				kept.helped = kept.helped && helped;
+				if (Number(row.device_seq) < kept.deviceSeq) Object.assign(kept, ordered(row));
+			}
+		}
+		const exposures = [...grouped.values()];
 		const answers = new Map<number, AttentionAnswer>();
 		const sessions = [...new Set(exposures.map((exposure) => exposure.sessionId))];
 		if (sessions.length > 0) {
@@ -1282,7 +1346,7 @@ export class Repository {
 		const latest = queryRows(
 			this.db,
 			`SELECT detail FROM encounter WHERE kind = 'anki-parameters'
-       ORDER BY device_id, device_seq DESC LIMIT 1`
+       ORDER BY at DESC, device_id DESC, device_seq DESC LIMIT 1`
 		)[0];
 		const kept = latest && (JSON.parse(String(latest.detail)) as FsrsParameters);
 		const same =

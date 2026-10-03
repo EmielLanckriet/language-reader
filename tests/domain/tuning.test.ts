@@ -33,13 +33,61 @@ function dataset(h = history()): TuningDataset {
 	};
 }
 
+describe('in-context outcomes (spec 013)', () => {
+	function reading(): WordHistory {
+		const h = history([3]);
+		h.events.push({ ...ordered(5), kind: 'lookup', detail: {}, sessionId: 1, modality: 'reading' });
+		h.exposures.push(
+			{ ...ordered(9), sessionId: 2, modality: 'reading' },
+			{ ...ordered(12), sessionId: 3, modality: 'media', textVisible: true, helped: true },
+			{ ...ordered(15), sessionId: 4, modality: 'reading' },
+			{ ...ordered(18), sessionId: 5, modality: 'media', textVisible: false }
+		);
+		for (const session of [2, 3, 5]) h.answers.set(session, 'all');
+		h.answers.set(4, 'some');
+		return h;
+	}
+
+	it('scores a tap as a failure and an unhelped untapped word in a full session as a success', () => {
+		const rows = reviewPredictions(reading()).filter((row) => row.type === 'in-context');
+		expect(rows.map((row) => [row.at, row.rating, row.skill])).toEqual([
+			[at(5), 1, 'reading'],
+			[at(9), 3, 'reading']
+		]);
+	});
+
+	it('predicts each outcome before applying it, from the memory up to then', () => {
+		const h = reading();
+		const [tap] = reviewPredictions(h).filter((row) => row.type === 'in-context');
+		const before = { ...h, events: h.events.slice(0, 1), exposures: [] };
+		expect(tap.probability).toBeCloseTo(recall(memoryOf(before).reading!, new Date(at(5))), 12);
+	});
+
+	it('reports in-context outcomes apart from card grades', () => {
+		const h = reading();
+		const report = evaluateDataset({
+			...dataset(h),
+			format: 2,
+			rule: 'evidence-3'
+		});
+		const cards = report.development.all.count + report.later.all.count;
+		const inContext = report.development.inContext.count + report.later.inContext.count;
+		expect([cards, inContext]).toEqual([0, 2]);
+	});
+
+	it('reads format 1 and 2, and nothing else', () => {
+		expect(() => validateDataset({ ...dataset(), format: 2, rule: 'evidence-3' })).not.toThrow();
+		expect(() => validateDataset({ ...dataset(), format: 3 })).toThrow();
+	});
+});
+
 describe('recall evaluation', () => {
 	it('scores only explicit reviews, before updating, using the production state', () => {
 		const h = history([3, 1]);
 		h.events.splice(1, 0, { ...ordered(2), kind: 'check', detail: {}, sessionId: 1 });
 		h.exposures.push({ ...ordered(3), sessionId: 2, modality: 'reading' });
 		h.answers.set(2, 'all');
-		const rows = reviewPredictions(h);
+		const rows = reviewPredictions(h).filter((row) => row.type === 'card');
 		expect(rows).toHaveLength(2);
 		expect(rows[0].excluded).toBe('no-prior-memory');
 		const before = { ...h, events: h.events.slice(0, -1) };

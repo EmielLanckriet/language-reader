@@ -11,11 +11,10 @@ import {
 	type Mark
 } from '../../src/lib/domain/memory';
 
-// The evidence rule `evidence-2` (research R5, contracts/evidence-rule.md): how a word's history
-// counts for its reading and listening memory. One example per row and per limit of the table.
+// The evidence rule `evidence-3` (spec 013, ADR-0037; before it research R5 of spec 007): how a
+// word's history counts for its reading and listening memory. One example per row and per limit.
 
 const AGAIN = 1;
-const HARD = 2;
 const GOOD = 3;
 
 let seq = 0;
@@ -50,11 +49,18 @@ const review = (grade: number, when = at(1)): HistoryEvent => ({
 	kind: 'review',
 	detail: { skill: 'reading', grade }
 });
-const seen = (session: number, when = at(1), media = false, textVisible = true): Exposure => ({
+const seen = (
+	session: number,
+	when = at(1),
+	media = false,
+	textVisible = true,
+	helped = false
+): Exposure => ({
 	...ordered(when),
 	sessionId: session,
 	modality: media ? 'media' : 'reading',
-	textVisible: media ? textVisible : undefined
+	textVisible: media ? textVisible : undefined,
+	helped
 });
 const mark = (asserted: string, provenance = 'manual', when = at(1)): Mark => ({
 	...ordered(when),
@@ -89,24 +95,21 @@ describe('evidence-1', () => {
 		expect(ratings(h)).toEqual({ reading: [AGAIN, AGAIN], listening: [AGAIN, AGAIN] });
 	});
 
-	it('counts a check as a weak success in the skill it was made in', () => {
-		expect(ratings(history({ events: [check(1, false, true)] }))).toEqual({
-			reading: [HARD],
-			listening: []
-		});
-		expect(ratings(history({ events: [check(1, true, false)] }))).toEqual({
-			reading: [],
-			listening: [HARD]
-		});
-		expect(ratings(history({ events: [check(1, true, true)] }))).toEqual({
-			reading: [HARD],
-			listening: []
-		});
+	it('counts a check as a tap: a failure in both skills (evidence-3)', () => {
+		for (const [media, textVisible] of [
+			[false, true],
+			[true, false],
+			[true, true]
+		])
+			expect(ratings(history({ events: [check(1, media, textVisible)] }))).toEqual({
+				reading: [AGAIN],
+				listening: [AGAIN]
+			});
 	});
 
-	it('counts checks of a word in one session once', () => {
-		const h = history({ events: [check(1, false, true), check(1, false, true, at(1, 11))] });
-		expect(ratings(h).reading).toEqual([HARD]);
+	it('counts taps of a word in one session once, checks and lookups alike', () => {
+		const h = history({ events: [check(1, false, true), lookup(1, at(1, 11))] });
+		expect(ratings(h)).toEqual({ reading: [AGAIN], listening: [AGAIN] });
 	});
 
 	it('counts a review as its grade in its skill', () => {
@@ -143,6 +146,20 @@ describe('evidence-1', () => {
 			const h = history({ exposures: [seen(1, at(3))], answers: answered('all') });
 			expect(ratings(h)).toEqual({ reading: [GOOD], listening: [] });
 			expect(evidenceFor(h).card).toBe(false);
+		});
+
+		it('counts for nothing when English was shown over it, while a tap there still fails', () => {
+			const helped = history({
+				exposures: [seen(1, at(3), true, true, true)],
+				answers: answered('all')
+			});
+			expect(ratings(helped)).toEqual({ reading: [], listening: [] });
+			const tapped = history({
+				events: [lookup(1, at(3), true, true)],
+				exposures: [seen(1, at(3), true, true, true)],
+				answers: answered('all')
+			});
+			expect(ratings(tapped)).toEqual({ reading: [AGAIN], listening: [AGAIN] });
 		});
 
 		it('counts once a day', () => {
@@ -206,11 +223,12 @@ describe('evidence-1', () => {
 		expect(memoryOf(ignored).reading).toBeDefined();
 	});
 
-	it('makes a card of a lookup, an Anki word, or a word marked learning, and nothing else', () => {
+	it('makes a card of a tap, an Anki word, or a word marked learning, and nothing else', () => {
 		expect(evidenceFor(history({ events: [lookup(1)] })).card).toBe(true);
 		expect(evidenceFor(history({ marks: [seed()] })).card).toBe(true);
 		expect(evidenceFor(history({ marks: [mark('learning')] })).card).toBe(true);
-		expect(evidenceFor(history({ events: [check(1, false, true)] })).card).toBe(false);
+		// A check is a tap (evidence-3), so it makes a card like a lookup.
+		expect(evidenceFor(history({ events: [check(1, false, true)] })).card).toBe(true);
 		expect(evidenceFor(history({ marks: [mark('known')] })).card).toBe(false);
 	});
 
@@ -273,5 +291,75 @@ describe('evidence-1', () => {
 			history({ events: [first, { ...review(GOOD, at(5)), deviceSeq: first.deviceSeq + 1 }] })
 		);
 		expect(skewed).toEqual(same);
+	});
+});
+
+describe('evidence-3 over any history', () => {
+	const item = fc.record({
+		day: fc.integer({ min: 1, max: 20 }),
+		session: fc.integer({ min: 1, max: 4 }),
+		kind: fc.constantFrom('lookup', 'check', 'seen'),
+		media: fc.boolean(),
+		textVisible: fc.boolean(),
+		helped: fc.boolean(),
+		// Fixed per item, so that leaving items out does not renumber the rest.
+		seq: fc.nat()
+	});
+	const answer = fc.constantFrom('all', 'some', 'none', null);
+	function make(
+		items: {
+			day: number;
+			session: number;
+			kind: string;
+			media: boolean;
+			textVisible: boolean;
+			helped: boolean;
+			seq: number;
+		}[],
+		answers: ('all' | 'some' | 'none' | null)[] = []
+	) {
+		const events: HistoryEvent[] = [];
+		const exposures: Exposure[] = [];
+		for (const i of items) {
+			const fixed = { deviceSeq: i.seq };
+			if (i.kind === 'seen')
+				exposures.push({
+					...seen(i.session, at(i.day), i.media, i.textVisible, i.helped),
+					...fixed
+				});
+			else if (i.kind === 'check')
+				events.push({ ...check(i.session, i.media, i.textVisible, at(i.day)), ...fixed });
+			else events.push({ ...lookup(i.session, at(i.day), i.media, i.textVisible), ...fixed });
+		}
+		return history({
+			events,
+			exposures,
+			answers: new Map(answers.map((a, n) => [n + 1, a]))
+		});
+	}
+	it('gives a helped exposure no evidence at all', () => {
+		fc.assert(
+			fc.property(
+				fc.array(item, { size: 'max', maxLength: 30 }),
+				fc.array(answer, { minLength: 4, maxLength: 4 }),
+				(items, answers) => {
+					const without = items.filter((i) => !(i.kind === 'seen' && i.helped));
+					expect(evidenceFor(make(items, answers))).toEqual(evidenceFor(make(without, answers)));
+				}
+			)
+		);
+	});
+
+	it('counts a check exactly as a lookup', () => {
+		fc.assert(
+			fc.property(
+				fc.array(item, { size: 'max', maxLength: 30 }),
+				fc.array(answer, { minLength: 4, maxLength: 4 }),
+				(items, answers) => {
+					const asLookups = items.map((i) => (i.kind === 'check' ? { ...i, kind: 'lookup' } : i));
+					expect(evidenceFor(make(items, answers))).toEqual(evidenceFor(make(asLookups, answers)));
+				}
+			)
+		);
 	});
 });

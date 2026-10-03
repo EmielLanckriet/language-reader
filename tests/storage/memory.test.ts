@@ -399,3 +399,31 @@ describe('memory kept with the history', () => {
 		expect(kept).toEqual(rows(db));
 	});
 });
+
+describe('the parameters in force', () => {
+	it('are the latest import by time, whichever device recorded it', async () => {
+		const db = await freshDatabase();
+		try {
+			const repository = new Repository(db);
+			const weights = [
+				0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835,
+				0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542
+			];
+			// Device ids sort the opposite way to time: ordering by device first picks the older one.
+			for (const [device, at, retention] of [
+				['00000000-later-device-sorts-first', '2026-10-01T10:00:00Z', 0.85],
+				['ffffffff-newer-device-sorts-last', '2026-10-03T10:00:00Z', 0.95]
+			] as const) {
+				run(db, 'INSERT INTO device (id, next_seq) VALUES (?, 2)', [device]);
+				run(
+					db,
+					`INSERT INTO encounter (kind, detail, at, device_id, device_seq) VALUES ('anki-parameters', ?, ?, ?, 1)`,
+					[JSON.stringify({ preset: 'p', weights, retention }), at, device]
+				);
+			}
+			expect(repository.tuningDataset().parameters?.retention).toBe(0.95);
+		} finally {
+			db.close();
+		}
+	});
+});

@@ -2,21 +2,13 @@
 
 ## Export (Cards → Learning data → Export)
 
-```json
-{
-  "format": 2,
-  "rule": "evidence-3",
-  "exportedAt": "ISO time",
-  "active": { "id": "set id", "set": "ParameterSet | null (Anki/defaults)" },
-  "anki": { "weights": [21], "retention": 0.9 },
-  "words": [{ "id": 1, "items": [ { "kind": "review|tap|seen", "at": "ISO", "deviceId": "…",
-      "deviceSeq": 1, "sessionId": 3, "skill": "reading|listening", "grade": 3,
-      "answer": "all|some|none|null", "helped": false, "textVisible": true } ], "seed": {} }]
-}
-```
-
-Words with any review, tap or seen item are included; withdrawn sessions are excluded; format 1
-files remain readable by `evaluate.mjs`. No text, no document titles: only ids and times.
+Format 2 is format 1's shape (`src/lib/domain/tuning.ts`) with three changes, chosen during
+implementation as smaller than a separate item stream: `format: 2`, `rule: 'evidence-3'`; each
+exposure carries `helped` (resolved in Reader, which has the line ranges); and words are included
+when they have a review, a tap (lookup or check), or a reading in a session answered "every
+unknown word". Withdrawn sessions are excluded. No text or titles: only ids and times. Format 1
+files remain readable and replay under the current rule. Fitted parameters (Story 2) will add an
+`active` set and the Anki weights.
 
 ## `node scripts/fsrs/fit.mjs <export.json> [--out set.json]`
 

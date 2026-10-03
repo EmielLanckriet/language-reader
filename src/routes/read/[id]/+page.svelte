@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { codePointsOf } from '$lib/domain/offsets';
+	import { lineRangesOf } from '$lib/domain/helped';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import StartTermux from '$lib/ui/StartTermux.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
@@ -389,17 +390,9 @@
 		};
 	});
 
-	/** Line i's code-point range: media lines are the raw content's lines, one per cue. */
+	/** Line i's code-point range, the same as the evidence rule uses for a reveal (helped.ts). */
 	function lineRanges(): [number, number][] {
-		const ranges: [number, number][] = [];
-		let start = 0;
-		for (let i = 0; i <= characters.length; i++) {
-			if (i === characters.length || characters[i] === '\n') {
-				ranges.push([start, i]);
-				start = i + 1;
-			}
-		}
-		return ranges;
+		return lineRangesOf(characters);
 	}
 
 	/** In a text, what stays on screen for two seconds counts as read (research R3). */
@@ -607,7 +600,7 @@
 	async function choose(state: string) {
 		const token = chosen;
 		if (token?.lexemeId === undefined || !document) return;
-		recorder?.closed({ chose: state, knew: state === 'known' ? 'known' : undefined });
+		recorder?.closed({ chose: state });
 		chosen = null;
 		try {
 			const { repository } = await session();
@@ -845,8 +838,8 @@
 							toOffset: token.end
 						});
 					}}
-			onknew={() => {
-				recorder?.closed({ knew: 'knew' });
+			onundo={() => {
+				recorder?.cancel();
 				menuClosed();
 			}}
 			ontranslate={() =>

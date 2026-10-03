@@ -12,7 +12,15 @@ Candidate format: `{"weights": [21 finite FSRS-6 weights]}`. Use a real 21-eleme
 out-of-range values are rejected. Retention stays at the exported preference. Nothing is uploaded,
 fitted, applied to Reader or written to Anki. Keep personal exports outside the repository.
 
-Only explicit grades contribute labels: Again=0, Hard/Good/Easy=1. The full evidence-2 transition
+Exports are format 2 (spec 013): words with a review, a tap, or a reading in a session answered
+"every unknown word", and exposures marked `helped` when English was shown over them. Format 1
+files still load and replay under the current rule.
+
+Two kinds of outcome are scored and reported apart. Card grades: Again=0, Hard/Good/Easy=1. Reading
+in context: a tap is 0; an untapped word read with no English shown in a session answered "every
+unknown word" is 1. Listening has no in-context outcome yet.
+
+Card grades contribute labels: Again=0, Hard/Good/Easy=1. The full evidence-2 transition
 history still updates state, including attentive encounters. First/undated/less-than-24h reviews
 cannot score delayed retention; they remain in replay. Ambiguous device-clock words are excluded.
 

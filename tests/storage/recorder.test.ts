@@ -83,7 +83,10 @@ describe('the recorder', () => {
 		for (let ms = 6000; ms <= 12000; ms += 250) recorder.playing(1, moment(ms));
 		recorder.replay(1, false, 12000);
 		recorder.opened(word(3), moment(12000));
-		recorder.closed({ knew: 'knew' });
+		// A tap is a tap, whatever was chosen in its sheet (spec 013).
+		recorder.closed({ chose: 'known' });
+		recorder.opened(word(1), moment(12000));
+		recorder.cancel();
 		clock += 1000;
 		await recorder.close();
 		await recorder.flush();
@@ -92,10 +95,18 @@ describe('the recorder', () => {
 			db,
 			"SELECT kind, lexeme_id, media_ms, detail FROM encounter WHERE kind NOT IN ('study-time','session-end') ORDER BY device_seq"
 		);
-		expect(rows.map((row) => row.kind)).toEqual(['played', 'lookup', 'played', 'replay', 'check']);
+		expect(rows.map((row) => row.kind)).toEqual([
+			'played',
+			'lookup',
+			'played',
+			'replay',
+			'lookup',
+			'tap-undone'
+		]);
 		expect(rows[0]).toMatchObject({ media_ms: 0, detail: '{"toMs":6000}' });
 		expect(rows[2]).toMatchObject({ media_ms: 6000, detail: '{"toMs":12000}' });
-		expect(rows[4]).toMatchObject({ lexeme_id: words[3].lexemeId!, detail: '{"via":"knew"}' });
+		expect(rows[4]).toMatchObject({ lexeme_id: words[3].lexemeId!, detail: '{"chose":"known"}' });
+		expect(rows[5]).toMatchObject({ lexeme_id: words[1].lexemeId! });
 		expect(queryRows(db, 'SELECT COUNT(*) AS n FROM session')[0].n).toBe(1);
 	});
 

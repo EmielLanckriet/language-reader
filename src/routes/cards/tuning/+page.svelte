@@ -95,31 +95,39 @@
 	<section aria-label="Recall prediction report">
 		<h2>Later recall</h2>
 		<p>
-			The earlier period has {report.development.all.count} observations. The later period has
-			{report.later.all.count}; it is reserved for checking predictions. Equal timestamps stay
-			together.
+			The earlier period has {report.development.all.count} card answers and
+			{report.development.inContext.count} observations while reading. The later period has
+			{report.later.all.count} and {report.later.inContext.count}; it is reserved for checking
+			predictions. Equal timestamps stay together.
 		</p>
-		{#if report.later.all.count === 0}
+		{#if report.later.all.count + report.later.inContext.count === 0}
 			<p>There are no separate later-period observations to compare yet.</p>
 		{:else}
+			{@const rows = [
+				{ label: 'Cards, reading', scores: report.later.reading },
+				{ label: 'Cards, listening', scores: report.later.listening },
+				{ label: 'Reading in context', scores: report.later.inContext }
+			]}
 			<table>
 				<caption>Later-period recall using your current parameters</caption>
-				<thead><tr><th>Skill</th><th>Reviews</th><th>Predicted</th><th>Reported</th></tr></thead>
+				<thead><tr><th>Outcome</th><th>Count</th><th>Predicted</th><th>Observed</th></tr></thead>
 				<tbody
-					>{#each ['reading', 'listening'] as skill (skill)}
-						{@const scores = report.later[skill as 'reading' | 'listening']}
+					>{#each rows as row (row.label)}
 						<tr
-							><th>{skill === 'reading' ? 'Reading' : 'Listening'}</th><td>{scores.count}</td>
-							<td>{percent(scores.meanPrediction)}</td><td>{percent(scores.observedRecall)}</td></tr
+							><th>{row.label}</th><td>{row.scores.count}</td>
+							<td>{percent(row.scores.meanPrediction)}</td><td
+								>{percent(row.scores.observedRecall)}</td
+							></tr
 						>
 					{/each}</tbody
 				>
 			</table>
 		{/if}
 		<p>
-			These are contextual, self-reported answers. This is a retrospective check using today's
-			evidence rules, not a measurement of understanding during reading or a guarantee of
-			improvement.
+			Card answers are self-reported. Reading in context counts a tapped word as not understood, and
+			an untapped word as understood only in sessions you answered "every unknown word" and only
+			where no English was shown. This is a retrospective check using today's evidence rules, not a
+			guarantee of improvement.
 			{report.seeded} scored observations start from imported Anki memory.
 		</p>
 	</section>

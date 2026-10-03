@@ -1692,7 +1692,8 @@ const scenarios = {
 					button.click();
 					const plain = word.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;
 				`);
-			const checked = await until('a word checked', () => tapWord('I knew it'));
+			// Spec 013: no "I knew it"; a mistaken tap is undone instead, and leaves no lookup.
+			const checked = await until('a tap undone', () => tapWord('Undo tap'));
 			const looked = await until('a word looked up', () => tapWord('Cancel'));
 			// US2: the word now has a memory, so it is coloured by recall, and its sheet says so.
 			const coloured = await until('the looked-up word coloured by recall', () =>
@@ -1702,8 +1703,8 @@ const scenarios = {
 					if (!word || !/recall-4/.test(word.className)) return null;
 					word.click();
 					await new Promise((r) => setTimeout(r, 300));
-					const said = [...document.querySelectorAll('.sheet .memory')].map((p) => p.textContent).join(' | ');
-					[...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Cancel').click();
+					const said = [...document.querySelectorAll('.sheet p')].map((p) => p.textContent.trim()).filter((t) => t.startsWith('Reading:')).join(' | ');
+					document.querySelector('.sheet button[aria-label="Cancel"]').click();
 					return { className: word.className, said };
 				`)
 			);
@@ -1717,16 +1718,26 @@ const scenarios = {
 				document.querySelector('.back-to-videos').click();
 				return true;
 			`);
+			await until('leaving for the library', () =>
+				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+			);
+			// Spec 010 moved the question from a sheet on leaving to the session's card on Progress.
+			await tab.goto('/progress');
 			const asked = await until('the attention question', () =>
 				tab.evaluate(`
-					const choice = [...document.querySelectorAll('.sheet .choice')].find((b) => b.textContent.startsWith('Some'));
+					const card = document.querySelector('.session-card');
+					if (!card) return null;
+					card.open = true;
+					const choice = [...card.querySelectorAll('.answer-options button')].find((b) => b.textContent.trim() === 'Only some');
 					if (!choice) return null;
 					choice.click();
 					return true;
 				`)
 			);
-			await until('leaving for the library', () =>
-				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+			await until('the answer saved', () =>
+				tab.evaluate(
+					`return document.body.innerText.includes('Current answer: Only some') || null;`
+				)
 			);
 			await tab.goto('/diagnostics');
 			const recorded = await until('the session on Diagnostics', () =>
@@ -1737,12 +1748,13 @@ const scenarios = {
 				`)
 			);
 			const kinds = recorded.map((line) => line.split(/[ ·]/)[0]);
-			const want = ['played', 'check', 'lookup', 'replay', 'seek', 'attention'];
+			const want = ['played', 'tap-undone', 'lookup', 'replay', 'seek', 'attention'];
 			return {
 				pass:
 					asked &&
 					want.every((kind) => kinds.includes(kind)) &&
-					recorded.some((line) => line.startsWith('check') && line.includes(checked)) &&
+					recorded.some((line) => line.startsWith('tap-undone') && line.includes(checked)) &&
+					!recorded.some((line) => line.startsWith('check')) &&
 					recorded.some((line) => line.startsWith('lookup') && line.includes('2×')) &&
 					recorded.some((line) => line.includes('"answer":"some"')) &&
 					recorded.some((line) => /^seek.*"fromMs":3\d{4},"toMs":40\d{3}/.test(line)) &&
@@ -1779,7 +1791,7 @@ const scenarios = {
 					if (!word) return null;
 					word.click();
 					await new Promise((r) => setTimeout(r, 300));
-					[...document.querySelectorAll('.sheet button')].find((b) => b.textContent.trim() === 'Cancel').click();
+					document.querySelector('.sheet button[aria-label="Cancel"]').click();
 					const plain = word.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;
 				`)
 			);

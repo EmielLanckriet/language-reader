@@ -3,6 +3,16 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Spec 013 Story 1: shown English and taps — local, deploying
+
+Evidence rule `evidence-3` (ADR-0037): an untapped word under English the reader saw (a revealed
+line, the translate link's sentence, or a session with blur off in the stage or show-all English)
+gets no credit; every tap is a failure, "I knew it" is gone, and Undo tap (while the sheet is
+open) records `tap-undone` and no lookup. Older sessions count as blurred; older reveals map by line.
+Learning data scores reading-in-context outcomes beside card answers; exports are format 2.
+Memory is recomputed for every word once (rule change). The parameter ordering bug across devices
+is fixed. Fitting (Story 2) and apply/rollback (Story 3) are not built yet.
+
 ## Player buttons, listening feedback and day end — deployed, not phone checked
 
 Asked for on 2026-10-04 after a bike ride. ◀ now always goes to the previous line and ↻ always

@@ -275,8 +275,8 @@ export class Recorder {
 	}
 
 	/**
-	 * A word's sheet opened, showing its meaning. Held until the sheet closes: only then is it known
-	 * whether this was a lookup or a check ("I knew it").
+	 * A word's sheet opened, showing its meaning. Held until the sheet closes, so that a mistaken tap
+	 * can still be undone (spec 013).
 	 */
 	opened(word: WordAt, moment?: MediaMoment): void {
 		this.settle();
@@ -284,9 +284,23 @@ export class Recorder {
 		this.open = { word, moment, at: this.stamp() };
 	}
 
-	/** The sheet closed. `knew` when the reader said they knew it; `chose` a state they picked. */
-	closed(outcome: { knew?: 'knew' | 'known'; chose?: string } = {}): void {
+	/** The sheet closed: a lookup, whatever was done in it. `chose` is a state the reader picked. */
+	closed(outcome: { chose?: string } = {}): void {
 		this.settle(outcome);
+	}
+
+	/** The tap was a mistake: no lookup, only the fact that a tap was undone. */
+	cancel(): void {
+		const open = this.open;
+		if (!open) return;
+		this.open = undefined;
+		this.buffer.push({
+			kind: 'tap-undone',
+			at: open.at,
+			documentId: this.documentId,
+			...open.word,
+			...open.moment
+		});
 	}
 
 	attention(answer: AttentionAnswer): Promise<void> {
@@ -360,15 +374,14 @@ export class Recorder {
 		return this.session;
 	}
 
-	private settle(outcome: { knew?: 'knew' | 'known'; chose?: string } = {}): void {
+	private settle(outcome: { chose?: string } = {}): void {
 		const open = this.open;
 		if (!open) return;
 		this.open = undefined;
 		const detail: Record<string, unknown> = {};
-		if (outcome.knew) detail.via = outcome.knew;
 		if (outcome.chose) detail.chose = outcome.chose;
 		this.buffer.push({
-			kind: outcome.knew ? 'check' : 'lookup',
+			kind: 'lookup',
 			at: open.at,
 			documentId: this.documentId,
 			...open.word,

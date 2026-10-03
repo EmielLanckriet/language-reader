@@ -19,7 +19,7 @@ import { ankiSeedOf, isFromAnki, type AnkiSeed, type FsrsParameters } from './an
 import type { AttentionAnswer, Modality, Skill } from './encounter';
 import { RETRACTED } from './state';
 
-export const RULE = 'evidence-2';
+export const RULE = 'evidence-3';
 
 /** Position in the history: what orders it. `at` only measures the time between evidence. */
 export interface Ordered {
@@ -48,6 +48,8 @@ export interface Exposure extends Ordered {
 	sessionId: number;
 	modality: Modality;
 	textVisible?: boolean;
+	/** Every occurrence the stretch covered was under shown English (helped.ts). */
+	helped?: boolean;
 }
 
 export interface WordHistory {
@@ -63,6 +65,12 @@ export interface Evidence {
 	rating: Grade;
 	/** Present only for an actual answer, never an inferred encounter rating. */
 	review?: Pick<Ordered, 'deviceId' | 'deviceSeq'>;
+	/**
+	 * Present when this is also an observation of understanding in context (spec 013, ADR-0037): a
+	 * tap (failed) or a word read untapped in a session answered "every unknown word" (understood).
+	 * Reading only: listening has no per-word outcome yet.
+	 */
+	context?: Pick<Ordered, 'deviceId' | 'deviceSeq'>;
 }
 
 export interface SkillEvidence {
@@ -92,7 +100,6 @@ export interface Memory {
 }
 
 const AGAIN: Grade = 1;
-const HARD: Grade = 2;
 const GOOD: Grade = 3;
 
 function byHistory(a: Ordered, b: Ordered): number {
@@ -100,16 +107,25 @@ function byHistory(a: Ordered, b: Ordered): number {
 	return a.deviceSeq - b.deviceSeq;
 }
 
-/** A check or an exposure counts for listening only when the words were heard with the text hidden. */
+/**
+ * A tap, whatever followed it: a lookup, or a check — the sheet closed with "I knew it" or a
+ * status, which `evidence-3` no longer distinguishes (the reader, 2026-10-04: "if I knew it I
+ * wouldn't tap it").
+ */
+function isTap(event: HistoryEvent): boolean {
+	return event.kind === 'lookup' || event.kind === 'check';
+}
+
+/** An exposure counts for listening only when the words were heard with the text hidden. */
 function skillOf(item: { modality?: Modality; textVisible?: boolean }): Skill {
 	return item.modality === 'media' && item.textVisible === false ? 'listening' : 'reading';
 }
 
 /**
- * What `evidence-2` makes of one word's history (research R5). It differs from `evidence-1` in one
- * row, on the reader's word (2026-09-27): a word met untapped in a session answered "I tapped every
- * word I didn't know" is a Good, not a Hard, and it counts even for a word with no memory yet —
- * which then starts one, without becoming a card.
+ * What `evidence-3` makes of one word's history (spec 013, ADR-0037). From `evidence-2` (research
+ * R5 of spec 007): a word met untapped in a session answered "I tapped every word I didn't know" is
+ * a Good, even for a word with no memory yet, which then starts one without becoming a card. New:
+ * every tap is a failure, checks included, and an untapped word under shown English is nothing.
  */
 export function evidenceFor(history: WordHistory): WordEvidence {
 	const marks = [...history.marks].sort(byHistory);
@@ -134,16 +150,13 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 
 	const lookedIn = new Set(
 		events
-			.filter(
-				(event) =>
-					(event.kind === 'lookup' || event.kind === 'check') && event.sessionId !== undefined
-			)
+			.filter((event) => isTap(event) && event.sessionId !== undefined)
 			.map((event) => event.sessionId)
 	);
 	const found: WordEvidence = {
 		card:
 			seed !== undefined ||
-			events.some((event) => event.kind === 'lookup' || event.kind === 'review') ||
+			events.some((event) => isTap(event) || event.kind === 'review') ||
 			marks.some((mark) => mark.asserted === 'learning'),
 		reading: { seed, evidence: [] },
 		listening: { evidence: [] }
@@ -162,13 +175,15 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		if (seed && item.at <= seed.lastReview) continue;
 		const session = event?.sessionId ?? `none-${item.deviceId}-${item.deviceSeq}`;
 
-		if (event?.kind === 'lookup') {
-			if (!once(`lookup ${session}`)) continue;
-			found.reading.evidence.push({ at: event.at, rating: AGAIN });
+		if (event && isTap(event)) {
+			if (!once(`tap ${session}`)) continue;
+			const observed = event.sessionId !== undefined && skillOf(event) === 'reading';
+			found.reading.evidence.push({
+				at: event.at,
+				rating: AGAIN,
+				...(observed ? { context: { deviceId: event.deviceId, deviceSeq: event.deviceSeq } } : {})
+			});
 			found.listening.evidence.push({ at: event.at, rating: AGAIN });
-		} else if (event?.kind === 'check') {
-			if (!once(`check ${session}`)) continue;
-			found[skillOf(event)].evidence.push({ at: event.at, rating: HARD });
 		} else if (event?.kind === 'review') {
 			const skill = event.detail.skill as Skill;
 			found[skill].evidence.push({
@@ -178,10 +193,17 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			});
 		} else if (exposure) {
 			const skill = skillOf(exposure);
+			if (exposure.helped) continue;
 			if (history.answers.get(exposure.sessionId) !== 'all') continue;
 			if (lookedIn.has(exposure.sessionId)) continue;
 			if (!once(`seen ${skill} ${exposure.at.slice(0, 10)}`)) continue;
-			found[skill].evidence.push({ at: exposure.at, rating: GOOD });
+			found[skill].evidence.push({
+				at: exposure.at,
+				rating: GOOD,
+				...(skill === 'reading'
+					? { context: { deviceId: exposure.deviceId, deviceSeq: exposure.deviceSeq } }
+					: {})
+			});
 		}
 	}
 	return found;
@@ -250,6 +272,8 @@ function fold(
 }
 
 export interface ReviewPrediction {
+	/** A card answer, or an observation of understanding in context. */
+	type: 'card' | 'in-context';
 	deviceId: string;
 	deviceSeq: number;
 	at: string;
@@ -260,7 +284,10 @@ export interface ReviewPrediction {
 	excluded?: 'no-prior-memory' | 'undated-seed' | 'short-delay';
 }
 
-/** Retrospective evaluation under the current rule; measure BEFORE applying each answer. */
+/**
+ * Retrospective evaluation under the current rule; measure BEFORE applying each answer, card
+ * answers and in-context observations alike.
+ */
 export function reviewPredictions(
 	history: WordHistory,
 	parameters?: FsrsParameters
@@ -270,7 +297,8 @@ export function reviewPredictions(
 	const predictions: ReviewPrediction[] = [];
 	for (const skill of ['reading', 'listening'] as const) {
 		fold(f, found[skill], (evidence, card, now, dated) => {
-			if (!evidence.review) return;
+			const observed = evidence.review ?? evidence.context;
+			if (!observed) return;
 			const excluded = !card?.last_review
 				? 'no-prior-memory'
 				: !dated
@@ -279,7 +307,8 @@ export function reviewPredictions(
 						? 'short-delay'
 						: undefined;
 			predictions.push({
-				...evidence.review,
+				type: evidence.review ? 'card' : 'in-context',
+				...observed,
 				at: evidence.at,
 				skill,
 				rating: evidence.rating,

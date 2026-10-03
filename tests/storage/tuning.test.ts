@@ -32,11 +32,58 @@ it('exports retained reviewed history with attention, omits withdrawn sessions, 
 		const before = snapshot();
 		const data = JSON.parse(JSON.stringify(repo.tuningDataset()));
 		validateDataset(data);
-		expect(data.words).toHaveLength(1);
-		expect(data.words[0].history.events).toHaveLength(1);
-		expect(data.words[0].history.answers).toEqual([[active, 'all']]);
+		// Format 2 also carries the words read in the fully answered session (spec 013).
+		const reviewed = data.words.find((w) => w.id === word.lexemeId)!;
+		expect(reviewed.history.events).toHaveLength(1);
+		expect(reviewed.history.answers).toEqual([[active, 'all']]);
 		expect(evaluateDataset(data).eligible).toBe(1);
 		expect(snapshot()).toEqual(before);
+	} finally {
+		db.close();
+	}
+});
+
+it('exports format 2: tapped and fully-answered words without reviews too, with shown English', async () => {
+	const db = await freshDatabase();
+	try {
+		const repo = new Repository(db);
+		const [documentId] = await buildHistory(repo, ['我看书\n你好'], []);
+		const words = repo.getDocument(documentId).tokens.filter((t) => t.isWord);
+		const full = repo.startSession(documentId, 'media');
+		const partial = repo.startSession(documentId, 'media');
+		const at = '2026-10-04T10:00:00Z';
+		const played = {
+			kind: 'played',
+			at,
+			documentId,
+			fromOffset: 0,
+			toOffset: 6,
+			mediaMs: 0,
+			textVisible: true,
+			detail: { toMs: 5000 }
+		};
+		const tapped = words[0];
+		repo.recordEncounters(full, [
+			played,
+			{
+				kind: 'lookup',
+				at,
+				documentId,
+				lexemeId: tapped.lexemeId!,
+				fromOffset: tapped.start,
+				toOffset: tapped.end
+			},
+			{ kind: 'translation', at, documentId, fromOffset: 4, toOffset: 6, detail: { line: 1 } },
+			{ kind: 'attention', at, detail: { answer: 'all' } }
+		]);
+		repo.recordEncounters(partial, [played, { kind: 'attention', at, detail: { answer: 'some' } }]);
+		const data: unknown = JSON.parse(JSON.stringify(repo.tuningDataset()));
+		validateDataset(data);
+		expect(data).toMatchObject({ format: 2, rule: 'evidence-3' });
+		const exported = new Map(data.words.map((w) => [w.id, w.history]));
+		const lineOne = words.find((t) => t.start >= 4)!;
+		expect([...exported.keys()].sort()).toEqual([...new Set(words.map((t) => t.lexemeId))].sort());
+		expect(exported.get(lineOne.lexemeId!)!.exposures.map((e) => e.helped)).toContain(true);
 	} finally {
 		db.close();
 	}

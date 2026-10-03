@@ -4,10 +4,14 @@ import type { AttentionAnswer } from './encounter';
 import { RULE, reviewPredictions, type ReviewPrediction, type WordHistory } from './memory';
 
 export const TUNING_SCHEDULER = 'ts-fsrs@5.4.2';
+/** Rules a format-1 export may have been made under; its raw history replays under `RULE`. */
+const READABLE_RULES = ['evidence-2', RULE];
 
 export interface TuningDataset {
-	format: 1;
-	rule: typeof RULE;
+	/** 2 (spec 013): exposures carry `helped`, and words without reviews are included. */
+	format: 1 | 2;
+	/** The rule it was exported under; it is replayed under the current one. */
+	rule: string;
 	scheduler: typeof TUNING_SCHEDULER;
 	exportedAt: string;
 	parameters?: FsrsParameters;
@@ -52,7 +56,11 @@ export function validateCandidate(value: unknown): number[] {
 /** Validate a portable file before letting it influence an evaluation. No coercion or repair. */
 export function validateDataset(value: unknown): asserts value is TuningDataset {
 	const data = object(value);
-	if (data.format !== 1 || data.rule !== RULE || data.scheduler !== TUNING_SCHEDULER) {
+	if (
+		(data.format !== 1 && data.format !== 2) ||
+		!READABLE_RULES.includes(data.rule as string) ||
+		data.scheduler !== TUNING_SCHEDULER
+	) {
 		throw new Error('Incompatible dataset format, evidence rule or scheduler version.');
 	}
 	timestamp(data.exportedAt);
@@ -161,13 +169,16 @@ function metrics(rows: ReviewPrediction[]): Metrics {
 		brier: rows.length ? brier / rows.length : null
 	};
 }
+/** `all`, `reading` and `listening` are card answers; `inContext` is reading in context. */
 function period(rows: ReviewPrediction[]) {
+	const cards = rows.filter((r) => r.type === 'card');
 	return {
 		from: rows[0]?.at ?? null,
 		to: rows.at(-1)?.at ?? null,
-		all: metrics(rows),
-		reading: metrics(rows.filter((r) => r.skill === 'reading')),
-		listening: metrics(rows.filter((r) => r.skill === 'listening'))
+		all: metrics(cards),
+		reading: metrics(cards.filter((r) => r.skill === 'reading')),
+		listening: metrics(cards.filter((r) => r.skill === 'listening')),
+		inContext: metrics(rows.filter((r) => r.type === 'in-context'))
 	};
 }
 
@@ -207,7 +218,8 @@ export function evaluateDataset(data: TuningDataset, candidateWeights?: number[]
 			continue;
 		}
 		const predictions = reviewPredictions(h, parameters);
-		if (reviews > predictions.length) count('not-replayed-by-rule', reviews - predictions.length);
+		const replayed = predictions.filter((row) => row.type === 'card').length;
+		if (reviews > replayed) count('not-replayed-by-rule', reviews - replayed);
 		for (const row of predictions) {
 			if (row.excluded) count(row.excluded);
 			else if (
@@ -226,7 +238,7 @@ export function evaluateDataset(data: TuningDataset, candidateWeights?: number[]
 	const earlier = rows.filter((r) => Date.parse(r.at) < cutoff);
 	const later = rows.filter((r) => Date.parse(r.at) >= cutoff);
 	return {
-		format: 1,
+		format: data.format,
 		rule: data.rule,
 		scheduler: data.scheduler,
 		exportedAt: data.exportedAt,
