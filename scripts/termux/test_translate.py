@@ -58,6 +58,16 @@ class Source(unittest.TestCase):
         self.assertEqual(source(job), (os.path.join(job, 'media.zh.vtt'), False))
 
 
+class Cues(unittest.TestCase):
+    def test_timing_is_kept_whole(self):
+        # a7a6b86 shadowed TIMING with a bare '-->' and every English cue lost its times.
+        job = tempfile.mkdtemp()
+        path = os.path.join(job, 'media.zh.vtt')
+        with open(path, 'w', encoding='utf-8') as file:
+            file.write('WEBVTT\n\n00:00:02.800 --> 00:00:04.000\n点餐都不行。\n')
+        self.assertEqual(translate.cues(path), [('00:00:02.800 --> 00:00:04.000', '点餐都不行。')])
+
+
 class ModelBudget(unittest.TestCase):
     def test_running_model_is_killed_when_memory_falls(self):
         child = mock.Mock()

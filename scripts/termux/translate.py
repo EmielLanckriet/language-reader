@@ -214,7 +214,6 @@ def source(job):
 
 
 HAN = re.compile('[\u3400-\u9fff\uf900-\ufaff\U00020000-\U0003ffff]')
-TIMING = re.compile(r'-->')
 
 
 def mixed(path):
