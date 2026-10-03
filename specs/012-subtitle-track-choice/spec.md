@@ -16,6 +16,7 @@ f784e37 the pinyin track was imported, because its name ranked first.
 
 - Q: With one clean and one mixed Chinese track (Jun's case), should import ask? → A: No: import the clean track directly; ask only with several clean Chinese tracks or a human English track.
 - Q: Should phone machine translation wait until the track choice is settled? → A: Start right after download only when no choice will be asked and no human English exists; otherwise start after the choice, and only for lines the chosen English does not cover.
+- Q (raised in the phone check): should machine translation fill lines a chosen human English track leaves untranslated? → A: No. The reader trusts the person who made the English; such lines stay without English (supersedes "only for lines the chosen English does not cover").
 
 ## User Scenarios & Testing
 
@@ -37,10 +38,11 @@ path; leaving the choice imports nothing and the download stays available to imp
 
 ### US3 — Read a human English translation (P2)
 A chosen English track is shown as the document's translation instead of machine translation.
-Its lines are matched to the Chinese lines by time. Chinese lines with no English counterpart are
-translated by machine as today, and are distinguishable from human lines.
+Its lines are matched to the Chinese lines by time. A Chinese line with no English counterpart
+stays without English: the reader trusts the person who made the track.
 Acceptance: each Chinese line shows the English line(s) overlapping it in time; no English line is
-shown under two non-adjacent Chinese lines; lines filled by machine are marked as such.
+shown under two non-adjacent Chinese lines; human lines are marked as such; nothing is
+machine-translated, on the phone or in the browser, while a human track is chosen.
 
 ### US4 — Change the English later (P3)
 From a media document, the reader switches between the human English track, machine translation
@@ -75,12 +77,11 @@ and none. Reading history, marks and lookups are unaffected.
   later means importing the retained download again as a separate document; the existing document,
   its reading history and marks are not changed.
 - **FR-006** English lines are assigned to Chinese lines by time overlap; unmatched Chinese lines
-  receive machine translation, recorded as machine-made.
+  stay without English (clarified 2026-10-03).
 - **FR-011** Machine translation on the phone translates the Chinese track the document actually
   uses. It starts right after download only when no choice will be asked and no human English track
-  exists; otherwise it starts once the choice is made, and only for the Chinese lines the chosen
-  English track does not cover (none when every line is covered, all when "machine translation").
-  It never translates a track that was not chosen.
+  exists; otherwise it starts once the choice is made, and only when the reader chose "machine
+  translation". It never translates a track that was not chosen, nor beside a human English track.
 - **FR-007** The English choice is derived data: it can be changed later without affecting reading
   history, marks, lookups or review.
 - **FR-008** Unused tracks are retained with the download so a later re-import or English switch

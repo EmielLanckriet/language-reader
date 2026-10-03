@@ -16,19 +16,20 @@ unchanged format and meaning), `choice.json` once Reader reported a choice.
 
 ## `PUT /downloads/<job>/choice.json`
 Body: `{ "chinese": string, "english": string }` as in data-model.md.
-- 204: stored; translate.py started unless already running, or not started for `english: none`.
+- 204: stored; translate.py started for `english: machine` unless already running; not started for
+  a human English track or `none`.
 - 400: not JSON, unknown fields' values, or a named `file` not in the job's `tracks.json`.
 - 404: no such job.
 With `chinese: transcribe` nothing starts now; translation follows the transcript's
 `PUT /downloads/<job>/media.zh.vtt` as today, limited by the stored `english` choice.
-Idempotent: a repeated identical choice changes nothing; a different `english` restarts translation
-for the lines it now has to cover (US4 switching to machine translation).
+Idempotent: a repeated identical choice changes nothing; switching `english` to `machine` (US4)
+starts translation of every line.
 
 ## translate.py
 - Source track: `choice.json`'s `chinese` when present; else, for a 012 job with no choice needed,
   the default Chinese track; else (pre-012 job) today's rule.
-- With an English track in `choice.json`, translates only Chinese lines that R3 leaves uncovered;
-  `translate.json.total` counts those lines.
+- With a human English track in `choice.json`, translates nothing (`translate.json.total` is 0):
+  lines the track leaves untranslated stay so.
 - Never starts for a job whose choice is needed and not yet reported.
 - The "choice needed" rule is checked against `tests/fixtures/track-choice-cases.json`, the same
   table the app's tests use.

@@ -68,6 +68,12 @@ Independent test: switch English on an imported document; marks, encounters and 
 - [ ] T029 Deploy the app, then the Termux scripts (setup/update), then run quickstart.md phone checks 1–3 in one batch; record the video with a human English track used for check 2 in quickstart.md
 - [ ] T030 Update docs/current-state.md with the result, including what was and was not verified on the phone
 
+## Revision after the phone check (2026-10-03)
+
+- [X] T031 [US3] The reader decided a human English track's gaps stay empty: no machine translation beside it (spec Clarifications, ADR-0036). translate.py and the service translate only for `machine`; read and live pages show only the human lines; T022/T023's "uncovered lines translated" is superseded. Tests and the `tracks` scenario updated.
+- [X] T032 [US2] The question sheet overflowed sideways on the A71: bounded every grid and flex level in src/lib/ui/TrackChoice.svelte; the `tracks` scenario now checks it at 390 px with a long preview line (fails without the fix).
+- [X] T033 termux-url-opener writes translate.log (decision, translate.py output and exit status): a phone download's translation once never started and left no trace.
+
 ## Dependencies
 
 - T001 → T003, T004. T003 → T005; T004 → T006. T005 → T007 → T008 → all stories.

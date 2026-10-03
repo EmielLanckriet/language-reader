@@ -36,7 +36,7 @@ machine-translated variants live; those caused HTTP 429 when requested before.
 
 - **Decision**: assign each English cue to the single Chinese cue it overlaps most in time (ties to
   the earlier); a Chinese line's English is the concatenation of the English cues assigned to it,
-  in order. A Chinese line with no assigned cue is "uncovered" and gets machine translation.
+  in order. A Chinese line with no assigned cue stays without English (R6).
 - **Rationale**: assigning from the English side guarantees FR/US3's "no English line under two
   non-adjacent Chinese lines" by construction, and keeps every English cue shown exactly once.
   Learning channels usually time both tracks identically (Jun's two Chinese tracks share every
@@ -79,8 +79,10 @@ for the machine translation, on Termux and in the app.
 
 ## R6 — Which English a line shows (Principle VIII)
 
-- **Decision**: per line, in order: human (aligned chosen English track, R3), then the local LLM
-  (`media.en.vtt`, by start time as today), then the quick model. `englishFor` gains a `human` input
+- **Decision** (revised after the phone check, 2026-10-03): with a human English track chosen, only
+  its lines are shown, gaps included; otherwise the local LLM (`media.en.vtt`, by start time as
+  today), then the quick model. Cards still fall back to machine English for a sentence without a
+  human line, because a card needs English to be checked. `englishFor` gains a `human` input
   and an `EnglishSource` of `'human'`. Human lines are never replaced; the reader's English choice
   (`english.json`: `{source: 'track', file} | {source: 'machine'} | {source: 'none'}`) selects which
   inputs are consulted, and changing it rewrites nothing earned.

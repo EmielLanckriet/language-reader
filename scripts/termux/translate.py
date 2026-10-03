@@ -340,35 +340,11 @@ def write(path, text):
     os.replace(path + '.part', path)
 
 
-def span(timing):
-    """(start, end) in seconds of a cue timing line."""
-    def seconds(stamp):
-        parts = stamp.strip().replace(',', '.').split(':')
-        return sum(float(part) * 60 ** i for i, part in enumerate(reversed(parts)))
-    start, end = timing.split('-->')
-    return seconds(start), seconds(end)
-
-
-def covered(chinese, english):
-    """The Chinese lines a human English track puts a line under: humanByLine in the app
-    (src/lib/translation/lines.ts), each English cue under the line it overlaps most, else nearest."""
-    lines = [span(timing) for timing, _ in chinese]
-    found = set()
-    for timing, _ in english:
-        start, end = span(timing)
-        if lines:
-            found.add(max(range(len(lines)), key=lambda i: (min(lines[i][1], end) - max(lines[i][0], start), -i)))
-    return found
-
-
 def uncovered(job, available):
-    """The lines left to translate (spec 012): all of them, unless the reader chose a human English
-    track, which already gives the lines it covers."""
+    """The lines left to translate (spec 012): all of them, or none when the reader chose a human
+    English track. A line its maker left untranslated stays so; the reader trusts their judgement."""
     english = (read_json(os.path.join(job, 'choice.json')) or {}).get('english', 'machine')
-    if english in ('machine', 'none') or not os.path.exists(os.path.join(job, english)):
-        return available
-    skip = covered(available, cues(os.path.join(job, english)))
-    return [line for i, line in enumerate(available) if i not in skip]
+    return available if english in ('machine', 'none') else []
 
 
 def main(job):

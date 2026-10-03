@@ -75,7 +75,9 @@ while i < len(blocks):
         english.append(f'{shift(start, 0.2)} --> {shift(end, 0.2)}\nHuman English for lines 2 and 3')
         i += 2
         continue
-    english.append(f'{shift(start, 0.2)} --> {shift(end, 0.2)}\nHuman English for line {i + 1}')
+    # Line 4 is long: the question previews it, and must still fit a phone (it once overflowed).
+    long = ', said at length so that this line is far wider than any phone screen' if i == 3 else ''
+    english.append(f'{shift(start, 0.2)} --> {shift(end, 0.2)}\nHuman English for line {i + 1}{long}')
     i += 1
 human = 'WEBVTT\n\n' + '\n\n'.join(english) + '\n'
 track = lambda file, lang, name, vtt: {'file': file, 'lang': lang, 'name': name, 'kind': 'human', 'vtt': vtt}

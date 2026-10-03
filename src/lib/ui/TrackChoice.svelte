@@ -139,6 +139,8 @@
 		padding: 0.5rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
 		box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
 		display: grid;
+		/* A grid column is otherwise as wide as its widest content: here, a long preview line. */
+		grid-template-columns: minmax(0, 1fr);
 		gap: 0.5rem;
 	}
 
@@ -153,11 +155,14 @@
 		margin: 0;
 	}
 
+	/* A fieldset's default min-width is its content's: it too must be allowed to shrink. */
 	fieldset {
+		min-width: 0;
 		border: none;
 		margin: 0;
 		padding: 0;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 0.25rem;
 	}
 
@@ -168,6 +173,7 @@
 	}
 
 	.option {
+		min-width: 0;
 		display: flex;
 		gap: 0.6rem;
 		align-items: flex-start;
@@ -185,6 +191,13 @@
 		flex: none;
 	}
 
+	/* A flex item does not shrink below its content either: without both, long preview lines pushed
+	   the sheet wider than a phone (seen on the A71, 2026-10-03). */
+	.option > span {
+		flex: 1;
+		min-width: 0;
+	}
+
 	.what {
 		display: block;
 	}
@@ -196,7 +209,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		max-width: 28rem;
 	}
 
 	.muted {

@@ -196,12 +196,24 @@ const scenarios = {
 
 			// US2: the question, with the defaults chosen; leaving it imports nothing.
 			await importFromTermux(tab, 'Test clip, human English');
+			// At phone width, where the sheet once overflowed sideways (A71, 2026-10-03).
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 2,
+				mobile: true
+			});
 			const asked = await until('the subtitle question', () =>
 				tab.evaluate(`
 					const sheet = document.querySelector('[role=dialog][aria-label^="Choose subtitles"]');
 					if (!sheet) return null;
 					const checked = (name) => sheet.querySelector('input[name=' + name + ']:checked')?.value;
-					return { chinese: checked('chinese'), english: checked('english'), options: sheet.querySelectorAll('input').length };
+					return {
+						chinese: checked('chinese'), english: checked('english'), options: sheet.querySelectorAll('input').length,
+						fits: sheet.scrollWidth <= sheet.clientWidth && document.documentElement.scrollWidth <= 390,
+						widths: { sheet: [sheet.scrollWidth, sheet.clientWidth], page: document.documentElement.scrollWidth },
+						wide: [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > 391).slice(0, 6).map((e) => e.tagName + '.' + e.className.toString().split(' ')[0] + ' ' + Math.round(e.getBoundingClientRect().right))
+					};
 				`)
 			);
 			await tab.evaluate(
@@ -229,7 +241,7 @@ const scenarios = {
 				`)
 			);
 			const english = await until(
-				'human English beside the Chinese, the uncovered line translated',
+				'human English beside the Chinese, the uncovered line left empty',
 				() =>
 					tab.evaluate(`
 						if (!location.pathname.includes('/read/')) return null;
@@ -238,7 +250,7 @@ const scenarios = {
 						if (!all.checked) all.click();
 						const lines = [...document.querySelectorAll('.lines p')];
 						const texts = lines.map((p) => p.querySelector('.english')?.textContent ?? '');
-						if (!texts[1]) return null;
+						if (!texts[0] || !texts[2]) return null;
 						return {
 							first: texts[0], second: texts[1], third: texts[2],
 							humanTitle: lines[0].querySelector('.english')?.title ?? ''
@@ -249,6 +261,10 @@ const scenarios = {
 			);
 			const choice = await tab.evaluate(`
 				return fetch('http://127.0.0.1:18765/downloads/fixture-tracks-english/choice.json').then((r) => r.ok ? r.json() : null);
+			`);
+			// Beside a human track nothing is machine-translated, on the page or in Termux.
+			const termuxTranslated = await tab.evaluate(`
+				return fetch('http://127.0.0.1:18765/downloads/fixture-tracks-english/translate.json').then((r) => r.ok);
 			`);
 
 			// US4: switching the English leaves the Chinese lines as they were.
@@ -279,11 +295,13 @@ const scenarios = {
 					clean.roman === 0 &&
 					asked.chinese === 'track.zh.vtt' &&
 					asked.english === 'track.en.vtt' &&
+					asked.fits &&
 					left.onLibrary &&
 					left.listed &&
 					english.first === 'Human English for line 1' &&
 					english.third === 'Human English for lines 2 and 3' &&
-					!english.second.startsWith('Human') &&
+					english.second === '' &&
+					termuxTranslated === false &&
 					english.humanTitle.includes('English subtitles') &&
 					choice?.english === 'track.en.vtt' &&
 					none.lines === before &&
@@ -294,6 +312,7 @@ const scenarios = {
 				left,
 				english,
 				choice,
+				termuxTranslated,
 				before,
 				none,
 				kept

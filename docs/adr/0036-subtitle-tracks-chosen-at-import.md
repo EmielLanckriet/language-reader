@@ -12,9 +12,10 @@ is called "Chinese (Simplified)").
 Reader asks only when there is a real choice: two different clean human Chinese tracks, or a human
 English track. One rule decides this in the app and in translate.py, tested against one shared case
 table, because Termux must know whether to translate at once or wait. When a choice is asked,
-Reader reports it (`PUT /downloads/<job>/choice.json`) and Termux translates only then, and only the
-Chinese lines the chosen English leaves uncovered. Human English is matched to Chinese lines by
-greatest time overlap and is shown before the LLM's and the quick model's lines (Principle VIII).
+Reader reports it (`PUT /downloads/<job>/choice.json`) and Termux translates only then, and only
+when machine English was chosen. Human English is matched to Chinese lines by greatest time overlap
+and shown alone: a line its maker left untranslated stays so, because the reader trusts that
+judgement (decided in the phone check, 2026-10-03). Flashcards still fall back to machine English.
 
 The Chinese text is fixed at import; choosing another Chinese track means importing the kept
 download again as a new document. The English choice (`english.json`) is derived and can be switched

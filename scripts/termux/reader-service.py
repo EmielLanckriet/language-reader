@@ -167,7 +167,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def put_choice(self, job):
         """The tracks Reader imported (spec 012, contracts/bundle-and-service.md): stored, then the
-        chosen Chinese track is translated, unless the reader wants no English or will transcribe."""
+        chosen Chinese track is translated when the reader asked for machine English."""
         folder = os.path.join(self.root, 'downloads', job)
         if not job or '/' in job or job.startswith('.') or not os.path.isdir(folder):
             return self.reply(404, {'error': 'no such job'})
@@ -186,7 +186,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         with open(target + '.part', 'w', encoding='utf-8') as file:
             json.dump(choice, file)
         os.replace(target + '.part', target)
-        if choice['chinese'] != 'transcribe' and choice['english'] != 'none' and not translating(folder):
+        # Machine English only when asked for: beside a human English track the reader trusts its
+        # maker, untranslated lines included.
+        if choice['chinese'] != 'transcribe' and choice['english'] == 'machine' and not translating(folder):
             subprocess.Popen([sys.executable, TRANSLATE, folder], start_new_session=True,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.reply(204)

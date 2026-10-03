@@ -112,7 +112,8 @@ class TakingAChoice(TakingATranscript):
             self.assertIn('track.zh.vtt', file.read())
         self.assertTrue(self.started())
 
-    def test_starts_nothing_for_no_english_or_a_transcript_to_come(self):
+    def test_starts_nothing_for_human_or_no_english_or_a_transcript_to_come(self):
+        self.assertEqual(self.choose('job-1', '{"chinese": "track.zh.vtt", "english": "track.en.vtt"}'), 204)
         self.assertEqual(self.choose('job-1', '{"chinese": "track.zh.vtt", "english": "none"}'), 204)
         self.assertEqual(self.choose('job-1', '{"chinese": "transcribe", "english": "machine"}'), 204)
         self.assertFalse(self.started())

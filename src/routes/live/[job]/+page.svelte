@@ -50,23 +50,35 @@
 	/** The downloaded English track the reader chose at import, if any (spec 012), and "none". */
 	let humanCues = $state<Cue[]>([]);
 	let noEnglish = $state(false);
+	/** Known once the job's files are read: older jobs have no setting and want machine English. */
+	let machineWanted = $state<boolean | undefined>();
 	$effect(() => {
+		if (files.length === 0) return;
 		const setting = files.find((file) => file.name === ENGLISH_SETTING);
-		if (!setting) return;
+		if (!setting) {
+			machineWanted = true;
+			return;
+		}
 		void setting.text().then(async (text) => {
 			const chosen: EnglishSetting = JSON.parse(text);
 			noEnglish = chosen.source === 'none';
+			machineWanted = chosen.source === 'machine';
 			const track =
 				chosen.source === 'track' ? files.find((file) => file.name === chosen.file) : undefined;
 			humanCues = track ? parseSubtitles(await track.text()) : [];
 		});
 	});
+	// A chosen human English track is shown alone, its gaps included (spec 012, clarified 2026-10-03).
 	const english = $derived(
-		noEnglish ? [] : englishFor(cues.length, [], quickLines, humanByLine(cues, humanCues))
+		noEnglish
+			? []
+			: humanCues.length > 0
+				? englishFor(cues.length, [], [], humanByLine(cues, humanCues))
+				: englishFor(cues.length, [], quickLines)
 	);
 
 	$effect(() => {
-		if (!media) return;
+		if (!media || !machineWanted) return;
 		// Untracked, as on the reader page: starting it must not make this effect depend on the lines.
 		const translator = untrack(() =>
 			quickTranslation(

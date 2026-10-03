@@ -129,14 +129,17 @@
 
 	/** The reader chose no English for this video: nothing shown, nothing translated. */
 	const noEnglish = $derived(media?.english.source === 'none');
-	/** Every line has a person's English: the translators have nothing to add. */
-	const allHuman = $derived(
-		media !== null &&
-			media.cues.length > 0 &&
-			humanLines.filter(Boolean).length === media.cues.length
-	);
+	/**
+	 * The reader chose a person's English track: only its lines are shown. A line its maker left
+	 * untranslated stays so (the reader trusts their judgement), so no translator runs.
+	 */
+	const humanChosen = $derived(media?.english.source === 'track');
 	const english = $derived(
-		media && !noEnglish ? englishFor(media.cues.length, llmLines, quickLines, humanLines) : []
+		!media || noEnglish
+			? []
+			: humanChosen
+				? englishFor(media.cues.length, [], [], humanLines)
+				: englishFor(media.cues.length, llmLines, quickLines)
 	);
 
 	$effect(() => {
@@ -149,7 +152,7 @@
 		if (
 			(current.translation.length > 0 && !partial) ||
 			!job ||
-			untrack(() => noEnglish || allHuman)
+			untrack(() => noEnglish || humanChosen)
 		)
 			return;
 		return followTranslation(job, (cues, done, vtt) => {
@@ -166,7 +169,7 @@
 		// The LLM has every line already: nothing for the quick model to add. Its finished file can
 		// still have gaps, lines it could not place, and those are the quick model's.
 		if (llmByLine(current.cues, current.translation).every(Boolean)) return;
-		if (untrack(() => noEnglish || allHuman)) return;
+		if (untrack(() => noEnglish || humanChosen)) return;
 
 		let unsaved = 0;
 		const save = () => {
@@ -180,7 +183,7 @@
 		const translator = untrack(() =>
 			quickTranslation(
 				() => chinese,
-				(i) => Boolean(humanLines[i] || llmLines[i]?.trim() || quickLines[i]),
+				(i) => Boolean(llmLines[i]?.trim() || quickLines[i]),
 				(i, text) => {
 					const next = [...quickLines];
 					next[i] = text;

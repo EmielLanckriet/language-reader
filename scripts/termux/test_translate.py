@@ -83,7 +83,9 @@ class ChosenSource(unittest.TestCase):
 
 
 class UncoveredLines(unittest.TestCase):
-    def test_only_lines_the_chosen_english_leaves_are_translated(self):
+    def test_nothing_is_translated_beside_a_chosen_english_track(self):
+        # The reader trusts the person who made the English: a line they left untranslated stays so.
+        # Run directly (the service no longer starts it for such a choice), it translates nothing.
         import json, subprocess, sys
         job = tempfile.mkdtemp()
         chinese = ''.join(f'00:00:0{i}.000 --> 00:00:0{i + 1}.000\n第{i}行\n\n' for i in range(3))
@@ -101,13 +103,11 @@ class UncoveredLines(unittest.TestCase):
                    READER_MODEL_LOCK=os.path.join(job, 'model.lock'))
         here = os.path.dirname(os.path.abspath(__file__))
         subprocess.run([sys.executable, os.path.join(here, 'translate.py'), job], env=env, check=True, timeout=30)
-        with open(os.path.join(job, 'media.en.vtt'), encoding='utf-8') as out:
-            translated = out.read()
-        self.assertIn('第1行', translated)
-        self.assertNotIn('第0行', translated)
-        self.assertNotIn('第2行', translated)
+        path = os.path.join(job, 'media.en.vtt')
+        translated = open(path, encoding='utf-8').read() if os.path.exists(path) else ''
+        self.assertNotIn('第', translated)
         with open(os.path.join(job, 'translate.json')) as out:
-            self.assertEqual(json.load(out)['total'], 1)
+            self.assertEqual(json.load(out)['total'], 0)
 
 
 class Cues(unittest.TestCase):

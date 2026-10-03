@@ -14,7 +14,7 @@
 4. `verify:browser` scenarios, isolated origin and service data (docs/working-rules.md):
    - clean+mixed imports without a choice, text equals the clean track (US1, SC-1/SC-2);
    - English fixture shows the choice with defaults preselected; confirming imports; human lines
-     show as human, uncovered lines fall back (US2/US3);
+     show as human, the uncovered line stays empty, Termux translates nothing; the sheet fits 390 px (US2/US3);
    - leaving the choice imports nothing and the job stays listed (US2);
    - switching English on the read page leaves marks and encounters untouched (US4, SC-4);
    - pre-012 fixture imports exactly as before (FR-009).
@@ -25,5 +25,5 @@ Do not run heavy translation benchmarks while thermal validation is open; one re
 1. Share Jun's xEoY1KyrYls: imports without a question, clean Chinese, machine English starts.
 2. Share a video with a human English track (to be identified before the check; record it here):
    the choice appears once; with the human track chosen, English shows without a full translation
-   run (translate.json total equals the uncovered lines).
+   run (no translate.lock or translate.json for that job).
 3. Confirm the download log shows no automatic-caption requests beyond Chinese (SC-5).

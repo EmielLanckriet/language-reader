@@ -27,18 +27,18 @@ A choice is asked when there are 2+ distinct clean Chinese tracks or 1+ human En
 ## Track choice — `choice.json`
 Reader → Termux (`PUT /downloads/<job>/choice.json`) after an asked choice:
 `{ "chinese": "<file>" | "transcribe", "english": "<file>" | "machine" | "none" }`.
-Termux translates only when `english` is not `none`; with a file, only uncovered lines.
+Termux translates only when `english` is `machine`; beside a human track nothing is translated.
 
 ## Document English setting — `english.json` (document folder)
 `{ "source": "track", "file": "<file>" } | { "source": "machine" } | { "source": "none" }`.
 Absent means `machine` (every pre-012 document). Changing it (US4) rewrites only this file.
 
 ## Per-line English (computed)
-`English = { text, source: 'human' | 'llm' | 'quick' }` per Chinese line. Human from the chosen
-English track via R3; LLM from `media.en.vtt` by start time; quick from `quick-english.json`.
+`English = { text, source: 'human' | 'llm' | 'quick' }` per Chinese line. With a human track chosen,
+only its lines (R3), gaps left empty; otherwise LLM from `media.en.vtt` by start time, then quick.
 With `source: none`, no English is shown and no translation is requested.
 
 ## State: a Termux job
 `downloaded` → (no choice needed) `translating` → `translated`
-`downloaded` → (choice needed) `awaiting choice` → `PUT choice.json` → `translating` (uncovered
-lines only, or none) → `translated`. A dismissed or never-opened job stays `awaiting choice`.
+`downloaded` → (choice needed) `awaiting choice` → `PUT choice.json` → `translating` (machine
+English only) → `translated`. A dismissed or never-opened job stays `awaiting choice`.
