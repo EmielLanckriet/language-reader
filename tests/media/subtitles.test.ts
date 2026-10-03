@@ -1,5 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { parseSubtitles } from '../../src/lib/media/subtitles';
+import { chooseChineseTrack, parseSubtitles } from '../../src/lib/media/subtitles';
+
+// The first cues of Jun - Stickynote Chinese, xEoY1KyrYls: human tracks zh ("Chinese") and
+// zh-Hans ("Chinese (Simplified)"), the latter with a pinyin line under every line.
+const CLEAN =
+	'WEBVTT\nKind: captions\nLanguage: zh\n\n00:00:00.066 --> 00:00:02.666\n到了中国才发现我的中文有多差，\n\n00:00:02.800 --> 00:00:04.000\n点餐都不行。\n';
+const WITH_PINYIN =
+	'WEBVTT\nKind: captions\nLanguage: zh-Hans\n\n00:00:00.066 --> 00:00:02.666\n到了中国才发现我的中文有多差，\nDào le zhōngguó cái fāxiàn wǒ de zhōngwén yǒuduōchà,\n\n00:00:02.800 --> 00:00:04.000\n点餐都不行。\ndiǎncān dōu bùxíng.\n';
+const WITH_ENGLISH =
+	'WEBVTT\n\n00:00:00.066 --> 00:00:02.666\n到了中国才发现我的中文有多差，\nArriving in China, I found out how bad my Chinese was.\n';
+
+describe('choosing the Chinese track', () => {
+	it('prefers a clean track over one carrying pinyin, whatever the names say', () => {
+		const tracks = [
+			{ name: 'media.zh-Hans.vtt', text: WITH_PINYIN },
+			{ name: 'media.zh.vtt', text: CLEAN }
+		];
+		expect(chooseChineseTrack(tracks)?.name).toBe('media.zh.vtt');
+	});
+
+	it('prefers a clean track over one carrying English', () => {
+		const tracks = [
+			{ name: 'media.zh-CN.vtt', text: WITH_ENGLISH },
+			{ name: 'media.zh-TW.vtt', text: CLEAN }
+		];
+		expect(chooseChineseTrack(tracks)?.name).toBe('media.zh-TW.vtt');
+	});
+
+	it('still prefers simplified by name between clean tracks', () => {
+		const tracks = [
+			{ name: 'media.zh.vtt', text: CLEAN },
+			{ name: 'media.zh-Hans.vtt', text: CLEAN }
+		];
+		expect(chooseChineseTrack(tracks)?.name).toBe('media.zh-Hans.vtt');
+	});
+
+	it('keeps a mixed track when it is the only one', () => {
+		expect(chooseChineseTrack([{ name: 'media.zh-Hans.vtt', text: WITH_PINYIN }])?.name).toBe(
+			'media.zh-Hans.vtt'
+		);
+	});
+
+	it('does not call a clean track mixed for a few Latin words', () => {
+		const brands =
+			'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n我用iPhone和微信付款，\n\n00:00:02.000 --> 00:00:03.000\n在Toronto租房子。\n';
+		const tracks = [
+			{ name: 'media.zh.vtt', text: WITH_PINYIN },
+			{ name: 'media.zh-TW.vtt', text: brands }
+		];
+		expect(chooseChineseTrack(tracks)?.name).toBe('media.zh-TW.vtt');
+	});
+});
 
 describe('parsing subtitles', () => {
 	it('reads timings and joins a multi-line cue onto one line', () => {

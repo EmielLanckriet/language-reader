@@ -5,7 +5,7 @@ import { fallbackAnalyzer } from '$lib/analyzer/active';
 import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 import { RejectedInput } from '$lib/content/types';
 import { readTar } from './tar';
-import { parseSubtitles } from './subtitles';
+import { chooseChineseTrack, parseSubtitles } from './subtitles';
 import {
 	isPicture,
 	isPlayable,
@@ -18,22 +18,13 @@ import {
 	type NamedBlob
 } from './store';
 
-/** Simplified before traditional, and a human track (no suffix from yt-dlp) is what arrives first. */
-function preference(name: string): number {
-	if (/zh-(CN|Hans|SG)\b/i.test(name)) return 0;
-	if (/\.zh\./i.test(name)) return 1;
-	return 2;
-}
-
 /** A document when the bundle carried subtitles; a pending job while Reader transcribes it. */
 export type Imported = { documentId: number } | { pending: string };
 
 export async function importBundle(bundle: Blob, fallbackTitle: string): Promise<Imported> {
 	const members = await readTar(bundle);
 	const named = (name: string) => members.find((member) => member.name === name);
-	const subtitles = members
-		.filter((member) => isSubtitle(member.name))
-		.sort((a, b) => preference(a.name) - preference(b.name));
+	const subtitles = members.filter((member) => isSubtitle(member.name));
 	const media = members.find((member) => isPlayable(member.name));
 	const meta = named('meta.json');
 	// YouTube's picture, when Termux saved one: kept as the library's thumbnail (store.ts).
@@ -56,8 +47,11 @@ export async function importBundle(bundle: Blob, fallbackTitle: string): Promise
 	}
 
 	const title = meta ? titleIn(await meta.blob.text(), fallbackTitle) : fallbackTitle;
-	const chosen = subtitles[0];
-	const documentId = await createMediaDocument(title, await chosen.blob.text(), [
+	const tracks = await Promise.all(
+		subtitles.map(async (member) => ({ ...member, text: await member.blob.text() }))
+	);
+	const chosen = chooseChineseTrack(tracks)!;
+	const documentId = await createMediaDocument(title, chosen.text, [
 		...files([chosen]),
 		...files(keep),
 		...thumbnail
