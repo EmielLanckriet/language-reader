@@ -3,7 +3,7 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Due when FSRS says, no learning steps — built, not yet phone checked
+## Due when FSRS says, no learning steps — deployed and phone checked
 
 ADR-0038. Asked for on 2026-10-04 after "Are Chinese People Rude?" raised the library's due count
 from 102 to 123: of 121 words due at the end, 106 sat in ts-fsrs's 10-minute (or 1-minute) learning
@@ -12,7 +12,9 @@ modifier` days, unrounded (hours for a fresh tap), for reading and cards alike; 
 unchanged, so the fit and exports are unaffected. The memory key gains `+no-steps`, so the phone's
 sweep recomputes every word once. Validation: 527 tests (a property that every memory is due at 90 %
 recall caught rounding to whole days), type check, lint, browser `cardlayout`, `parameters`,
-`study`.
+`study`. Phone (A71, daily Reader updated to `1a10904`): the sweep recomputed every word within
+about a minute; the video's line went from "139 due come up" to "9 due come up (12×)". Of its 506
+words with memory, 56 come due within 6 hours (this session's taps) and 424 in 3 days or more.
 
 ## Session questions when leaving — built, phone checked on the test origin
 
