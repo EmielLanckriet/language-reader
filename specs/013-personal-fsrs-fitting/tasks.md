@@ -83,13 +83,14 @@ Goal: the same fit in a supervised worker. Gate: T035's measurement.
 
 2026-10-04: built and browser-checked before the phone measurement, because T035 needs the worker
 and the button to measure at all. The fit was first made 14× faster on the laptop (research R4);
-no reverse-mode tape. T035 and T038 wait for the phone.
+no reverse-mode tape. T035 measured 35 s on the A71; T038 agreement within 4.3e-8; cancel and
+hide checked in the browser only.
 Independent test: quickstart Story 4 passes; SC-006.
 
-- [ ] T035 [US4] Measure: a minimal worker running `fit.ts` on a synthetic history of the reader's export size on the A71 (isolated origin); record time and battery temperature in specs/013-personal-fsrs-fitting/research.md. If over 2 minutes, add a reverse-mode tape in src/lib/domain/fit.ts checked against finite differences in tests/domain/fit.test.ts, and measure again
+- [x] T035 [US4] Measure: a minimal worker running `fit.ts` on a synthetic history of the reader's export size on the A71 (isolated origin); record time and battery temperature in specs/013-personal-fsrs-fitting/research.md. If over 2 minutes, add a reverse-mode tape in src/lib/domain/fit.ts checked against finite differences in tests/domain/fit.test.ts, and measure again
 - [x] T036 [US4] Implement src/lib/fit-worker.ts: runs `fit.ts` on the format-2 dataset under `inferenceBudget`, posts progress, terminates on cancel, page hide, 5-minute deadline or refused lease; nothing written until a finished result is shown
 - [x] T037 [US4] Add Fit on this phone with progress and Cancel to src/routes/cards/tuning/+page.svelte, feeding the same report and Apply rule as an imported file
-- [ ] T038 [US4] On the A71 (isolated): fit, cancel mid-fit, hide mid-fit; compare with `fit.mjs` on the same export (agree within rounding); record SC-006 in specs/013-personal-fsrs-fitting/quickstart.md
+- [x] T038 [US4] On the A71 (isolated): fit, cancel mid-fit, hide mid-fit; compare with `fit.mjs` on the same export (agree within rounding); record SC-006 in specs/013-personal-fsrs-fitting/quickstart.md
 
 ## Phase 7: Polish
 

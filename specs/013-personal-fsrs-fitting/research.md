@@ -56,6 +56,11 @@ replays a step instead of 53), and 40-step trial fits for the prior strength wit
 continuing from the best: 24.7 s, the same verdict. The tape is not needed unless the phone is
 more than ~5× slower than this laptop.
 
+Phone (T035, 2026-10-04): the built fit worker on the Samsung A71, isolated test origin, same
+synthetic 13,500-event export: **35 s** (1.4× the laptop), battery 31.9 → 32.1 °C. Same verdict to
+1e-10; the fitted numbers differ from the laptop's by at most 4.3e-8 (1.4e-7 relative), so the set
+ids differ. No tape needed.
+
 ## R5. Priors, split and verdict
 
 Decision: Gaussian prior on the 21 weights centred on the Anki-imported set (defaults if none),

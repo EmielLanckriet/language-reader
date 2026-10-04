@@ -8,7 +8,8 @@
  *   small history cannot move it far. Its strength is chosen inside the earlier period only.
  * - Gradients are central differences over `replay`; the steps are Adam's, kept inside bounds.
  *   Slower than derived gradients, but nothing to keep in step with the rules (research R4).
- * - Everything is deterministic: the same export gives the same parameters on any machine.
+ * - Deterministic on one machine. Across machines the numbers agree to about 1e-7, not bit for bit
+ *   (laptop x86 against the phone's ARM, measured 2026-10-04), so their ids can differ.
  */
 
 import { prepare, replay, type PreparedSkill } from './replay';

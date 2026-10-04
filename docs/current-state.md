@@ -24,7 +24,14 @@ Story 3: Cards → Learning data shows the set in force, imports a fitted set, a
 its report says it predicted later reading better and it was fitted against the set in force, and
 returns to any earlier set or the Anki weights. Each change is an append-only `fsrs-activation`;
 memory follows through the background sweep; returning is exact. Not phone-checked; SC-005
-(recompute under 30 s on the A71) unmeasured. Fitting on the phone (Story 4) remains.
+(recompute under 30 s on the A71) unmeasured.
+
+Story 4: Learning data's "Fit on this device" runs the same fit in its own worker under the
+local-model lease, with Cancel, a stop when hidden, and a 5-minute deadline. The fit was made 14×
+faster first (350 → 24.7 s on the laptop for a synthetic 13,500-event export). On the A71
+(isolated origin, same export): 35 s, 31.9 → 32.1 °C, parameters within 4.3e-8 of the laptop's.
+Cancel/hide were checked in the browser, not on the phone. The reader's real history has not
+been fitted.
 
 ## Player buttons, listening feedback and day end — deployed, not phone checked
 

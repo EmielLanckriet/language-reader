@@ -67,3 +67,8 @@ on the phone under 30 s) is not measured: no phone connected.
    the reverse-mode tape and measure again.
 2. Cancel mid-fit and hide the app mid-fit: nothing recorded. Laptop and phone reports on the same
    export agree within rounding.
+
+Recorded 2026-10-04: 35 s on the A71 for 13,500 synthetic events (SC-006 met), 31.9 → 32.1 °C;
+parameters within 4.3e-8 of the laptop's. Cancel was checked in the browser (`fithere`), not on
+the phone: a fresh test profile has no history, so the fit there ends before it can be cancelled
+or hidden. The deadline and the hide rule are therefore unexercised on the phone.
