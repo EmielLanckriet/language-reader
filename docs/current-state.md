@@ -3,6 +3,30 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Session questions when leaving — built, phone checked on the test origin
+
+Asked for on 2026-10-04: the reader forgets the feedback unless asked. Leaving a video or text
+within the app (← Videos/Texts, the tab bar, Android back) after at least 30 s of reading or playing
+now pauses, ends the session as Finish session does, and shows a "Before you go" sheet with the
+same questions as Progress (`SessionQuestions.svelte`, shared): watched/listened and attention for
+videos, "looked up every unknown word" for both. Each answer saves at once; Done and Later carry on
+to where the reader was going. Finish session and Delete leave without it; closing the app cannot
+wait for a sheet, and Progress's pending card still asks later.
+
+**Found on the way: `onMount` did nothing in the whole app since 2026-09-03.** `vite.config.ts` set
+`resolve.conditions` to the onnxruntime condition alone, which replaces Vite's defaults; without
+`browser`, `svelte` resolved to its server build, so `onMount` and SvelteKit's
+`beforeNavigate`/`afterNavigate` were silent no-ops (`$effect` was unaffected). Now the defaults
+plus that condition; the install got slightly smaller (11.460 → 11.439 MB) and the large wasm
+stays out. Nothing else used these hooks, so no other behaviour depended on the bug.
+
+Validation: 525 tests (one unidentified test failed once in five runs, then passed three in a row),
+type check, lint; browser scenarios `leaving` and `leavingvideo` (new),
+`study`, `boot`, `listened`, `parameters`, `cardlayout`, `words`, `shell`, `firstload`,
+`readonly`, `fithere` and `tuning` (its expectations were stale since 013: format 2,
+`evidence-3`). Phone (A71, isolated test reader): before the fix the sheet did not appear, after it
+it did for ← Texts and for the hardware back key; answer saved, Done and Later went on.
+
 ## Library word counts: due words and recurring new words — deployed and phone checked
 
 Asked for on 2026-10-04 (backlog: "Video statistics from FSRS"). Under each video's and text's

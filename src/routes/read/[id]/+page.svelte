@@ -33,7 +33,9 @@
 		SOUND_ONLY
 	} from '$lib/media/store';
 	import { audioOnly } from '$lib/media/audio-track';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
+	import SessionQuestions from '$lib/ui/SessionQuestions.svelte';
+	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { colourBand } from '$lib/domain/memory';
 	import { readingsOf } from '$lib/analyzer/pronounce';
@@ -247,6 +249,7 @@
 			const job = media && jobOf(media.meta);
 			if (job) await dismissJob(job);
 			await removeMedia(document.id);
+			leavingQuietly = true;
 			await goto(resolve('/'));
 		} catch (error) {
 			deleteProblem = error instanceof Error ? error.message : String(error);
@@ -362,12 +365,85 @@
 		player?.pause();
 		try {
 			const id = await recorder.finish();
+			leavingQuietly = true;
 			await goto(resolve(`/progress?session=${id}`));
 		} catch (error) {
 			finishProblem = error;
 		} finally {
 			finishing = false;
 		}
+	}
+
+	/**
+	 * Leaving without Finish session asks the session's questions here, since the reader forgets them
+	 * otherwise (asked for 2026-10-04). Only after some real reading or playing, and only for leaving
+	 * within the app: closing the app cannot wait for a sheet, and Progress still asks later.
+	 */
+	const ASK_AFTER_MS = 30_000;
+	let leaving = $state<{
+		session: number;
+		modality: string;
+		engagement: Engagement | null;
+		answered: boolean;
+		answer: AttentionAnswer;
+		go: () => unknown;
+	} | null>(null);
+	let leavingQuietly = false;
+	let answering = $state(false);
+	let leaveProblem = $state<unknown>(null);
+	beforeNavigate((navigation) => {
+		if (leavingQuietly || finishing || leaving || !recorder) return;
+		if (navigation.willUnload || !navigation.to) return;
+		if (recorder.engagedMs() < ASK_AFTER_MS) return;
+		navigation.cancel();
+		const target = navigation.to.url.href;
+		const delta = navigation.type === 'popstate' ? navigation.delta : undefined;
+		// The URL SvelteKit was already going to, base path included: resolve() would add it twice.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		void askBeforeLeaving(() => (delta ? history.go(delta) : goto(target)));
+	});
+	async function askBeforeLeaving(go: () => unknown) {
+		if (!recorder) return;
+		const modality = media?.media ? 'media' : 'reading';
+		player?.pause();
+		leavingQuietly = true;
+		try {
+			const id = await recorder.finish();
+			leaving = { session: id, modality, engagement: null, answered: false, answer: null, go };
+		} catch {
+			// Not saved yet: leave as before; the recorder's stash and Progress keep the session.
+			go();
+		} finally {
+			leavingQuietly = false;
+		}
+	}
+	async function saveLeaving(encounter: Omit<Encounter, 'at'>) {
+		if (!leaving || answering) return;
+		answering = true;
+		leaveProblem = null;
+		try {
+			await (
+				await session()
+			).repository.recordEncounters(leaving.session, [
+				{ ...encounter, at: new Date().toISOString() }
+			]);
+			if (encounter.kind === 'engagement')
+				leaving.engagement = encounter.detail as unknown as Engagement;
+			else {
+				leaving.answered = true;
+				leaving.answer = (encounter.detail as { answer: AttentionAnswer }).answer;
+			}
+		} catch (error) {
+			leaveProblem = error;
+		} finally {
+			answering = false;
+		}
+	}
+	function leave() {
+		const go = leaving?.go;
+		leavingQuietly = true;
+		leaving = null;
+		go?.();
 	}
 
 	const sink: EncounterSink = {
@@ -873,7 +949,66 @@
 	</p>
 {/if}
 
+{#if leaving}
+	{@const current = leaving}
+	<div class="leave-backdrop">
+		<div class="leave-sheet" role="dialog" aria-modal="true" aria-label="Before you go">
+			<h2>Before you go</h2>
+			<p class="muted">Session saved. These are optional; you can also answer later in Progress.</p>
+			<SessionQuestions
+				modality={current.modality}
+				engagement={current.engagement}
+				answered={current.answered}
+				answer={current.answer}
+				disabled={answering}
+				onengage={(change) =>
+					saveLeaving({
+						kind: 'engagement',
+						detail: { mode: null, attentive: null, ...current.engagement, ...change }
+					})}
+				onanswer={(value) => saveLeaving({ kind: 'attention', detail: { answer: value } })}
+			/>
+			{#if leaveProblem}<ErrorNotice error={leaveProblem} />{/if}
+			<div class="leave-actions">
+				<button class="secondary" onclick={leave}>Later</button>
+				<button onclick={leave}>Done</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
+	.leave-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 10;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.35);
+	}
+	/* Anchored to the bottom like the word sheet; scrolls rather than losing its top. */
+	.leave-sheet {
+		width: 100%;
+		max-width: 36rem;
+		max-height: 100dvh;
+		overflow-y: auto;
+		background: var(--paper);
+		border-top-left-radius: 12px;
+		border-top-right-radius: 12px;
+		padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+		box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25);
+	}
+	.leave-sheet h2 {
+		font-size: 1.1rem;
+		margin: 0.25rem 0;
+	}
+	.leave-actions {
+		display: flex;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-top: 1rem;
+	}
 	.english-choice {
 		margin-top: 2rem;
 		font-size: 0.9rem;

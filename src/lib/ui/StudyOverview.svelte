@@ -6,6 +6,7 @@
 	import type { StudyOverview } from '$lib/domain/study';
 	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
 	import ErrorNotice from './ErrorNotice.svelte';
+	import SessionQuestions from './SessionQuestions.svelte';
 	let { full = false }: { full?: boolean } = $props();
 	let overview = $state<StudyOverview | null>(null);
 	let problem = $state<unknown>(null);
@@ -16,21 +17,6 @@
 	let expanded = $state<number[]>([]);
 	const pending = $derived(overview?.sessions.filter((s) => !s.answered) ?? []);
 	const selected = $derived(Number(page.url.searchParams.get('session')));
-	const answers: { value: AttentionAnswer; label: string }[] = [
-		{ value: 'all', label: 'Yes, every unknown word' },
-		{ value: 'some', label: 'Only some' },
-		{ value: 'none', label: 'I wasn’t tracking unknown words' },
-		{ value: null, label: 'Skip / not sure' }
-	];
-	const modes: { value: Engagement['mode']; label: string }[] = [
-		{ value: 'watched', label: 'Watched' },
-		{ value: 'listened', label: 'Only listened' }
-	];
-	const attention: { value: Engagement['attentive']; label: string }[] = [
-		{ value: 'yes', label: 'Yes' },
-		{ value: 'partly', label: 'Partly' },
-		{ value: 'no', label: 'No' }
-	];
 	/** When a study day ends, on this device only (asked for 2026-10-04; 4 AM unless changed). */
 	const DAY_END_HOURS = [0, 1, 2, 3, 4, 5, 6];
 	let dayEndHour = $state(readDayEnd());
@@ -236,48 +222,15 @@
 					></summary
 				>
 				<div class="session-body">
-					{#if entry.modality === 'media'}
-						<p class="question">Did you watch, or only listen?</p>
-						<div class="answer-options">
-							{#each modes as option (option.label)}<button
-									class="secondary"
-									class:chosen={entry.engagement?.mode === option.value}
-									aria-pressed={entry.engagement?.mode === option.value}
-									disabled={saving !== null}
-									onclick={() => engage(entry.id, entry.engagement, { mode: option.value })}
-									>{option.label}</button
-								>{/each}
-						</div>
-						<p class="question">Were you paying attention?</p>
-						<div class="answer-options">
-							{#each attention as option (option.label)}<button
-									class="secondary"
-									class:chosen={entry.engagement?.attentive === option.value}
-									aria-pressed={entry.engagement?.attentive === option.value}
-									disabled={saving !== null}
-									onclick={() => engage(entry.id, entry.engagement, { attentive: option.value })}
-									>{option.label}</button
-								>{/each}
-						</div>
-						<p class="muted">Kept as a note for now; it does not change your cards.</p>
-					{/if}
-					<p class="question">Did you look up every word you didn’t understand?</p>
-					<p class="muted">
-						This helps interpret untapped words. It does not affect your weekly goal.
-					</p>
-					<div class="answer-options">
-						{#each answers as option (option.label)}<button
-								class="secondary"
-								class:chosen={entry.answered && entry.answer === option.value}
-								aria-pressed={entry.answered && entry.answer === option.value}
-								disabled={saving !== null}
-								onclick={() => answer(entry.id, option.value)}>{option.label}</button
-							>{/each}
-					</div>
-					{#if entry.answered}<p class="muted">
-							Current answer: {answers.find((a) => a.value === entry.answer)?.label}. Changes keep
-							the original answer in your history.
-						</p>{/if}
+					<SessionQuestions
+						modality={entry.modality}
+						engagement={entry.engagement}
+						answered={entry.answered}
+						answer={entry.answer}
+						disabled={saving !== null}
+						onengage={(change) => engage(entry.id, entry.engagement, change)}
+						onanswer={(value) => answer(entry.id, value)}
+					/>
 					{#if entry.available}<a
 							class="text-link"
 							href={resolve('/read/[id]', { id: String(entry.documentId) })}>Open again →</a
@@ -440,20 +393,6 @@
 	}
 	.session-body {
 		padding: 0 1rem 1rem;
-	}
-	.question {
-		font-weight: 650;
-	}
-	.answer-options {
-		display: grid;
-		gap: 0.5rem;
-	}
-	.answer-options button {
-		text-align: left;
-	}
-	.answer-options .chosen {
-		border-color: var(--accent);
-		background: var(--accent-soft);
 	}
 	.session-saved {
 		padding: 1rem;

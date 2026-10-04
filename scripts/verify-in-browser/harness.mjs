@@ -505,6 +505,204 @@ const scenarios = {
 			await tab.close();
 		}
 	},
+	async leaving() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		const path = () => tab.evaluate('return location.pathname');
+		const sheet = () => tab.evaluate(`return !!document.querySelector('.leave-sheet')`);
+		const openText = async () => {
+			await tab.evaluate(`document.querySelector('.library a[href*="/read/"]').click()`);
+			await until('reading text', () =>
+				tab.evaluate(`return !!document.querySelector('.reading button.token')`)
+			);
+			await tab.evaluate(
+				`document.querySelector('.reading').scrollIntoView({block:'center'});window.readSince=Date.now();`
+			);
+		};
+		const readFor = (ms) =>
+			until(
+				`${ms} ms of reading`,
+				() => tab.evaluate(`return Date.now()-window.readSince >= ${ms}`),
+				ms + 10000,
+				500
+			);
+		const tapBack = () => tab.evaluate(`document.querySelector('a.back').click()`);
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await tab.goto('/add');
+			await until('paste field', () => tab.evaluate('return !!document.querySelector("textarea")'));
+			await tab.evaluate(
+				`const area=document.querySelector('textarea');area.value='我们学习中文。今天有一点进步，明天继续。';area.dispatchEvent(new Event('input',{bubbles:true}));`
+			);
+			await until('save enabled', () => tab.evaluate(`return ${SAVE_BUTTON}?.disabled===false`));
+			await tab.evaluate(`${SAVE_BUTTON}.click()`);
+			await until('saved text', () => tab.evaluate(`return ${READ_LINK}`));
+			await tab.goto('/texts');
+			await until('text listed', () =>
+				tab.evaluate(`return !!document.querySelector('.library a[href*="/read/"]')`)
+			);
+
+			// 1. ← Texts after 30 s of reading asks, and stays until Done.
+			console.log('leaving: reading 36 s, then ← Texts');
+			await openText();
+			await readFor(36000); // 30 s counts: a text is read after 2 s on screen
+			await tapBack();
+			await until('sheet on leaving', sheet);
+			if (!(await path()).includes('/read/')) throw new Error('Left before the sheet was answered');
+			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-leaving-light.png', Buffer.from(shot.data, 'base64'));
+			const width = await tab.evaluate(
+				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.trim()==='Only some').click()`
+			);
+			await until('answer saved in sheet', () =>
+				tab.evaluate(
+					`return document.querySelector('.leave-sheet').innerText.includes('Current answer: Only some')`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Done').click()`
+			);
+			await until(
+				'arrived at Texts',
+				async () => (await path()).endsWith('/texts') && !(await sheet())
+			);
+
+			// 2. The answer is the session's, on Progress.
+			await tab.goto('/progress');
+			await until('answer on Progress', () =>
+				tab.evaluate(
+					`return document.querySelector('.session-card summary')?.textContent.includes('Feedback saved')`
+				)
+			);
+
+			// 3. A short visit leaves without asking.
+			await tab.goto('/texts');
+			await until('text listed again', () =>
+				tab.evaluate(`return !!document.querySelector('.library a[href*="/read/"]')`)
+			);
+			await openText();
+			await tapBack();
+			await until('short visit left', async () => (await path()).endsWith('/texts'));
+			if (await sheet()) throw new Error('A short visit asked');
+
+			// 4. Back (Android's back button) asks too, and Later goes back.
+			console.log('leaving: reading 36 s, then back');
+			await openText();
+			await readFor(36000); // 30 s counts: a text is read after 2 s on screen
+			await tab.evaluate('history.back()');
+			await until('sheet on back', sheet);
+			if (!(await path()).includes('/read/')) throw new Error('Back left before the sheet');
+			await tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Later').click()`
+			);
+			await until('went back', async () => (await path()).endsWith('/texts') && !(await sheet()));
+			return { pass: width.body <= width.viewport, width };
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				path: await path().catch(() => '?'),
+				page: await tab.evaluate('return document.body.innerText.slice(0, 600)')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+	async leavingvideo() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		const path = () => tab.evaluate('return location.pathname');
+		const sheet = () => tab.evaluate(`return !!document.querySelector('.leave-sheet')`);
+		const choose = (label) =>
+			tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.trim()===${JSON.stringify(label)}).click()`
+			);
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the video to be playable',
+				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				30000,
+				250
+			);
+			console.log('leavingvideo: playing 33 s, then ← Videos');
+			await tab.evaluate(`
+				const video = document.querySelector('video');
+				video.muted = true;
+				await video.play();
+				window.playSince = Date.now();
+				return true;
+			`);
+			await until(
+				'33 s of playing',
+				() => tab.evaluate('return Date.now()-window.playSince >= 33000'),
+				45000,
+				500
+			);
+			await tab.evaluate(`document.querySelector('a.back').click()`);
+			await until('sheet on leaving', sheet);
+			const questions = await tab.evaluate(
+				`return document.querySelector('.leave-sheet').innerText`
+			);
+			if (!questions.includes('Did you watch, or only listen?'))
+				throw new Error('The sheet does not ask how the video was followed');
+			const paused = await tab.evaluate(`return document.querySelector('video').paused`);
+			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-leaving-video.png', Buffer.from(shot.data, 'base64'));
+			const width = await tab.evaluate(
+				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
+			);
+			await choose('Only listened');
+			await until('mode saved', () =>
+				tab.evaluate(
+					`return document.querySelector('.leave-sheet button[aria-pressed="true"]')?.textContent.trim()==='Only listened'`
+				)
+			);
+			await choose('Partly');
+			await until('attention saved', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('.leave-sheet button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Only listened,Partly'`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Done').click()`
+			);
+			await until(
+				'arrived at the library',
+				async () => (await path()).endsWith('/language-reader/') && !(await sheet())
+			);
+			await tab.goto('/progress');
+			await until('both answers on Progress', () =>
+				tab.evaluate(
+					`const card=document.querySelector('.session-card'); card.open=true; return [...card.querySelectorAll('button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Only listened,Partly'`
+				)
+			);
+			return { pass: paused && width.body <= width.viewport, paused, width };
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				path: await path().catch(() => '?'),
+				page: await tab.evaluate('return document.body.innerText.slice(0, 600)')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	async study() {
 		const { writeFileSync } = await import('node:fs');
 		const tab = await openTab('about:blank');
@@ -648,11 +846,17 @@ const scenarios = {
 			`);
 			const data = await tab.evaluate('return JSON.parse(await window.tuningExport)');
 			const pass =
-				data.format === 1 &&
-				data.rule === 'evidence-2' &&
+				data.format === 2 &&
+				data.rule === 'evidence-3' &&
 				data.scheduler === 'ts-fsrs@5.4.2' &&
 				data.words.length === 0;
-			return { pass, exportedWords: data.words.length, scheduler: data.scheduler };
+			return {
+				pass,
+				exportedWords: data.words.length,
+				scheduler: data.scheduler,
+				format: data.format,
+				rule: data.rule
+			};
 		} catch (error) {
 			return {
 				pass: false,
