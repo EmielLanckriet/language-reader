@@ -177,25 +177,54 @@ export function fit(
 	const iterations = options.iterations ?? 150;
 	const centre = [...start.weights, ...EXTRA_CENTRE];
 	const earlier = score(words, start).filter((r) => r.at < cutoff);
-	// The prior strength is chosen on the last fifth of the earlier period, fitted on the rest.
+	// The prior strength is chosen on the last fifth of the earlier period, by shorter trial fits on
+	// the rest; the final fit continues from the best trial, now over the whole earlier period.
 	const validation = cutoffOf(earlier);
-	let best = { gamma: 1, loss: Infinity };
+	let best = { gamma: gammas[0] ?? 1, loss: Infinity, set: start };
 	if (gammas.length > 1 && Number.isFinite(validation))
 		for (const gamma of gammas) {
-			const trial = optimise(words, centre, start, validation, gamma, iterations);
+			const trial = optimise(words, centre, start, validation, gamma, Math.min(40, iterations));
 			const held = score(words, trial).filter((r) => r.at >= validation && r.at < cutoff);
 			const loss = held.reduce((sum, r) => sum + logLoss(r), 0);
-			if (loss < best.loss) best = { gamma, loss };
+			if (loss < best.loss) best = { gamma, loss, set: trial };
 		}
-	else best.gamma = gammas[0] ?? 1;
 	return {
-		set: optimise(words, centre, start, cutoff, best.gamma, iterations),
+		set: optimise(words, centre, best.set, cutoff, best.gamma, iterations),
 		gamma: best.gamma,
 		iterations
 	};
 }
 
-/** Projected Adam on standardised parameters z = (θ − centre) / σ, central-difference gradients. */
+/** The summed log loss of every observation before `cutoff` under these numbers. */
+function lossBefore(words: FitWord[], theta: number[], cutoff: number): number {
+	const weights = theta.slice(0, 21);
+	const strengths = { seenReading: theta[21], seenListening: theta[22], tapStability: theta[23] };
+	const [falseSuccess, falseFailure] = [theta[24], theta[25]];
+	let loss = 0;
+	for (const { prepared } of words)
+		replay(
+			prepared,
+			weights,
+			strengths,
+			(o) => {
+				if (o.probability === null) return;
+				const p =
+					o.type === 'in-context'
+						? falseSuccess + (1 - falseSuccess - falseFailure) * o.probability
+						: o.probability;
+				const bounded = Math.min(1 - 1e-12, Math.max(1e-12, p));
+				loss -= o.label * Math.log(bounded) + (1 - o.label) * Math.log(1 - bounded);
+			},
+			cutoff
+		);
+	return loss;
+}
+
+/**
+ * Projected Adam on standardised parameters z = (θ − centre) / σ, from `start`, pulled towards
+ * `centre`. Forward-difference gradients: one replay per parameter, a step of 1e-4 standard
+ * deviations (half the replays of central differences, measured 2026-10-04 to keep SC-002).
+ */
 function optimise(
 	words: FitWord[],
 	centre: number[],
@@ -208,24 +237,18 @@ function optimise(
 	const toTheta = (z: number[]) =>
 		z.map((zi, i) => Math.min(Math.max(centre[i] + SIGMA[i] * zi, BOUNDS[i][0]), BOUNDS[i][1]));
 	const toZ = (theta: number[]) => theta.map((t, i) => (t - centre[i]) / SIGMA[i]);
-	const objective = (z: number[]) => {
-		const set = setOf(toTheta(z), start.retention);
-		let loss = 0;
-		for (const row of score(words, set)) if (row.at < cutoff) loss += logLoss(row);
-		const prior = z.reduce((sum, zi) => sum + zi * zi, 0) / 2;
-		return loss + gamma * prior;
-	};
+	const objective = (z: number[]) =>
+		lossBefore(words, toTheta(z), cutoff) + (gamma * z.reduce((sum, zi) => sum + zi * zi, 0)) / 2;
 	let z = toZ(vectorOf(start));
 	const m = new Array(n).fill(0);
 	const v = new Array(n).fill(0);
 	const [rate, beta1, beta2, h] = [0.05, 0.9, 0.999, 1e-4];
 	for (let k = 1; k <= iterations; k++) {
+		const here = objective(z);
 		const gradient = z.map((_, i) => {
-			const up = [...z];
-			const down = [...z];
-			up[i] += h;
-			down[i] -= h;
-			return (objective(up) - objective(down)) / (2 * h);
+			const nudged = [...z];
+			nudged[i] += h;
+			return (objective(nudged) - here) / h;
 		});
 		let moved = 0;
 		const next = z.map((zi, i) => {

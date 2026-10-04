@@ -48,6 +48,14 @@ Measured: a plain-JS FSRS-6 replay of 5,000 events over 800 words takes **0.72 m
 Story 4 starts with a phone measurement, and a small reverse-mode tape (checked against finite
 differences) is the planned remedy if needed. Not verified: fsrs-rs runtime figures.
 
+Measured 2026-10-04 on a synthetic 13,500-event export: the first `fit.mjs` took 350 s. A replay
+cost 7.75 ms, not the benchmark's ~2 ms, because `calendarDays` built two `Date` objects a step
+(UTC day numbers are `floor(ms / day)`, so it no longer does: 4.1 ms). With the loss summed during
+the replay instead of building rows, each replay stopping at the cutoff, forward differences (27
+replays a step instead of 53), and 40-step trial fits for the prior strength with the final fit
+continuing from the best: 24.7 s, the same verdict. The tape is not needed unless the phone is
+more than ~5× slower than this laptop.
+
 ## R5. Priors, split and verdict
 
 Decision: Gaussian prior on the 21 weights centred on the Anki-imported set (defaults if none),

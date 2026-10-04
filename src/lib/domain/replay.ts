@@ -62,21 +62,25 @@ export function prepare(history: WordHistory): PreparedSkill[] {
 	});
 }
 
-/** UTC calendar days between two moments, as ts-fsrs counts them for a memory update. */
+/**
+ * UTC calendar days between two moments, as ts-fsrs counts them for a memory update. UTC has no
+ * daylight saving, so a day number is the milliseconds divided by a day, rounded down; the same
+ * as ts-fsrs's `Date.UTC(y, m, d)` arithmetic without building two dates a step.
+ */
 function calendarDays(from: number, to: number): number {
-	const day = (ms: number) => {
-		const d = new Date(ms);
-		return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-	};
-	return Math.floor((day(to) - day(from)) / DAY_MS);
+	return Math.floor(to / DAY_MS) - Math.floor(from / DAY_MS);
 }
 
-/** Replays prepared evidence under weights `w` and `rule`, observing each scored step before it. */
+/**
+ * Replays prepared evidence under weights `w` and `rule`, observing each scored step before it.
+ * With `until`, stops at the first step at or after it: nothing later can change what came before.
+ */
 export function replay(
 	prepared: PreparedSkill[],
 	w: readonly number[],
 	rule: RuleStrengths | undefined,
-	observe: (observation: Observation) => void
+	observe: (observation: Observation) => void,
+	until = Infinity
 ): void {
 	for (const { skill, seed, steps } of prepared) {
 		let memory = seed?.memory;
@@ -84,6 +88,7 @@ export function replay(
 		let latest = last ?? -Infinity;
 		let dated = seed?.dateKnown ?? true;
 		for (const step of steps) {
+			if (step.at >= until) break;
 			latest = Math.max(latest, step.at);
 			const now = latest;
 			if (step.type) {
