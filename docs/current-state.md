@@ -11,7 +11,14 @@ gets no credit; every tap is a failure, "I knew it" is gone, and Undo tap (while
 open) records `tap-undone` and no lookup. Older sessions count as blurred; older reveals map by line.
 Learning data scores reading-in-context outcomes beside card answers; exports are format 2.
 Memory is recomputed for every word once (rule change). The parameter ordering bug across devices
-is fixed. Fitting (Story 2) and apply/rollback (Story 3) are not built yet.
+is fixed. Deployed `31930b9`; not yet phone-checked (no USB device).
+
+Story 2 (deployed `7f767b2`, laptop only, no visible change in Reader): `fsrs6.ts` equals ts-fsrs
+to 1e-6; `replay.ts` reproduces Reader's predictions exactly ~100× faster; `scripts/fsrs/fit.mjs`
+fits weights, tap/seen strengths and in-context noise with a prior and gives a bootstrapped
+verdict. 5 min 50 s for a synthetic 13,500-event export on the laptop; the reader's real export
+has not been fitted. A true improvement of ~0.04 log loss per outcome needed more than 340 later
+in-context outcomes to show. Apply/rollback (Story 3) and fitting on the phone (Story 4) remain.
 
 ## Player buttons, listening feedback and day end — deployed, not phone checked
 
