@@ -3,7 +3,7 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Library word counts: due words and recurring new words — built, not phone checked
+## Library word counts: due words and recurring new words — deployed and phone checked
 
 Asked for on 2026-10-04 (backlog: "Video statistics from FSRS"). Under each video's and text's
 shares bar: "7 due come up (23×) · 18 new words, 5 recur". Due is reading memory due now (cards
@@ -14,7 +14,13 @@ is a word with no memory and no mark; it recurs when it occurs in 3 or more sepa
 (`wordLines`, code-point offsets against the text's line breaks). Validation: 525 tests (counts
 and lines, each caught 4 mutations), type check, lint, and the `study` browser scenario, now with
 a 390 px Texts screenshot (`/tmp/reader-texts-light.png`) showing "8 new words". The due part was
-not seen on screen (a fresh profile has nothing due). Predicted comprehension is still open.
+not seen on screen in the browser (a fresh profile has nothing due).
+
+Phone (A71, 2026-10-04, build `1791108314419`): every video has its line, e.g. "Are Chinese
+People Rude?" 121 due come up (308×) · 96 new words, 16 recur; the 关税战 summary 228 due (1149×)
+· 1130 new, 207 recur; no horizontal scroll at 411 px. The phone was two builds behind: its banner
+offered the 09:20 build, and the newer one only after a second `registration.update()` (Pages
+sends `max-age=600`). Predicted comprehension is still open.
 
 ## Personal FSRS fitting (spec 013) — deployed and phone checked
 
