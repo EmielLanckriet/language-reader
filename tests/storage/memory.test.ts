@@ -258,6 +258,16 @@ describe('memory kept with the history', () => {
 		expect(rows(db)).toEqual(current);
 	});
 
+	it('stops sweeping when a batch changes nothing, whatever the reason', async () => {
+		let asked = 0;
+		const client = {
+			staleMemory: async () => [1, 2],
+			refreshMemory: async () => {}
+		};
+		await sweepStaleMemory(client, () => ++asked < 100);
+		expect(asked).toBeLessThan(5);
+	});
+
 	it('is read back per skill with the parameters recall needs', async () => {
 		const { repository, documentId, words, lookup } = await library();
 		repository.importAnki(anki);

@@ -192,9 +192,15 @@ export async function sweepStaleMemory(
 	batch = 200
 ): Promise<number> {
 	let refreshed = 0;
+	let previous = '';
 	while (shouldContinue()) {
 		const stale = await client.staleMemory(batch);
 		if (stale.length === 0) break;
+		// The same words stale again right after refreshing them: refreshing cannot settle them, and
+		// looping would repeat the work for as long as the page is open (found 2026-10-04).
+		const these = stale.join(',');
+		if (these === previous) break;
+		previous = these;
 		await client.refreshMemory(stale);
 		refreshed += stale.length;
 	}

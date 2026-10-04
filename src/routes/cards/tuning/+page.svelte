@@ -4,6 +4,7 @@
 	import type { TuningDataset, TuningReport } from '$lib/domain/tuning';
 	import type { ParameterSet } from '$lib/domain/fit';
 	import { fitOnThisDevice } from '$lib/fit-run';
+	import { sweepStaleMemory } from '$lib/storage/sweep';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 
 	let analysis = $state<{ data: TuningDataset; report: TuningReport } | null>(null);
@@ -88,13 +89,25 @@
 		}
 	}
 
+	/**
+	 * Apply or return, then bring memory up to the new set at once: the layout's sweep runs only
+	 * when the app starts. Stops if the page is hidden; the next start finishes it.
+	 */
 	async function change(action: () => Promise<void>, note: string) {
 		parameterProblem = null;
 		try {
 			await action();
 			imported = null;
-			parameterNote = note;
 			await loadParameters();
+			parameterNote = `${note} Updating your memory…`;
+			const { repository } = await session();
+			const started = performance.now();
+			const words = await sweepStaleMemory(
+				repository,
+				() => document.visibilityState === 'visible'
+			);
+			const seconds = ((performance.now() - started) / 1000).toFixed(1);
+			parameterNote = `${note} Memory updated: ${words} word rows in ${seconds} s.`;
 		} catch (error) {
 			parameterProblem = error;
 		}
@@ -242,7 +255,7 @@
 				onclick={() =>
 					change(
 						() => session().then(({ repository }) => repository.returnToParameters(null)),
-						'Returned to your Anki weights. Your memory is being updated in the background.'
+						'Returned to your Anki weights.'
 					)}>Return to your Anki weights</button
 			>
 		{/if}
@@ -289,7 +302,7 @@
 							session().then(({ repository }) =>
 								repository.applyParameters($state.snapshot(imported))
 							),
-						'Applied. Your memory is being updated in the background.'
+						'Applied.'
 					)}>Apply this set</button
 			>
 		{/if}
@@ -314,7 +327,7 @@
 										session().then(({ repository }) =>
 											repository.returnToParameters(entry.set ? entry.id : null)
 										),
-									'Returned. Your memory is being updated in the background.'
+									'Returned.'
 								)}>Return to this</button
 						>
 					{/if}

@@ -208,6 +208,27 @@ const ATTENTIVELY_SEEN = `
      AND a.session_id NOT IN (${WITHDRAWN})
      AND t.lexeme_id IS NOT NULL`;
 
+/**
+ * As ATTENTIVELY_SEEN, but only where no English may have been shown over the word (evidence-3):
+ * not in a session that ever unblurred or showed all English, nor under a reveal covering it or
+ * recorded without its range. Cautious on purpose: it only decides what the sweep catches up, and a
+ * word it leaves out still gets its memory when the session's answer is recorded.
+ */
+const ATTENTIVELY_CREDITABLE = `
+  SELECT DISTINCT t.lexeme_id FROM encounter a
+    JOIN encounter e ON e.session_id = a.session_id AND e.kind IN ('read', 'played')
+    JOIN token t ON t.document_id = e.document_id
+                AND t.start < e.to_offset AND t.end > e.from_offset
+   WHERE a.kind = 'attention' AND json_extract(a.detail, '$.answer') = 'all'
+     AND a.session_id NOT IN (${WITHDRAWN})
+     AND t.lexeme_id IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM encounter s WHERE s.session_id = a.session_id AND (
+           (s.kind = 'setting' AND (
+              (json_extract(s.detail, '$.name') = 'blurEnglish' AND json_extract(s.detail, '$.value') = 0)
+           OR (json_extract(s.detail, '$.name') = 'showAllEnglish' AND json_extract(s.detail, '$.value') = 1)))
+        OR (s.kind = 'translation' AND (s.from_offset IS NULL
+              OR (s.from_offset <= t.start AND s.to_offset >= t.end)))))`;
+
 export class Repository {
 	constructor(private readonly db: Database) {}
 
@@ -1297,10 +1318,11 @@ export class Repository {
 		).map((row) => Number(row.lexeme_id));
 		if (stale.length > 0) return stale;
 		// Words evidence-1 gave no memory and evidence-2 does: met untapped in an attentive session.
-		// An ignored word never gets a row, so it is left out, or the sweep would find it forever.
+		// An ignored word never gets a row, so it is left out, or the sweep would find it forever;
+		// so is a word met only under English that may have been shown (evidence-3 gives it nothing).
 		return queryRows(
 			this.db,
-			`SELECT lexeme_id FROM (${ATTENTIVELY_SEEN})
+			`SELECT lexeme_id FROM (${ATTENTIVELY_CREDITABLE})
         WHERE lexeme_id NOT IN (SELECT lexeme_id FROM memory)
           AND lexeme_id NOT IN (SELECT lexeme_id FROM word_state WHERE state = 'ignored')
         LIMIT ?`,

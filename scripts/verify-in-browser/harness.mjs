@@ -1068,14 +1068,16 @@ const scenarios = {
 				)
 			);
 			const applied = await until('the fitted set in force', () =>
-				tab.evaluate(`return document.body.innerText.includes('In force: a fitted set') || null;`)
+				tab.evaluate(
+					`const t = document.body.innerText; return (t.includes('In force: a fitted set') && t.includes('Applied. Memory updated:')) || null;`
+				)
 			);
 			await tab.evaluate(
 				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Return to your Anki weights').click(); return true;`
 			);
 			const returned = await until('the Anki weights in force again', () =>
 				tab.evaluate(
-					`return (document.body.innerText.includes("In force: your Anki weights") && document.querySelectorAll('section[aria-label="Parameters in force"] li').length === 2) || null;`
+					`return (document.body.innerText.includes("In force: your Anki weights") && document.body.innerText.includes('Returned to your Anki weights. Memory updated:') && document.querySelectorAll('section[aria-label="Parameters in force"] li').length === 2) || null;`
 				)
 			);
 			return { pass: Boolean(refused && applied && returned), refused, applied, returned };

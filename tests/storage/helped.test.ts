@@ -43,3 +43,33 @@ it('gives no credit to the words of a revealed line, and keeps it for the others
 		db.close();
 	}
 });
+
+it('leaves no word stale that shown English kept from having a memory', async () => {
+	const db = await freshDatabase();
+	try {
+		const repo = new Repository(db);
+		const [id] = await buildHistory(repo, ['我看书'], []);
+		const session = repo.startSession(id, 'media');
+		const at = '2026-10-04T10:00:00Z';
+		repo.recordEncounters(session, [
+			{ kind: 'setting', at, detail: { name: 'blurEnglish', value: false } },
+			{
+				kind: 'played',
+				at,
+				documentId: id,
+				fromOffset: 0,
+				toOffset: 3,
+				mediaMs: 0,
+				textVisible: true,
+				detail: { toMs: 5000 }
+			},
+			{ kind: 'attention', at, detail: { answer: 'all' } }
+		]);
+		// No word earned a memory, and none may look as if it should have: the sweep would find it
+		// at every start, forever (found on the phone, 2026-10-04).
+		expect(queryRows(db, 'SELECT * FROM memory')).toEqual([]);
+		expect(repo.staleMemory(10)).toEqual([]);
+	} finally {
+		db.close();
+	}
+});
