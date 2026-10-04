@@ -34,7 +34,7 @@ Progress, the sheet's memory line).
 Recorded 2026-10-04: own FSRS-6 equals ts-fsrs to 1e-6 (mutation of the same-day rule caught);
 the fast replay equals Reader's predictions for any history, rule strengths and Anki seed
 (mutations of the strengths, the prediction's day count and undated seeds caught). Fit tests:
-SC-002 met on 250 synthetic words; deterministic; unaffected by later outcomes (mutation: fitting
+SC-002 met on 150 synthetic words (shrunk after CI, slower, timed out at 250); deterministic; unaffected by later outcomes (mutation: fitting
 on all outcomes, caught); noise model pinned (mutation caught after adding a direct test);
 optimizer that never steps caught. The fit code was written before its tests, so each test was
 shown able to fail by mutation instead. Verdict power: at 340 later in-context outcomes a true

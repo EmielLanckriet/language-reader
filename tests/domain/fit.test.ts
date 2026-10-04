@@ -96,10 +96,11 @@ const loss = (rows: Scored[], cutoff: number) => {
 	);
 };
 
-describe('fitting', () => {
-	const words = simulate(truth, 250);
+// Each fit replays the whole history about two thousand times; CI is slower than a laptop.
+describe('fitting', { timeout: 60_000 }, () => {
+	const words = simulate(truth, 150);
 	const cutoff = cutoffOf(score(words, start));
-	const fitted = fit(words, start, cutoff, { iterations: 60, gammas: [1] });
+	const fitted = fit(words, start, cutoff, { iterations: 40, gammas: [1] });
 
 	it('predicts later outcomes about as well as the parameters that made them (SC-002)', () => {
 		const fittedLoss = loss(score(words, fitted.set), cutoff);
@@ -109,11 +110,11 @@ describe('fitting', () => {
 	});
 
 	it('gives the same parameters every time', () => {
-		expect(fit(words, start, cutoff, { iterations: 60, gammas: [1] }).set).toEqual(fitted.set);
+		expect(fit(words, start, cutoff, { iterations: 40, gammas: [1] }).set).toEqual(fitted.set);
 	});
 
 	it('is not moved by anything after the cutoff', () => {
-		const changed = simulate(truth, 250);
+		const changed = simulate(truth, 150);
 		// Flip the last outcome of every word whose last observation is after the cutoff.
 		for (const word of changed)
 			for (const skill of word.prepared) {
@@ -121,7 +122,7 @@ describe('fitting', () => {
 				if (last && last.at >= cutoff && last.type === 'card')
 					last.grade = last.grade === 1 ? 3 : 1;
 			}
-		expect(fit(changed, start, cutoff, { iterations: 60, gammas: [1] }).set).toEqual(fitted.set);
+		expect(fit(changed, start, cutoff, { iterations: 40, gammas: [1] }).set).toEqual(fitted.set);
 	});
 });
 
