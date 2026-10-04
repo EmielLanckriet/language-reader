@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { defaultClientConditions } from 'vite';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 
@@ -26,7 +27,12 @@ export default defineConfig({
 		// With it, the runtime loads its WebAssembly from `ort.env.wasm.wasmPaths` at run time,
 		// which is the copy scripts/copy-ort-runtime.mjs puts in build/ort/ and the precache
 		// deliberately skips.
-		conditions: ['onnxruntime-web-use-extern-wasm']
+		//
+		// Added to Vite's defaults, never instead of them: setting `conditions` replaces the list, and
+		// without `browser` the 'svelte' import resolved to Svelte's server build, where onMount (and
+		// so SvelteKit's beforeNavigate) silently does nothing. Found 2026-10-04, when the leave sheet
+		// never appeared; it had been so since 2026-09-03.
+		conditions: [...defaultClientConditions, 'onnxruntime-web-use-extern-wasm']
 	},
 
 	plugins: [
