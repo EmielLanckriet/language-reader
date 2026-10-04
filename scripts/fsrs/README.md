@@ -20,6 +20,21 @@ Two kinds of outcome are scored and reported apart. Card grades: Again=0, Hard/G
 in context: a tap is 0; an untapped word read with no English shown in a session answered "every
 unknown word" is 1. Listening has no in-context outcome yet.
 
+## Fitting (spec 013)
+
+```sh
+node scripts/fsrs/fit.mjs /path/to/reader-fsrs-data.json --out /tmp/fitted-set.json
+```
+
+Fits the 21 FSRS-6 weights, how strongly a tap and an untapped reading count, and how noisy
+in-context observations are, on the earliest 80% of scored outcomes only, pulled towards your
+Anki weights and today's rule. It then scores the fitted set beside the one in force on the latest
+20% and says whether Reader may apply it: only when reading in context is predicted better (the
+95% bootstrap interval below zero, at least 100 later outcomes) and card answers no worse. A real
+difference of a few hundredths per outcome needs several hundred later outcomes to show.
+Deterministic: the same export gives the same set. Measured 2026-10-04: 5 min 50 s for a
+synthetic 13,500-event export on the laptop.
+
 Card grades contribute labels: Again=0, Hard/Good/Easy=1. The full evidence-2 transition
 history still updates state, including attentive encounters. First/undated/less-than-24h reviews
 cannot score delayed retention; they remain in replay. Ambiguous device-clock words are excluded.

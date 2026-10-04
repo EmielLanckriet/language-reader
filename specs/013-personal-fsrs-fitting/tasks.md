@@ -45,15 +45,20 @@ Independent test: quickstart Story 1 passes; Cards → Learning data shows card 
 ## Phase 4: User Story 2 — Fit personal parameters on the laptop (P2)
 
 Goal: one FSRS-6 engine for production and fit; `fit.mjs` produces a guarded ParameterSet.
+
+Done 2026-10-04 with one change of design, measured first: production keeps ts-fsrs (due dates,
+card states) and applies the rule strengths after each step; `replay.ts` reproduces its predictions
+exactly with `fsrs6.ts` (tests/domain/replay.test.ts), instead of production delegating to the
+engine. T028 is done except fitting the reader's real export, which is on the phone.
 Independent test: quickstart Story 2 passes on a synthetic history and on the real export.
 
-- [ ] T021 [P] [US2] Write failing tests in tests/domain/fsrs6.test.ts: own steps (initial, recall, lapse, same-day, difficulty, retrievability) equal ts-fsrs `next_state`/`get_retrievability` to 1e-6 over fast-check histories with default and Anki weights
-- [ ] T022 [US2] Implement unrounded FSRS-6 steps and the `fit-1` item update (seen: Good step scaled by `seenReading`/`seenListening`; tap: Again step with stability × `tapStability`) in src/lib/domain/fsrs6.ts
-- [ ] T023 [US2] Write a failing test that the engine with the evidence-3 baseline set reproduces production `memoryOf` exactly over generated histories, in tests/domain/fsrs6.test.ts
-- [ ] T024 [US2] Switch `fold`/`memoryOf` in src/lib/domain/memory.ts to the engine, taking a `ParameterSet`; keep `ruleKey` = rule + set id
-- [ ] T025 [P] [US2] Write failing tests in tests/domain/fit.test.ts: (a) synthetic history generated from known parameters → fitted later log loss ≤ generating + 2% (SC-002); (b) 30 outcomes → `too little data`, not applicable; (c) identical output on repeated runs; (d) only earlier outcomes influence the fit (perturbing a later label leaves the fitted set unchanged)
-- [ ] T026 [US2] Implement in src/lib/domain/fit.ts: objective (card BCE + in-context BCE with P = a + (1−a−b)·R, prediction before application) + Gaussian prior (Anki weights centre, fsrs-rs σ; extras σ 0.5 around 1; a around 0.10, b around 0.05); projected Adam with central differences, clamps from `CLAMP_PARAMETERS`; 80/20 timestamp split; γ from {0.5, 1, 2, 4} on the earlier period's last fifth; bootstrap verdict per research R5; FR-012 `applicable`
-- [ ] T027 [US2] Add scripts/fsrs/fit.mjs per contracts/export-and-fit.md (loads src/lib/domain/fit.ts through Vite like evaluate.mjs) and document it in scripts/fsrs/README.md
+- [x] T021 [P] [US2] Write failing tests in tests/domain/fsrs6.test.ts: own steps (initial, recall, lapse, same-day, difficulty, retrievability) equal ts-fsrs `next_state`/`get_retrievability` to 1e-6 over fast-check histories with default and Anki weights
+- [x] T022 [US2] Implement unrounded FSRS-6 steps and the `fit-1` item update (seen: Good step scaled by `seenReading`/`seenListening`; tap: Again step with stability × `tapStability`) in src/lib/domain/fsrs6.ts
+- [x] T023 [US2] Write a failing test that the engine with the evidence-3 baseline set reproduces production `memoryOf` exactly over generated histories, in tests/domain/fsrs6.test.ts
+- [x] T024 [US2] Switch `fold`/`memoryOf` in src/lib/domain/memory.ts to the engine, taking a `ParameterSet`; keep `ruleKey` = rule + set id
+- [x] T025 [P] [US2] Write failing tests in tests/domain/fit.test.ts: (a) synthetic history generated from known parameters → fitted later log loss ≤ generating + 2% (SC-002); (b) 30 outcomes → `too little data`, not applicable; (c) identical output on repeated runs; (d) only earlier outcomes influence the fit (perturbing a later label leaves the fitted set unchanged)
+- [x] T026 [US2] Implement in src/lib/domain/fit.ts: objective (card BCE + in-context BCE with P = a + (1−a−b)·R, prediction before application) + Gaussian prior (Anki weights centre, fsrs-rs σ; extras σ 0.5 around 1; a around 0.10, b around 0.05); projected Adam with central differences, clamps from `CLAMP_PARAMETERS`; 80/20 timestamp split; γ from {0.5, 1, 2, 4} on the earlier period's last fifth; bootstrap verdict per research R5; FR-012 `applicable`
+- [x] T027 [US2] Add scripts/fsrs/fit.mjs per contracts/export-and-fit.md (loads src/lib/domain/fit.ts through Vite like evaluate.mjs) and document it in scripts/fsrs/README.md
 - [ ] T028 [US2] Mutate the split (use all outcomes) and the reliability term once each, confirm red; time `fit.mjs` on the reader's real export (SC-003) and record counts per outcome type in specs/013-personal-fsrs-fitting/quickstart.md
 - [ ] T029 [US2] Deploy (memory now computed by the engine; expect no visible change); spot-check a few words' due dates on the A71 against the previous build; update docs/current-state.md
 

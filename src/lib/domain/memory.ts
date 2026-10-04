@@ -10,6 +10,7 @@ import {
 	createEmptyCard,
 	fsrs,
 	generatorParameters,
+	S_MIN,
 	State,
 	type Card,
 	type FSRS,
@@ -71,6 +72,36 @@ export interface Evidence {
 	 * Reading only: listening has no per-word outcome yet.
 	 */
 	context?: Pick<Ordered, 'deviceId' | 'deviceSeq'>;
+	/** What the rating stands for when it is not a card answer: how strongly it counts is fitted. */
+	from?: 'tap' | 'seen';
+}
+
+/**
+ * How strongly a tap and a word read untapped count (spec 013, `fit-1`), as multiples of the FSRS
+ * step they stand in for: a seen word moves stability `seen…` of the way a Good would; a tap leaves
+ * `tapStability` times what an Again would. All 1 is `evidence-3` as it stands.
+ */
+export interface RuleStrengths {
+	seenReading: number;
+	seenListening: number;
+	tapStability: number;
+}
+
+const S_MAX = 36500;
+
+/** Stability after a tap or a seen word under `rule`, from FSRS's own step `before` → `after`. */
+export function strengthened(
+	before: number,
+	after: number,
+	from: 'tap' | 'seen',
+	skill: Skill,
+	rule: RuleStrengths
+): number {
+	const adjusted =
+		from === 'tap'
+			? after * rule.tapStability
+			: before + (skill === 'reading' ? rule.seenReading : rule.seenListening) * (after - before);
+	return Math.min(Math.max(adjusted, S_MIN), S_MAX);
 }
 
 export interface SkillEvidence {
@@ -181,9 +212,10 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			found.reading.evidence.push({
 				at: event.at,
 				rating: AGAIN,
+				from: 'tap',
 				...(observed ? { context: { deviceId: event.deviceId, deviceSeq: event.deviceSeq } } : {})
 			});
-			found.listening.evidence.push({ at: event.at, rating: AGAIN });
+			found.listening.evidence.push({ at: event.at, rating: AGAIN, from: 'tap' });
 		} else if (event?.kind === 'review') {
 			const skill = event.detail.skill as Skill;
 			found[skill].evidence.push({
@@ -200,6 +232,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			found[skill].evidence.push({
 				at: exposure.at,
 				rating: GOOD,
+				from: 'seen',
 				...(skill === 'reading'
 					? { context: { deviceId: exposure.deviceId, deviceSeq: exposure.deviceSeq } }
 					: {})
@@ -254,7 +287,8 @@ function seededCard(f: FSRS, seed: AnkiSeed): Card {
 function fold(
 	f: FSRS,
 	skill: SkillEvidence,
-	observe?: (evidence: Evidence, card: Card | undefined, now: Date, dated: boolean) => void
+	observe?: (evidence: Evidence, card: Card | undefined, now: Date, dated: boolean) => void,
+	rule?: { strengths: RuleStrengths; skill: Skill }
 ): Card | undefined {
 	let card = skill.seed ? seededCard(f, skill.seed) : undefined;
 	let latest = card?.last_review?.getTime() ?? -Infinity;
@@ -265,7 +299,19 @@ function fold(
 		latest = Math.max(latest, new Date(at).getTime());
 		const now = new Date(latest);
 		observe?.(evidence, card, now, dated);
+		const before = card?.stability ?? 0;
 		card = f.next(card ?? createEmptyCard(now), now, rating).card;
+		if (rule && evidence.from) {
+			card.stability = strengthened(
+				before,
+				card.stability,
+				evidence.from,
+				rule.skill,
+				rule.strengths
+			);
+			if (card.state === State.Review)
+				card.due = new Date(now.getTime() + f.next_interval(card.stability, 0) * DAY_MS);
+		}
 		dated = true;
 	}
 	return card;
@@ -290,33 +336,40 @@ export interface ReviewPrediction {
  */
 export function reviewPredictions(
 	history: WordHistory,
-	parameters?: FsrsParameters
+	parameters?: FsrsParameters,
+	strengths?: RuleStrengths
 ): ReviewPrediction[] {
 	const found = evidenceFor(history);
 	const f = scheduler(parameters, false);
 	const predictions: ReviewPrediction[] = [];
 	for (const skill of ['reading', 'listening'] as const) {
-		fold(f, found[skill], (evidence, card, now, dated) => {
-			const observed = evidence.review ?? evidence.context;
-			if (!observed) return;
-			const excluded = !card?.last_review
-				? 'no-prior-memory'
-				: !dated
-					? 'undated-seed'
-					: now.getTime() - card.last_review.getTime() < DAY_MS
-						? 'short-delay'
-						: undefined;
-			predictions.push({
-				type: evidence.review ? 'card' : 'in-context',
-				...observed,
-				at: evidence.at,
-				skill,
-				rating: evidence.rating,
-				probability: excluded ? null : f.get_retrievability(card!, now, false),
-				seeded: found[skill].seed !== undefined,
-				...(excluded ? { excluded } : {})
-			});
-		});
+		const rule = strengths && { strengths, skill };
+		fold(
+			f,
+			found[skill],
+			(evidence, card, now, dated) => {
+				const observed = evidence.review ?? evidence.context;
+				if (!observed) return;
+				const excluded = !card?.last_review
+					? 'no-prior-memory'
+					: !dated
+						? 'undated-seed'
+						: now.getTime() - card.last_review.getTime() < DAY_MS
+							? 'short-delay'
+							: undefined;
+				predictions.push({
+					type: evidence.review ? 'card' : 'in-context',
+					...observed,
+					at: evidence.at,
+					skill,
+					rating: evidence.rating,
+					probability: excluded ? null : f.get_retrievability(card!, now, false),
+					seeded: found[skill].seed !== undefined,
+					...(excluded ? { excluded } : {})
+				});
+			},
+			rule
+		);
 	}
 	return predictions;
 }
@@ -324,13 +377,14 @@ export function reviewPredictions(
 /** A word's memory in each skill it has one in. */
 export function memoryOf(
 	history: WordHistory,
-	parameters?: FsrsParameters
+	parameters?: FsrsParameters,
+	strengths?: RuleStrengths
 ): Partial<Record<Skill, Memory>> {
 	const found = evidenceFor(history);
 	const f = scheduler(parameters);
 	const memory: Partial<Record<Skill, Memory>> = {};
 	for (const skill of ['reading', 'listening'] as const) {
-		const card = fold(f, found[skill]);
+		const card = fold(f, found[skill], undefined, strengths && { strengths, skill });
 		if (!card) continue;
 		const seed = found[skill].seed;
 		memory[skill] = {

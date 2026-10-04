@@ -182,6 +182,21 @@ function period(rows: ReviewPrediction[]) {
 	};
 }
 
+/**
+ * A word whose history spans devices, or whose clock went back: its order in time is not known,
+ * so it is left out of any score.
+ */
+export function clockAmbiguous(h: Pick<WordHistory, 'marks' | 'events' | 'exposures'>): boolean {
+	const ordered = [...h.marks, ...h.events, ...h.exposures].sort(
+		(a, b) => a.deviceSeq - b.deviceSeq
+	);
+	const devices = new Set(ordered.map((e) => e.deviceId));
+	return (
+		devices.size > 1 ||
+		ordered.some((e, i) => i > 0 && Date.parse(e.at) < Date.parse(ordered[i - 1].at))
+	);
+}
+
 /** The dataset is a retrospective snapshot; it never writes or activates parameters. */
 export function evaluateDataset(data: TuningDataset, candidateWeights?: number[]) {
 	const baseline: FsrsParameters = data.parameters ?? {
@@ -206,14 +221,7 @@ export function evaluateDataset(data: TuningDataset, candidateWeights?: number[]
 		const h: WordHistory = { ...word.history, answers: new Map(word.history.answers) };
 		const reviews = h.events.filter((e) => e.kind === 'review').length;
 		explicit += reviews;
-		const ordered = [...h.marks, ...h.events, ...h.exposures].sort(
-			(a, b) => a.deviceSeq - b.deviceSeq
-		);
-		const devices = new Set(ordered.map((e) => e.deviceId));
-		if (
-			devices.size > 1 ||
-			ordered.some((e, i) => i > 0 && Date.parse(e.at) < Date.parse(ordered[i - 1].at))
-		) {
+		if (clockAmbiguous(h)) {
 			count('ambiguous-clock', reviews);
 			continue;
 		}

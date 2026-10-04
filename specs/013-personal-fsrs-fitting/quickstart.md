@@ -31,6 +31,19 @@ Progress, the sheet's memory line).
 3. On the reader's real export: `time node scripts/fsrs/fit.mjs export.json --out set.json`
    under 10 minutes (SC-003). Record counts per outcome type in this file.
 
+Recorded 2026-10-04: own FSRS-6 equals ts-fsrs to 1e-6 (mutation of the same-day rule caught);
+the fast replay equals Reader's predictions for any history, rule strengths and Anki seed
+(mutations of the strengths, the prediction's day count and undated seeds caught). Fit tests:
+SC-002 met on 250 synthetic words; deterministic; unaffected by later outcomes (mutation: fitting
+on all outcomes, caught); noise model pinned (mutation caught after adding a direct test);
+optimizer that never steps caught. The fit code was written before its tests, so each test was
+shown able to fail by mutation instead. Verdict power: at 340 later in-context outcomes a true
+0.037/outcome improvement was "not better" (interval −0.080 to +0.002); 1,000 words found it.
+Production replay through ts-fsrs costs 75 ms per 4,800 events (cached scheduler 73 ms) against
+0.7 ms for the own engine: the reason for fsrs6.ts. `fit.mjs` on a synthetic 13,500-event export:
+350 s on the laptop (SC-003 met); the phone would need the faster gradient of research R4.
+The reader's real export has not been fitted yet (it is on the phone).
+
 ## Story 3 — apply and roll back
 
 1. `npx vitest run tests/storage/activation.test.ts` — apply then roll back gives memory equal
