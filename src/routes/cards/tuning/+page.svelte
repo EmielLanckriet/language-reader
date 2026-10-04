@@ -273,7 +273,8 @@
 	{:else}
 		<button class="secondary" onclick={fitHere} disabled={!analysis}>Fit on this device</button>
 		<p class="muted">
-			Uses the phone for a few minutes; it stops if you leave the app, and after five minutes.
+			Takes about a minute on the phone (35 s measured for 13,500 events); it stops if you leave the
+			app, and after five minutes.
 		</p>
 	{/if}
 	<label>

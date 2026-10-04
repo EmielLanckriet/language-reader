@@ -23,8 +23,11 @@ in-context outcomes to show.
 Story 3: Cards → Learning data shows the set in force, imports a fitted set, applies it only when
 its report says it predicted later reading better and it was fitted against the set in force, and
 returns to any earlier set or the Anki weights. Each change is an append-only `fsrs-activation`;
-memory follows through the background sweep; returning is exact. Not phone-checked; SC-005
-(recompute under 30 s on the A71) unmeasured.
+memory is recomputed at once; returning is exact. Phone-checked on the isolated origin: 2,008 word
+rows in 2.1 s (apply) and 2.3 s (return). That check found a sweep loop introduced by Story 1
+(words shown English kept from memory stayed "stale", refreshed forever while visible, at every
+start); fixed and deployed in `9152cbb`. Story 1's word sheet (Undo tap, no "I knew it") and the
+in-context row were also checked on the phone.
 
 Story 4: Learning data's "Fit on this device" runs the same fit in its own worker under the
 local-model lease, with Cancel, a stop when hidden, and a 5-minute deadline. The fit was made 14×

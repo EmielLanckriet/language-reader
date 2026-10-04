@@ -60,6 +60,13 @@ returning FSRS's own step at strength 1. The `parameters` browser scenario caugh
 imported set, a Svelte state proxy, could not be posted to the storage worker. SC-005 (recompute
 on the phone under 30 s) is not measured: no phone connected.
 
+Phone, 2026-10-04 (isolated origin, A71, 2,000 synthetic Anki words imported in 5.2 s): apply
+recomputed 2,008 word rows in 2.1 s, return in 2.3 s (SC-005 met); 411 px, no overflow. The first
+attempt never finished: the memory sweep's catch-up query listed words that evidence-3 gives no
+memory (read only under shown English), so the sweep refreshed them forever while the page was
+visible, at every start. Fixed in `9152cbb` with a storage test and a sweep test written first;
+Apply/Return now also recompute at once instead of at the next start.
+
 ## Story 4 — fit on the phone
 
 1. Measure first: run the fit worker on the A71 over the reader's export size with synthetic data;

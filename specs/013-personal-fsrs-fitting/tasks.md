@@ -40,7 +40,7 @@ Independent test: quickstart Story 1 passes; Cards → Learning data shows card 
 - [x] T017 [US1] Show card and in-context rows per skill in src/routes/cards/tuning/+page.svelte; accept format 1 and 2 in scripts/fsrs/evaluate.mjs and document in scripts/fsrs/README.md
 - [x] T018 [US1] Extend the `listened` scenario: reveal a line, finish "every unknown word", export, assert `helped` on that line's words; tap a word, Undo tap, assert `tap-undone` on Diagnostics, in scripts/verify-in-browser/harness.mjs
 - [x] T019 [US1] Mutate the helped check (T008) and the undo filter (T008) once each, confirm red, restore; run full tests, type check, lint; record in specs/013-personal-fsrs-fitting/quickstart.md
-- [ ] T020 [US1] Deploy; on the A71 check the word sheet (Undo tap, no "I knew it") and Learning data; update docs/current-state.md
+- [x] T020 [US1] (2026-10-04, isolated origin on the A71: sheet has Undo tap and no "I knew it"; Undo writes `tap-undone` and no lookup; Learning data shows Reading in context) Deploy; on the A71 check the word sheet (Undo tap, no "I knew it") and Learning data; update docs/current-state.md
 
 ## Phase 4: User Story 2 — Fit personal parameters on the laptop (P2)
 
@@ -75,7 +75,7 @@ Independent test: quickstart Story 3 passes; SC-004 and SC-005.
 - [x] T031 [US3] Validate `fsrs-activation` in src/lib/domain/encounter.ts (well-formed ParameterSet, `apply|rollback`) with cases in tests/domain/encounter.test.ts
 - [x] T032 [US3] Implement `activeSet()`, `applySet(set)` (checks FR-012 and `comparedWith`), `rollBackTo(id)` and `activations()` in src/lib/storage/repository.ts; `currentParameters` callers use `activeSet()`; wire through src/lib/storage/{client,protocol,worker}.ts
 - [x] T033 [US3] Add Import fitted set, report, Apply (or the reason it is refused), history with Return to this set, and "updating memory…" until the sweep finishes, in src/routes/cards/tuning/+page.svelte per contracts/reader-apply.md
-- [ ] T034 [US3] Isolated phone: import a synthetic applicable set, apply, time the sweep (SC-005, < 30 s), roll back; record in specs/013-personal-fsrs-fitting/quickstart.md and docs/current-state.md
+- [x] T034 [US3] (2026-10-04: 2,008 word rows recomputed in 2.1 s on apply and 2.3 s on return, A71, 2,000 synthetic Anki words; found and fixed the sweep loop, `9152cbb`) Isolated phone: import a synthetic applicable set, apply, time the sweep (SC-005, < 30 s), roll back; record in specs/013-personal-fsrs-fitting/quickstart.md and docs/current-state.md
 
 ## Phase 6: User Story 4 — Fit in Reader on the phone (P4)
 
