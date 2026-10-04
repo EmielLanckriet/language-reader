@@ -21,6 +21,8 @@ import type { AttentionAnswer, Modality, Skill } from './encounter';
 import { RETRACTED } from './state';
 
 export const RULE = 'evidence-3';
+/** How due dates follow from a memory: part of what a stored memory was computed under. */
+const SCHEDULE = 'no-steps';
 
 /** Position in the history: what orders it. `at` only measures the time between evidence. */
 export interface Ordered {
@@ -253,7 +255,8 @@ function scheduler(parameters?: FsrsParameters, cache = true): FSRS {
 	const key = parameters ? JSON.stringify(parameters) : 'default';
 	let made = cache ? schedulers.get(key) : undefined;
 	if (!made) {
-		// Fuzz off: a replay must be deterministic (SC-007). Short-term on: an Again comes back in minutes.
+		// Fuzz off: a replay must be deterministic (SC-007). Short-term on for its same-day stability,
+		// which fsrs6.ts matches; its learning steps' due dates are replaced by `dueAfter`.
 		made = fsrs(
 			generatorParameters({
 				enable_fuzz: false,
@@ -268,12 +271,23 @@ function scheduler(parameters?: FsrsParameters, cache = true): FSRS {
 
 /** The rule and the parameters together: what a stored memory has to be recomputed under. */
 export function ruleKey(parameters?: FsrsParameters): string {
-	if (!parameters) return `${RULE}/default`;
+	if (!parameters) return `${RULE}+${SCHEDULE}/default`;
 	const weights = parameters.weights.map((w) => w.toFixed(4)).join(',');
-	return `${RULE}/${parameters.preset}:${parameters.retention}:${weights}`;
+	return `${RULE}+${SCHEDULE}/${parameters.preset}:${parameters.retention}:${weights}`;
 }
 
 const DAY_MS = 86_400_000;
+
+/**
+ * When recall falls to the retention target, by FSRS's curve in fractional days: hours for a word
+ * just tapped, unrounded for every word. No learning steps (the reader, 2026-10-04: "I trust the
+ * algorithm"); with them, a word read untapped came due 10 minutes later, and reading could not
+ * credit it again before the next day. Stability is untouched, so the fit's replay still matches.
+ */
+function dueAfter(f: FSRS, from: Date, stability: number): Date {
+	const days = Math.min(stability * f.interval_modifier, f.parameters.maximum_interval);
+	return new Date(from.getTime() + days * DAY_MS);
+}
 
 function seededCard(f: FSRS, seed: AnkiSeed): Card {
 	const last = new Date(seed.lastReview);
@@ -283,7 +297,7 @@ function seededCard(f: FSRS, seed: AnkiSeed): Card {
 		difficulty: seed.difficulty,
 		state: State.Review,
 		last_review: last,
-		due: new Date(last.getTime() + f.next_interval(seed.stability, 0) * DAY_MS),
+		due: dueAfter(f, last, seed.stability),
 		reps: 1
 	};
 }
@@ -310,12 +324,9 @@ function fold(
 			rule && evidence.from
 				? strengthened(before, card.stability, evidence.from, rule.skill, rule.strengths)
 				: card.stability;
-		// Only a strength other than 1 touches the card, so today's rule stays exactly ts-fsrs's.
-		if (adjusted !== card.stability) {
-			card.stability = adjusted;
-			if (card.state === State.Review)
-				card.due = new Date(now.getTime() + f.next_interval(card.stability, 0) * DAY_MS);
-		}
+		// Only a strength other than 1 touches the stability, so today's rule stays exactly ts-fsrs's.
+		card.stability = adjusted;
+		card.due = dueAfter(f, now, card.stability);
 		dated = true;
 	}
 	return card;

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
+import { default_request_retention, default_w, forgetting_curve } from 'ts-fsrs';
 import {
 	evidenceFor,
 	memoryOf,
@@ -15,6 +16,7 @@ import {
 // word's history counts for its reading and listening memory. One example per row and per limit.
 
 const AGAIN = 1;
+const DAY_MS = 86_400_000;
 const GOOD = 3;
 
 let seq = 0;
@@ -281,6 +283,24 @@ describe('evidence-1', () => {
 		expect(colourBand(solid, new Date(at(2)))).toBe(1);
 	});
 
+	// No learning steps (the reader, 2026-10-04): an untapped read on the 4th left 48 words of one
+	// video due 10 minutes later, when reading could not credit them again before the next day.
+	it('makes a word due when FSRS says, not after a learning step', () => {
+		const read = memoryOf(
+			history({
+				events: [lookup(9, at(1))],
+				exposures: [seen(1, at(3))],
+				answers: new Map([[1, 'all']])
+			})
+		).reading!;
+		const days = (Date.parse(read.due) - Date.parse(read.lastAt)) / DAY_MS;
+		expect(days).toBeCloseTo(read.stability, 6);
+		const card = memoryOf(
+			history({ events: [review(GOOD, at(1)), review(AGAIN, at(2))] })
+		).reading!;
+		expect(Date.parse(card.due) - Date.parse(card.lastAt)).toBeGreaterThan(10 * 60_000);
+	});
+
 	it('never counts time backwards when the clock went back', () => {
 		// The review comes later in the history but carries an earlier clock (a clock set back).
 		const first = lookup(1, at(5));
@@ -345,6 +365,27 @@ describe('evidence-3 over any history', () => {
 				(items, answers) => {
 					const without = items.filter((i) => !(i.kind === 'seen' && i.helped));
 					expect(evidenceFor(make(items, answers))).toEqual(evidenceFor(make(without, answers)));
+				}
+			)
+		);
+	});
+
+	it('makes every memory due when its recall falls to the target', () => {
+		fc.assert(
+			fc.property(
+				fc.array(item, { size: 'max', maxLength: 30 }),
+				fc.array(answer, { minLength: 4, maxLength: 4 }),
+				fc.boolean(),
+				(items, answers, seeded) => {
+					const h = make(items, answers);
+					if (seeded) h.marks = [seed(at(1, 1))];
+					for (const memory of Object.values(memoryOf(h))) {
+						const days = (Date.parse(memory.due) - Date.parse(memory.lastAt)) / DAY_MS;
+						expect(forgetting_curve(default_w, days, memory.stability)).toBeCloseTo(
+							default_request_retention,
+							6
+						);
+					}
 				}
 			)
 		);
