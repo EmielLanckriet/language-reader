@@ -2,6 +2,7 @@ import { clipParameters, default_w } from 'ts-fsrs';
 import type { FsrsParameters } from './anki';
 import type { AttentionAnswer } from './encounter';
 import { RULE, reviewPredictions, type ReviewPrediction, type WordHistory } from './memory';
+import type { ParameterSet } from './fit';
 
 export const TUNING_SCHEDULER = 'ts-fsrs@5.4.2';
 /** Rules a format-1 export may have been made under; its raw history replays under `RULE`. */
@@ -15,6 +16,8 @@ export interface TuningDataset {
 	scheduler: typeof TUNING_SCHEDULER;
 	exportedAt: string;
 	parameters?: FsrsParameters;
+	/** The fitted set in force when exported, if one was (spec 013); `parameters` are its weights. */
+	active?: ParameterSet;
 	words: {
 		id: number;
 		history: Omit<WordHistory, 'answers'> & { answers: [number, AttentionAnswer][] };
@@ -225,7 +228,12 @@ export function evaluateDataset(data: TuningDataset, candidateWeights?: number[]
 			count('ambiguous-clock', reviews);
 			continue;
 		}
-		const predictions = reviewPredictions(h, parameters);
+		// A hand-made candidate is judged under today's rule; the export's own set under its strengths.
+		const predictions = reviewPredictions(
+			h,
+			parameters,
+			candidateWeights ? undefined : data.active?.strengths
+		);
 		const replayed = predictions.filter((row) => row.type === 'card').length;
 		if (reviews > replayed) count('not-replayed-by-rule', reviews - replayed);
 		for (const row of predictions) {

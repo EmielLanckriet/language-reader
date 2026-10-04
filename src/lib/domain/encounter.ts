@@ -25,6 +25,8 @@ export type EncounterKind =
 	| 'engagement'
 	/** A tap undone while its sheet was open: no lookup was written (spec 013). */
 	| 'tap-undone'
+	/** A fitted parameter set put in force, or a return to an earlier one (spec 013, FR-009). */
+	| 'fsrs-activation'
 	| 'review'
 	/** The reader took the session back (ADR-0030): its encounters count for nothing. */
 	| 'withdrawn'
@@ -72,7 +74,7 @@ const ENGAGEMENT_ATTENTION = ['yes', 'partly', 'no', null];
  * them, and a copy from it must still restore.
  */
 export function validateEncounter(encounter: Encounter): void {
-	const fail = (why: string) => {
+	const fail = (why: string): never => {
 		throw new InvalidEncounter(`A ${encounter.kind} encounter ${why}.`);
 	};
 	const detail = encounter.detail ?? {};
@@ -143,6 +145,20 @@ export function validateEncounter(encounter: Encounter): void {
 			if (!('answer' in detail) || !ATTENTION_ANSWERS.includes(detail.answer as string | null))
 				fail('has no answer the reader was offered');
 			break;
+		case 'fsrs-activation': {
+			if (detail.action !== 'apply' && detail.action !== 'rollback') fail('has no action');
+			const set = detail.set as { id?: unknown; weights?: unknown } | null | undefined;
+			if (set === undefined) return fail('names no set');
+			if (
+				set !== null &&
+				(typeof set.id !== 'string' ||
+					!Array.isArray(set.weights) ||
+					set.weights.length !== 21 ||
+					!set.weights.every(Number.isFinite))
+			)
+				fail('has a set without its 21 weights');
+			break;
+		}
 		case 'engagement':
 			if (!('mode' in detail) || !ENGAGEMENT_MODES.includes(detail.mode as string | null))
 				fail('has no mode the reader was offered');

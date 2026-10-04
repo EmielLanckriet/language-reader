@@ -65,12 +65,16 @@ Independent test: quickstart Story 2 passes on a synthetic history and on the re
 ## Phase 5: User Story 3 — Apply a fitted set and roll back (P3)
 
 Goal: append-only activations, guarded Apply, exact rollback, background recompute.
+
+Done 2026-10-04 except T034 (phone). API names as built: `parametersInForce`, `applyParameters`,
+`returnToParameters(id | null)` (null = the Anki weights), `parameterHistory`. Every activation
+carries the whole set it puts in force (or null), so "in force" is the latest one by time.
 Independent test: quickstart Story 3 passes; SC-004 and SC-005.
 
-- [ ] T030 [P] [US3] Write failing tests in tests/storage/activation.test.ts: apply then roll back → memory rows equal field for field (SC-004); non-applicable or `comparedWith` ≠ active id → refused; latest activation wins across two devices; restore keeps the active set; activation never alters encounters, reviews or marks
-- [ ] T031 [US3] Validate `fsrs-activation` in src/lib/domain/encounter.ts (well-formed ParameterSet, `apply|rollback`) with cases in tests/domain/encounter.test.ts
-- [ ] T032 [US3] Implement `activeSet()`, `applySet(set)` (checks FR-012 and `comparedWith`), `rollBackTo(id)` and `activations()` in src/lib/storage/repository.ts; `currentParameters` callers use `activeSet()`; wire through src/lib/storage/{client,protocol,worker}.ts
-- [ ] T033 [US3] Add Import fitted set, report, Apply (or the reason it is refused), history with Return to this set, and "updating memory…" until the sweep finishes, in src/routes/cards/tuning/+page.svelte per contracts/reader-apply.md
+- [x] T030 [P] [US3] Write failing tests in tests/storage/activation.test.ts: apply then roll back → memory rows equal field for field (SC-004); non-applicable or `comparedWith` ≠ active id → refused; latest activation wins across two devices; restore keeps the active set; activation never alters encounters, reviews or marks
+- [x] T031 [US3] Validate `fsrs-activation` in src/lib/domain/encounter.ts (well-formed ParameterSet, `apply|rollback`) with cases in tests/domain/encounter.test.ts
+- [x] T032 [US3] Implement `activeSet()`, `applySet(set)` (checks FR-012 and `comparedWith`), `rollBackTo(id)` and `activations()` in src/lib/storage/repository.ts; `currentParameters` callers use `activeSet()`; wire through src/lib/storage/{client,protocol,worker}.ts
+- [x] T033 [US3] Add Import fitted set, report, Apply (or the reason it is refused), history with Return to this set, and "updating memory…" until the sweep finishes, in src/routes/cards/tuning/+page.svelte per contracts/reader-apply.md
 - [ ] T034 [US3] Isolated phone: import a synthetic applicable set, apply, time the sweep (SC-005, < 30 s), roll back; record in specs/013-personal-fsrs-fitting/quickstart.md and docs/current-state.md
 
 ## Phase 6: User Story 4 — Fit in Reader on the phone (P4)

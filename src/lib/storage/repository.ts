@@ -25,6 +25,8 @@ import {
 } from '../domain/corrections';
 import { codePointsOf } from '../domain/offsets';
 import { helpOf, isHelped, lineRangesOf, type Help } from '../domain/helped';
+import { baselineSet, checkParameterSet, type ParameterSet } from '../domain/fit';
+import { default_w } from 'ts-fsrs';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain/tuning';
 import { RULE } from '../domain/memory';
@@ -40,6 +42,7 @@ import {
 	type HistoryEvent,
 	type Mark,
 	type Memory,
+	type RuleStrengths,
 	type WordHistory
 } from '../domain/memory';
 import type { AttentionAnswer, Engagement, Skill } from '../domain/encounter';
@@ -991,8 +994,117 @@ export class Repository {
 		return help;
 	}
 
-	/** The parameters the latest Anki import brought, or none (then ts-fsrs's defaults). */
+	/**
+	 * The parameters in force (spec 013, FR-009): the set the latest activation put in force; with
+	 * none, or after a return to them, the latest Anki import's weights (or ts-fsrs's defaults).
+	 * Latest by time, then device: a copy from another device must not win by its id.
+	 */
+	private inForce(): {
+		id: string;
+		set: ParameterSet | null;
+		parameters?: FsrsParameters;
+		strengths?: RuleStrengths;
+	} {
+		const activation = queryRows(
+			this.db,
+			`SELECT detail FROM encounter WHERE kind = 'fsrs-activation'
+       ORDER BY at DESC, device_id DESC, device_seq DESC LIMIT 1`
+		)[0];
+		const set = activation
+			? (JSON.parse(String(activation.detail)).set as ParameterSet | null)
+			: null;
+		if (set)
+			return {
+				id: set.id,
+				set,
+				parameters: {
+					preset: `${set.model} ${set.id}`,
+					weights: set.weights,
+					retention: set.retention
+				},
+				strengths: set.strengths
+			};
+		const anki = this.ankiParameters();
+		return { id: this.ankiBaselineId(anki), set: null, parameters: anki };
+	}
+
+	private ankiBaselineId(anki = this.ankiParameters()): string {
+		return baselineSet(anki?.weights ?? [...default_w], anki?.retention ?? 0.9).id;
+	}
+
 	private currentParameters(): FsrsParameters | undefined {
+		return this.inForce().parameters;
+	}
+
+	/** Which parameter set is in force; `set` is null while the Anki weights (or defaults) are. */
+	parametersInForce(): { id: string; set: ParameterSet | null } {
+		const { id, set } = this.inForce();
+		return { id, set };
+	}
+
+	/**
+	 * Put a fitted set in force (FR-012): only an unaltered set whose report says it predicted
+	 * better, fitted against the set in force now. Memory follows in the background sweep.
+	 */
+	applyParameters(value: unknown): void {
+		checkParameterSet(value);
+		const set = value as ParameterSet & {
+			comparedWith?: unknown;
+			report?: { applicable?: unknown };
+		};
+		if (set.report?.applicable !== true)
+			throw new Error(
+				'This set did not predict better than the one in force, so it is not applied.'
+			);
+		if (set.comparedWith !== this.inForce().id)
+			throw new Error(
+				'This set was fitted against a different set than the one in force: fit again.'
+			);
+		transact(this.db, () =>
+			this.appendEncounter(null, {
+				kind: 'fsrs-activation',
+				at: new Date().toISOString(),
+				detail: { action: 'apply', set }
+			})
+		);
+	}
+
+	/** Return to a set that was in force before, or (`null`) to the Anki weights. Always allowed. */
+	returnToParameters(id: string | null): void {
+		const set =
+			id === null
+				? null
+				: (this.parameterHistory().find((h) => h.set?.id === id)?.set ?? undefined);
+		if (set === undefined) throw new Error('That set was never in force here.');
+		transact(this.db, () =>
+			this.appendEncounter(null, {
+				kind: 'fsrs-activation',
+				at: new Date().toISOString(),
+				detail: { action: 'rollback', set }
+			})
+		);
+	}
+
+	/** Every change of the set in force, newest first. A return to the Anki weights has no set. */
+	parameterHistory(): {
+		at: string;
+		action: 'apply' | 'rollback';
+		id: string;
+		set: ParameterSet | null;
+	}[] {
+		const anki = this.ankiBaselineId();
+		return queryRows(
+			this.db,
+			`SELECT at, detail FROM encounter WHERE kind = 'fsrs-activation'
+       ORDER BY at DESC, device_id DESC, device_seq DESC`
+		).map((row) => {
+			const { action, set } = JSON.parse(String(row.detail));
+			return { at: String(row.at), action, id: set ? set.id : anki, set };
+		});
+	}
+
+	/** The parameters the latest Anki import brought, or none (then ts-fsrs's defaults). */
+	private ankiParameters(): FsrsParameters | undefined {
 		const latest = queryRows(
 			this.db,
 			`SELECT detail FROM encounter WHERE kind = 'anki-parameters'
@@ -1025,6 +1137,7 @@ export class Repository {
 			scheduler: TUNING_SCHEDULER,
 			exportedAt: new Date().toISOString(),
 			parameters: this.currentParameters(),
+			...(this.inForce().set ? { active: this.inForce().set! } : {}),
 			words
 		};
 	}
@@ -1121,11 +1234,11 @@ export class Repository {
 
 	/** Recompute these words' memory rows from their history, under the current rule (R6). */
 	private recomputeMemory(lexemeIds: Iterable<LexemeId>): void {
-		const parameters = this.currentParameters();
+		const { parameters, strengths } = this.inForce();
 		const rule = ruleKey(parameters);
 		for (const lexemeId of lexemeIds) {
 			run(this.db, 'DELETE FROM memory WHERE lexeme_id = ?', [lexemeId]);
-			const memory = memoryOf(this.wordHistory(lexemeId), parameters);
+			const memory = memoryOf(this.wordHistory(lexemeId), parameters, strengths);
 			for (const [skill, m] of Object.entries(memory) as [Skill, Memory][]) {
 				run(
 					this.db,

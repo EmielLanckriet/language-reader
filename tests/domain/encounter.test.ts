@@ -28,6 +28,12 @@ const valid: Encounter[] = [
 	{ kind: 'attention', at, detail: { answer: null } },
 	{ kind: 'engagement', at, detail: { mode: 'listened', attentive: 'yes' } },
 	{ kind: 'tap-undone', at, ...word },
+	{ kind: 'fsrs-activation', at, detail: { action: 'rollback', set: null } },
+	{
+		kind: 'fsrs-activation',
+		at,
+		detail: { action: 'apply', set: { id: 'abc', weights: new Array(21).fill(1) } }
+	},
 	{ kind: 'engagement', at, detail: { mode: null, attentive: 'partly' } },
 	{ kind: 'review', at, ...word, detail: { skill: 'reading', grade: 3 } },
 	{ kind: 'review', at, lexemeId: 7, detail: { skill: 'reading', grade: 3 } },
@@ -69,6 +75,11 @@ const invalid: [string, Encounter][] = [
 		{ kind: 'engagement', at, detail: { mode: 'watched', attentive: true } }
 	],
 	['an engagement without its fields', { kind: 'engagement', at, detail: {} }],
+	['an activation without an action', { kind: 'fsrs-activation', at, detail: { set: null } }],
+	[
+		'an activation of a set without 21 weights',
+		{ kind: 'fsrs-activation', at, detail: { action: 'apply', set: { id: 'a', weights: [1] } } }
+	],
 	[
 		'an undone tap without its word',
 		{ kind: 'tap-undone', at, documentId: 1, fromOffset: 3, toOffset: 5 }

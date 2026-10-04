@@ -97,10 +97,15 @@ export function strengthened(
 	skill: Skill,
 	rule: RuleStrengths
 ): number {
-	const adjusted =
+	const strength =
 		from === 'tap'
-			? after * rule.tapStability
-			: before + (skill === 'reading' ? rule.seenReading : rule.seenListening) * (after - before);
+			? rule.tapStability
+			: skill === 'reading'
+				? rule.seenReading
+				: rule.seenListening;
+	// Exactly FSRS's own step at 1: `before + (after − before)` can differ from `after` in the last bit.
+	if (strength === 1) return after;
+	const adjusted = from === 'tap' ? after * strength : before + strength * (after - before);
 	return Math.min(Math.max(adjusted, S_MIN), S_MAX);
 }
 
@@ -301,14 +306,13 @@ function fold(
 		observe?.(evidence, card, now, dated);
 		const before = card?.stability ?? 0;
 		card = f.next(card ?? createEmptyCard(now), now, rating).card;
-		if (rule && evidence.from) {
-			card.stability = strengthened(
-				before,
-				card.stability,
-				evidence.from,
-				rule.skill,
-				rule.strengths
-			);
+		const adjusted =
+			rule && evidence.from
+				? strengthened(before, card.stability, evidence.from, rule.skill, rule.strengths)
+				: card.stability;
+		// Only a strength other than 1 touches the card, so today's rule stays exactly ts-fsrs's.
+		if (adjusted !== card.stability) {
+			card.stability = adjusted;
 			if (card.state === State.Review)
 				card.due = new Date(now.getTime() + f.next_interval(card.stability, 0) * DAY_MS);
 		}

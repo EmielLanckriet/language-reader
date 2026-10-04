@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
+	memoryOf,
 	reviewPredictions,
 	type WordHistory,
 	type RuleStrengths
@@ -102,6 +103,20 @@ describe('the fit replay', () => {
 						if (o.probability === null) expect(theirs[i].probability).toBeNull();
 						else expect(Math.abs(o.probability - theirs[i].probability!)).toBeLessThan(1e-6);
 					});
+				}
+			)
+		);
+	});
+
+	it('leaves memory exactly as today with every strength at 1, due dates included', () => {
+		fc.assert(
+			fc.property(
+				fc.array(step, { size: 'max', maxLength: 25 }),
+				fc.option(seed, { nil: undefined }),
+				(steps, imported) => {
+					const h = historyOf(steps, imported);
+					const neutral = { seenReading: 1, seenListening: 1, tapStability: 1 };
+					expect(memoryOf(h, anki, neutral)).toEqual(memoryOf(h, anki));
 				}
 			)
 		);

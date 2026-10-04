@@ -998,6 +998,59 @@ const scenarios = {
 		}
 	},
 
+	// Spec 013 Story 3: a refused set shows why; an applicable one is applied, listed, and returned
+	// from. Uses the fixture sets next to this file, fitted against a fresh profile's defaults.
+	async parameters() {
+		const { readFileSync } = await import('node:fs');
+		const fixture = (name) => readFileSync(new URL(`./${name}`, import.meta.url), 'utf8');
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/cards/tuning');
+			const choose = (text) =>
+				tab.evaluate(`
+					const input = document.querySelector('input[aria-label="Fitted set"]');
+					if (!input) return null;
+					const transfer = new DataTransfer();
+					transfer.items.add(new File([${JSON.stringify(text)}], 'set.json'));
+					input.files = transfer.files;
+					input.dispatchEvent(new Event('change', { bubbles: true }));
+					return true;
+				`);
+			await until('the import field', () => choose(fixture('fitted-set-refused.json')));
+			const refused = await until('the refusal', () =>
+				tab.evaluate(
+					`return document.body.innerText.includes('so it is not applied') && ![...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Apply this set') || null;`
+				)
+			);
+			await choose(fixture('fitted-set.json'));
+			await until('Apply offered', () =>
+				tab.evaluate(
+					`const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Apply this set'); if (!b) return null; b.click(); return true;`
+				)
+			);
+			const applied = await until('the fitted set in force', () =>
+				tab.evaluate(`return document.body.innerText.includes('In force: a fitted set') || null;`)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Return to your Anki weights').click(); return true;`
+			);
+			const returned = await until('the Anki weights in force again', () =>
+				tab.evaluate(
+					`return (document.body.innerText.includes("In force: your Anki weights") && document.querySelectorAll('section[aria-label="Parameters in force"] li').length === 2) || null;`
+				)
+			);
+			return { pass: Boolean(refused && applied && returned), refused, applied, returned };
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// A share shows up while it is still downloading, and a tap on it opens it once it is done.
 	// DOWNLOADS is the served fixtures' downloads folder (make-fixtures.sh); this adds a job there
 	// with only a progress file, then gives it fixture-media's finished bundle.

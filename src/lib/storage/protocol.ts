@@ -16,6 +16,10 @@ export type Call =
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'tuningAnalysis'; args: [] }
+	| { method: 'parametersInForce'; args: [] }
+	| { method: 'parameterHistory'; args: [] }
+	| { method: 'applyParameters'; args: [unknown] }
+	| { method: 'returnToParameters'; args: [string | null] }
 	| { method: 'studyOverview'; args: [string, number] }
 	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }

@@ -9,6 +9,7 @@
 import type { AnkiExport } from '../domain/anki';
 import type { TuningDataset, TuningReport } from '../domain/tuning';
 import type { StudyOverview } from '../domain/study';
+import type { ParameterSet } from '../domain/fit';
 
 import { RejectedInput } from '../content/types';
 import type { CopyBody } from '../backup/format';
@@ -272,6 +273,25 @@ export class RepositoryClient {
 
 	tuningAnalysis(): Promise<{ data: TuningDataset; report: TuningReport }> {
 		return this.call({ method: 'tuningAnalysis', args: [] });
+	}
+
+	parametersInForce(): Promise<{ id: string; set: ParameterSet | null }> {
+		return this.call({ method: 'parametersInForce', args: [] });
+	}
+
+	parameterHistory(): Promise<
+		{ at: string; action: 'apply' | 'rollback'; id: string; set: ParameterSet | null }[]
+	> {
+		return this.call({ method: 'parameterHistory', args: [] });
+	}
+
+	/** Refused (an error) unless the set predicted better against the one in force (FR-012). */
+	applyParameters(set: unknown): Promise<void> {
+		return this.call<void>({ method: 'applyParameters', args: [set] }).then(earned);
+	}
+
+	returnToParameters(id: string | null): Promise<void> {
+		return this.call<void>({ method: 'returnToParameters', args: [id] }).then(earned);
 	}
 
 	studyOverview(timeZone: string, dayEndHour: number): Promise<StudyOverview> {

@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import type { TuningDataset, TuningReport } from '$lib/domain/tuning';
+	import type { ParameterSet } from '$lib/domain/fit';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 
 	let analysis = $state<{ data: TuningDataset; report: TuningReport } | null>(null);
@@ -17,6 +18,64 @@
 		'not-replayed-by-rule': 'Ignored word or review predating its imported memory'
 	};
 
+	type Entry = { at: string; action: 'apply' | 'rollback'; id: string; set: ParameterSet | null };
+	/** A fitted set as fit.mjs writes it: the set, what it was compared with, and its report. */
+	type Fitted = ParameterSet & {
+		comparedWith?: string;
+		report?: {
+			applicable?: boolean;
+			why?: string;
+			comparison?: Record<string, { count: number; difference: number | null; verdict: string }>;
+		};
+	};
+	let inForce = $state<{ id: string; set: ParameterSet | null } | null>(null);
+	let changes = $state<Entry[]>([]);
+	let imported = $state<Fitted | null>(null);
+	let parameterProblem = $state<unknown>(null);
+	let parameterNote = $state('');
+	/** Why Apply is not offered for the imported set, or null when it is (FR-012). */
+	const refusal = $derived.by(() => {
+		if (!imported || !inForce) return null;
+		if (imported.report?.applicable !== true)
+			return `It ${imported.report?.why ?? 'has no report'}, so it is not applied.`;
+		if (imported.comparedWith !== inForce.id)
+			return 'It was fitted against a different set than the one in force: export and fit again.';
+		return null;
+	});
+
+	async function loadParameters() {
+		const { repository } = await session();
+		[inForce, changes] = await Promise.all([
+			repository.parametersInForce(),
+			repository.parameterHistory()
+		]);
+	}
+
+	async function importSet(event: Event) {
+		parameterProblem = null;
+		parameterNote = '';
+		const file = (event.currentTarget as HTMLInputElement).files?.[0];
+		if (!file) return;
+		try {
+			imported = JSON.parse(await file.text());
+		} catch (error) {
+			imported = null;
+			parameterProblem = error;
+		}
+	}
+
+	async function change(action: () => Promise<void>, note: string) {
+		parameterProblem = null;
+		try {
+			await action();
+			imported = null;
+			parameterNote = note;
+			await loadParameters();
+		} catch (error) {
+			parameterProblem = error;
+		}
+	}
+
 	async function load() {
 		if (busy) return;
 		busy = true;
@@ -24,6 +83,7 @@
 		try {
 			const { repository } = await session();
 			analysis = await repository.tuningAnalysis();
+			await loadParameters();
 		} catch (error) {
 			problem = error;
 		} finally {
@@ -56,8 +116,9 @@
 </p>
 <p>
 	Rate what you recalled <strong>before Show</strong>: Again means you needed the answer; Hard, Good
-	and Easy mean you remembered. Attentive encounters still influence your schedule, but they do not
-	count as measured recall here.
+	and Easy mean you remembered. While reading, a tapped word counts as not understood, and an
+	untapped one as understood only in sessions you answered "every unknown word" and only where no
+	English was shown.
 </p>
 
 {#if problem}
@@ -78,8 +139,8 @@
 			</p>
 		{/if}
 		<p>
-			Personalized fitting is not enabled yet. A review count alone cannot tell us whether there is
-			enough varied evidence to improve your schedule.
+			A review count alone cannot tell whether there is enough varied evidence to improve your
+			schedule: a fitted set is only applied when it predicted your later reading better.
 		</p>
 		{#if Object.keys(report.excluded).length}
 			<details>
@@ -142,6 +203,91 @@
 		<button onclick={load} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh report'}</button>
 	</section>
 {/if}
+
+<section aria-label="Parameters in force">
+	<h2>Your parameters</h2>
+	{#if inForce}
+		<p>
+			In force: {inForce.set
+				? `a fitted set (${inForce.id})`
+				: `your Anki weights under today's rule (${inForce.id})`}.
+		</p>
+		{#if inForce.set}
+			<button
+				class="secondary"
+				onclick={() =>
+					change(
+						() => session().then(({ repository }) => repository.returnToParameters(null)),
+						'Returned to your Anki weights. Your memory is being updated in the background.'
+					)}>Return to your Anki weights</button
+			>
+		{/if}
+	{/if}
+	<p>
+		Fit on your laptop with <code>node scripts/fsrs/fit.mjs</code> on an export, then import the set it
+		writes. It can only be applied if it predicted your later reading better, with enough data, and your
+		card answers no worse.
+	</p>
+	<label>
+		Import a fitted set
+		<input
+			type="file"
+			accept="application/json,.json"
+			aria-label="Fitted set"
+			onchange={importSet}
+		/>
+	</label>
+	{#if imported}
+		{@const reading = imported.report?.comparison?.inContext}
+		{@const detail =
+			reading && reading.difference !== null
+				? ` (${reading.count} later observations while reading, log loss ${reading.difference > 0 ? '+' : ''}${reading.difference.toFixed(3)} per observation)`
+				: ''}
+		<p>Set {imported.id}: {imported.report?.why ?? 'no report'}{detail}.</p>
+		{#if refusal}
+			<p role="status">{refusal}</p>
+		{:else}
+			<button
+				onclick={() =>
+					change(
+						() =>
+							session().then(({ repository }) =>
+								repository.applyParameters($state.snapshot(imported))
+							),
+						'Applied. Your memory is being updated in the background.'
+					)}>Apply this set</button
+			>
+		{/if}
+	{/if}
+	{#if parameterNote}<p role="status">{parameterNote}</p>{/if}
+	{#if parameterProblem}<ErrorNotice error={parameterProblem} />{/if}
+	{#if changes.length > 0}
+		<h3>Changes</h3>
+		<ul>
+			{#each changes as entry (entry.at + entry.id)}
+				<li>
+					{new Date(entry.at).toLocaleString()}: {entry.action === 'apply'
+						? 'applied'
+						: 'returned to'}
+					{entry.set ? `fitted set ${entry.id}` : 'your Anki weights'}
+					{#if inForce && entry.id !== inForce.id}
+						<button
+							class="secondary"
+							onclick={() =>
+								change(
+									() =>
+										session().then(({ repository }) =>
+											repository.returnToParameters(entry.set ? entry.id : null)
+										),
+									'Returned. Your memory is being updated in the background.'
+								)}>Return to this</button
+						>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</section>
 
 <style>
 	section {

@@ -91,6 +91,26 @@ export function idOf(set: Omit<ParameterSet, 'id'>): string {
 	return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+/**
+ * Refuses anything that is not a whole, unaltered set within bounds: what Reader is asked to apply
+ * comes from a file.
+ */
+export function checkParameterSet(value: unknown): asserts value is ParameterSet {
+	const set = value as Partial<ParameterSet> | null;
+	const fail = (why: string): never => {
+		throw new Error(`Not a usable parameter set: ${why}.`);
+	};
+	if (!set || typeof set !== 'object') return fail('not an object');
+	if (set.model !== MODEL) fail(`not a ${MODEL} set`);
+	if (!Array.isArray(set.weights) || set.weights.length !== 21) fail('not 21 weights');
+	if (!set.strengths || typeof set.retention !== 'number') fail('missing fields');
+	const vector = vectorOf(set as ParameterSet);
+	if (!vector.every((x, i) => Number.isFinite(x) && x >= BOUNDS[i][0] && x <= BOUNDS[i][1]))
+		fail('a number outside its bounds');
+	if (!(set.retention! > 0 && set.retention! < 1)) fail('retention outside 0–1');
+	if (set.id !== idOf(set as ParameterSet)) fail('altered since it was fitted');
+}
+
 /** Today's rule as a parameter set: these weights, every strength 1, no noise. */
 export function baselineSet(weights: number[], retention: number): ParameterSet {
 	return setOf([...weights, 1, 1, 1, 0, 0], retention);
@@ -329,10 +349,11 @@ export function fitDataset(value: unknown, options: FitOptions = {}) {
 			history: { ...w.history, answers: new Map(w.history.answers) }
 		}))
 	);
-	const current = baselineSet(
-		data.parameters?.weights ?? [...default_w],
-		data.parameters?.retention ?? 0.9
-	);
+	// The set in force when exported: a fitted one, or the Anki weights (or defaults) under today's rule.
+	if (data.active) checkParameterSet(data.active);
+	const current =
+		data.active ??
+		baselineSet(data.parameters?.weights ?? [...default_w], data.parameters?.retention ?? 0.9);
 	const cutoff = cutoffOf(score(words, current));
 	const fitted = fit(words, current, cutoff, options);
 	const candidate = score(words, fitted.set);

@@ -51,6 +51,15 @@ The reader's real export has not been fitted yet (it is on the phone).
    across two devices; backup restore keeps the active set.
 2. Isolated phone: import a set, apply, watch the sweep finish; time it (SC-005, < 30 s).
 
+Recorded 2026-10-04: activation tests (apply → return gives memory equal field for field; refusals;
+latest by time across devices; restore keeps the set) with mutations caught: device-first
+ordering (after fixing the test's own device id, which let it pass by luck), and skipping the
+"fitted against the set in force" check. A neutral-strength property test (every strength 1 =
+today's memory, due dates included) caught a last-bit floating-point difference, fixed by
+returning FSRS's own step at strength 1. The `parameters` browser scenario caught a real bug: the
+imported set, a Svelte state proxy, could not be posted to the storage worker. SC-005 (recompute
+on the phone under 30 s) is not measured: no phone connected.
+
 ## Story 4 — fit on the phone
 
 1. Measure first: run the fit worker on the A71 over the reader's export size with synthetic data;

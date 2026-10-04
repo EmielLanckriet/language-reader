@@ -230,6 +230,14 @@ function run(request: Request): unknown {
 			return repository.getMemory(request.args[0]);
 		case 'tuningAnalysis':
 			return repository.tuningAnalysis();
+		case 'parametersInForce':
+			return repository.parametersInForce();
+		case 'parameterHistory':
+			return repository.parameterHistory();
+		case 'applyParameters':
+			return repository.applyParameters(request.args[0]);
+		case 'returnToParameters':
+			return repository.returnToParameters(request.args[0]);
 		case 'studyOverview':
 			return repository.studyOverview(request.args[0], undefined, request.args[1]);
 		case 'wordOccurrences':

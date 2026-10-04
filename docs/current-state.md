@@ -18,7 +18,13 @@ to 1e-6; `replay.ts` reproduces Reader's predictions exactly ~100× faster; `scr
 fits weights, tap/seen strengths and in-context noise with a prior and gives a bootstrapped
 verdict. 5 min 50 s for a synthetic 13,500-event export on the laptop; the reader's real export
 has not been fitted. A true improvement of ~0.04 log loss per outcome needed more than 340 later
-in-context outcomes to show. Apply/rollback (Story 3) and fitting on the phone (Story 4) remain.
+in-context outcomes to show.
+
+Story 3: Cards → Learning data shows the set in force, imports a fitted set, applies it only when
+its report says it predicted later reading better and it was fitted against the set in force, and
+returns to any earlier set or the Anki weights. Each change is an append-only `fsrs-activation`;
+memory follows through the background sweep; returning is exact. Not phone-checked; SC-005
+(recompute under 30 s on the A71) unmeasured. Fitting on the phone (Story 4) remains.
 
 ## Player buttons, listening feedback and day end — deployed, not phone checked
 
