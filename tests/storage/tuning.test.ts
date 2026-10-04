@@ -47,43 +47,47 @@ it('exports format 2: tapped and fully-answered words without reviews too, with 
 	const db = await freshDatabase();
 	try {
 		const repo = new Repository(db);
-		const [documentId] = await buildHistory(repo, ['我看书\n你好'], []);
+		// Three lines: the full session plays the first two, revealing the second's English; a
+		// session answered "only some" plays the third, whose words have nothing to score.
+		const [documentId] = await buildHistory(repo, ['我看书\n你好\n明天'], []);
 		const words = repo.getDocument(documentId).tokens.filter((t) => t.isWord);
+		const onLine = (line: number) =>
+			words.filter((t) => t.start >= [0, 4, 7][line] && t.end <= [3, 6, 9][line]);
 		const full = repo.startSession(documentId, 'media');
 		const partial = repo.startSession(documentId, 'media');
 		const at = '2026-10-04T10:00:00Z';
-		const played = {
+		const played = (fromOffset: number, toOffset: number) => ({
 			kind: 'played',
 			at,
 			documentId,
-			fromOffset: 0,
-			toOffset: 6,
+			fromOffset,
+			toOffset,
 			mediaMs: 0,
 			textVisible: true,
 			detail: { toMs: 5000 }
-		};
-		const tapped = words[0];
+		});
 		repo.recordEncounters(full, [
-			played,
-			{
-				kind: 'lookup',
-				at,
-				documentId,
-				lexemeId: tapped.lexemeId!,
-				fromOffset: tapped.start,
-				toOffset: tapped.end
-			},
+			played(0, 6),
 			{ kind: 'translation', at, documentId, fromOffset: 4, toOffset: 6, detail: { line: 1 } },
 			{ kind: 'attention', at, detail: { answer: 'all' } }
 		]);
-		repo.recordEncounters(partial, [played, { kind: 'attention', at, detail: { answer: 'some' } }]);
+		repo.recordEncounters(partial, [
+			played(7, 9),
+			{ kind: 'attention', at, detail: { answer: 'some' } }
+		]);
 		const data: unknown = JSON.parse(JSON.stringify(repo.tuningDataset()));
 		validateDataset(data);
 		expect(data).toMatchObject({ format: 2, rule: 'evidence-3' });
 		const exported = new Map(data.words.map((w) => [w.id, w.history]));
-		const lineOne = words.find((t) => t.start >= 4)!;
-		expect([...exported.keys()].sort()).toEqual([...new Set(words.map((t) => t.lexemeId))].sort());
-		expect(exported.get(lineOne.lexemeId!)!.exposures.map((e) => e.helped)).toContain(true);
+		const ids = (tokens: typeof words) => [...new Set(tokens.map((t) => t.lexemeId!))].sort();
+		expect([...exported.keys()].sort()).toEqual(ids([...onLine(0), ...onLine(1)]));
+		for (const [line, helped] of [
+			[0, false],
+			[1, true]
+		] as const)
+			for (const t of onLine(line))
+				expect(exported.get(t.lexemeId!)!.exposures.map((e) => e.helped)).toEqual([helped]);
+		expect(onLine(2).length).toBeGreaterThan(0);
 	} finally {
 		db.close();
 	}

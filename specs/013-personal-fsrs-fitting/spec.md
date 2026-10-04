@@ -1,6 +1,6 @@
 # Feature Specification: Personal FSRS fitting with in-context outcomes
 
-Created: 2026-10-04. Status: draft. Branch: main.
+Created: 2026-10-04. Status: implemented, deployed and phone checked (see docs/current-state.md). Branch: main.
 Input: the reader's end goal is understanding words in context; flashcards are a proxy. Score what
 reading and watching show about understanding, not only card grades. A word whose English was on
 screen is neither a success nor a failure. Give lookups, checks and exposures their own fitted

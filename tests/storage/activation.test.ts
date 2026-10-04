@@ -110,24 +110,30 @@ describe('a fitted set', () => {
 		]);
 	});
 
-	it('in force is the latest change by time, whichever device made it', async () => {
-		const { db, repository } = await reader();
-		const set = fitted(repository.parametersInForce().id);
-		repository.applyParameters(set);
-		const at = queryRows(db, `SELECT at FROM encounter WHERE kind = 'fsrs-activation'`)[0].at;
-		// An earlier return to the Anki weights, made on a device whose id sorts before any other.
-		run(db, `INSERT INTO device (id, next_seq) VALUES ('00000000-other', 2)`);
-		run(
-			db,
-			`INSERT INTO encounter (kind, detail, at, device_id, device_seq)
-       VALUES ('fsrs-activation', ?, ?, '00000000-other', 1)`,
-			[
-				JSON.stringify({ action: 'rollback', set: null }),
-				new Date(Date.parse(String(at)) - 60_000).toISOString()
-			]
-		);
-		expect(repository.parametersInForce().id).toBe(set.id);
-	});
+	// Both ways round: the other device's id sorts first in one run and last in the other, so
+	// ordering by device first, ascending or descending, fails one of them.
+	it.each(['00000000-other', 'ffffffff-other'])(
+		'in force is the latest change by time, whichever device made it (%s)',
+		async (other) => {
+			const { db, repository } = await reader();
+			const set = fitted(repository.parametersInForce().id);
+			repository.applyParameters(set);
+			const at = queryRows(db, `SELECT at FROM encounter WHERE kind = 'fsrs-activation'`)[0].at;
+			// An earlier return to the Anki weights, made on another device.
+			run(db, `INSERT INTO device (id, next_seq) VALUES (?, 2)`, [other]);
+			run(
+				db,
+				`INSERT INTO encounter (kind, detail, at, device_id, device_seq)
+       VALUES ('fsrs-activation', ?, ?, ?, 1)`,
+				[
+					JSON.stringify({ action: 'rollback', set: null }),
+					new Date(Date.parse(String(at)) - 60_000).toISOString(),
+					other
+				]
+			);
+			expect(repository.parametersInForce().id).toBe(set.id);
+		}
+	);
 
 	it('stays in force through a backup and its restore', async () => {
 		const { repository } = await reader();

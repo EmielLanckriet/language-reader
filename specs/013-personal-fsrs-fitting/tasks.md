@@ -94,8 +94,8 @@ Independent test: quickstart Story 4 passes; SC-006.
 
 ## Phase 7: Polish
 
-- [ ] T039 Update docs/current-state.md, scripts/verify-in-browser/README.md and docs/anticipated-changes.md with what shipped, measurements and open limits
-- [ ] T040 Run the test-auditor agent over tests added by this spec and fix tests that cannot fail
+- [x] T039 Update docs/current-state.md, scripts/verify-in-browser/README.md and docs/anticipated-changes.md with what shipped, measurements and open limits
+- [x] T040 Run the test-auditor agent over tests added by this spec and fix tests that cannot fail
 
 ## Dependencies
 

@@ -1058,7 +1058,7 @@ const scenarios = {
 			await until('the import field', () => choose(fixture('fitted-set-refused.json')));
 			const refused = await until('the refusal', () =>
 				tab.evaluate(
-					`return document.body.innerText.includes('so it is not applied') && ![...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Apply this set') || null;`
+					`return document.body.innerText.includes('Not applied: did not predict better.') && ![...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Apply this set') || null;`
 				)
 			);
 			await choose(fixture('fitted-set.json'));

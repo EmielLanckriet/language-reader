@@ -50,6 +50,12 @@ describe('English shown in a session', () => {
 		expect(isHelped(help, 14, 16)).toBe(false);
 	});
 
+	it('counts English unblurred before the list view was chosen: it was on screen then', () => {
+		// The stage is the default view, so a blur-off arriving first was seen there (audit 2026-10-04).
+		const help = helpOf([setting('blurEnglish', false), setting('stage', false)], lines);
+		expect(isHelped(help, 14, 16)).toBe(true);
+	});
+
 	it('counts a session with no record of its settings as blurred', () => {
 		expect(isHelped(helpOf([], lines), 0, 2)).toBe(false);
 	});

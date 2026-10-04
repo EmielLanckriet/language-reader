@@ -3,38 +3,33 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Spec 013 Story 1: shown English and taps — local, deploying
+## Personal FSRS fitting (spec 013) — deployed and phone checked
 
-Evidence rule `evidence-3` (ADR-0037): an untapped word under English the reader saw (a revealed
-line, the translate link's sentence, or a session with blur off in the stage or show-all English)
-gets no credit; every tap is a failure, "I knew it" is gone, and Undo tap (while the sheet is
-open) records `tap-undone` and no lookup. Older sessions count as blurred; older reveals map by line.
-Learning data scores reading-in-context outcomes beside card answers; exports are format 2.
-Memory is recomputed for every word once (rule change). The parameter ordering bug across devices
-is fixed. Deployed `31930b9`; not yet phone-checked (no USB device).
+ADR-0037. **Evidence rule `evidence-3`:** a tap is a failure whatever follows it ("I knew it" is
+gone; Undo tap while the sheet is open records `tap-undone` and no lookup). An untapped word under
+English the reader saw (revealed line, translated sentence, or a session with English unblurred or
+all shown) gets no credit and is no outcome; older sessions count as blurred, older reveals map by
+line. **Outcomes:** card grades, and reading in context (a tap 0; an untapped, unhelped word in a
+session answered "every unknown word" 1), scored and reported apart; exports are format 2.
+**Fit:** `fsrs6.ts` equals ts-fsrs to 1e-6, `replay.ts` reproduces Reader's predictions exactly;
+`fit.ts` fits 21 weights, tap/seen strengths and in-context noise on the earlier 80% under a prior
+on the Anki weights, and gives a bootstrapped verdict on the later 20%. Run it with
+`scripts/fsrs/fit.mjs` or Learning data's **Fit on this device** (own worker, local-model lease,
+Cancel, stops when hidden or after 5 minutes). **Apply** only when the set predicted later reading
+better with ≥100 outcomes and cards no worse, against the set in force; **Return** to any earlier
+set or the Anki weights is always allowed and exact. Changes are append-only `fsrs-activation`s.
 
-Story 2 (deployed `7f767b2`, laptop only, no visible change in Reader): `fsrs6.ts` equals ts-fsrs
-to 1e-6; `replay.ts` reproduces Reader's predictions exactly ~100× faster; `scripts/fsrs/fit.mjs`
-fits weights, tap/seen strengths and in-context noise with a prior and gives a bootstrapped
-verdict. 5 min 50 s for a synthetic 13,500-event export on the laptop; the reader's real export
-has not been fitted. A true improvement of ~0.04 log loss per outcome needed more than 340 later
-in-context outcomes to show.
+Measured: fit of a synthetic 13,500-event export 24.7 s on the laptop, 35 s on the A71 (32 °C),
+results within 4.3e-8 (laptop and phone differ in the last bits, so set ids differ). Apply/Return
+recompute 2,008 words in 2.1/2.3 s on the A71. A real improvement of ~0.04 log loss per outcome
+needed more than 340 later in-context outcomes to show, so Apply will refuse for a while. 522
+tests, mutation checks for every rule, browser scenarios `listened`, `encounters`, `parameters`,
+`fithere`; phone checks on the isolated origin (word sheet, Learning data, apply/return, fit).
 
-Story 3: Cards → Learning data shows the set in force, imports a fitted set, applies it only when
-its report says it predicted later reading better and it was fitted against the set in force, and
-returns to any earlier set or the Anki weights. Each change is an append-only `fsrs-activation`;
-memory is recomputed at once; returning is exact. Phone-checked on the isolated origin: 2,008 word
-rows in 2.1 s (apply) and 2.3 s (return). That check found a sweep loop introduced by Story 1
-(words shown English kept from memory stayed "stale", refreshed forever while visible, at every
-start); fixed and deployed in `9152cbb`. Story 1's word sheet (Undo tap, no "I knew it") and the
-in-context row were also checked on the phone.
-
-Story 4: Learning data's "Fit on this device" runs the same fit in its own worker under the
-local-model lease, with Cancel, a stop when hidden, and a 5-minute deadline. The fit was made 14×
-faster first (350 → 24.7 s on the laptop for a synthetic 13,500-event export). On the A71
-(isolated origin, same export): 35 s, 31.9 → 32.1 °C, parameters within 4.3e-8 of the laptop's.
-Cancel/hide were checked in the browser, not on the phone. The reader's real history has not
-been fitted.
+Found and fixed during the phone check (`9152cbb`): Story 1 made the memory sweep loop forever on
+words shown English kept from memory, at every app start while visible; Apply/Return now also
+recompute at once. Not done: the reader's real history has not been fitted; Cancel, hide and the
+deadline of a phone fit were checked in the browser only (the test profile's fit ends in 0.3 s).
 
 ## Player buttons, listening feedback and day end — deployed, not phone checked
 

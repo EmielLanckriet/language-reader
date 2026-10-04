@@ -7,19 +7,20 @@ import {
 	type RuleStrengths
 } from '../../src/lib/domain/memory';
 import { prepare, replay } from '../../src/lib/domain/replay';
+import { CLAMP_PARAMETERS, W17_W18_Ceiling } from 'ts-fsrs';
 import type { FsrsParameters } from '../../src/lib/domain/anki';
 
 // The fit replays a word's evidence with its own FSRS-6 (fsrs6.ts), thousands of times. It is only
 // worth anything if it predicts exactly what Reader's memory does (spec 013, T023).
 
-const anki: FsrsParameters = {
-	preset: 'anki',
-	retention: 0.9,
-	weights: [
-		0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835,
-		0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542
-	]
-};
+/** Any FSRS-6 weights within ts-fsrs's bounds: the fit moves them all (audit, 2026-10-04). */
+const parameters = fc
+	.tuple(
+		...CLAMP_PARAMETERS(W17_W18_Ceiling, true).map(([low, high]) =>
+			fc.double({ min: low, max: high, noNaN: true })
+		)
+	)
+	.map((weights): FsrsParameters => ({ preset: 'any', retention: 0.9, weights }));
 
 /** What an arbitrary generates. */
 type ValueOf<A> = A extends fc.Arbitrary<infer T> ? T : never;
@@ -91,15 +92,22 @@ describe('the fit replay', () => {
 				fc.array(step, { size: 'max', maxLength: 25 }),
 				fc.option(strengths, { nil: undefined }),
 				fc.option(seed, { nil: undefined }),
-				(steps, rule: RuleStrengths | undefined, imported) => {
+				parameters,
+				(steps, rule: RuleStrengths | undefined, imported, p) => {
 					const h = historyOf(steps, imported);
-					const theirs = reviewPredictions(h, anki, rule);
-					const mine: { probability: number | null; excluded?: string; type: string }[] = [];
-					replay(prepare(h), anki.weights, rule, (o) => mine.push(o));
+					const theirs = reviewPredictions(h, p, rule);
+					const mine: {
+						probability: number | null;
+						excluded?: string;
+						type: string;
+						label: number;
+					}[] = [];
+					replay(prepare(h), p.weights, rule, (o) => mine.push(o));
 					expect(mine.map((o) => [o.type, o.excluded])).toEqual(
 						theirs.map((o) => [o.type, o.excluded])
 					);
 					mine.forEach((o, i) => {
+						expect(o.label).toBe(theirs[i].rating === 1 ? 0 : 1);
 						if (o.probability === null) expect(theirs[i].probability).toBeNull();
 						else expect(Math.abs(o.probability - theirs[i].probability!)).toBeLessThan(1e-6);
 					});
@@ -113,10 +121,11 @@ describe('the fit replay', () => {
 			fc.property(
 				fc.array(step, { size: 'max', maxLength: 25 }),
 				fc.option(seed, { nil: undefined }),
-				(steps, imported) => {
+				parameters,
+				(steps, imported, p) => {
 					const h = historyOf(steps, imported);
 					const neutral = { seenReading: 1, seenListening: 1, tapStability: 1 };
-					expect(memoryOf(h, anki, neutral)).toEqual(memoryOf(h, anki));
+					expect(memoryOf(h, p, neutral)).toEqual(memoryOf(h, p));
 				}
 			)
 		);

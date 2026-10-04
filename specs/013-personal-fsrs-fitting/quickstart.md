@@ -79,3 +79,21 @@ Recorded 2026-10-04: 35 s on the A71 for 13,500 synthetic events (SC-006 met), 3
 parameters within 4.3e-8 of the laptop's. Cancel was checked in the browser (`fithere`), not on
 the phone: a fresh test profile has no history, so the fit there ends before it can be cancelled
 or hidden. The deadline and the hide rule are therefore unexercised on the phone.
+
+## Test audit (T040, 2026-10-04)
+
+The test-auditor agent's findings, each checked before acting. Fixed: the "Anki" weights in the
+FSRS and replay tests were ts-fsrs's defaults, so one weight vector was ever tested; both now draw
+any weights within ts-fsrs's bounds (a hard-coded decay is now caught). The replay test now checks
+each observation's label (an inverted mapping is now caught). The two "latest by time, whichever
+device" tests run with the device ids both ways round (device-descending ordering is now caught,
+ascending was already). The format-2 export test checks exact `helped` values and that an "only
+some" session's words are left out (now caught). The fit tests use mulberry32: with it, 150 words
+gave a fitted set worse than today's rule (243 later outcomes, true improvement 0.0014), so they
+use 400 words; SC-002 and "better than today's rule" then held for five seeds, the verdict test
+for four. `applicable()`'s refusals ("did not predict better", "predicted card answers worse") are
+tested directly. The sweep test counts refreshes. Settings in reverse order are pinned (blur off
+before the list view counts as help). Kept: the noise-formula test restates production (a
+regression guard, not an oracle); the second in-context prediction has no separate oracle (the
+replay equality covers it); the recorder plumbing tests pick words by index (pre-existing).
+

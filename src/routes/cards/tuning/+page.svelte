@@ -39,7 +39,7 @@
 	const refusal = $derived.by(() => {
 		if (!imported || !inForce) return null;
 		if (imported.report?.applicable !== true)
-			return `It ${imported.report?.why ?? 'has no report'}, so it is not applied.`;
+			return `Not applied: ${imported.report?.why ?? 'it has no report'}.`;
 		if (imported.comparedWith !== inForce.id)
 			return 'It was fitted against a different set than the one in force: export and fit again.';
 		return null;

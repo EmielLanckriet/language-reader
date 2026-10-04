@@ -19,11 +19,16 @@ import type { WordHistory } from '../../src/lib/domain/memory';
 // The fit (spec 013, T025): it should find parameters that predict later outcomes about as well as
 // the ones that generated them, refuse a verdict on too little, and never look at the later period.
 
-/** A seeded generator, so a failing history can be reproduced. */
+/**
+ * A seeded generator, so a failing history can be reproduced (mulberry32: an earlier linear one
+ * overflowed double precision and mixed badly, audit 2026-10-04).
+ */
 function random(seed: number) {
 	return () => {
-		seed = (seed * 1103515245 + 12345) % 2 ** 31;
-		return seed / 2 ** 31;
+		seed = (seed + 0x6d2b79f5) | 0;
+		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 	};
 }
 
@@ -98,7 +103,7 @@ const loss = (rows: Scored[], cutoff: number) => {
 
 // Each fit replays the whole history about two thousand times; CI is slower than a laptop.
 describe('fitting', { timeout: 60_000 }, () => {
-	const words = simulate(truth, 150);
+	const words = simulate(truth, 400);
 	const cutoff = cutoffOf(score(words, start));
 	const fitted = fit(words, start, cutoff, { iterations: 40, gammas: [1] });
 
@@ -114,7 +119,7 @@ describe('fitting', { timeout: 60_000 }, () => {
 	});
 
 	it('is not moved by anything after the cutoff', () => {
-		const changed = simulate(truth, 150);
+		const changed = simulate(truth, 400);
 		// Flip the last outcome of every word whose last observation is after the cutoff.
 		for (const word of changed)
 			for (const skill of word.prepared) {
@@ -144,6 +149,32 @@ describe('scoring', () => {
 });
 
 describe('the verdict', () => {
+	const verdict = (
+		v: 'better' | 'not better' | 'too little data',
+		interval: [number, number] | null
+	) => ({ count: v === 'too little data' ? 10 : 500, difference: null, interval, verdict: v });
+
+	it('applies only what predicted reading better, and never what predicted cards worse (FR-012)', () => {
+		const better = verdict('better', [-0.05, -0.01]);
+		expect(applicable(better, verdict('not better', [-0.01, 0.02]))).toEqual({
+			ok: true,
+			why: 'predicted better'
+		});
+		expect(applicable(better, verdict('too little data', null)).ok).toBe(true);
+		expect(applicable(better, verdict('not better', [0.001, 0.03]))).toEqual({
+			ok: false,
+			why: 'predicted card answers worse'
+		});
+		expect(applicable(verdict('not better', [-0.02, 0.01]), better)).toEqual({
+			ok: false,
+			why: 'did not predict better'
+		});
+		expect(applicable(verdict('too little data', null), better)).toEqual({
+			ok: false,
+			why: 'too little data while reading'
+		});
+	});
+
 	it('says too little data below the minimum, and then nothing can be applied', () => {
 		const words = simulate(truth, 6);
 		const cutoff = cutoffOf(score(words, start));
