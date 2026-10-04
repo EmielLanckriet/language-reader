@@ -3,6 +3,7 @@
 	import { session } from '$lib/storage/session';
 	import type { TuningDataset, TuningReport } from '$lib/domain/tuning';
 	import type { ParameterSet } from '$lib/domain/fit';
+	import { fitOnThisDevice } from '$lib/fit-run';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 
 	let analysis = $state<{ data: TuningDataset; report: TuningReport } | null>(null);
@@ -61,6 +62,29 @@
 		} catch (error) {
 			imported = null;
 			parameterProblem = error;
+		}
+	}
+
+	/** A fit running here: its progress, and how to stop it (spec 013 Story 4). */
+	let fitting = $state<{ done: number; total: number; cancel: () => void } | null>(null);
+	async function fitHere() {
+		if (!analysis || fitting) return;
+		parameterProblem = null;
+		parameterNote = '';
+		imported = null;
+		const run = fitOnThisDevice($state.snapshot(analysis.data), (done, total) => {
+			if (fitting) fitting = { ...fitting, done, total };
+		});
+		fitting = { done: 0, total: 1, cancel: run.cancel };
+		const started = performance.now();
+		try {
+			const { set } = await run.result;
+			imported = set;
+			parameterNote = `Fitted here in ${Math.round((performance.now() - started) / 1000)} s.`;
+		} catch (error) {
+			parameterProblem = error;
+		} finally {
+			fitting = null;
 		}
 	}
 
@@ -228,6 +252,17 @@
 		writes. It can only be applied if it predicted your later reading better, with enough data, and your
 		card answers no worse.
 	</p>
+	{#if fitting}
+		<p role="status">
+			Fitting on this device… {Math.round((100 * fitting.done) / fitting.total)}%
+			<button class="secondary" onclick={() => fitting?.cancel()}>Cancel</button>
+		</p>
+	{:else}
+		<button class="secondary" onclick={fitHere} disabled={!analysis}>Fit on this device</button>
+		<p class="muted">
+			Uses the phone for a few minutes; it stops if you leave the app, and after five minutes.
+		</p>
+	{/if}
 	<label>
 		Import a fitted set
 		<input

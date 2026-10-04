@@ -998,6 +998,45 @@ const scenarios = {
 		}
 	},
 
+	// Spec 013 Story 4: the fit runs in its own worker in the built app and reports back; Cancel stops
+	// it. On a fresh profile the history is empty, so the verdict must be "too little data".
+	async fithere() {
+		const tab = await openTab('about:blank');
+		try {
+			await tab.goto('/cards/tuning');
+			const press = (label) =>
+				tab.evaluate(
+					`const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)} && !b.disabled); if (!b) return null; b.click(); return true;`
+				);
+			await until('Fit on this device', () => press('Fit on this device'));
+			const finished = await until(
+				'the fit to finish',
+				() =>
+					tab.evaluate(
+						`const t = document.body.innerText; return t.includes('Fitted here in') && t.includes('too little data while reading') && !t.includes('Apply this set') || null;`
+					),
+				60000,
+				250
+			);
+			await until('Fit on this device again', () => press('Fit on this device'));
+			await until('Cancel', () => press('Cancel'));
+			const cancelled = await until('the cancellation', () =>
+				tab.evaluate(
+					`return document.body.innerText.includes('Cancelled.') && [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Fit on this device') || null;`
+				)
+			);
+			return { pass: Boolean(finished && cancelled), finished, cancelled };
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Spec 013 Story 3: a refused set shows why; an applicable one is applied, listed, and returned
 	// from. Uses the fixture sets next to this file, fitted against a fresh profile's defaults.
 	async parameters() {

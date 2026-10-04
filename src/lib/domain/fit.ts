@@ -161,6 +161,8 @@ export function cutoffOf(rows: { at: number }[]): number {
 interface FitOptions {
 	iterations?: number;
 	gammas?: number[];
+	/** Called after every optimiser step, for a progress bar: steps done of at most `total`. */
+	onProgress?: (done: number, total: number) => void;
 }
 
 /**
@@ -180,16 +182,20 @@ export function fit(
 	// The prior strength is chosen on the last fifth of the earlier period, by shorter trial fits on
 	// the rest; the final fit continues from the best trial, now over the whole earlier period.
 	const validation = cutoffOf(earlier);
+	const trials = gammas.length > 1 && Number.isFinite(validation) ? gammas : [];
+	const trialSteps = Math.min(40, iterations);
+	const total = trials.length * trialSteps + iterations;
+	let done = 0;
+	const step = () => options.onProgress?.(++done, total);
 	let best = { gamma: gammas[0] ?? 1, loss: Infinity, set: start };
-	if (gammas.length > 1 && Number.isFinite(validation))
-		for (const gamma of gammas) {
-			const trial = optimise(words, centre, start, validation, gamma, Math.min(40, iterations));
-			const held = score(words, trial).filter((r) => r.at >= validation && r.at < cutoff);
-			const loss = held.reduce((sum, r) => sum + logLoss(r), 0);
-			if (loss < best.loss) best = { gamma, loss, set: trial };
-		}
+	for (const gamma of trials) {
+		const trial = optimise(words, centre, start, validation, gamma, trialSteps, step);
+		const held = score(words, trial).filter((r) => r.at >= validation && r.at < cutoff);
+		const loss = held.reduce((sum, r) => sum + logLoss(r), 0);
+		if (loss < best.loss) best = { gamma, loss, set: trial };
+	}
 	return {
-		set: optimise(words, centre, best.set, cutoff, best.gamma, iterations),
+		set: optimise(words, centre, best.set, cutoff, best.gamma, iterations, step),
 		gamma: best.gamma,
 		iterations
 	};
@@ -231,7 +237,8 @@ function optimise(
 	start: ParameterSet,
 	cutoff: number,
 	gamma: number,
-	iterations: number
+	iterations: number,
+	onStep?: () => void
 ): ParameterSet {
 	const n = centre.length;
 	const toTheta = (z: number[]) =>
@@ -260,6 +267,7 @@ function optimise(
 		});
 		// Back inside the bounds.
 		z = toZ(toTheta(next));
+		onStep?.();
 		if (moved < 1e-5) break;
 	}
 	return setOf(toTheta(z), start.retention);
