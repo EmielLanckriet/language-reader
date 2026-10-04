@@ -3,6 +3,19 @@
 Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Library word counts: due words and recurring new words — built, not phone checked
+
+Asked for on 2026-10-04 (backlog: "Video statistics from FSRS"). Under each video's and text's
+shares bar: "7 due come up (23×) · 18 new words, 5 recur". Due is reading memory due now (cards
+are scheduled on reading; listening only nudges it), counted in distinct words with their
+occurrences; ignored words are left out. Since watching updates FSRS, these are the reviews the
+video clears, though a tap is still a failed review and a word under shown English stays due. New
+is a word with no memory and no mark; it recurs when it occurs in 3 or more separate lines
+(`wordLines`, code-point offsets against the text's line breaks). Validation: 525 tests (counts
+and lines, each caught 4 mutations), type check, lint, and the `study` browser scenario, now with
+a 390 px Texts screenshot (`/tmp/reader-texts-light.png`) showing "8 new words". The due part was
+not seen on screen (a fresh profile has nothing due). Predicted comprehension is still open.
+
 ## Personal FSRS fitting (spec 013) — deployed and phone checked
 
 ADR-0037. **Evidence rule `evidence-3`:** a tap is a failure whatever follows it ("I knew it" is

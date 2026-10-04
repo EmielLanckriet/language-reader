@@ -2,6 +2,25 @@
 
 Things decided but not yet scheduled. Newest first.
 
+## Video statistics from FSRS: due words that come up, recurring words — built
+
+Built 2026-10-04 (current-state.md); the open questions below remain.
+
+2026-10-04, brainstorm with the reader. Each video shows, next to the learning count it has now:
+
+- **Due words that come up**: watching updates FSRS, so a video clears the reviews of the due
+  words in it. Say "7 due come up", not "7 you'll pass": under `evidence-3` a tap is a failure
+  (still a review, so the word is no longer due), and a word under shown English gets no outcome
+  and stays due. Count words, with how often they occur beside it ("7 due (23×)").
+- **Recurring words**: in 3 or more separate lines (lines, not occurrences, so a line repeating a
+  word does not inflate it). New and recurring words are the ones the video itself teaches
+  ("18 new (5 recur)"); a due word that recurs after a tap shows whether the lookup stuck.
+
+Not yet decided: a predicted-comprehension headline (mean retrievability over the running words,
+new words as 0, e.g. "~94% understood", against the 95–98% known-word range from reading research)
+and whether it is cheap enough per video; colouring the numbers with the four retrievability bands
+(`memory.ts`); and where the statistics appear (library list or before playing).
+
 ## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper — built
 
 Built as spec 008 (ADR-0029), phone-checked on 2026-09-29 (spec.md, "Phone check"): 2 threads by

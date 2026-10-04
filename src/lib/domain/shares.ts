@@ -35,6 +35,45 @@ function kindOf(
 	return KNOWN_MARKS.has(state) ? 'known' : 'learning';
 }
 
+/**
+ * Distinct words: due ones (reading recall due now, so watching clears their reviews) with how often
+ * they come up, and new ones with how many recur in 3 or more separate lines. Reading only: cards
+ * are scheduled on reading; listening memory only nudges that, so a listening due date is no goal.
+ */
+export interface WordCounts {
+	due: number;
+	dueOccurrences: number;
+	fresh: number;
+	freshRecurring: number;
+}
+
+const RECURRING_LINES = 3;
+
+export function wordCounts(
+	occurrences: Map<LexemeId, number>,
+	lines: Map<LexemeId, number>,
+	states: Map<LexemeId, WordState>,
+	memory: Map<LexemeId, Partial<Record<Skill, Memory>>>,
+	now: Date,
+	parameters?: FsrsParameters
+): WordCounts {
+	const counts: WordCounts = { due: 0, dueOccurrences: 0, fresh: 0, freshRecurring: 0 };
+	for (const [lexeme, n] of occurrences) {
+		const reading = memory.get(lexeme)?.reading;
+		const kind = kindOf(states.get(lexeme)?.state, reading, now, parameters);
+		if (kind === 'ignored') continue;
+		if (reading && Date.parse(reading.due) <= now.getTime()) {
+			counts.due++;
+			counts.dueOccurrences += n;
+		}
+		if (kind === 'fresh') {
+			counts.fresh++;
+			if ((lines.get(lexeme) ?? 0) >= RECURRING_LINES) counts.freshRecurring++;
+		}
+	}
+	return counts;
+}
+
 /** Fractions summing to 1, or undefined for a document with no counted words. */
 export function textShares(
 	occurrences: Map<LexemeId, number>,

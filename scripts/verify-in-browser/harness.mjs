@@ -588,14 +588,29 @@ const scenarios = {
 				captureBeyondViewport: true
 			});
 			writeFileSync('/tmp/reader-library-light.png', Buffer.from(shot.data, 'base64'));
+			const libraryWidth = await tab.evaluate(
+				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
+			);
+			// The pasted text's shares and word counts (due words, new words that recur).
+			await tab.goto('/texts');
+			await until('text counts', () =>
+				tab.evaluate(`return !!document.querySelector('.library .meta.counts')`)
+			);
+			const counts = await tab.evaluate(
+				`return document.querySelector('.library .meta.counts').textContent.replace(/\\s+/g, ' ').trim()`
+			);
+			const textsShot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-texts-light.png', Buffer.from(textsShot.data, 'base64'));
 			const width = await tab.evaluate(
 				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
 			);
 			return {
-				pass: width.body <= width.viewport,
+				pass: width.body <= width.viewport && libraryWidth.body <= libraryWidth.viewport,
 				completedDays: complete,
 				feedback: 'corrected after reload',
-				width
+				counts,
+				width,
+				libraryWidth
 			};
 		} catch (error) {
 			return {

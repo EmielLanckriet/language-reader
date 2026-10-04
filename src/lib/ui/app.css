@@ -248,6 +248,15 @@ textarea {
 	color: var(--learning);
 }
 
+.library .meta.counts {
+	margin-top: 0.3rem;
+}
+
+.library .meta .due {
+	color: var(--learning);
+	font-weight: 600;
+}
+
 /* How much of the text is known, learning and new: one thin bar, in the reading page's colours. */
 .library .shares {
 	display: flex;

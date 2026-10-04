@@ -3,7 +3,7 @@
  * the reader knows. All derived (ADR-0003), made once and kept beside the video.
  */
 import { session } from '$lib/storage/session';
-import { textShares, type Shares } from '$lib/domain/shares';
+import { textShares, wordCounts, type Shares, type WordCounts } from '$lib/domain/shares';
 import { quickTranslation, quickTranslatorPresent } from '$lib/translation/quick';
 import type { DocumentId } from '$lib/domain/types';
 import {
@@ -152,20 +152,34 @@ export async function progressOf(ids: DocumentId[]): Promise<Map<DocumentId, num
 	return found;
 }
 
-/** Each document's shares of known, learning and new words, as of now. */
-export async function sharesOf(ids: DocumentId[]): Promise<Map<DocumentId, Shares>> {
+/** Each document's shares of known, learning and new words, and its word counts, as of now. */
+export async function sharesOf(
+	ids: DocumentId[]
+): Promise<Map<DocumentId, { shares: Shares; counts: WordCounts }>> {
 	const { repository } = await session();
-	const occurrences = await repository.wordOccurrences(ids);
+	const [occurrences, lines] = await Promise.all([
+		repository.wordOccurrences(ids),
+		repository.wordLines(ids)
+	]);
 	const lexemes = [...new Set([...occurrences.values()].flatMap((words) => [...words.keys()]))];
 	const [states, memory] = await Promise.all([
 		repository.getStates(lexemes),
 		repository.getMemory(lexemes)
 	]);
 	const now = new Date();
-	const found = new Map<DocumentId, Shares>();
+	const found = new Map<DocumentId, { shares: Shares; counts: WordCounts }>();
 	for (const [id, words] of occurrences) {
 		const shares = textShares(words, states, memory.memory, now, memory.parameters);
-		if (shares) found.set(id, shares);
+		if (!shares) continue;
+		const counts = wordCounts(
+			words,
+			lines.get(id) ?? new Map(),
+			states,
+			memory.memory,
+			now,
+			memory.parameters
+		);
+		found.set(id, { shares, counts });
 	}
 	return found;
 }

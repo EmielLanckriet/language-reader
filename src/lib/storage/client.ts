@@ -267,6 +267,10 @@ export class RepositoryClient {
 		return this.call({ method: 'wordOccurrences', args: [documentIds] });
 	}
 
+	wordLines(documentIds: DocumentId[]): Promise<Map<DocumentId, Map<LexemeId, number>>> {
+		return this.call({ method: 'wordLines', args: [documentIds] });
+	}
+
 	getMemory(lexemeIds: LexemeId[]): Promise<WordMemory> {
 		return this.call({ method: 'getMemory', args: [lexemeIds] });
 	}

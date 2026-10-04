@@ -7,7 +7,7 @@
 	import ErrorNotice from './ErrorNotice.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
 	import { englishTitles, progressOf, sharesOf, thumbnailOf } from '$lib/media/cover';
-	import type { Shares } from '$lib/domain/shares';
+	import type { Shares, WordCounts } from '$lib/domain/shares';
 
 	/** Videos or pasted texts: a video is a document with media beside it (ADR-0018). */
 	let {
@@ -25,7 +25,7 @@
 	let total = $state(0);
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
-	let shares = $state<Map<number, Shares>>(new Map());
+	let shares = $state<Map<number, { shares: Shares; counts: WordCounts }>>(new Map());
 	let english = $state<Record<number, string>>({});
 	let pictures = $state<Record<number, string>>({});
 	let progress = $state<Map<number, number>>(new Map());
@@ -113,7 +113,8 @@
 {:else}
 	<ul class="library collection" class:video-collection={kind === 'video'}>
 		{#each documents as document (document.id)}
-			{@const share = shares.get(document.id)}
+			{@const share = shares.get(document.id)?.shares}
+			{@const counts = shares.get(document.id)?.counts}
 			<li>
 				<a
 					href={resolve('/read/[id]', { id: String(document.id) })}
@@ -154,6 +155,20 @@
 								<span class="known" style:width={percent(share.known)}></span>
 								<span class="learning" style:width={percent(share.learning)}></span>
 								<span class="fresh" style:width={percent(share.fresh)}></span>
+							</span>
+						{/if}
+						{#if counts && (counts.due > 0 || counts.fresh > 0)}
+							<span class="meta counts">
+								{#if counts.due > 0}
+									<span class="due">{counts.due} due come up ({counts.dueOccurrences}×)</span>
+								{/if}
+								{#if counts.due > 0 && counts.fresh > 0}·{/if}
+								{#if counts.fresh > 0}
+									{counts.fresh} new {counts.fresh === 1
+										? 'word'
+										: 'words'}{#if counts.freshRecurring > 0}, {counts.freshRecurring}
+										recur{/if}
+								{/if}
 							</span>
 						{/if}
 					</span>

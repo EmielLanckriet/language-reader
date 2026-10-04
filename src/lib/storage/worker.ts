@@ -242,6 +242,8 @@ function run(request: Request): unknown {
 			return repository.studyOverview(request.args[0], undefined, request.args[1]);
 		case 'wordOccurrences':
 			return repository.wordOccurrences(request.args[0]);
+		case 'wordLines':
+			return repository.wordLines(request.args[0]);
 		case 'playedThrough':
 			return repository.playedThrough(request.args[0]);
 		case 'deletedWithHistory':

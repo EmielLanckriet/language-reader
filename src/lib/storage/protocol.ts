@@ -22,6 +22,7 @@ export type Call =
 	| { method: 'returnToParameters'; args: [string | null] }
 	| { method: 'studyOverview'; args: [string, number] }
 	| { method: 'wordOccurrences'; args: [number[]] }
+	| { method: 'wordLines'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }
 	| { method: 'deletedWithHistory'; args: [] }
 	| { method: 'withdrawDocument'; args: [number, string] }

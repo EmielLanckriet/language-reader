@@ -570,6 +570,59 @@ export class Repository {
 		return found;
 	}
 
+	/** In how many separate lines each word occurs in each of these documents: recurring words. */
+	wordLines(documentIds: DocumentId[]): Map<DocumentId, Map<LexemeId, number>> {
+		const found = new Map<DocumentId, Map<LexemeId, number>>();
+		if (documentIds.length === 0) return found;
+		const marks = documentIds.map(() => '?').join(', ');
+		const texts = new Map(
+			queryRows(
+				this.db,
+				`SELECT id, raw_content FROM document WHERE id IN (${marks})`,
+				documentIds
+			).map((row) => [Number(row.id), String(row.raw_content)])
+		);
+		// Line starts in code points, as token offsets count them.
+		const breaks = new Map<DocumentId, number[]>();
+		for (const [id, text] of texts) {
+			const starts = [0];
+			let at = 0;
+			for (const character of text) {
+				at++;
+				if (character === '\n') starts.push(at);
+			}
+			breaks.set(id, starts);
+		}
+		const lineOf = (starts: number[], offset: number) => {
+			let low = 0;
+			let high = starts.length - 1;
+			while (low < high) {
+				const middle = (low + high + 1) >> 1;
+				if (starts[middle] <= offset) low = middle;
+				else high = middle - 1;
+			}
+			return low;
+		};
+		const seen = new Map<DocumentId, Map<LexemeId, Set<number>>>();
+		const rows = queryRows(
+			this.db,
+			`SELECT document_id, lexeme_id, start FROM token WHERE is_word = 1 AND document_id IN (${marks})`,
+			documentIds
+		);
+		for (const row of rows) {
+			const id = Number(row.document_id);
+			const words = seen.get(id) ?? new Map<LexemeId, Set<number>>();
+			seen.set(id, words);
+			const lexeme = Number(row.lexeme_id);
+			const lines = words.get(lexeme) ?? new Set<number>();
+			words.set(lexeme, lines);
+			lines.add(lineOf(breaks.get(id) ?? [0], Number(row.start)));
+		}
+		for (const [id, words] of seen)
+			found.set(id, new Map([...words].map(([lexeme, lines]) => [lexeme, lines.size])));
+		return found;
+	}
+
 	listDocuments(): DocumentSummary[] {
 		return queryRows(
 			this.db,
