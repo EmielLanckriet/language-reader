@@ -28,8 +28,17 @@ tests, mutation checks for every rule, browser scenarios `listened`, `encounters
 
 Found and fixed during the phone check (`9152cbb`): Story 1 made the memory sweep loop forever on
 words shown English kept from memory, at every app start while visible; Apply/Return now also
-recompute at once. Not done: the reader's real history has not been fitted; Cancel, hide and the
-deadline of a phone fit were checked in the browser only (the test profile's fit ends in 0.3 s).
+recompute at once. Cancel, hide and the deadline of a phone fit were checked in the browser only
+(the test profile's fit ends in 0.3 s).
+
+First fit of the reader's real history (2026-10-04, daily Reader updated to `22e4543`, export read
+in the page, not saved on the phone): 660 words, 37 sessions 27 Sep–3 Oct, 268 taps, no card
+reviews yet. 346 earlier and 87 later in-context outcomes; 1.6 s on the laptop. Later period:
+86% understood, today's rule predicted 95%, the fitted set 92% (log loss 0.453 → 0.386). Verdict
+"too little data" (87 < 100), so nothing can be applied. The fitted strengths stayed near 1
+(seen 1.09, tap 1.06); most of the gain is the noise terms (false success 0.08, false failure
+0.04), i.e. today's rule is overconfident about untapped words. Refit once there are a few
+hundred later outcomes and some card reviews.
 
 ## Player buttons, listening feedback and day end — deployed, not phone checked
 
