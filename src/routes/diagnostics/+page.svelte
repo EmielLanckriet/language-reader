@@ -7,6 +7,18 @@
 	import { readCalibration, type Calibration } from '$lib/speech/calibrate';
 	import { REVISION } from '$lib/speech/model';
 	import { speechSetup } from '$lib/speech/app';
+	import { resolve } from '$app/paths';
+	import { readNewCards, keepNewCards } from '$lib/ui/new-cards';
+
+	// Cards settings (moved off the Cards page). The waiting count needs today's queue, so it is
+	// only asked for when the group is opened.
+	let newCards = $state(readNewCards());
+	let awaitingContext = $state<number | null>(null);
+	async function countAwaiting() {
+		if (awaitingContext !== null) return;
+		const { repository } = await session();
+		awaitingContext = (await repository.cardsToday(newCards)).counts.awaitingContext;
+	}
 
 	let guards = $state<Safeguards | null>(null);
 	let restoring = $state(false);
@@ -419,6 +431,36 @@
 		</ul>
 		{#if forgetProblem}<p role="alert">{forgetProblem}</p>{/if}
 	{/if}
+</details>
+
+<details class="group" ontoggle={(e) => e.currentTarget.open && void countAwaiting()}>
+	<summary>
+		<span class="title">Cards</span>
+		<small>New words per day · Learning data</small>
+	</summary>
+	<dl class="facts">
+		<dt>New words per day</dt>
+		<dd>
+			<input
+				type="number"
+				min="0"
+				max="100"
+				aria-label="New words per day"
+				bind:value={newCards}
+				onchange={() => keepNewCards(newCards)}
+			/>
+			<br />
+			Words you looked up, most common in Chinese first. Words from Anki, and words you met twice without
+			looking them up, come on their own.
+			{#if awaitingContext}<br />{awaitingContext} words are waiting for an example. Encounter them in
+				Reader, or import your Anki examples under Your words.{/if}
+		</dd>
+		<dt>Learning data</dt>
+		<dd>
+			How well the review schedule fits your history, and an export of it.
+			<a href={resolve('/cards/tuning')}>Learning data</a>
+		</dd>
+	</dl>
 </details>
 
 <details class="group">

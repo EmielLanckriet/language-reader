@@ -4,7 +4,7 @@ Status: Accepted. Date: 2026-10-05. Amends: [ADR-0027](0027-encounter-log-and-de
 A word is an **active** card, coming due on its own schedule, when it was reviewed in Reader, seen
 in Anki (an Anki seed), or is a **known** word: never tapped, and met untapped in two separate
 sessions answered "I tapped every word I didn't know", with the line's English not shown. A word
-tapped at least once is a **candidate**. The daily new-word budget (Cards → Review settings, "New
+tapped at least once is a **candidate**. The daily new-word budget (More → Cards, "New
 words per day", kept per device) picks candidates by their rank in **general Chinese frequency**,
 most frequent first. Any other word is not a card. The library's "due come up" counts active cards
 only.

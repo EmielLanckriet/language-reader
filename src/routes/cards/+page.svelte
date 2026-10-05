@@ -12,6 +12,7 @@
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { CardSentence, CardsToday } from '$lib/storage/repository';
 	import { RETRACTED } from '$lib/domain/state';
+	import { readNewCards } from '$lib/ui/new-cards';
 
 	/**
 	 * Reviewing in the Reader (spec 007, US3): today's due cards, then new ones from what the reader
@@ -19,8 +20,7 @@
 	 * queue is recomputed from them, so nothing about it is stored.
 	 */
 
-	const CAP_KEY = 'reader.newCards';
-	let cap = $state(readCap());
+	const cap = readNewCards();
 	let today = $state<CardsToday | null>(null);
 	let order: number[] = [];
 	let current = $state<{
@@ -92,26 +92,6 @@
 	let reviewed = $state(0);
 	let grading = $state(false);
 	let problem = $state<unknown>(null);
-
-	function readCap(): number {
-		try {
-			const kept = Number(localStorage.getItem(CAP_KEY));
-			return Number.isInteger(kept) && kept >= 0 && localStorage.getItem(CAP_KEY) !== null
-				? kept
-				: 10;
-		} catch {
-			return 10;
-		}
-	}
-
-	function keepCap() {
-		try {
-			localStorage.setItem(CAP_KEY, String(cap));
-		} catch {
-			// The choice lasts for this visit.
-		}
-		void start();
-	}
 
 	$effect(() => {
 		void start();
@@ -289,14 +269,6 @@
 	] as const;
 </script>
 
-<div class="cards-heading">
-	<div>
-		<span class="eyebrow">A word at a time</span>
-		<h1>Cards</h1>
-	</div>
-	<a href={resolve('/cards/tuning')}>Learning data</a>
-</div>
-
 {#if problem}
 	<ErrorNotice error={problem} onretry={start} />
 {:else if !today}
@@ -313,7 +285,6 @@
 				<p class="word-pinyin pinyin" aria-label="Word pronunciation">
 					{wordReadings.filter(Boolean).join(' ')}
 				</p>
-				{#if !revealed}<p class="recall-hint">Recall the meaning</p>{/if}
 				{#if revealed}
 					<div class="answer" aria-live="polite">
 						{#await lookUp(current.word, wordReadings)}
@@ -335,14 +306,6 @@
 				{/if}
 				{#if current.sentence}
 					<div class="example">
-						<span class="eyebrow">In context</span>
-						<p class="source">
-							{#if current.sentence.documentId !== undefined && current.sentence.available}<a
-									href={resolve('/read/[id]', { id: String(current.sentence.documentId) })}
-									>{current.sentence.sourceTitle}</a
-								>{:else}{current.sentence.sourceTitle}{#if !current.sentence.available}
-									· removed from library{/if}{/if}
-						</p>
 						<p class="sentence" lang="zh-Hans">
 							{#each characters as ch, i (i)}{#if ch.part === 'word'}<mark>{ch.c}</mark
 									>{:else}{ch.c}{/if}{/each}
@@ -361,7 +324,6 @@
 					<button onclick={playSentence} disabled={!sentenceClip}>Hear sentence</button>
 					{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
 				</div>
-				{#if !sentenceClip}<p class="audio-note">No recording available for this example.</p>{/if}
 				{#if retiredLast}<p class="audio-note" role="status">
 						<span lang="zh-Hans">{retiredLast.word}</span> retired: it stays remembered but is no
 						longer a card.
@@ -376,9 +338,6 @@
 								onclick={() => grade(value)}>{label}</button
 							>{/each}
 					</div>
-					<p class="grading-hint">
-						Again if you needed the answer. Hard if you recalled it with difficulty.
-					</p>
 				{:else}
 					<button class="reveal" onclick={() => (revealed = true)}>Show answer</button>
 				{/if}
@@ -396,36 +355,13 @@
 			<a href={resolve('/')}>Back to your library →</a>
 		</div>
 	{/if}
-	{#if today.counts.awaitingContext > 0}<p class="audio-note">
-			{today.counts.awaitingContext} words are waiting for an example. Encounter them in Reader or
-			<a href={resolve('/diagnostics')}>import your Anki examples</a>.
-		</p>{/if}
-	<details class="review-settings">
-		<summary>Review settings</summary><label class="cap"
-			>New words per day <input
-				type="number"
-				min="0"
-				max="100"
-				bind:value={cap}
-				onchange={keepCap}
-			/></label
-		>
-		<p class="cap-note">
-			Words you looked up, most common in Chinese first. Words from Anki, and words you met twice
-			without looking them up, come on their own.
-		</p>
-	</details>
 {/if}
 
 <style>
-	.source,
 	.audio-note {
 		font-size: 0.78rem;
 		color: var(--muted);
 		line-height: 1.5;
-	}
-	.source a {
-		color: inherit;
 	}
 	.audio-actions {
 		display: flex;
@@ -439,16 +375,6 @@
 		min-height: 44px;
 	}
 
-	.cards-heading {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-	.cards-heading > a {
-		font-size: 0.8rem;
-		color: var(--muted);
-	}
 	.card {
 		margin: 1.25rem 0;
 	}
@@ -476,11 +402,6 @@
 		font-size: 1.375rem;
 		margin: 0.35rem 0 1rem;
 		min-height: 2.2rem;
-	}
-	.recall-hint {
-		font-family: system-ui, sans-serif;
-		font-size: 0.82rem;
-		color: #687368;
 	}
 	.answer {
 		margin: 1rem 0 1.5rem;
@@ -588,36 +509,6 @@
 		text-decoration: underline;
 		font-size: inherit;
 	}
-	.grading-hint {
-		font-size: 0.75rem;
-		line-height: 1.4;
-		color: var(--muted);
-		margin: 0.6rem 0 0.2rem;
-	}
-	.review-settings {
-		margin: 1.5rem 0;
-		color: var(--muted);
-		font-size: 0.85rem;
-	}
-	.review-settings summary {
-		cursor: pointer;
-		min-height: 44px;
-		padding: 0.5rem 0;
-	}
-	.cap {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-	.cap-note {
-		margin: 0.4rem 0 0;
-		font-size: 0.85rem;
-		color: var(--muted);
-	}
-	.cap input {
-		width: 4.5rem;
-		min-height: 44px;
-	}
 	@media (prefers-color-scheme: dark) {
 		.card-face {
 			background: #242923;
@@ -626,9 +517,6 @@
 		}
 		.pinyin {
 			color: #a7d69e;
-		}
-		.recall-hint {
-			color: #a6b3a2;
 		}
 		.example {
 			border-color: #424838;

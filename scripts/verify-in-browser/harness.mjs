@@ -375,8 +375,8 @@ const scenarios = {
 				tab.evaluate(`return document.body.textContent.includes('Examples ready.')`)
 			);
 			await tab.goto('/cards');
-			await until('Anki context', () =>
-				tab.evaluate(`return document.querySelector('.source')?.textContent.includes('Anki')`)
+			await until('Anki example', () =>
+				tab.evaluate(`return !!document.querySelector('.card .sentence')`)
 			);
 			await tab.evaluate(`document.querySelector('.reveal').click()`);
 			await until('sentence audio ready', () =>
@@ -396,7 +396,7 @@ const scenarios = {
 				tab.evaluate(`return window.__cardAudio.length>0&&window.__cardAudio.every(a=>a.paused)`)
 			);
 			const result = await tab.evaluate(
-				`return {source:document.querySelector('.source').textContent,english:document.querySelector('.english').textContent,width:document.documentElement.scrollWidth,viewport:innerWidth,recordings:window.__cardAudio.length}`
+				`return {english:document.querySelector('.english').textContent,width:document.documentElement.scrollWidth,viewport:innerWidth,recordings:window.__cardAudio.length}`
 			);
 			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 			writeFileSync('/tmp/reader-context-card.png', Buffer.from(shot.data, 'base64'));
@@ -469,7 +469,7 @@ const scenarios = {
 			);
 			await tab.evaluate(`document.querySelector('.card').scrollIntoView({block:'start'})`);
 			const front = await tab.evaluate(
-				`return {word:document.querySelector('.hanzi').textContent,hidden:!document.querySelector('.answer'),english:!!document.querySelector('.english'),pinyin:document.querySelector('.word-pinyin').textContent,sentencePinyin:document.querySelector('.sentence-pinyin').textContent,hear:[...document.querySelectorAll('.audio-actions button')].map(b=>b.textContent.trim()),width:document.documentElement.scrollWidth,viewport:innerWidth}`
+				`return {extras:['Recall the meaning','In context','Review settings','Learning data','Again if you needed'].filter(t=>document.body.textContent.includes(t)),heading:!!document.querySelector('h1'),word:document.querySelector('.hanzi').textContent,hidden:!document.querySelector('.answer'),english:!!document.querySelector('.english'),pinyin:document.querySelector('.word-pinyin').textContent,sentencePinyin:document.querySelector('.sentence-pinyin').textContent,hear:[...document.querySelectorAll('.audio-actions button')].map(b=>b.textContent.trim()),width:document.documentElement.scrollWidth,viewport:innerWidth}`
 			);
 			let shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 			writeFileSync('/tmp/reader-card-front.png', Buffer.from(shot.data, 'base64'));
@@ -521,7 +521,10 @@ const scenarios = {
 				pass:
 					sheetChoices.length === 1 &&
 					sheetChoices[0].startsWith('Retire') &&
-					more.groups.length === 4 &&
+					more.groups.length === 5 &&
+					more.groups[1] === 'Cards' &&
+					front.extras.length === 0 &&
+					!front.heading &&
 					more.open === 0 &&
 					more.width === front.viewport &&
 					front.hidden &&
@@ -863,7 +866,7 @@ const scenarios = {
 	async tuning() {
 		const tab = await openTab('about:blank');
 		try {
-			await tab.goto('/cards');
+			await tab.goto('/diagnostics');
 			await until('learning data link', () =>
 				tab.evaluate(
 					`return [...document.querySelectorAll('a')].some(a => a.textContent === 'Learning data')`

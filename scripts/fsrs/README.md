@@ -1,6 +1,6 @@
 # FSRS candidate evaluation
 
-In Reader, open **Cards → Learning data → Export learning data**. On a laptop with this checkout's
+In Reader, open **More → Cards → Learning data → Export learning data**. On a laptop with this checkout's
 dependencies installed and Node 24:
 
 ```sh

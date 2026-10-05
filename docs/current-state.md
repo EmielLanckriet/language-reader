@@ -3,6 +3,17 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Leaner Cards page; card settings in More — built, browser checked, not deployed
+
+A presentation change (ADR-0031). The Cards page is now the counts line ("N due · N new") and the
+card: the word, its pinyin, the sentence and the sentence's pinyin, with meanings and English after
+Show answer. Removed: the "A word at a time / Cards" heading, "Recall the meaning", "In context"
+and the source line, the grading hint, "No recording available". More has a fifth group, **Cards**:
+New words per day (same stored value, `src/lib/ui/new-cards.ts`), the Learning data link, and the
+count of words waiting for an example (asked for only when the group opens). Validation: type check,
+lint, 545 tests; browser `cardlayout` (extended: none of the removed texts, no heading, five groups),
+`cardaudio`, `tuning` (now reaches Learning data through More). Not yet checked on the phone.
+
 ## Retire words; one-button word sheet; More in four groups — deployed and phone checked
 
 ADR-0040. A **retired** word keeps its memory (reading still updates it, the library counts it by
