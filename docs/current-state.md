@@ -3,7 +3,7 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Card fills the page; no Device service row — built, browser checked, phone check pending
+## Card fills the page; no Device service row — deployed and phone checked
 
 Follow-up to the leaner Cards page. The Device service row is gone from every tab (Termux's state
 still shows in the "Your work isn't being copied" notice and More's Start Termux). The card is no
@@ -12,6 +12,9 @@ rule; the word shrinks after Show answer, and Retire sits on the Hear row. Goal:
 typical card (年级, two-line sentence, English) fits above the tab bar without scrolling.
 Validation: type check, lint, 545 tests, browser `cardlayout`, `cardaudio`. A browser fit check was
 tried and dropped: its card is about 140 px shorter than the phone's, so it passed on the old page too.
+Phone (build after `dc9c264`, 411×831, read-only): no Device service row; 年级's back (two-line
+meaning, two-line sentence and pinyin, English) ends at 494 px, its buttons at 634, the tab bar at
+764, and the page does not scroll (it ended 726 px down, under the buttons, before). Not graded.
 
 ## Leaner Cards page; card settings in More — deployed and phone checked
 
@@ -26,8 +29,7 @@ lint, 545 tests; browser `cardlayout` (extended: none of the removed texts, no h
 read-only in the daily Reader): the front of 年级 shows only the word, nián jí, the sentence and its
 pinyin, and fits above the buttons; Show answer added the meaning and English (not graded). More
 showed five groups, Cards second, with New words per day 10 and 39 words waiting; no horizontal
-scroll at 411 px. Still open: on the back, the sentence pinyin and English fall below the sticky
-buttons and need a scroll.
+scroll at 411 px. The back's overflow was fixed next (above).
 
 ## Retire words; one-button word sheet; More in four groups — deployed and phone checked
 
