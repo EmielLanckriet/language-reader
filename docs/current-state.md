@@ -3,7 +3,7 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Retire words; one-button word sheet; More in four groups — built, not deployed
+## Retire words; one-button word sheet; More in four groups — deployed and phone checked
 
 ADR-0040. A **retired** word keeps its memory (reading still updates it, the library counts it by
 recall) but is never a card and never due. Cards has "Retire this card" on both faces with Undo,
@@ -14,7 +14,12 @@ More is regrouped into four closed groups: Your words (Anki words and examples, 
 deleted documents), Backup & storage, Speech & word splitting, Troubleshooting. Content unchanged.
 Validation: 545 tests (the retire rule and the conversion red first, each mutation-checked), type check, lint,
 browser `cardlayout` (extended: the sheet's single button, retire → undo, More's groups at 390 px),
-`corrections`, `cardaudio`, `boot`. Not phone checked; the conversion was not seen on real data.
+`corrections`, `cardaudio`, `boot`. Phone (build `1791238524586`, read-only in the daily Reader):
+before the update no word's current mark was `ignored` (latest marks: 2,122 Anki levels, 2 learning,
+3 known, 1 unknown; 4,251 events), so the conversion had nothing to do, and after it the marks were
+the same with no new failure recorded. Cards showed "Retire this card" under Show answer on 丁; More
+showed its four groups closed, no horizontal scroll at 411 px. Retire → Undo was checked in the
+browser only, not on the phone (it would add marks to the real history).
 
 ## Card front with pinyin and sound — deployed and phone checked
 
