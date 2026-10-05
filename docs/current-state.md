@@ -16,6 +16,9 @@ tried and dropped: its card is about 140 px shorter than the phone's, so it pass
 Phone (build after `dc9c264`, 411×831, read-only): no Device service row; 年级's back (two-line
 meaning, two-line sentence and pinyin, English) ends at 494 px, its buttons at 634, the tab bar at
 764, and the page does not scroll (it ended 726 px down, under the buttons, before). Not graded.
+After `1b443ee`: the buttons are fixed at 612–747 px on both faces (tab bar 764) whatever the card's
+length; 记忆's back ends at 433 px. Seen in passing: that Anki example's sentence field carries its
+own pinyin ("你的记忆好好啊。 Nǐ de jìyì hǎohǎo a."), which the card shows and spells out letter by letter.
 
 ## Leaner Cards page; card settings in More — deployed and phone checked
 
