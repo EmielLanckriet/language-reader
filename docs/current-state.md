@@ -1,7 +1,19 @@
 # Current state
 
-Updated 2026-10-04. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-05. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Next line past a short seek; rotation after full screen — deployed and phone checked
+
+Issues #3 and #4 (open work is now tracked as GitHub issues; backlog.md keeps the reasoning). #3:
+seeking to 260.59 s in the Gan An Mediastorm video landed at 260.589998 on the phone, so the line
+before still counted as playing, and with "stop after each line" ▶ stopped in place every time. The
+line at a time now allows 10 ms (`lineAt`, `media/subtitles.ts`). #4: full screen locked landscape
+and nothing unlocked it; `media/orientation.ts` unlocks whenever full screen ends and leaves full
+screen when the player goes. Validation: 531 tests (both new tests mutation-checked), type check,
+lint. Phone (A71, build `1791216891041`, daily Reader): ⛶ then the back gesture returned to
+portrait; from line 146 with ❚❚ on, ▶ played line 147 to its end (about 5 s of real playback). The
+`listened` browser scenario fails at a later, unrelated step, also before this change (#26).
 
 ## Due when FSRS says, no learning steps — deployed and phone checked
 
