@@ -1,8 +1,54 @@
 # Backlog
 
-Things decided but not yet scheduled. Newest first.
+Open work is tracked as [GitHub issues](https://github.com/EmielLanckriet/language-reader/issues);
+this file keeps the reasoning and measurements behind them. Each entry's heading names its issue.
+When adding an entry, open its issue; when closing an issue, update or remove its entry here.
+Entries newest first.
 
-## Video statistics from FSRS: due words that come up, recurring words — built
+## Index of open issues (2026-10-05)
+
+Bugs: #1 the app is slow · #2 join and split sometimes do nothing · #3 next line does nothing at
+4:20 in the Gan An Mediastorm video · #4 screen stays in landscape after fullscreen · #15 pinyin of
+heteronyms · #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update ·
+#22 restore offered from an empty copy.
+
+Cards and memory: #5 activate a card after 5 encounters across 2 videos · #6 weigh encounters in an
+already-watched video · #7 card layout · #18 fit the evidence rule · #20 Anki reset and live recall.
+
+Library and content: #8 delete a video or text · #9 switch subtitle track after import · #10
+generated story with due words · #11 find YouTube videos by due and new words · #13 video
+statistics · #14 transcription resume and background pass · #16 word senses in context.
+
+Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
+emulator install test · #24 Termux install size · #25 store wipe cause.
+
+## Card activation: 5 encounters across 2 videos — #5
+
+2026-10-05, the reader: the due count is still too high after ADR-0038, because a new video floods
+the queue with new words. Proposal, to brainstorm and tweak: a word becomes an active card only
+after it was met at least 5 times across at least 2 different videos or texts. Before that it is
+not in the card queue, but reading and listening still record evidence, so its memory is there when
+it activates. Open: the thresholds; occurrences or separate lines (as the library's recurring words
+count); what happens to cards already active that don't meet the rule; whether a lookup activates
+a word sooner; whether the library's due counts follow the same rule.
+
+## Encounters in an already-watched video — #6
+
+2026-10-05, the reader: in a video already watched, a word is understood more easily from memory
+of the context or the line itself, and might not be understood elsewhere. So whether an encounter
+was in a document (or a line) seen before should change its weight: a success in a rewatch counts
+less, a miss more. Probably derivable from earlier encounters (they carry `document_id` and
+offsets) without new data; the weight belongs in the fitted evidence rule (#18).
+
+## Card layout: one card per word, sound and pinyin on the front — #7
+
+2026-10-05, the reader decided: one card per word, no separate listening cards. The goal is
+understanding written and spoken Chinese, not recalling pronunciation. Front: the word and the
+example sentence, written with pinyin, plus audio of both. Back: the same plus the translation.
+This changes spec 011's card, which hides pinyin and audio until Show answer. Replaces "Listening
+cards: brainstorm first" below.
+
+## Video statistics from FSRS: due words that come up, recurring words — built — #13
 
 Built 2026-10-04 (current-state.md); the open questions below remain.
 
@@ -21,7 +67,7 @@ new words as 0, e.g. "~94% understood", against the 95–98% known-word range fr
 and whether it is cheap enough per video; colouring the numbers with the four retrievability bands
 (`memory.ts`); and where the statistics appear (library list or before playing).
 
-## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper — built
+## Speech-to-text in Reader with SenseVoice, replacing Termux's whisper — built — #14
 
 Built as spec 008 (ADR-0029), phone-checked on 2026-09-29 (spec.md, "Phone check"): 2 threads by
 calibration, 22.4 s per 28 s window, 6.1% character error on a 44 min video against human
@@ -82,7 +128,7 @@ exist. A slower, better background pass (ADR-0023) is untested: Qwen3-ASR-0.6B, 
 1.13.8 can load, or decoding a second time with the windows offset by 15 s and keeping, where the
 two disagree, the tokens the model is surer of.
 
-## Pinyin for heteronyms (多音字), and the homograph problem
+## Pinyin for heteronyms (多音字), and the homograph problem — #15
 
 2026-09-27: pinyin is now shown above every character, from pinyin-pro reading a whole text at a
 time, so context decides most readings (银行 háng, 长大 zhǎng, 重要 zhòng, 着急 zháo). Measured wrong
@@ -98,7 +144,7 @@ everyday sentences. g2pM (1.6 MB) 97.3% on CPP but 20/30 everyday and none of th
 The pip g2pW model (607 MB BERT) fixes all five and gets 28/30, but follows Taiwan readings
 (差不多 chā, 和 hàn) and mishandles simplified 干; a mainland-trained model is not what pip ships.
 
-## Word meanings in context — parked
+## Word meanings in context — parked — #16
 
 2026-09-27: the word sheet now ranks CC-CEDICT senses (names, variants and archaic senses last; the
 pinyin heard in context first) and explains missing words by their parts (`analyzer/gloss.ts`).
@@ -122,7 +168,10 @@ words, hand-check about 50 choices, and compare with a 7–14B model on the lapt
 2026-09-28, the reader: a model picks senses only for words that are new or hard at import, plus
 every word missing from CC-CEDICT (where misheard subtitles hide), once per word per document.
 
-## Listening cards: brainstorm first
+## Listening cards — superseded by #7
+
+2026-10-05: the reader does not want separate listening cards; one card per word carries the audio
+(#7). Kept for the recorded covariates (creator, speed), which #18 can still use.
 
 2026-09-27 (spec 007): left out of 007 on purpose; the reader wants a brainstorm before specifying.
 The shape so far: the word is the memory, a sentence is the test. A listening card plays a clip of
@@ -133,7 +182,7 @@ covariates: a source's difficulty, for reading evidence (a miss in fast accented
 and for picking clips easy first. Listening memory is already kept from lookups and from words
 heard with the text hidden, so the history will be there when the cards arrive.
 
-## Termux's service keeps dying: watch whether the process limit was it
+## Termux's service keeps dying: watch whether the process limit was it — #17
 
 2026-09-28: Diagnostics recorded the reader service dying or restarting ten times from 2026-09-26
 evening to 2026-09-27 18:52, with Termux already exempt from battery optimisation. Suspected, not
@@ -146,7 +195,11 @@ RUN_ANY_IN_BACKGROUND allow` and on the deviceidle exemption list. Samsung's own
 list can still restrict it. Check the "What has happened before" count in a few days: if the
 service still dies, the phantom killer was not the cause.
 
-## Transcripts: phrases lost at 30 s chunk boundaries
+## Transcripts: phrases lost at 30 s chunk boundaries — superseded by spec 008
+
+2026-10-05: about Termux's whisper, which spec 008 removed (`setup.sh` deletes it). Reader's
+SenseVoice windows overlap by 2 s and keep each token from the middle of an overlap
+(`src/lib/speech/windows.ts`), the fix proposed here.
 
 2026-09-27 (ADR-0019 amendments): each 30 s chunk starts without the text before it, and with
 `turbo` one of seven boundaries swallowed a phrase. Longer chunks and one run over the rest are
@@ -154,7 +207,7 @@ ruled out, measured: whisper then loops over silence and invents lines. If lost 
 showing up, try overlapping chunks (re-decode a few seconds before each boundary and keep the
 better join), measured on the interview first.
 
-## Fit the evidence rule to review outcomes
+## Fit the evidence rule to review outcomes — #18
 
 2026-09-27 (spec 007): the rule's weights are guesses (research R5). Under `evidence-2` a lookup is
 Again in both skills, a check is Hard, and a word met untapped in a session answered "I tapped every
@@ -170,14 +223,14 @@ of in-app reviews exist, fit it and replace the rule by a background recompute o
 history. Candidates then: creator and speed as covariates, context diversity (distinct documents)
 and library frequency as difficulty priors, and whether such words should ever become cards.
 
-## The attention answer recomputes a session's words while saving waits
+## The attention answer recomputes a session's words while saving waits — #1
 
 2026-09-27 (spec 007, research R14): answering "I tapped everything" recomputes every word of the
 session that has a memory, in the same transaction: 0.7 s on the laptop for a heavy synthetic year
 (about 250 words a session, 20,000 encounters). If the phone makes this several seconds, move that
 recompute into the background sweep: write the answer at once, refresh the words just after.
 
-## A page loaded during a slow storage handover waits about 4 s
+## A page loaded during a slow storage handover waits about 4 s — #19
 
 2026-09-27 (spec 007): when a new page loads while the previous page's worker is still closing,
 `createSyncAccessHandle` refuses (`NoModificationAllowedError`) for over 4 s, the new worker gives up
@@ -187,7 +240,7 @@ after its 4 s window, and the client replaces it; the fresh worker then opens at
 on the phone (after an update reload or a share opening a new page), and whether retrying inside
 the first worker could ever succeed, which would make the wait shorter than a replacement.
 
-## Anki: a card reset keeps its last level; live recall
+## Anki: a card reset keeps its last level; live recall — #20
 
 2026-09-26 (spec 006): a word reset or deleted in Anki keeps the level of its last import, since
 an export only lists studied cards and a missing word is not a judgment. If that matters, the export
@@ -195,7 +248,11 @@ could list reset cards and the import retract them. Separately, the levels are a
 of Anki's *current* recall probability (from stability and the days since the last review) would fade
 words as they are forgotten, instead of only at the next import.
 
-## A transcript whose Termux died stays stuck
+## A transcript whose Termux died stays stuck — superseded by spec 008
+
+2026-10-05: Termux no longer transcribes (spec 008). Reader resumes a transcript from its saved
+windows (`src/lib/speech/transcriber.ts`); its remaining resume issue is #14. A dying Termux service
+is #17.
 
 2026-09-26: Android stopped Termux (battery optimisation was already off) during the street
 interview's last chunk. The transcriber died with status "228 of 231 s, not done", and the live page
@@ -208,18 +265,18 @@ boot, is gone with it until Termux is opened again.
 end of every job and a service orphaned by its script, is fixed, and Reader's Start Termux restarts
 the service. Resuming a transcript from its last chunk is not.
 
-## The installed Chrome Reader did not offer its update
+## The installed Chrome Reader did not offer its update — #21
 
 2026-09-26: a new build was waiting (its worker answered `which-version` with the new version) but
 no "A new version is ready" banner appeared, on reload either. It did appear in a Samsung Internet
 tab. Moved over by hand with the worker's `skip-waiting` message.
 
-## The library offers to restore an empty copy
+## The library offers to restore an empty copy — #22
 
 "Your work can be restored … 0 documents and 0 marked words", from a copy a fresh browser tab had
 just sent. A copy with nothing in it should not be offered.
 
-## Test install and share-into-the-app on the emulator — needs a Google sign-in
+## Test install and share-into-the-app on the emulator — needs a Google sign-in — #23
 
 Blocked on 2026-09-25: installing needs a Google account in the emulator's Play Store (logcat:
 `WebAPK service unknown_account`), and signing in needs the reader's phone for two-step
@@ -229,14 +286,14 @@ Chrome's local-network permission prompt for 127.0.0.1:8765 (newer than the emul
 Start the emulator with a window (drop `-no-window`, see scripts/android-emulator/README.md) so the
 reader can sign in themselves.
 
-## Termux is 724 MB
+## Termux is 724 MB — #24
 
 Mostly ffmpeg's dependencies (mesa, vulkan, X11 libraries, libllvm), which a downloader that only
 merges an mp4 and an m4a does not need. Already down from 1.2 GB by skipping recommended packages
 (which pulled in clang). Options if it matters: a smaller ffmpeg build, or asking YouTube for a
 format that needs no merging (lower quality at 480p).
 
-## The original store wipe: confirm the cause on the phone
+## The original store wipe: confirm the cause on the phone — #25
 
 Spec 005 is built (copies to Termux, restore, safeguard warnings), so a repeat is recoverable.
 The cause is still unconfirmed. The emulator showed the likeliest one: a home-screen **shortcut**
@@ -245,7 +302,9 @@ Chrome makes a shortcut whenever the real install fails. On the phone: see what 
 says; if it says "shortcut", remove the icon and install properly. Also still to do on the phone:
 Termux:Boot, a reboot, and a first copy arriving.
 
-## Segmentation corrections (spec 004) — built, phone check pending
+## Segmentation corrections (spec 004) — built, phone check pending — #2
+
+2026-10-05, the reader: join and split usually work but sometimes do nothing (#2), and are slow (#1).
 
 Built on 2026-09-27 (plan.md, ADR-0028): join and split from the word sheet, the list with undo
 under More. Still to do on the phone: join 一 · 个 under the model, and see that it holds after the
