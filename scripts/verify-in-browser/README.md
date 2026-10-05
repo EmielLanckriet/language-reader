@@ -32,7 +32,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `fithere` | Spec 013 Story 4: Learning data's Fit on this device runs the fit in its own worker in the built app and shows its verdict ("too little data" on a fresh profile, no Apply); Cancel stops a second run. Verification-mode build. |
 | `parameters` | Spec 013 Story 3: Cards → Learning data refuses a set whose report says it did not predict better (no Apply button), applies one fitted against a fresh profile's defaults, and returns to the Anki weights, with both changes listed. Fixture sets `fitted-set*.json` sit next to the harness. Verification-mode build. |
 | `cardaudio` | Imports a synthetic Anki seed and example/audio archive, checks source and English, plays both recordings and confirms grading stops playback. Uses a disposable profile/service; blocks model downloads. |
-| `cardlayout` | Synthetic text lookup → flashcard front → answer → grade; checks hidden answers, pronunciation, meanings and mobile width. Front/light/dark screenshots in `/tmp/reader-card-*.png`. Use a verification-mode build. |
+| `cardlayout` | Synthetic text lookup → flashcard front → answer → grade; checks the front shows pinyin and both Hear buttons but no meanings or English (issue #7), meanings after the answer, and mobile width. Front/light/dark screenshots in `/tmp/reader-card-*.png`. Use a verification-mode build. |
 | `boot` | Console output and uncaught exceptions during start-up. |
 | `firstload` | A first visit does not reload itself. Exists because it did, for 614 ms, and the reload was silently failing three other scenarios (research.md R21). |
 | `shell` | The service worker takes control and the manifest is real. |

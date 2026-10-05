@@ -57,7 +57,10 @@
 		else if (current) audio?.speak(current.word);
 	}
 
-	/** Pinyin per character of the card's sentence; the card's own word shows it only when revealed. */
+	/**
+	 * Pinyin per character of the card's sentence, shown from the start: the card tests understanding
+	 * what is read and heard, not recalling the pronunciation (issue #7).
+	 */
 	let readings = $state<string[]>([]);
 	$effect(() => {
 		const text = current?.sentence?.text ?? current?.word;
@@ -76,7 +79,7 @@
 		return [...text].map((c, i) => ({
 			c,
 			part: i < from ? 'before' : i < to ? 'word' : 'after',
-			py: i >= from && i < to && !revealed ? '' : (readings[i] ?? '')
+			py: readings[i] ?? ''
 		}));
 	});
 	const wordReadings = $derived(
@@ -268,10 +271,9 @@
 			<div class="card-face">
 				<p class="hanzi" lang="zh-Hans">{current.word}</p>
 				<p class="word-pinyin pinyin" aria-label="Word pronunciation">
-					{#if revealed}{wordReadings.filter(Boolean).join(' ')}{:else}<span class="recall-hint"
-							>Recall the pronunciation and meaning</span
-						>{/if}
+					{wordReadings.filter(Boolean).join(' ')}
 				</p>
+				{#if !revealed}<p class="recall-hint">Recall the meaning</p>{/if}
 				{#if revealed}
 					<div class="answer" aria-live="polite">
 						{#await lookUp(current.word, wordReadings)}
@@ -306,23 +308,22 @@
 									>{:else}{ch.c}{/if}{/each}
 						</p>
 						<p class="sentence-pinyin pinyin" aria-label="Sentence pronunciation">
-							{characters
-								.map((ch) => ch.py || (ch.part === 'word' && !revealed ? '…' : ch.c))
-								.join(' ')}
+							{characters.map((ch) => ch.py || ch.c).join(' ')}
 						</p>
 						{#if revealed && current.english}<p class="english" lang="en">{current.english}</p>{/if}
 					</div>
 				{/if}
 			</div>
 			<div class="review-actions">
+				<!-- On both faces (issue #7): tapped, never played by itself. -->
+				<div class="audio-actions">
+					<button onclick={playWord}>Hear word</button>
+					<button onclick={playSentence} disabled={!sentenceClip}>Hear sentence</button>
+					{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
+				</div>
+				{#if !sentenceClip}<p class="audio-note">No recording available for this example.</p>{/if}
+				{#if audioProblem}<p class="audio-note" role="status">{audioProblem}</p>{/if}
 				{#if revealed}
-					<div class="audio-actions">
-						<button onclick={playWord}>Hear word</button>
-						<button onclick={playSentence} disabled={!sentenceClip}>Hear sentence</button>
-						{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
-					</div>
-					{#if !sentenceClip}<p class="audio-note">No recording available for this example.</p>{/if}
-					{#if audioProblem}<p class="audio-note" role="status">{audioProblem}</p>{/if}
 					<div class="grades">
 						{#each GRADES as { value, label } (value)}<button
 								class="grade g{value}"

@@ -466,7 +466,7 @@ const scenarios = {
 			);
 			await tab.evaluate(`document.querySelector('.card').scrollIntoView({block:'start'})`);
 			const front = await tab.evaluate(
-				`return {word:document.querySelector('.hanzi').textContent,hidden:!document.querySelector('.answer'),pinyin:document.querySelector('.word-pinyin').textContent,width:document.documentElement.scrollWidth,viewport:innerWidth}`
+				`return {word:document.querySelector('.hanzi').textContent,hidden:!document.querySelector('.answer'),english:!!document.querySelector('.english'),pinyin:document.querySelector('.word-pinyin').textContent,sentencePinyin:document.querySelector('.sentence-pinyin').textContent,hear:[...document.querySelectorAll('.audio-actions button')].map(b=>b.textContent.trim()),width:document.documentElement.scrollWidth,viewport:innerWidth}`
 			);
 			let shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 			writeFileSync('/tmp/reader-card-front.png', Buffer.from(shot.data, 'base64'));
@@ -491,8 +491,14 @@ const scenarios = {
 				)
 			);
 			return {
+				// Issue #7: sound and pinyin are on the front, meanings and English only on the back.
 				pass:
 					front.hidden &&
+					!front.english &&
+					front.pinyin.includes('xué') &&
+					front.sentencePinyin.includes('xué') &&
+					front.hear.includes('Hear word') &&
+					front.hear.includes('Hear sentence') &&
 					front.width === front.viewport &&
 					back.width === front.viewport &&
 					back.pinyin.includes('xué') &&
