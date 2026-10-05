@@ -3,6 +3,18 @@
 Updated 2026-10-05. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Corrections apply in the order they were made — deployed and phone checked
+
+Issue #2 ("join and split sometimes do nothing"), ADR-0028's amendment. A join or split was dropped
+whenever one of its pieces only existed because of an earlier correction: one pass over the
+analyzer's tokens could not apply it (智驾 after splitting 乾崑智; 国家 after splitting 万国; 电混合
+after splitting 油电混合). Rules now apply in the order of their latest correction, each over the
+words the earlier ones left; `reapplyCorrections` brings existing documents up to date when the app
+opens; a join or split records `tap-undone` (reason "correction") instead of a lookup. Validation:
+536 tests (new ones red first, mutation-checked), browser `corrections`, `cardlayout`, `listened`.
+Phone (build `1791232737330`): after the start-up pass, 乾崑 | 智驾 at both occurrences, 万 | 国家,
+油 | 电 | 混合, with nothing redone by hand.
+
 ## Cards in 0.4 s instead of 9 s — deployed and phone checked
 
 Issue #1 (the app is slow), first cause. Profiled on the phone: 9.05 of the Cards tab's 9.1 s were

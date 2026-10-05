@@ -7,7 +7,7 @@ Entries newest first.
 
 ## Index of open issues (2026-10-05)
 
-Bugs: #1 the app is slow · #2 join and split sometimes do nothing · #15 pinyin of heteronyms ·
+Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
 offered from an empty copy.
 
