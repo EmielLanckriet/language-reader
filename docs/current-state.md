@@ -3,7 +3,7 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Leaner Cards page; card settings in More — built, browser checked, not deployed
+## Leaner Cards page; card settings in More — deployed and phone checked
 
 A presentation change (ADR-0031). The Cards page is now the counts line ("N due · N new") and the
 card: the word, its pinyin, the sentence and the sentence's pinyin, with meanings and English after
@@ -12,7 +12,12 @@ and the source line, the grading hint, "No recording available". More has a fift
 New words per day (same stored value, `src/lib/ui/new-cards.ts`), the Learning data link, and the
 count of words waiting for an example (asked for only when the group opens). Validation: type check,
 lint, 545 tests; browser `cardlayout` (extended: none of the removed texts, no heading, five groups),
-`cardaudio`, `tuning` (now reaches Learning data through More). Not yet checked on the phone.
+`cardaudio`, `tuning` (now reaches Learning data through More). Phone (build after `3172cf2`,
+read-only in the daily Reader): the front of 年级 shows only the word, nián jí, the sentence and its
+pinyin, and fits above the buttons; Show answer added the meaning and English (not graded). More
+showed five groups, Cards second, with New words per day 10 and 39 words waiting; no horizontal
+scroll at 411 px. Still open: on the back, the sentence pinyin and English fall below the sticky
+buttons and need a scroll.
 
 ## Retire words; one-button word sheet; More in four groups — deployed and phone checked
 
