@@ -8,12 +8,13 @@ This describes repository behavior and recorded results, not a fresh certificati
 ADR-0040. A **retired** word keeps its memory (reading still updates it, the library counts it by
 recall) but is never a card and never due. Cards has "Retire this card" on both faces with Undo,
 which restores the previous mark. The word sheet's four state buttons are replaced by one Retire
-button (tap again to undo); Ignore is no longer offered, and words already ignored stay ignored.
+button (tap again to undo); Ignore is no longer offered, and when the app opens every word already
+ignored is retired (an appended mark; provenance "converted from ignored").
 More is regrouped into four closed groups: Your words (Anki words and examples, corrections,
 deleted documents), Backup & storage, Speech & word splitting, Troubleshooting. Content unchanged.
-Validation: 544 tests (the retire rule red first, both lines mutation-checked), type check, lint,
+Validation: 545 tests (the retire rule and the conversion red first, each mutation-checked), type check, lint,
 browser `cardlayout` (extended: the sheet's single button, retire → undo, More's groups at 390 px),
-`corrections`, `cardaudio`. Not phone checked.
+`corrections`, `cardaudio`, `boot`. Not phone checked; the conversion was not seen on real data.
 
 ## Card front with pinyin and sound — deployed and phone checked
 

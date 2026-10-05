@@ -302,6 +302,8 @@ function run(request: Request): unknown {
 			return repository.staleMemory(request.args[0]);
 		case 'reapplyCorrections':
 			return repository.reapplyCorrections();
+		case 'retireIgnored':
+			return repository.retireIgnored();
 		case 'refreshMemory':
 			return repository.refreshMemory(request.args[0]);
 		case 'recordReview':

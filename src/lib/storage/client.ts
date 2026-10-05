@@ -333,6 +333,11 @@ export class RepositoryClient {
 		return this.call({ method: 'reapplyCorrections', args: [] });
 	}
 
+	/** Words marked ignored, retired instead (ADR-0040); how many. */
+	retireIgnored(): Promise<number> {
+		return this.call({ method: 'retireIgnored', args: [] });
+	}
+
 	staleMemory(limit: number): Promise<number[]> {
 		return this.call({ method: 'staleMemory', args: [limit] });
 	}

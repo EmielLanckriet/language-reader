@@ -11,7 +11,7 @@ Why: the reader asked for a way to stop drilling a word without losing it (2026-
 never come up in the flashcards and never be due, but it has a memory and is part of the deck").
 `ignored` already removed a word from cards, but it also drops its memory and leaves it out of the
 shares, as for names and noise. The reader called ignoring "a useless concept", so it is no longer
-offered; marks already made stay as they are.
+offered, and at the reader's request words already ignored are retired (below).
 
 How:
 - `state.ts`: `retired` joins the stored state names. Like every state name it is never renamed.
@@ -20,3 +20,6 @@ How:
 - Cards: "Retire this card" on both faces, with Undo, which restores the mark the word had before.
 - Word sheet: Unknown/Learning/Known/Ignored are replaced by one Retire button (tap again to undo).
   Older marks keep counting as before.
+- `retireIgnored`, run when the app opens after `reapplyCorrections`: every word whose current mark
+  is `ignored` gets an appended `retired` mark with provenance "converted from ignored (ADR-0040)".
+  The `ignored` marks stay in the history; a second run finds nothing to do.

@@ -719,6 +719,31 @@ export class Repository {
 	}
 
 	/**
+	 * Retires every word whose current mark is `ignored`; returns how many. Run once the app opens:
+	 * ignoring is no longer offered (ADR-0040), and the reader asked for those words to be retired.
+	 */
+	retireIgnored(): number {
+		const ignored = queryRows(this.db, `SELECT lexeme_id FROM word_state WHERE state = 'ignored'`);
+		if (ignored.length === 0) return 0;
+		transact(this.db, () => {
+			const deviceId = deviceIdOf(this.db);
+			for (const row of ignored) {
+				const entry = assertion({
+					lexemeId: Number(row.lexeme_id),
+					asserted: 'retired',
+					deviceId,
+					deviceSeq: nextDeviceSeq(this.db, deviceId),
+					assertedAt: new Date().toISOString(),
+					provenance: 'converted from ignored (ADR-0040)'
+				});
+				this.appendEvent(entry);
+				this.projectEntry(entry);
+			}
+		});
+		return ignored.length;
+	}
+
+	/**
 	 * Update the stored state for one new event, which is all the log's fold does for one entry: the
 	 * event's state, or none at all after a retraction (ADR-0024).
 	 */

@@ -43,6 +43,7 @@ export type Call =
 	| { method: 'cardsToday'; args: [number] }
 	| { method: 'staleMemory'; args: [number] }
 	| { method: 'reapplyCorrections'; args: [] }
+	| { method: 'retireIgnored'; args: [] }
 	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }
