@@ -274,13 +274,13 @@
 {:else if !today}
 	<p class="loading">Finding today’s cards…</p>
 {:else}
-	<p class="subtitle">
+	<p class="subtitle counts">
 		{today.counts.due} due · {today.counts.fresh} new{#if reviewed > 0}
 			· {reviewed} reviewed{/if}
 	</p>
 	{#if current}
 		<section class="card" aria-label="Reading flashcard">
-			<div class="card-face">
+			<div class="card-face" class:revealed>
 				<p class="hanzi" lang="zh-Hans">{current.word}</p>
 				<p class="word-pinyin pinyin" aria-label="Word pronunciation">
 					{wordReadings.filter(Boolean).join(' ')}
@@ -323,6 +323,7 @@
 					<button onclick={playWord}>Hear word</button>
 					<button onclick={playSentence} disabled={!sentenceClip}>Hear sentence</button>
 					{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
+					<button class="retire" onclick={retire} disabled={grading}>Retire this card</button>
 				</div>
 				{#if retiredLast}<p class="audio-note" role="status">
 						<span lang="zh-Hans">{retiredLast.word}</span> retired: it stays remembered but is no
@@ -341,7 +342,6 @@
 				{:else}
 					<button class="reveal" onclick={() => (revealed = true)}>Show answer</button>
 				{/if}
-				<button class="retire" onclick={retire} disabled={grading}>Retire this card</button>
 			</div>
 		</section>
 	{:else}
@@ -375,16 +375,17 @@
 		min-height: 44px;
 	}
 
+	.counts {
+		margin: 0 0 0.25rem;
+	}
 	.card {
-		margin: 1.25rem 0;
+		margin: 0;
 	}
 	.card-face {
-		padding: 1.5rem;
-		border: 1px solid #e5dcc7;
-		border-radius: 20px;
-		background: #fdf6e3;
-		color: #292b28;
 		overflow-wrap: anywhere;
+	}
+	.empty {
+		padding: 1.5rem 0;
 	}
 	.hanzi {
 		font-family: Kaiti, 'KaiTi', 'STKaiti', 'Noto Serif CJK SC', serif;
@@ -393,6 +394,10 @@
 		margin: 0;
 		letter-spacing: 0.03em;
 	}
+	/* The answer needs the room: the word shrinks once it is shown, so the back fits one screen. */
+	.revealed .hanzi {
+		font-size: 2.75rem;
+	}
 	.pinyin {
 		font-family: 'Gentium Plus', Georgia, serif;
 		color: #005500;
@@ -400,11 +405,11 @@
 	}
 	.word-pinyin {
 		font-size: 1.375rem;
-		margin: 0.35rem 0 1rem;
+		margin: 0 0 0.5rem;
 		min-height: 2.2rem;
 	}
 	.answer {
-		margin: 1rem 0 1.5rem;
+		margin: 0 0 0.75rem;
 	}
 	.definition + .definition {
 		margin-top: 0.65rem;
@@ -425,14 +430,14 @@
 	}
 	.example {
 		border-top: 1px solid #ded6c4;
-		padding-top: 1.25rem;
-		margin-top: 1.25rem;
+		padding-top: 0.75rem;
+		margin-top: 0.75rem;
 	}
 	.sentence {
 		font-family: SimSun, 'Songti SC', 'Noto Serif CJK SC', serif;
 		font-size: 1.5rem;
-		line-height: 1.8;
-		margin: 0.5rem 0;
+		line-height: 1.6;
+		margin: 0 0 0.25rem;
 	}
 	mark {
 		color: inherit;
@@ -445,10 +450,10 @@
 	}
 	.sentence-pinyin {
 		font-size: 1.2rem;
-		margin: 0.3rem 0 0.8rem;
+		margin: 0 0 0.5rem;
 	}
 	.english {
-		margin-top: 1rem;
+		margin-top: 0.5rem;
 	}
 	.review-actions {
 		position: sticky;
@@ -490,9 +495,8 @@
 		background: #e1edf4;
 		color: #285570;
 	}
-	.retire {
-		display: block;
-		margin: 0.4rem 0 0 auto;
+	.audio-actions .retire {
+		margin-left: auto;
 		min-height: 44px;
 		padding: 0.4rem 0.6rem;
 		font-size: 0.8rem;
@@ -510,11 +514,6 @@
 		font-size: inherit;
 	}
 	@media (prefers-color-scheme: dark) {
-		.card-face {
-			background: #242923;
-			color: #e6e8dc;
-			border-color: #424838;
-		}
 		.pinyin {
 			color: #a7d69e;
 		}

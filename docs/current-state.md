@@ -3,6 +3,16 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Card fills the page; no Device service row — built, browser checked, phone check pending
+
+Follow-up to the leaner Cards page. The Device service row is gone from every tab (Termux's state
+still shows in the "Your work isn't being copied" notice and More's Start Termux). The card is no
+longer a bordered box: it uses the page, with less space around the counts and the word/sentence
+rule; the word shrinks after Show answer, and Retire sits on the Hear row. Goal: the back of a
+typical card (年级, two-line sentence, English) fits above the tab bar without scrolling.
+Validation: type check, lint, 545 tests, browser `cardlayout`, `cardaudio`. A browser fit check was
+tried and dropped: its card is about 140 px shorter than the phone's, so it passed on the old page too.
+
 ## Leaner Cards page; card settings in More — deployed and phone checked
 
 A presentation change (ADR-0031). The Cards page is now the counts line ("N due · N new") and the

@@ -8,7 +8,6 @@
 	import ReadOnlyNotice from '$lib/ui/ReadOnlyNotice.svelte';
 	import SafeguardNotice from '$lib/ui/SafeguardNotice.svelte';
 	import TabBar from '$lib/ui/TabBar.svelte';
-	import TermuxStatus from '$lib/ui/TermuxStatus.svelte';
 	import { recoverUnsent } from '$lib/ui/recorder';
 	import { serviceWorker } from '$lib/ui/registerServiceWorker';
 	import { session } from '$lib/storage/session';
@@ -150,7 +149,6 @@
 </div>
 
 <main class:tabbed>
-	{#if tabbed}<TermuxStatus />{/if}
 	{@render children()}
 </main>
 {#if tabbed}<TabBar />{/if}
