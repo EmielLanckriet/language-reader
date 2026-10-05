@@ -15,7 +15,7 @@ precaches (property test red first), and a navigation with no cached shell fetch
 network (`shell` scenario: empties the precache and opens /cards; red first). The test server now
 sends the 404.html fallback with status 404, as GitHub Pages does; it sent 200, which hid this.
 
-## Change a video's Chinese subtitles — built, browser checked, phone check pending
+## Change a video's Chinese subtitles — deployed and phone checked
 
 Issue #9, ADR-0036's amendment. A video's Chinese menu switches among its kept tracks; sharing a
 video again whose YouTube id is already in the library replaces it (for documents imported before
@@ -28,6 +28,12 @@ Validation: 547 tests (`replaceDocument` and the visible-first card sentence red
 mutation-checked), type check, lint; browser `newsubtitles` (new; fails when re-share detection is
 removed), `tracks`, `study`, `cardlayout`, `cardaudio`. `media` failed only on its "more than 10
 lines" check: this session's fixture clip has 9 cues.
+Phone (build after `8df3878`): Jun's "Hidden Challenges" shared to Termux again (job 20261006-013046,
+166 MB, tracks zh and zh-Hans) and imported from New from Termux: it opened as document 30 with the
+clean "Chinese" track selected and the pinyin one offered in the menu, no pinyin in the lines; the
+library still listed 16 entries, the video in its old place at 21% watched, nothing left under New
+from Termux. Not yet done: a card sentence needs an encounter in its document, so words met only in
+document 19 (记忆) keep its pinyin sentence until that part of document 30 is watched.
 
 ## Card fills the page; no Device service row — deployed and phone checked
 
