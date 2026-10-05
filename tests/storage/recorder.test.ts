@@ -87,6 +87,9 @@ describe('the recorder', () => {
 		recorder.closed({ chose: 'known' });
 		recorder.opened(word(1), moment(12000));
 		recorder.cancel();
+		// A tap that ends in a join or split was to correct the word, not to look it up (issue #2).
+		recorder.opened(word(2), moment(12000));
+		recorder.corrected();
 		clock += 1000;
 		await recorder.close();
 		await recorder.flush();
@@ -101,12 +104,17 @@ describe('the recorder', () => {
 			'played',
 			'replay',
 			'lookup',
+			'tap-undone',
 			'tap-undone'
 		]);
 		expect(rows[0]).toMatchObject({ media_ms: 0, detail: '{"toMs":6000}' });
 		expect(rows[2]).toMatchObject({ media_ms: 6000, detail: '{"toMs":12000}' });
 		expect(rows[4]).toMatchObject({ lexeme_id: words[3].lexemeId!, detail: '{"chose":"known"}' });
 		expect(rows[5]).toMatchObject({ lexeme_id: words[1].lexemeId! });
+		expect(rows[6]).toMatchObject({
+			lexeme_id: words[2].lexemeId!,
+			detail: '{"reason":"correction"}'
+		});
 		expect(queryRows(db, 'SELECT COUNT(*) AS n FROM session')[0].n).toBe(1);
 	});
 

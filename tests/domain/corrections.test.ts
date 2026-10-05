@@ -118,6 +118,64 @@ describe('applying corrections', () => {
 	});
 });
 
+describe('corrections made on corrected words', () => {
+	// Issue #2: the analyzer cut 乾崑智 · 驾; the reader split 乾崑智 → 乾崑 · 智, then joined 智 · 驾,
+	// which they could see. The join was saved seven times and never applied.
+	it('joins a piece an earlier split made', () => {
+		const characters = [...'华为乾崑智驾'];
+		const tokens: KeyedToken[] = [
+			{ start: 0, end: 2, isWord: true, lexemeKey: '华为' },
+			{ start: 2, end: 5, isWord: true, lexemeKey: '乾崑智' },
+			{ start: 5, end: 6, isWord: true, lexemeKey: '驾' }
+		];
+		const rules: Rules = new Map([
+			[
+				'乾崑智',
+				[
+					{ surface: '乾崑', key: '乾崑' },
+					{ surface: '智', key: '智' }
+				]
+			],
+			['智驾', [{ surface: '智驾', key: '智驾' }]]
+		]);
+		expect(applyCorrections(characters, tokens, rules).map((t) => t.lexemeKey)).toEqual([
+			'华为',
+			'乾崑',
+			'智驾'
+		]);
+	});
+
+	it('the latest takes effect wherever its form was covered by the words the reader saw', () => {
+		fc.assert(
+			fc.property(tokenized, picks, ({ characters, tokens }, p) => {
+				const rules = rulesFor(characters, p);
+				if (rules.size === 0) return;
+				const ordered = [...rules];
+				const [form, parts] = ordered[ordered.length - 1];
+				const seen = applyCorrections(characters, tokens, new Map(ordered.slice(0, -1)));
+				const length = [...form].length;
+				// The first place the words on screen covered the form exactly, as a join or split there.
+				let at = -1;
+				for (let i = 0; i < seen.length && at < 0; i++) {
+					let surface = '';
+					for (let j = i; j < seen.length && seen[j].isWord; j++) {
+						surface += characters.slice(seen[j].start, seen[j].end).join('');
+						if (surface === form) at = seen[i].start;
+						if (surface.length >= form.length) break;
+					}
+				}
+				if (at < 0) return;
+				const out = applyCorrections(characters, tokens, rules);
+				const inside = out.filter((t) => t.start >= at && t.end <= at + length);
+				expect(inside.map((t) => characters.slice(t.start, t.end).join(''))).toEqual(
+					parts.map((part) => part.surface)
+				);
+			}),
+			{ numRuns: 500 }
+		);
+	});
+});
+
 describe('the fold', () => {
 	const at = (deviceSeq: number, form: string, parts?: string[]): Correction => ({
 		language: 'zh',
@@ -141,6 +199,14 @@ describe('the fold', () => {
 		);
 		expect([...rules.keys()]).toEqual(['国人']);
 		expect(rules.get('国人')!.map((p) => p.surface)).toEqual(['国人']);
+	});
+
+	it('orders the rules by when their latest correction was made', () => {
+		const rules = rulesInForce(
+			[at(1, '一个', ['一个']), at(2, '国人', ['国', '人']), at(3, '一个', ['一', '个'])],
+			'zh'
+		);
+		expect([...rules.keys()]).toEqual(['国人', '一个']);
 	});
 });
 

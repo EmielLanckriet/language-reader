@@ -714,7 +714,7 @@
 		occurrence: { fromOffset: number; toOffset: number }
 	) {
 		if (!document || 'refused' in change) return;
-		recorder?.closed();
+		recorder?.corrected();
 		chosen = null;
 		try {
 			const { repository } = await session();

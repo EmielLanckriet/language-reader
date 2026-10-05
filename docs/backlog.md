@@ -9,7 +9,7 @@ Entries newest first.
 
 Bugs: #1 the app is slow · #2 join and split sometimes do nothing · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy · #26 the `listened` browser scenario fails on Progress.
+offered from an empty copy.
 
 Cards and memory: #5 activate a card after 5 encounters across 2 videos · #6 weigh encounters in an
 already-watched video · #7 card layout · #18 fit the evidence rule · #20 Anki reset and live recall.

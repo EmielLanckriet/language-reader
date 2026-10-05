@@ -70,6 +70,8 @@
 
 		try {
 			const { repository } = await session();
+			// Corrections first: they move tokens, which the memory sweep then reads.
+			await repository.reapplyCorrections();
 			// Memory first: a batch takes milliseconds, where a document's re-segmentation takes seconds.
 			await sweepStaleMemory(repository, () => document.visibilityState === 'visible');
 			await sweepStaleDocuments(

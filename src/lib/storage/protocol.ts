@@ -42,6 +42,7 @@ export type Call =
 	| { method: 'cardSentence'; args: [number] }
 	| { method: 'cardsToday'; args: [number] }
 	| { method: 'staleMemory'; args: [number] }
+	| { method: 'reapplyCorrections'; args: [] }
 	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }

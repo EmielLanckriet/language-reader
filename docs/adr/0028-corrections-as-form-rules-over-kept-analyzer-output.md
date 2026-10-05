@@ -37,8 +37,31 @@ the model). A correction is earned. Everything downstream (cards, memory, encoun
 
 ## Consequences
 
-- A rule does not apply where the analyzer cuts across the form (人一 · 个 never shows 一个). That
-  is inert, not wrong, and a join made there records the form the reader actually saw.
+- A rule does not apply where the words cut across the form (人一 · 个 never shows 一个). Since the
+  2026-10-05 amendment, "the words" are those the earlier corrections left, not the analyzer's.
 - If the lexeme-key rule ever changes, the keys stored in corrections need the same re-keying pass
   as lexemes.
 - Per-occurrence exceptions (国人 in 国人皆知) remain out of scope. Undo is the remedy.
+
+## Amendment, 2026-10-05: corrections apply in the order they were made
+
+Issue #2. The analyzer cut 乾崑智 · 驾; the reader split 乾崑智 → 乾崑 · 智, then joined 智 · 驾, which
+the word sheet offered because it works on the corrected words on screen. One pass over the
+analyzer's tokens, longest form first, could never apply that join: 智 is not a whole analyzer
+token. It was recorded seven times and never took effect, with no sign of it.
+
+- **The rules apply in order**, each over the tokens the ones before it left. The order is when
+  each form's latest correction was made (the same device-and-sequence order as the fold), so
+  deciding a form again moves it to the end. A rule therefore applies where the reader saw its form
+  when they made it. Undo, "latest per form wins", runs of words only and tiling are unchanged.
+- **Joins and splits no longer count as lookups.** The tap that opens the sheet to correct a word
+  is recorded as `tap-undone` with `{"reason":"correction"}`, which carries no memory weight.
+- **Existing documents are brought up to date** when the app opens: `reapplyCorrections` re-applies
+  the rules to each document holding one of their forms and rewrites only those whose words come
+  out different, with the same memory refresh as making a correction.
+
+Rejected: corrections as character boundaries, where a split adds boundaries, a join removes them
+and the newest wins per boundary. More principled, but a larger change to the segmentation
+properties; replaying in order matches what the reader saw at each correction with a smaller
+change. Rejected also: refusing such a join in the sheet, which would make 乾崑 · 智驾 impossible.
+

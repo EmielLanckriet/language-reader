@@ -278,6 +278,8 @@ function run(request: Request): unknown {
 			return repository.recordEncounters(request.args[0], request.args[1] as Encounter[]);
 		case 'staleMemory':
 			return repository.staleMemory(request.args[0]);
+		case 'reapplyCorrections':
+			return repository.reapplyCorrections();
 		case 'refreshMemory':
 			return repository.refreshMemory(request.args[0]);
 		case 'recordReview':

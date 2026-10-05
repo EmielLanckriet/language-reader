@@ -21,7 +21,8 @@ import {
 	problemWith,
 	rulesInForce,
 	type Correction,
-	type Part
+	type Part,
+	type Rules
 } from '../domain/corrections';
 import { codePointsOf } from '../domain/offsets';
 import { helpOf, isHelped, lineRangesOf, type Help } from '../domain/helped';
@@ -764,32 +765,81 @@ export class Repository {
 				'SELECT id, raw_content FROM document WHERE language = ? AND instr(raw_content, ?) > 0',
 				[language, form]
 			);
-			for (const row of documents) {
-				const documentId = Number(row.id);
-				const analyzed = queryRows(
+			for (const row of documents)
+				this.rewriteCorrected(Number(row.id), language, String(row.raw_content));
+		});
+	}
+
+	/**
+	 * Re-applies the corrections in force to every document holding one of their forms, rewriting only
+	 * those whose words come out different; returns how many. Run once the app opens: documents made
+	 * before corrections applied in order (issue #2) hold the old rule's tokens. Background work, like
+	 * re-derivation: nothing for the reader to retry if it cannot write.
+	 */
+	reapplyCorrections(): number {
+		const history = this.readCorrections();
+		const byLanguage = new Map<string, Rules>();
+		for (const { language } of history)
+			if (!byLanguage.has(language)) byLanguage.set(language, rulesInForce(history, language));
+		let rewritten = 0;
+		transact(this.db, () => {
+			for (const [language, rules] of byLanguage) {
+				const forms = [...rules.keys()];
+				if (forms.length === 0) continue;
+				const documents = queryRows(
 					this.db,
-					'SELECT start, end, is_word, lexeme_key FROM analyzed_token WHERE document_id = ? ORDER BY start',
-					[documentId]
-				).map((token) => ({
-					start: Number(token.start),
-					end: Number(token.end),
-					isWord: Number(token.is_word) === 1,
-					...(token.lexeme_key === null ? {} : { lexemeKey: String(token.lexeme_key) })
-				}));
-				const remembered = this.memoryWordsIn(documentId, 0, Infinity);
-				const before = this.tokenSpans(documentId);
-				this.writeCorrected(documentId, language, String(row.raw_content), analyzed, 0, Infinity);
-				for (const id of this.memoryWordsIn(documentId, 0, Infinity)) remembered.add(id);
-				// Only a word whose tokens moved can have a different memory: its exposures are its
-				// tokens under a read or played stretch. Recomputing every remembered word of the document
-				// took 1.5 s of a 2.1 s correction on a 44 min transcript (laptop; the phone is slower).
-				const after = this.tokenSpans(documentId);
-				const moved = new Set<LexemeId>();
-				for (const [span, id] of before) if (after.get(span) !== id) moved.add(id);
-				for (const [span, id] of after) if (before.get(span) !== id) moved.add(id);
-				this.recomputeMemory(new Set([...remembered].filter((id) => moved.has(id))));
+					`SELECT id, raw_content FROM document WHERE language = ? AND (${forms.map(() => 'instr(raw_content, ?) > 0').join(' OR ')})`,
+					[language, ...forms]
+				);
+				for (const row of documents) {
+					const documentId = Number(row.id);
+					const raw = String(row.raw_content);
+					const wanted = applyCorrections(codePointsOf(raw), this.analyzedTokens(documentId), rules)
+						.map((token) => `${token.start}:${token.end}`)
+						.join(',');
+					const stored = queryRows(
+						this.db,
+						'SELECT start, end FROM token WHERE document_id = ? ORDER BY start',
+						[documentId]
+					)
+						.map((token) => `${token.start}:${token.end}`)
+						.join(',');
+					if (wanted === stored) continue;
+					this.rewriteCorrected(documentId, language, raw);
+					rewritten++;
+				}
 			}
 		});
+		return rewritten;
+	}
+
+	private analyzedTokens(documentId: DocumentId): ResolvedToken[] {
+		return queryRows(
+			this.db,
+			'SELECT start, end, is_word, lexeme_key FROM analyzed_token WHERE document_id = ? ORDER BY start',
+			[documentId]
+		).map((token) => ({
+			start: Number(token.start),
+			end: Number(token.end),
+			isWord: Number(token.is_word) === 1,
+			...(token.lexeme_key === null ? {} : { lexemeKey: String(token.lexeme_key) })
+		}));
+	}
+
+	/** One document's tokens rewritten from the analyzer's under the corrections in force. */
+	private rewriteCorrected(documentId: DocumentId, language: string, raw: string): void {
+		const remembered = this.memoryWordsIn(documentId, 0, Infinity);
+		const before = this.tokenSpans(documentId);
+		this.writeCorrected(documentId, language, raw, this.analyzedTokens(documentId), 0, Infinity);
+		for (const id of this.memoryWordsIn(documentId, 0, Infinity)) remembered.add(id);
+		// Only a word whose tokens moved can have a different memory: its exposures are its
+		// tokens under a read or played stretch. Recomputing every remembered word of the document
+		// took 1.5 s of a 2.1 s correction on a 44 min transcript (laptop; the phone is slower).
+		const after = this.tokenSpans(documentId);
+		const moved = new Set<LexemeId>();
+		for (const [span, id] of before) if (after.get(span) !== id) moved.add(id);
+		for (const [span, id] of after) if (before.get(span) !== id) moved.add(id);
+		this.recomputeMemory(new Set([...remembered].filter((id) => moved.has(id))));
 	}
 
 	/** Every correction and undo, in the order the reader made them. */

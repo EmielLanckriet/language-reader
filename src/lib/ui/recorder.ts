@@ -291,6 +291,15 @@ export class Recorder {
 
 	/** The tap was a mistake: no lookup, only the fact that a tap was undone. */
 	cancel(): void {
+		this.undoTap();
+	}
+
+	/** The tap was to join or split the word, not to look it up: no lookup either (issue #2). */
+	corrected(): void {
+		this.undoTap({ reason: 'correction' });
+	}
+
+	private undoTap(detail?: { reason: string }): void {
 		const open = this.open;
 		if (!open) return;
 		this.open = undefined;
@@ -299,7 +308,8 @@ export class Recorder {
 			at: open.at,
 			documentId: this.documentId,
 			...open.word,
-			...open.moment
+			...open.moment,
+			...(detail ? { detail } : {})
 		});
 	}
 

@@ -7,7 +7,9 @@
  * the rule means the same thing under every analyzer (FR-010).
  *
  * Earned, and folded like marks: one rule per form, the latest in force; an undo leaves the form to
- * the analyzer again (FR-008, FR-009).
+ * the analyzer again (FR-008, FR-009). The rules apply in the order they were made, each to the
+ * words the ones before it left: a correction is made on the corrected words the reader sees, so a
+ * join of a piece an earlier split made takes effect (issue #2, ADR-0028's amendment).
  */
 
 import type { DeviceId, Occurrence } from './types';
@@ -38,7 +40,7 @@ export interface KeyedToken {
 	lexemeKey?: string;
 }
 
-/** Form → parts, for one language: what is in force now. */
+/** Form → parts, for one language: what is in force now, in the order it was decided. */
 export type Rules = Map<string, Part[]>;
 
 export function rulesInForce(history: readonly Correction[], language: string): Rules {
@@ -48,8 +50,9 @@ export function rulesInForce(history: readonly Correction[], language: string): 
 	);
 	for (const correction of ordered) {
 		if (correction.language !== language) continue;
+		// Deleted first, so a form decided again moves to the end of the order.
+		rules.delete(correction.form);
 		if (correction.parts) rules.set(correction.form, correction.parts);
-		else rules.delete(correction.form);
 	}
 	return rules;
 }
@@ -69,40 +72,50 @@ export function problemWith(form: string, parts: readonly Part[] | undefined): s
 /**
  * The analyzer's tokens with the rules applied. Tiles whatever the analyzer's tokens tiled.
  *
- * Left to right, longest form first. A run is made only of words, so a non-word token — punctuation,
- * a line break, a unit delimiter — is never inside one: no correction crosses a boundary the writer
- * put there (FR-003, ADR-0013), and so none crosses an upgrade batch edge either.
+ * Rule by rule in their order, each left to right over the words the rules before it left, so a
+ * rule applies where the reader saw its form when they made it. A run is made only of words, so a
+ * non-word token — punctuation, a line break, a unit delimiter — is never inside one: no correction
+ * crosses a boundary the writer put there (FR-003, ADR-0013), and so none crosses an upgrade batch
+ * edge either.
  */
 export function applyCorrections(
 	characters: readonly string[],
 	tokens: readonly KeyedToken[],
 	rules: Rules
 ): KeyedToken[] {
-	if (rules.size === 0) return [...tokens];
-	let longest = 0;
-	for (const form of rules.keys()) longest = Math.max(longest, [...form].length);
+	const text = characters.join('');
+	let current = [...tokens];
+	for (const [form, parts] of rules) {
+		if (text.includes(form)) current = applyRule(characters, current, form, parts);
+	}
+	return current;
+}
 
+function applyRule(
+	characters: readonly string[],
+	tokens: readonly KeyedToken[],
+	form: string,
+	parts: readonly Part[]
+): KeyedToken[] {
 	const out: KeyedToken[] = [];
 	for (let i = 0; i < tokens.length;) {
-		let match: { through: number; parts: Part[] } | undefined;
+		let through = -1;
 		let surface = '';
-		for (let j = i; j < tokens.length && tokens[j].isWord; j++) {
-			if (tokens[j].end - tokens[i].start > longest) break;
+		for (let j = i; j < tokens.length && tokens[j].isWord && surface.length < form.length; j++) {
 			surface += characters.slice(tokens[j].start, tokens[j].end).join('');
-			const parts = rules.get(surface);
-			if (parts) match = { through: j, parts };
+			if (surface === form) through = j;
 		}
-		if (!match) {
+		if (through < 0) {
 			out.push(tokens[i++]);
 			continue;
 		}
 		let start = tokens[i].start;
-		for (const part of match.parts) {
+		for (const part of parts) {
 			const end = start + [...part.surface].length;
 			out.push({ start, end, isWord: true, lexemeKey: part.key });
 			start = end;
 		}
-		i = match.through + 1;
+		i = through + 1;
 	}
 	return out;
 }

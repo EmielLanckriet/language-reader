@@ -328,6 +328,11 @@ export class RepositoryClient {
 		);
 	}
 
+	/** Documents whose words the corrections in force would change, rewritten; how many (issue #2). */
+	reapplyCorrections(): Promise<number> {
+		return this.call({ method: 'reapplyCorrections', args: [] });
+	}
+
 	staleMemory(limit: number): Promise<number[]> {
 		return this.call({ method: 'staleMemory', args: [limit] });
 	}

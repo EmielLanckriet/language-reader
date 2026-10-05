@@ -13,7 +13,7 @@ encounters instead: same 3,132 words on the phone's database. A property test co
 old query (four mutations caught); 532 tests, type check, lint. Phone (build `1791219689613`):
 Cards 0.35–0.37 s, Progress after Cards 0.47 s. Unchanged and still open under #1: cold start to the
 library 3.4–3.6 s, library tab ~1.2 s, opening a video 0.65–1.05 s. The `cardlayout` browser
-scenario fails at its first step, also before this change (#26).
+scenario passes.
 
 ## Next line past a short seek; rotation after full screen — deployed and phone checked
 
@@ -25,7 +25,8 @@ and nothing unlocked it; `media/orientation.ts` unlocks whenever full screen end
 screen when the player goes. Validation: 531 tests (both new tests mutation-checked), type check,
 lint. Phone (A71, build `1791216891041`, daily Reader): ⛶ then the back gesture returned to
 portrait; from line 146 with ❚❚ on, ▶ played line 147 to its end (about 5 s of real playback). The
-`listened` browser scenario fails at a later, unrelated step, also before this change (#26).
+`listened` browser scenario passes (built with `npm run build`; a `vite build` without postbuild has
+no 404.html, so every deep link fails, which is what #26 mistook for stale scenarios).
 
 ## Due when FSRS says, no learning steps — deployed and phone checked
 
