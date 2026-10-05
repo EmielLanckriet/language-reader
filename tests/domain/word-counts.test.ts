@@ -63,4 +63,23 @@ describe('wordCounts', () => {
 			freshRecurring: 1
 		});
 	});
+
+	it('counts as due only active cards: reviewed, seen in Anki, or known (issue #5)', () => {
+		const due = '2026-09-28T12:00:00Z';
+		const occurrences = new Map([
+			[1, 1],
+			[2, 1],
+			[3, 1],
+			[4, 1],
+			[5, 1]
+		]);
+		const memories = new Map([
+			[1, { reading: memory(due) }], // reviewed
+			[2, { reading: { ...memory(due), reviewed: false, seeded: 'anki' } }],
+			[3, { reading: { ...memory(due), reviewed: false, known: true as const } }],
+			[4, { reading: { ...memory(due), reviewed: false, card: true } }], // a candidate
+			[5, { reading: { ...memory(due), reviewed: false } }] // not a card
+		]);
+		expect(wordCounts(occurrences, new Map(), new Map(), memories, now).due).toBe(3);
+	});
 });

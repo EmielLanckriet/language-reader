@@ -8,6 +8,7 @@
  * Anki's levels from an import.
  */
 import { colourBand, type Memory } from './memory';
+import { isActive } from './queue';
 import type { Skill } from './encounter';
 import type { FsrsParameters } from './anki';
 import type { LexemeId, WordState } from './types';
@@ -36,7 +37,8 @@ function kindOf(
 }
 
 /**
- * Distinct words: due ones (reading recall due now, so watching clears their reviews) with how often
+ * Distinct words: due ones (active cards whose reading recall is due now, so watching clears their
+ * reviews; issue #5) with how often
  * they come up, and new ones with how many recur in 3 or more separate lines. Reading only: cards
  * are scheduled on reading; listening memory only nudges that, so a listening due date is no goal.
  */
@@ -62,7 +64,7 @@ export function wordCounts(
 		const reading = memory.get(lexeme)?.reading;
 		const kind = kindOf(states.get(lexeme)?.state, reading, now, parameters);
 		if (kind === 'ignored') continue;
-		if (reading && Date.parse(reading.due) <= now.getTime()) {
+		if (reading && isActive(reading) && Date.parse(reading.due) <= now.getTime()) {
 			counts.due++;
 			counts.dueOccurrences += n;
 		}

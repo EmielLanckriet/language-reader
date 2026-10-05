@@ -351,7 +351,7 @@
 		</p>{/if}
 	<details class="review-settings">
 		<summary>Review settings</summary><label class="cap"
-			>New cards a day <input
+			>New words per day <input
 				type="number"
 				min="0"
 				max="100"
@@ -359,6 +359,10 @@
 				onchange={keepCap}
 			/></label
 		>
+		<p class="cap-note">
+			Words you looked up, most common in Chinese first. Words from Anki, and words you met twice
+			without looking them up, come on their own.
+		</p>
 	</details>
 {/if}
 
@@ -534,6 +538,11 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+	.cap-note {
+		margin: 0.4rem 0 0;
+		font-size: 0.85rem;
+		color: var(--muted);
 	}
 	.cap input {
 		width: 4.5rem;

@@ -23,6 +23,10 @@ import { RETRACTED } from './state';
 export const RULE = 'evidence-3';
 /** How due dates follow from a memory: part of what a stored memory was computed under. */
 const SCHEDULE = 'no-steps';
+/** Which words are active cards (issue #5): part of what a stored memory was computed under. */
+const ACTIVATION = 'known-2';
+/** Untapped attentive sessions that make a never-tapped word a known, active card (issue #5). */
+export const KNOWN_SESSIONS = 2;
 
 /** Position in the history: what orders it. `at` only measures the time between evidence. */
 export interface Ordered {
@@ -119,6 +123,11 @@ export interface SkillEvidence {
 export interface WordEvidence {
 	/** A card-creating event happened (R8): a lookup, an Anki seed, a hand mark of learning. */
 	card: boolean;
+	/**
+	 * Never tapped, and met untapped in KNOWN_SESSIONS sessions answered "I tapped every word I
+	 * didn't know", with the English not shown: an active card outside the new-word budget (#5).
+	 */
+	known: boolean;
 	reading: SkillEvidence;
 	listening: SkillEvidence;
 }
@@ -132,6 +141,8 @@ export interface Memory {
 	reps: number;
 	lapses: number;
 	card: boolean;
+	/** A known word's card (WordEvidence.known); reading only. */
+	known?: true;
 	reviewed: boolean;
 	/** `anki`, or `anki-undated` when the import did not know the last review (format 1). */
 	seeded?: string;
@@ -170,6 +181,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 	const events = [...history.events].sort(byHistory);
 	const none: WordEvidence = {
 		card: false,
+		known: false,
 		reading: { evidence: [] },
 		listening: { evidence: [] }
 	};
@@ -196,12 +208,14 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			seed !== undefined ||
 			events.some((event) => isTap(event) || event.kind === 'review') ||
 			marks.some((mark) => mark.asserted === 'learning'),
+		known: false,
 		reading: { seed, evidence: [] },
 		listening: { evidence: [] }
 	};
 	const counted = new Set<string>();
 	const once = (key: string) => (counted.has(key) ? false : (counted.add(key), true));
 
+	const attentive = new Set<number>();
 	type Item = { event?: HistoryEvent; exposure?: Exposure };
 	const stream: Item[] = [
 		...events.map((event) => ({ event })),
@@ -235,6 +249,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			if (exposure.helped) continue;
 			if (history.answers.get(exposure.sessionId) !== 'all') continue;
 			if (lookedIn.has(exposure.sessionId)) continue;
+			attentive.add(exposure.sessionId);
 			if (!once(`seen ${skill} ${exposure.at.slice(0, 10)}`)) continue;
 			found[skill].evidence.push({
 				at: exposure.at,
@@ -246,6 +261,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			});
 		}
 	}
+	found.known = !events.some(isTap) && attentive.size >= KNOWN_SESSIONS;
 	return found;
 }
 
@@ -271,9 +287,9 @@ function scheduler(parameters?: FsrsParameters, cache = true): FSRS {
 
 /** The rule and the parameters together: what a stored memory has to be recomputed under. */
 export function ruleKey(parameters?: FsrsParameters): string {
-	if (!parameters) return `${RULE}+${SCHEDULE}/default`;
+	if (!parameters) return `${RULE}+${SCHEDULE}+${ACTIVATION}/default`;
 	const weights = parameters.weights.map((w) => w.toFixed(4)).join(',');
-	return `${RULE}+${SCHEDULE}/${parameters.preset}:${parameters.retention}:${weights}`;
+	return `${RULE}+${SCHEDULE}+${ACTIVATION}/${parameters.preset}:${parameters.retention}:${weights}`;
 }
 
 const DAY_MS = 86_400_000;
@@ -411,6 +427,7 @@ export function memoryOf(
 			reps: card.reps,
 			lapses: card.lapses,
 			card: skill === 'reading' && found.card,
+			...(skill === 'reading' && found.known && !found.card ? { known: true as const } : {}),
 			reviewed: history.events.some(
 				(event) => event.kind === 'review' && event.detail.skill === skill
 			),

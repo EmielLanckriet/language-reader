@@ -28,7 +28,7 @@ function card(lexemeId: number, memory: Partial<Memory>): QueueCard {
 }
 
 const queue = (cards: QueueCard[], options: Partial<Parameters<typeof cardQueue>[1]> = {}) =>
-	cardQueue(cards, { frequency: new Map(), firstReviewsToday: 0, cap: 10, now, ...options });
+	cardQueue(cards, { rank: new Map(), firstReviewsToday: 0, cap: 10, now, ...options });
 
 describe('the card queue', () => {
 	it('offers reviewed cards that are due, most overdue first', () => {
@@ -49,16 +49,25 @@ describe('the card queue', () => {
 		expect(q.due).toEqual([2, 3, 1]);
 	});
 
-	it('offers new cards by how often their word occurs in the library, up to the cap', () => {
-		const fresh = [4, 5, 6].map((id) =>
+	it('offers new words most frequent in Chinese first, up to the budget (issue #5)', () => {
+		const fresh = [4, 5, 6, 7].map((id) =>
 			card(id, { reviewed: false, state: State.Learning, due: minutes(5) })
 		);
-		const frequency = new Map([
-			[4, 2],
-			[5, 30],
-			[6, 9]
+		// A frequency rank, 0 the most frequent; 7 is not on the list at all, so rarest.
+		const rank = new Map([
+			[4, 9000],
+			[5, 12],
+			[6, 400]
 		]);
-		expect(queue(fresh, { frequency, cap: 2 }).fresh).toEqual([5, 6]);
+		expect(queue(fresh, { rank, cap: 3 }).fresh).toEqual([5, 6, 4]);
+		expect(queue(fresh, { rank, cap: 4 }).fresh).toEqual([5, 6, 4, 7]);
+	});
+
+	it('offers a known word when due, outside the new-word budget (issue #5)', () => {
+		const known = card(8, { reviewed: false, card: false, known: true, due: days(-1) });
+		const q = queue([known, card(9, { reviewed: false, due: days(-1) })], { cap: 0 });
+		expect(q.due).toEqual([8]);
+		expect(q.fresh).toEqual([]);
 	});
 
 	it('counts the new cards already begun today against the cap', () => {

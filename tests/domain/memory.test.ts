@@ -404,3 +404,37 @@ describe('evidence-3 over any history', () => {
 		);
 	});
 });
+
+describe('a card from knowing (issue #5)', () => {
+	// Never tapped, and met untapped in two separate sessions answered "I tapped every word I didn't
+	// know" with the line's English not shown: an active card outside the new-word budget.
+	const allIn = (...sessions: number[]) =>
+		new Map(sessions.map((session) => [session, 'all' as const]));
+	const reading = (h: WordHistory) => memoryOf(h).reading;
+
+	it('is known after untapped meetings in two such sessions', () => {
+		const h = history({ exposures: [seen(1, at(3)), seen(2, at(5))], answers: allIn(1, 2) });
+		expect(reading(h)?.known).toBe(true);
+		expect(reading(h)?.card).toBe(false);
+	});
+
+	it('is not known from one session, under shown English, or in an unanswered session', () => {
+		const once = history({ exposures: [seen(1, at(3)), seen(1, at(5))], answers: allIn(1) });
+		const helped = history({
+			exposures: [seen(1, at(3)), seen(2, at(5), false, true, true)],
+			answers: allIn(1, 2)
+		});
+		const unanswered = history({ exposures: [seen(1, at(3)), seen(2, at(5))], answers: allIn(1) });
+		for (const h of [once, helped, unanswered]) expect(reading(h)?.known).toBeFalsy();
+	});
+
+	it('is a candidate instead once the word was tapped at any point', () => {
+		const h = history({
+			events: [lookup(3, at(7))],
+			exposures: [seen(1, at(3)), seen(2, at(5))],
+			answers: allIn(1, 2, 3)
+		});
+		expect(reading(h)?.known).toBeFalsy();
+		expect(reading(h)?.card).toBe(true);
+	});
+});

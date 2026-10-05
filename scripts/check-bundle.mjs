@@ -72,7 +72,13 @@ function everyFile(directory) {
 // is its own copy of mp4box (about 180 KB): a worker is bundled apart from the page, which has
 // one already. Fetching the worker with the model instead was rejected: its name changes with
 // every build, so after an update it would be missing offline until fetched again.
-const SANCTIONED_INSTALL = { files: 39, bytes: 2529253 + 8190220 + 253602 };
+//
+// **Raised on 2026-10-05 for choosing new cards** (issue #5, ADR-0039): the 50,000 most frequent
+// Chinese words from wordfreq (src/lib/domain/frequency-zh.txt, 391,486 bytes, 226 KB gzipped) are
+// in the install, so new cards are picked by general frequency offline too. Chosen over a shorter
+// list (20,000 words, 82 KB gzipped) so that rarer looked-up words are still ranked against each
+// other.
+const SANCTIONED_INSTALL = { files: 40, bytes: 2529253 + 8190220 + 253602 + 391486 };
 
 // Ten per cent, unchanged in spirit: wide enough that ordinary code growth never trips it, far
 // narrower than anything worth catching.

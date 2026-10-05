@@ -29,6 +29,7 @@ import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { Occurrence } from '../domain/types';
 import type { Part } from '../domain/corrections';
 import type { Request, Response, ToWorker } from './protocol';
+import frequencyUrl from '../domain/frequency-zh.txt?url';
 
 /**
  * The two calls that create data the reader earned, and the only ones that go through FR-015's
@@ -56,6 +57,26 @@ let repository: Repository | undefined;
 
 /** A change the reader made while this copy could not save, waiting on one attempt to take. */
 let remembered: Request | undefined;
+
+/**
+ * General word frequency, most frequent first (issue #5), which new cards are picked by. Fetched
+ * once when the worker starts (precached, so offline too) and given to every repository opened.
+ * Without it new cards keep their id order, which is worth a diagnostic, not a refusal.
+ */
+let frequency: string[] | undefined;
+void fetch(frequencyUrl)
+	.then((response) => {
+		if (!response.ok) throw new Error(`HTTP ${response.status}`);
+		return response.text();
+	})
+	.then((text) => {
+		frequency = text.split('\n').filter((line) => line !== '' && !line.startsWith('#'));
+		repository?.setFrequency(frequency);
+	})
+	.catch((error) => {
+		if (db)
+			recordDiagnostic(db, 'storage', `Could not load the word frequency list: ${String(error)}`);
+	});
 
 /** Calls that arrived before the lease did. Resolved when it arrives, rejected if it will not. */
 let waiting: { run: () => void; giveUp: (cause: string) => void }[] = [];
@@ -136,6 +157,7 @@ async function take(): Promise<void> {
 	if (result.ok) {
 		db = result.db;
 		repository = new Repository(db);
+		if (frequency) repository.setFrequency(frequency);
 		repository.ensureMemory();
 		apply({ kind: 'acquire-succeeded' });
 	} else {

@@ -84,6 +84,7 @@ function memoryFromRow(row: Row): Memory {
 		reps: Number(row.reps),
 		lapses: Number(row.lapses),
 		card: row.card === 1,
+		...(row.card === 2 ? { known: true as const } : {}),
 		reviewed: row.reviewed === 1,
 		...(row.seeded === null ? {} : { seeded: String(row.seeded) })
 	};
@@ -1392,7 +1393,8 @@ export class Repository {
 						m.due,
 						m.reps,
 						m.lapses,
-						m.card ? 1 : 0,
+						// 2 marks a known word's card (issue #5): derived like the rest of the row.
+						m.known ? 2 : m.card ? 1 : 0,
 						m.reviewed ? 1 : 0,
 						m.seeded ?? null,
 						rule
@@ -1856,25 +1858,32 @@ export class Repository {
 		};
 	}
 
+	/**
+	 * Each word's rank in general frequency, 0 the most frequent (issue #5): new cards are picked by
+	 * it. Set by the storage worker from the generated list; until then new cards keep their id order.
+	 */
+	private frequency = new Map<string, number>();
+
+	setFrequency(words: readonly string[]): void {
+		this.frequency = new Map(words.map((word, rank) => [word, rank]));
+	}
+
 	/** Today's reading cards in the order to show them (research R8), with each card's word. */
 	cardsToday(cap: number, now: Date = new Date()): CardsToday {
 		const rows = queryRows(
 			this.db,
 			`SELECT m.*, l.surface FROM memory m JOIN lexeme l ON l.id = m.lexeme_id
-       WHERE m.skill = 'reading' AND m.card = 1`
+       WHERE m.skill = 'reading' AND m.card > 0`
 		);
 		const eligible = new Set(
 			queryRows(this.db, ENCOUNTERED_WORDS).map((row) => Number(row.lexeme_id))
 		);
 		const readyRows = rows.filter((row) => eligible.has(Number(row.lexeme_id)));
-		const frequency = new Map(
-			queryRows(
-				this.db,
-				`SELECT t.lexeme_id, COUNT(*) AS n FROM token t
-         JOIN memory m ON m.lexeme_id = t.lexeme_id AND m.skill = 'reading' AND m.card = 1
-         GROUP BY t.lexeme_id`
-			).map((row) => [Number(row.lexeme_id), Number(row.n)])
-		);
+		const rank = new Map<number, number>();
+		for (const row of readyRows) {
+			const at = this.frequency.get(String(row.surface));
+			if (at !== undefined) rank.set(Number(row.lexeme_id), at);
+		}
 		const midnight = new Date(now);
 		midnight.setHours(0, 0, 0, 0);
 		const firstReviewsToday = Number(
@@ -1888,7 +1897,7 @@ export class Repository {
 		);
 		const queue = cardQueue(
 			readyRows.map((row) => ({ lexemeId: Number(row.lexeme_id), memory: memoryFromRow(row) })),
-			{ frequency, firstReviewsToday, cap, now }
+			{ rank, firstReviewsToday, cap, now }
 		);
 		return {
 			queue,

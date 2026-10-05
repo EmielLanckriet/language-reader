@@ -12,9 +12,21 @@ export interface QueueCard {
 	memory: Memory;
 }
 
+/**
+ * A card that comes due on its own schedule, outside the new-word budget (issue #5): reviewed in
+ * Reader, seen in Anki, or a known word. Any other card is a candidate the budget may pick.
+ */
+export function isActive(memory: Memory): boolean {
+	return memory.reviewed || memory.seeded !== undefined || memory.known === true;
+}
+
 export interface QueueOptions {
-	/** How often each word occurs in the library: new cards are shown most frequent first. */
-	frequency: Map<number, number>;
+	/**
+	 * Each word's rank in general Chinese frequency, 0 the most frequent; a word not ranked is the
+	 * rarest. New cards are picked most frequent first: how often a word occurs in the reader's own
+	 * library does not matter, since they meet those words by watching anyway (issue #5).
+	 */
+	rank: Map<number, number>;
 	/** New cards already reviewed for the first time today, which count against the cap. */
 	firstReviewsToday: number;
 	cap: number;
@@ -37,26 +49,26 @@ export function cardQueue(cards: QueueCard[], options: QueueOptions): Queue {
 	const byDue = (a: QueueCard, b: QueueCard) => due(a) - due(b) || a.lexemeId - b.lexemeId;
 	const learning = (card: QueueCard) =>
 		card.memory.state === State.Learning || card.memory.state === State.Relearning;
-	const cardsOnly = cards.filter((card) => card.memory.card);
+	const cardsOnly = cards.filter((card) => card.memory.card || card.memory.known);
 
 	const reviewed = cardsOnly.filter((card) => card.memory.reviewed);
-	const seeded = cardsOnly.filter((card) => !card.memory.reviewed && card.memory.seeded);
-	const fresh = cardsOnly.filter((card) => !card.memory.reviewed && !card.memory.seeded);
+	const scheduled = cardsOnly.filter((card) => !card.memory.reviewed && isActive(card.memory));
+	const fresh = cardsOnly.filter((card) => !isActive(card.memory));
 
 	const room = Math.max(0, options.cap - options.firstReviewsToday);
-	const often = (card: QueueCard) => options.frequency.get(card.lexemeId) ?? 0;
+	const rank = (card: QueueCard) => options.rank.get(card.lexemeId) ?? Infinity;
 
 	return {
 		due: [
 			...reviewed.filter((card) => due(card) <= now).sort(byDue),
-			...seeded.filter((card) => due(card) <= now).sort(byDue)
+			...scheduled.filter((card) => due(card) <= now).sort(byDue)
 		].map((card) => card.lexemeId),
 		soon: reviewed
 			.filter((card) => learning(card) && due(card) > now && due(card) <= now + LEARN_AHEAD_MS)
 			.sort(byDue)
 			.map((card) => card.lexemeId),
 		fresh: fresh
-			.sort((a, b) => often(b) - often(a) || a.lexemeId - b.lexemeId)
+			.sort((a, b) => rank(a) - rank(b) || a.lexemeId - b.lexemeId)
 			.slice(0, room)
 			.map((card) => card.lexemeId)
 	};

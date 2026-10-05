@@ -75,7 +75,7 @@ describe('a card’s sentence', () => {
 });
 
 describe('today’s cards', () => {
-	it('are the queue over the reading cards, with each word and its library frequency', async () => {
+	it('are the queue over the reading cards, new words by general frequency (issue #5)', async () => {
 		const { repository, first, kan } = await library();
 		const wo = repository.getDocument(first).tokens.find((token) => token.start === 0)!; // 我
 		const session = repository.startSession(first, 'reading');
@@ -97,10 +97,14 @@ describe('today’s cards', () => {
 				toOffset: 6
 			}
 		]);
+		// 看 occurs three times in the library and 我 twice, but 我 is the more frequent in Chinese.
+		repository.setFrequency(['的', '我', '你', '看']);
 		const today = repository.cardsToday(1);
-		// 看 occurs three times in the library, 我 twice: the frequent one comes first.
-		expect(today.queue.fresh).toEqual([kan.lexemeId]);
-		expect(today.words[kan.lexemeId!]).toBe('看');
+		expect(today.queue.fresh).toEqual([wo.lexemeId]);
+		expect(today.words[wo.lexemeId!]).toBe('我');
+		// And the other way round, so neither the library's counts nor the ids decide it.
+		repository.setFrequency(['的', '看', '你', '我']);
+		expect(repository.cardsToday(1).queue.fresh).toEqual([kan.lexemeId]);
 		expect(today.counts).toEqual({ due: 0, fresh: 1, awaitingContext: 0 });
 	});
 });
@@ -125,4 +129,21 @@ it('excludes unread occurrences and withdrawn encounters, including from the que
 	repository.recordEncounters(id, [{ kind: 'withdrawn', at: '2026-09-30T11:00:00Z' }]);
 	expect(repository.cardSentence(kan.lexemeId!)).toBeUndefined();
 	expect(repository.cardsToday(10).counts.awaitingContext).toBe(1);
+});
+
+it('offers a known word as due outside the budget, stored and read back as known (issue #5)', async () => {
+	const repository = new Repository(await freshDatabase());
+	const [documentId] = await buildHistory(repository, ['我看书你好将来'], []);
+	const word = repository.getDocument(documentId).tokens.find((t) => t.isWord)!.lexemeId!;
+	for (const day of ['2026-10-01', '2026-10-03']) {
+		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
+			{ kind: 'read', at: `${day}T10:00:00Z`, documentId, fromOffset: 0, toOffset: 7 },
+			{ kind: 'attention', at: `${day}T10:05:00Z`, detail: { answer: 'all' } }
+		]);
+	}
+	repository.refreshMemory(repository.staleMemory(1000));
+	expect(repository.getMemory([word]).memory.get(word)?.reading?.known).toBe(true);
+	const later = repository.cardsToday(0, new Date('2027-01-01T00:00:00Z'));
+	expect(later.queue.due).toContain(word);
+	expect(later.queue.fresh).toEqual([]);
 });
