@@ -51,8 +51,10 @@ createServer((request, response) => {
 
 	let file = join(ROOT, path);
 	if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
-	// The SPA fallback the build writes, so deep links behave as they do in production.
-	if (!existsSync(file)) file = join(ROOT, '404.html');
+	// The SPA fallback the build writes, so deep links behave as they do in production: GitHub Pages
+	// sends it with status 404, which the service worker treats as a failed navigation.
+	const fallback = !existsSync(file);
+	if (fallback) file = join(ROOT, '404.html');
 	if (!existsSync(file)) {
 		response.writeHead(404).end('not found');
 		return;
@@ -66,7 +68,7 @@ createServer((request, response) => {
 		headers['content-encoding'] = 'gzip';
 	}
 	headers['content-length'] = String(body.byteLength);
-	response.writeHead(200, headers);
+	response.writeHead(fallback ? 404 : 200, headers);
 	response.end(body);
 }).listen(PORT, '127.0.0.1', () =>
 	console.log(`serving ${ROOT} at http://127.0.0.1:${PORT}${BASE}/`)

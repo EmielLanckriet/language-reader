@@ -40,13 +40,31 @@ describe('choosing which caches to discard on activation', () => {
 		);
 	});
 
-	it('discards everything else, so old builds do not accumulate', async () => {
+	// 2026-10-06: two deploys minutes apart. Build B activated while build C had installed behind it,
+	// and B's sweep deleted C's precache; accepting C then left a worker with nothing to serve, and
+	// every deep link failed (ERR_FAILED), online too.
+	it('never discards a newer build’s precache, which a waiting worker owns', async () => {
+		const build = fc.integer({ min: 0, max: 2_000_000_000_000 });
 		fc.assert(
-			fc.property(fc.array(anyName), fc.string({ minLength: 1 }), (present, current) => {
-				const kept = new Set([current, MODEL_CACHE]);
+			fc.property(fc.array(anyName), build, build, (present, current, other) => {
+				const newer = `language-reader-${Math.max(current, other) + 1}`;
+				expect(cachesToDiscard([...present, newer], `language-reader-${current}`)).not.toContain(
+					newer
+				);
+			})
+		);
+	});
+
+	it('discards everything else, so old builds do not accumulate', async () => {
+		const build = fc.integer({ min: 0, max: 2_000_000_000_000 });
+		fc.assert(
+			fc.property(fc.array(anyName), build, (present, n) => {
+				const current = `language-reader-${n}`;
+				const newer = (name: string) => Number(/^language-reader-(\d+)$/.exec(name)?.[1] ?? -1) > n;
 				const discarded = new Set(cachesToDiscard(present, current));
 				for (const name of present) {
-					expect(discarded.has(name)).toBe(!kept.has(name));
+					const kept = name === current || name === MODEL_CACHE || newer(name);
+					expect(discarded.has(name)).toBe(!kept);
 				}
 			})
 		);

@@ -29,9 +29,22 @@ export const RUNTIME_PREFIX = '/ort/';
  * it as a bug either: accepting an update would simply have charged the reader another 98 MB and
  * dropped them back to dictionary segmentation, with nothing on screen to say why.
  *
- * The precache is named for its build, so every other `language-reader-<build>` really is rubbish
- * and should go. Exactly two names are load-bearing, and this is the one place that knows both.
+ * The precache is named for its build, so every older `language-reader-<build>` really is rubbish
+ * and should go; a newer one is a waiting worker's. Exactly two names are load-bearing, and this is the one place that knows both.
  */
 export function cachesToDiscard(present: readonly string[], keepPrecache: string): string[] {
-	return present.filter((name) => name !== keepPrecache && name !== MODEL_CACHE);
+	const current = buildOf(keepPrecache);
+	return present.filter((name) => {
+		if (name === keepPrecache || name === MODEL_CACHE) return false;
+		// A newer build's precache belongs to a worker installed behind this one. Deleting it left
+		// that worker, once accepted, with nothing to serve (2026-10-06).
+		const build = buildOf(name);
+		return !(build !== undefined && current !== undefined && build > current);
+	});
+}
+
+/** The build a precache is named for (the build's timestamp), if it is one. */
+function buildOf(name: string): number | undefined {
+	const found = /^language-reader-(\d+)$/.exec(name);
+	return found ? Number(found[1]) : undefined;
 }

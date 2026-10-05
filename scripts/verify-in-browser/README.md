@@ -35,7 +35,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `cardlayout` | Synthetic text lookup → flashcard front → answer → grade; checks the front shows pinyin and both Hear buttons but no meanings or English (issue #7), meanings after the answer, and mobile width; the word sheet offers only Retire, Retire → Undo brings the card back, the page has no heading, hints, source line or settings, and More shows five closed groups (Cards second) at 390 px. Front/light/dark screenshots in `/tmp/reader-card-*.png`, More in `/tmp/reader-more.png`. Use a verification-mode build. |
 | `boot` | Console output and uncaught exceptions during start-up. |
 | `firstload` | A first visit does not reload itself. Exists because it did, for 614 ms, and the reload was silently failing three other scenarios (research.md R21). |
-| `shell` | The service worker takes control and the manifest is real. |
+| `shell` | The service worker takes control and the manifest is real. Also empties the precache and opens /cards, which must still start (the 2026-10-06 phone failure). |
 | `words` | Real segmentation is visible in the reader and the words are words. |
 | `offline` | Reading with the server stopped. Warms with `words`, then stops the server. |
 | `readonly` | A second copy refuses a change it cannot keep (the storage lease). |

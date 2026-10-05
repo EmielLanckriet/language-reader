@@ -2893,12 +2893,38 @@ const scenarios = {
 			const isolated = await until('cross-origin isolated once served by the worker', () =>
 				tab.evaluate('return self.crossOriginIsolated === true || null')
 			);
+			// 2026-10-06: a worker became active with its precache emptied (another worker's sweep).
+			// Every deep link then failed with ERR_FAILED, online too. Empty it here and open one.
+			const emptied = await tab.evaluate(`
+				let removed = 0;
+				for (const name of await caches.keys()) {
+					if (!/^language-reader-\\d+$/.test(name)) continue;
+					const cache = await caches.open(name);
+					for (const request of await cache.keys()) removed += (await cache.delete(request)) ? 1 : 0;
+				}
+				return removed;
+			`);
+			await tab.goto('/cards');
+			const deepLink = await until(
+				'a deep link to open with an empty precache',
+				() => tab.evaluate(`return document.querySelector('nav.tabs') ? location.pathname : null`),
+				20000,
+				250
+			).catch(() => 'failed');
 			return {
-				pass: !!controlled && manifest.ok && manifest.icons > 0 && isolated === true,
+				pass:
+					!!controlled &&
+					manifest.ok &&
+					manifest.icons > 0 &&
+					isolated === true &&
+					emptied > 0 &&
+					deepLink.endsWith('/cards'),
 				controlled,
 				isolated,
 				manifest,
-				precached
+				precached,
+				emptied,
+				deepLink
 			};
 		} finally {
 			await tab.close();

@@ -3,6 +3,18 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## An update no longer deletes the next update's files — fix deployed
+
+2026-10-06, on the phone: after several deploys minutes apart, accepting an update left the active
+service worker with an empty precache. An activating worker deleted every other build's cache,
+including the newer build already installed and waiting behind it; accepting that one then served
+nothing, and every deep link failed with ERR_FAILED, online too (GitHub answers it with status 404,
+and the cached shell was gone). Recovered on the phone by unregistering the worker (OPFS data and
+the model cache untouched; 91 files precached again). Fixed: `cachesToDiscard` keeps newer builds'
+precaches (property test red first), and a navigation with no cached shell fetches it from the
+network (`shell` scenario: empties the precache and opens /cards; red first). The test server now
+sends the 404.html fallback with status 404, as GitHub Pages does; it sent 200, which hid this.
+
 ## Change a video's Chinese subtitles — built, browser checked, phone check pending
 
 Issue #9, ADR-0036's amendment. A video's Chinese menu switches among its kept tracks; sharing a

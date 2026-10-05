@@ -172,6 +172,15 @@ async function serve(request: Request): Promise<Response> {
 	const shell = await cache.match(SHELL);
 	if (shell) return shell;
 
+	// No shell cached: the network's copy, if there is a network. 2026-10-06: a worker became active
+	// with its precache emptied by another worker's sweep, and every deep link failed, online too.
+	try {
+		const fetched = await fetch(SHELL, { cache: 'no-store' });
+		if (fetched.ok) return fetched;
+	} catch {
+		// Offline as well; below.
+	}
+
 	// No shell cached and no network: nothing left to serve. app.html's own fallback markup is the
 	// last word here, and it can only appear if some copy of the shell arrived from somewhere.
 	return Response.error();
