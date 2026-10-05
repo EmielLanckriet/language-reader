@@ -378,9 +378,7 @@
 	.counts {
 		margin: 0 0 0.25rem;
 	}
-	.card {
-		margin: 0;
-	}
+
 	.card-face {
 		overflow-wrap: anywhere;
 	}
@@ -455,12 +453,20 @@
 	.english {
 		margin-top: 0.5rem;
 	}
+	/* Always just above the tab bar, wherever the card ends; a long card scrolls beneath it. */
 	.review-actions {
-		position: sticky;
+		position: fixed;
+		left: 0;
+		right: 0;
 		bottom: calc(4.7rem + env(safe-area-inset-bottom));
+		max-width: 46rem;
+		margin: 0 auto;
 		background: var(--paper);
-		padding: 0.8rem 0 0.35rem;
+		padding: 0.8rem 1rem 0.35rem;
 		z-index: 2;
+	}
+	.card {
+		padding-bottom: 8.5rem;
 	}
 	.reveal {
 		width: 100%;

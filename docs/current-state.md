@@ -8,7 +8,8 @@ This describes repository behavior and recorded results, not a fresh certificati
 Follow-up to the leaner Cards page. The Device service row is gone from every tab (Termux's state
 still shows in the "Your work isn't being copied" notice and More's Start Termux). The card is no
 longer a bordered box: it uses the page, with less space around the counts and the word/sentence
-rule; the word shrinks after Show answer, and Retire sits on the Hear row. Goal: the back of a
+rule; the word shrinks after Show answer, and Retire sits on the Hear row. The buttons are fixed just
+above the tab bar (the card stays at the top; a long card scrolls beneath them). Goal: the back of a
 typical card (年级, two-line sentence, English) fits above the tab bar without scrolling.
 Validation: type check, lint, 545 tests, browser `cardlayout`, `cardaudio`. A browser fit check was
 tried and dropped: its card is about 140 px shorter than the phone's, so it passed on the old page too.
