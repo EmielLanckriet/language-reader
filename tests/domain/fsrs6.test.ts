@@ -28,6 +28,10 @@ describe('FSRS-6 steps, for any weights', () => {
 		);
 	});
 
+	// ts-fsrs rounds the chance of recall to 8 decimals before using it (its forgetting_curve), and the
+	// steps below amplify that: at stability ~1,500 with steep weights, 5e-9 in r moved the stability
+	// by 1e-6 of itself, failing CI on 2026-10-05. So the steps are compared given the same, unrounded
+	// r, and the forgetting curve is compared on its own (below).
 	it('update a memory as ts-fsrs does, same day and later', () => {
 		fc.assert(
 			fc.property(
@@ -38,12 +42,23 @@ describe('FSRS-6 steps, for any weights', () => {
 				fc.constantFrom(1, 2, 3, 4),
 				(w, stability, difficulty, t, g) => {
 					const mine = nextState(w, { stability, difficulty }, t, g);
-					const theirs = reference(w).next_state({ stability, difficulty }, t, g);
+					const r = retrievability(w, t, stability);
+					const theirs = reference(w).next_state({ stability, difficulty }, t, g, r);
 					close(mine.stability, theirs.stability);
 					close(mine.difficulty, theirs.difficulty);
 				}
 			)
 		);
+	});
+
+	it('agrees at the weights that failed CI, given the same chance of recall', () => {
+		const w = [
+			0.001, 0.001, 0.001, 0.001, 1, 0.001, 0.001, 0.001, 1.918225669198223, 0, 3.4999837377317187,
+			0.001, 0.001, 0.001, 0, 0, 1.0000000000000016, 0, 0, 0.01, 0.11771413982679221
+		];
+		const memory = { stability: 1495.4506862506796, difficulty: 1 };
+		const theirs = reference(w).next_state(memory, 4, 4, retrievability(w, 4, memory.stability));
+		close(nextState(w, memory, 4, 4).stability, theirs.stability);
 	});
 
 	it('forget as ts-fsrs does', () => {
