@@ -11,6 +11,7 @@
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { CardSentence, CardsToday } from '$lib/storage/repository';
+	import { RETRACTED } from '$lib/domain/state';
 
 	/**
 	 * Reviewing in the Reader (spec 007, US3): today's due cards, then new ones from what the reader
@@ -233,6 +234,45 @@
 					: undefined;
 			await repository.recordReview(current.lexemeId, value, shown, current.sentence?.sourceKey);
 			reviewed++;
+			retiredLast = null;
+			await next();
+		} catch (error) {
+			problem = error;
+		} finally {
+			grading = false;
+		}
+	}
+
+	/** The last card retired, with the mark it had, so Undo can put that mark back (ADR-0040). */
+	let retiredLast = $state<{ lexemeId: number; word: string; previous?: string } | null>(null);
+
+	async function retire() {
+		if (!current || grading) return;
+		grading = true;
+		try {
+			const { repository } = await session();
+			audio?.stop();
+			const { lexemeId, word } = current;
+			const previous = (await repository.getStates([lexemeId])).get(lexemeId)?.state;
+			await repository.assertState(lexemeId, 'retired');
+			retiredLast = { lexemeId, word, previous };
+			await next();
+		} catch (error) {
+			problem = error;
+		} finally {
+			grading = false;
+		}
+	}
+
+	async function unretire() {
+		if (!retiredLast || grading) return;
+		grading = true;
+		try {
+			const { repository } = await session();
+			await repository.assertState(retiredLast.lexemeId, retiredLast.previous ?? RETRACTED);
+			if (current) order.unshift(current.lexemeId);
+			order.unshift(retiredLast.lexemeId);
+			retiredLast = null;
 			await next();
 		} catch (error) {
 			problem = error;
@@ -322,6 +362,11 @@
 					{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
 				</div>
 				{#if !sentenceClip}<p class="audio-note">No recording available for this example.</p>{/if}
+				{#if retiredLast}<p class="audio-note" role="status">
+						<span lang="zh-Hans">{retiredLast.word}</span> retired: it stays remembered but is no
+						longer a card.
+						<button class="link" onclick={unretire} disabled={grading}>Undo</button>
+					</p>{/if}
 				{#if audioProblem}<p class="audio-note" role="status">{audioProblem}</p>{/if}
 				{#if revealed}
 					<div class="grades">
@@ -337,9 +382,14 @@
 				{:else}
 					<button class="reveal" onclick={() => (revealed = true)}>Show answer</button>
 				{/if}
+				<button class="retire" onclick={retire} disabled={grading}>Retire this card</button>
 			</div>
 		</section>
 	{:else}
+		{#if retiredLast}<p class="audio-note" role="status">
+				<span lang="zh-Hans">{retiredLast.word}</span> retired.
+				<button class="link" onclick={unretire} disabled={grading}>Undo</button>
+			</p>{/if}
 		<div class="empty card-face">
 			<h2>{reviewed > 0 ? 'Done for now.' : 'Nothing to review.'}</h2>
 			<p>Words you look up while reading or watching become cards.</p>
@@ -518,6 +568,25 @@
 	.g4 {
 		background: #e1edf4;
 		color: #285570;
+	}
+	.retire {
+		display: block;
+		margin: 0.4rem 0 0 auto;
+		min-height: 44px;
+		padding: 0.4rem 0.6rem;
+		font-size: 0.8rem;
+		background: transparent;
+		color: var(--muted);
+		border: none;
+	}
+	.link {
+		background: none;
+		border: none;
+		padding: 0 0.25rem;
+		min-height: 0;
+		color: var(--accent);
+		text-decoration: underline;
+		font-size: inherit;
 	}
 	.grading-hint {
 		font-size: 0.75rem;

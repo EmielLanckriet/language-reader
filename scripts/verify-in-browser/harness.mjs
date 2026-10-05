@@ -451,6 +451,9 @@ const scenarios = {
 			await until('word sheet', () =>
 				tab.evaluate(`return !!document.querySelector('.sheet button[aria-label="Cancel"]')`)
 			);
+			const sheetChoices = await tab.evaluate(
+				`return [...document.querySelectorAll('.sheet .choice')].map(b=>b.textContent.replace(/\\s+/g,' ').trim())`
+			);
 			await tab.evaluate(`document.querySelector('.sheet button[aria-label="Cancel"]').click()`);
 			await tab.evaluate(
 				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
@@ -484,15 +487,43 @@ const scenarios = {
 				shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 				writeFileSync('/tmp/reader-card-back-' + theme + '.png', Buffer.from(shot.data, 'base64'));
 			}
+			// Retire, then Undo: the card leaves the queue and comes back (ADR-0040).
+			await tab.evaluate(`document.querySelector('.retire').click()`);
+			const retired = await until('card retired', () =>
+				tab.evaluate(
+					`return !document.querySelector('.hanzi') && /retired/.test(document.body.textContent) ? [...document.querySelectorAll('[role=status]')].find(e=>/retired/.test(e.textContent)).textContent.replace(/\\s+/g,' ').trim() : null`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Undo').click()`
+			);
+			await until('card back after undo', () =>
+				tab.evaluate(`return document.querySelector('.hanzi')?.textContent==='学习'`)
+			);
+			await tab.evaluate(`document.querySelector('.reveal').click()`);
 			await tab.evaluate(`document.querySelector('.g4').click()`);
 			await until('review recorded', () =>
 				tab.evaluate(
 					`return document.querySelector('.empty')?.textContent.includes('Done for now')`
 				)
 			);
+			await tab.goto('/diagnostics');
+			await until('More groups', () =>
+				tab.evaluate(`return document.querySelectorAll('details.group').length > 0`)
+			);
+			const more = await tab.evaluate(
+				`return {groups:[...document.querySelectorAll('details.group > summary .title')].map(t=>t.textContent),open:document.querySelectorAll('details.group[open]').length,width:document.documentElement.scrollWidth}`
+			);
+			shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-more.png', Buffer.from(shot.data, 'base64'));
 			return {
 				// Issue #7: sound and pinyin are on the front, meanings and English only on the back.
 				pass:
+					sheetChoices.length === 1 &&
+					sheetChoices[0].startsWith('Retire') &&
+					more.groups.length === 4 &&
+					more.open === 0 &&
+					more.width === front.viewport &&
 					front.hidden &&
 					!front.english &&
 					front.pinyin.includes('xué') &&
@@ -505,6 +536,9 @@ const scenarios = {
 					back.grades.join(',') === 'Again,Hard,Good,Easy',
 				front,
 				back,
+				sheetChoices,
+				retired,
+				more,
 				reviewRecorded: true
 			};
 		} finally {

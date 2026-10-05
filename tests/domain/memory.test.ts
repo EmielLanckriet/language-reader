@@ -234,6 +234,27 @@ describe('evidence-1', () => {
 		expect(evidenceFor(history({ marks: [mark('known')] })).card).toBe(false);
 	});
 
+	it('keeps a retired word’s memory but makes it no card, until it is marked again', () => {
+		const tapped = history({ marks: [seed()], events: [lookup(1, at(3))] });
+		const known = history({
+			exposures: [seen(1, at(3)), seen(2, at(5))],
+			answers: new Map([
+				[1, 'all'],
+				[2, 'all']
+			])
+		});
+		for (const h of [tapped, known]) {
+			const before = memoryOf(h).reading!;
+			h.marks.push(mark('retired', 'manual', at(9)));
+			const after = memoryOf(h).reading!;
+			expect(after.stability).toBe(before.stability);
+			expect(after.card).toBe(false);
+			expect(after.known).toBeFalsy();
+			h.marks.push(mark('(none)', 'manual', at(10)));
+			expect(memoryOf(h).reading).toEqual(before);
+		}
+	});
+
 	it('has no memory without evidence', () => {
 		expect(memoryOf(history({ exposures: [seen(1)] }))).toEqual({});
 	});

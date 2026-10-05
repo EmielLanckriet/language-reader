@@ -262,6 +262,11 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		}
 	}
 	found.known = !events.some(isTap) && attentive.size >= KNOWN_SESSIONS;
+	// Retired from the deck (ADR-0040): the memory goes on, the word is never a card or due.
+	if (current === 'retired') {
+		found.card = false;
+		found.known = false;
+	}
 	return found;
 }
 

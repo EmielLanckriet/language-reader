@@ -1,7 +1,19 @@
 # Current state
 
-Updated 2026-10-05. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Retire words; one-button word sheet; More in four groups — built, not deployed
+
+ADR-0040. A **retired** word keeps its memory (reading still updates it, the library counts it by
+recall) but is never a card and never due. Cards has "Retire this card" on both faces with Undo,
+which restores the previous mark. The word sheet's four state buttons are replaced by one Retire
+button (tap again to undo); Ignore is no longer offered, and words already ignored stay ignored.
+More is regrouped into four closed groups: Your words (Anki words and examples, corrections,
+deleted documents), Backup & storage, Speech & word splitting, Troubleshooting. Content unchanged.
+Validation: 544 tests (the retire rule red first, both lines mutation-checked), type check, lint,
+browser `cardlayout` (extended: the sheet's single button, retire → undo, More's groups at 390 px),
+`corrections`, `cardaudio`. Not phone checked.
 
 ## Card front with pinyin and sound — deployed and phone checked
 

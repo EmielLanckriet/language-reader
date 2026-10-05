@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ankiImportOf } from '$lib/domain/anki';
-	import { ANKI_LEVELS, AVAILABLE_STATES } from '$lib/domain/state';
+	import { ANKI_LEVELS, RETRACTED } from '$lib/domain/state';
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { recall, type Memory } from '$lib/domain/memory';
 	import type { FsrsParameters } from '$lib/domain/anki';
@@ -56,6 +56,12 @@
 		onjoin?: () => void;
 		onsplit?: (at: number) => void;
 	} = $props();
+
+	/**
+	 * Only Retire is offered (the reader, 2026-10-06: the four choices are not needed, and ignoring
+	 * is not wanted); older marks still count. Tapping it on a retired word takes the mark back.
+	 */
+	const retired = $derived(current === 'retired');
 
 	let refusal = $state<string | null>(null);
 	const splits = $derived.by(() => {
@@ -156,18 +162,15 @@
 		{:else if fromAnki}<p class="muted small">{fromAnki}</p>{/if}
 
 		{#if marking}
-			<div class="choices">
-				{#each AVAILABLE_STATES as state (state.name)}
-					<button
-						class="choice"
-						class:chosen={current === state.name}
-						onclick={() => onchoose(state.name)}
-					>
-						<span class="swatch state-{state.name}"></span>
-						{state.label}
-					</button>
-				{/each}
-			</div>
+			<button
+				class="choice"
+				class:chosen={retired}
+				aria-pressed={retired}
+				onclick={() => onchoose(retired ? RETRACTED : 'retired')}
+			>
+				{retired ? 'Retired ✓ · tap to undo' : 'Retire'}
+				<small>remembered, never a card</small>
+			</button>
 		{:else}
 			<p class="muted small">You can mark words once the transcript is complete.</p>
 		{/if}
@@ -300,18 +303,12 @@
 		margin: 0;
 	}
 
-	.choices {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 0.3rem;
-	}
-
 	.choice {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.3rem;
-		min-height: 34px;
+		gap: 0.4rem;
+		min-height: 38px;
 		min-width: 0;
 		padding: 0.2rem 0.3rem;
 		font-size: 0.8rem;
@@ -320,29 +317,14 @@
 		border: 1px solid var(--rule);
 	}
 
+	.choice small {
+		color: var(--muted);
+		font-size: 0.7rem;
+	}
+
 	.choice.chosen {
 		border-color: var(--accent);
 		border-width: 2px;
-	}
-
-	.swatch {
-		width: 0.7rem;
-		height: 0.7rem;
-		border-radius: 50%;
-		flex: none;
-	}
-
-	.swatch.state-unknown {
-		background: var(--unknown);
-	}
-	.swatch.state-learning {
-		background: var(--learning);
-	}
-	.swatch.state-known {
-		background: var(--known);
-	}
-	.swatch.state-ignored {
-		background: var(--ignored);
 	}
 
 	.actions {

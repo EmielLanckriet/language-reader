@@ -30,7 +30,9 @@ export const AVAILABLE_STATES: StateDefinition[] = [
 	{ name: 'unknown', label: 'Unknown' },
 	{ name: 'learning', label: 'Learning' },
 	{ name: 'known', label: 'Known' },
-	{ name: 'ignored', label: 'Ignored' }
+	{ name: 'ignored', label: 'Ignored' },
+	// Out of the deck, still remembered (ADR-0040).
+	{ name: 'retired', label: 'Retired' }
 ];
 
 /**
