@@ -12,7 +12,7 @@ Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 offered from an empty copy.
 
 Cards and memory: #6 weigh encounters in an
-already-watched video · #7 card layout · #18 fit the evidence rule · #20 Anki reset and live recall.
+already-watched video · #18 fit the evidence rule · #20 Anki reset and live recall.
 
 Library and content: #8 delete a video or text · #9 switch subtitle track after import · #10
 generated story with due words · #11 find YouTube videos by due and new words · #13 video
@@ -39,7 +39,7 @@ was in a document (or a line) seen before should change its weight: a success in
 less, a miss more. Probably derivable from earlier encounters (they carry `document_id` and
 offsets) without new data; the weight belongs in the fitted evidence rule (#18).
 
-## Card layout: one card per word, sound and pinyin on the front — #7
+## Card layout: one card per word, sound and pinyin on the front — built (#7, closed)
 
 2026-10-05, the reader decided: one card per word, no separate listening cards. The goal is
 understanding written and spoken Chinese, not recalling pronunciation. Front: the word and the

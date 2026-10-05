@@ -3,6 +3,16 @@
 Updated 2026-10-05. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Card front with pinyin and sound — deployed and phone checked
+
+Issue #7, a presentation change under ADR-0031. The goal is understanding what is read and heard,
+not recalling pronunciation, so a card's front shows the word and its sentence with pinyin and the
+Hear word / Hear sentence buttons (tap to play); the back adds meanings and the sentence's English.
+This replaces "Target pronunciation remains hidden before Show answer" (Flashcard presentation,
+below). Validation: browser `cardlayout` (updated; failed on the old page) and `cardaudio`. Phone
+(build `1791237408088`): an Anki card's front read 丁 · dīng · the sentence with full pinyin · both
+Hear buttons enabled; nothing revealed or graded.
+
 ## Which words are cards: Anki, known, and new words by general frequency — deployed and phone checked
 
 Issue #5, ADR-0039. Anki-seeded and reviewed words are active cards; a never-tapped word met
