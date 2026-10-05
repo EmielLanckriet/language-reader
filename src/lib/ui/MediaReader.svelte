@@ -11,7 +11,8 @@
 </script>
 
 <script lang="ts">
-	import type { Cue } from '$lib/media/subtitles';
+	import { lineAt, type Cue } from '$lib/media/subtitles';
+	import { landscapeWhileFullscreen } from '$lib/media/orientation';
 	import type { English } from '$lib/translation/lines';
 	import { untrack, type Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
@@ -129,8 +130,7 @@
 		if (!media.paused) recorder?.playing(sourceLineAt(time), moment());
 		// The screen is locked: no animation frames, so watchLineEnd cannot stop at a line's end.
 		if (away) checkLineEnd(media);
-		let at = -1;
-		for (let i = 0; i < cues.length && cues[i].start <= time; i++) at = i;
+		const at = lineAt(cues, time);
 		if (at === currentLine) return;
 		currentLine = at;
 		if (at >= 0) online?.(at);
@@ -142,22 +142,12 @@
 
 	/** The document's own line playing at `time`, for the recorder. */
 	function sourceLineAt(time: number): number {
-		const own = sourceCues ?? cues;
-		let at = -1;
-		for (let i = 0; i < own.length && own[i].start <= time; i++) at = i;
-		return at;
+		return lineAt(sourceCues ?? cues, time);
 	}
 
 	/** The document's first own line of shown line `line`, for the recorder. */
 	function sourceOf(line: number): number {
 		return line < 0 || !cues[line] ? line : sourceLineAt(cues[line].start);
-	}
-
-	/** The line playing at `time`: the last one started, as follow() decides. */
-	function lineAt(time: number): number {
-		let at = -1;
-		for (let i = 0; i < cues.length && cues[i].start <= time; i++) at = i;
-		return at;
 	}
 
 	/**
@@ -214,6 +204,8 @@
 		return () => document.removeEventListener('visibilitychange', change);
 	});
 
+	$effect(() => landscapeWhileFullscreen(document, screen.orientation));
+
 	/** A line's end, checked on timeupdate while locked: coarser than per frame, but it still stops. */
 	function checkLineEnd(media: HTMLMediaElement) {
 		stopAtLineEnd(media);
@@ -227,7 +219,7 @@
 	function stopAtLineEnd(media: HTMLMediaElement): boolean {
 		if (!pauseEachLine || media.paused) return false;
 		const time = media.currentTime;
-		const line = lineAt(time);
+		const line = lineAt(cues, time);
 		if (line < 0) return false;
 		const end = Math.min(cues[line].end, cues[line + 1]?.start ?? Infinity);
 		if (stoppedAt === line && time < end - 0.5) stoppedAt = -1;

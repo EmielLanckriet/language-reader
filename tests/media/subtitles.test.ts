@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { classifyTracks, defaultChoice, parseSubtitles } from '../../src/lib/media/subtitles';
+import {
+	classifyTracks,
+	defaultChoice,
+	lineAt,
+	parseSubtitles
+} from '../../src/lib/media/subtitles';
 
 function chooseChineseTrack(tracks: { name: string; text: string }[]) {
 	const file = defaultChoice(
@@ -92,5 +97,26 @@ describe('parsing subtitles', () => {
 			'WEBVTT\n\n00:00:01.000 --> 00:00:03.000\n我们\n\n00:00:03.000 --> 00:00:05.000\n我们\n去吃饭\n\n00:00:05.000 --> 00:00:05.010\n去吃饭\n'
 		);
 		expect(cues.map((cue) => cue.text)).toEqual(['我们', '去吃饭']);
+	});
+});
+
+describe('the line playing at a time', () => {
+	// Measured on the phone (issue #3): seeking to 260.59 s, where a line starts, lands at
+	// 260.589998. With "stop after each line" the line before then counted as ended at once.
+	const cues = [
+		{ start: 258.387, end: 260.59, text: '真实地出现在了我们镜头前面' },
+		{ start: 260.59, end: 263.993, text: '我们也很乐意把这份质朴又充满力量的生活' },
+		{ start: 263.993, end: 264.894, text: '呈现给你' },
+		{ start: 306.836, end: 309.405, text: '我们两位摄影师已经睡得非常香' }
+	];
+
+	it('counts a seek that lands a hair before a line as that line', () => {
+		expect(lineAt(cues, 260.589998)).toBe(1);
+	});
+
+	it('keeps the line before until it is really over, and the last line through a gap', () => {
+		expect(lineAt(cues, 260.5)).toBe(0);
+		expect(lineAt(cues, 280)).toBe(2);
+		expect(lineAt(cues, 100)).toBe(-1);
 	});
 });

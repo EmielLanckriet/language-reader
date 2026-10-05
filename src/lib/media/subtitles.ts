@@ -170,3 +170,16 @@ export function parseSubtitles(source: string, { keepRepeats = false } = {}): Cu
 	}
 	return cues;
 }
+
+/**
+ * Seeking to a line's start can land just short of it: 260.59 came back as 260.589998 on the phone
+ * (issue #3), which left the line before playing, and "stop after each line" stopped there for good.
+ */
+const SEEK_SLACK = 0.01;
+
+/** The last line started by `time`, or -1 before the first. */
+export function lineAt(cues: readonly Cue[], time: number): number {
+	let at = -1;
+	for (let i = 0; i < cues.length && cues[i].start <= time + SEEK_SLACK; i++) at = i;
+	return at;
+}
