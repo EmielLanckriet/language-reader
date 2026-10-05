@@ -3,6 +3,20 @@
 Updated 2026-10-05. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Which words are cards: Anki, known, and new words by general frequency — deployed and phone checked
+
+Issue #5, ADR-0039. Anki-seeded and reviewed words are active cards; a never-tapped word met
+untapped in two attentive sessions without English is a known card, also active; a tapped word is a
+candidate, picked by the daily "New words per day" budget most frequent in Chinese first (wordfreq's
+top 50,000, `src/lib/domain/frequency-zh.txt`, CC BY-SA 4.0), not by library frequency. The library's
+due counts cover active cards only. Validation: 543 tests (each rule red first, mutation-checked),
+browser `cardlayout`, `cardaudio`, `corrections`, `listened`. The install budget was raised by the
+list's 391,486 bytes (check-bundle). Phone (build `1791236846694`): the sweep recomputed 3,505
+memories in under a minute; due today 314 (313 Anki, 1 known), 121 known cards, new words 一个, 其,
+该, 前, 你们, 不同, 此, 国, 见, 建设; the Gan An video shows "9 due come up (9×)". The deploy first
+failed on an unrelated FSRS-6 property test (ts-fsrs rounds recall to 8 decimals); the test now
+gives both the same recall (`0b8a6d8`).
+
 ## Corrections apply in the order they were made — deployed and phone checked
 
 Issue #2 ("join and split sometimes do nothing"), ADR-0028's amendment. A join or split was dropped

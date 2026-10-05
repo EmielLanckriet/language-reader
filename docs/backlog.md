@@ -11,7 +11,7 @@ Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
 offered from an empty copy.
 
-Cards and memory: #5 activate a card after 5 encounters across 2 videos · #6 weigh encounters in an
+Cards and memory: #6 weigh encounters in an
 already-watched video · #7 card layout · #18 fit the evidence rule · #20 Anki reset and live recall.
 
 Library and content: #8 delete a video or text · #9 switch subtitle track after import · #10
@@ -21,7 +21,7 @@ statistics · #14 transcription resume and background pass · #16 word senses in
 Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
 emulator install test · #24 Termux install size · #25 store wipe cause.
 
-## Card activation: 5 encounters across 2 videos — #5
+## Card activation — built as ADR-0039 (#5, closed)
 
 2026-10-05, the reader: the due count is still too high after ADR-0038, because a new video floods
 the queue with new words. Proposal, to brainstorm and tweak: a word becomes an active card only
