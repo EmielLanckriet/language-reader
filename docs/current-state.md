@@ -3,6 +3,18 @@
 Updated 2026-10-05. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Cards in 0.4 s instead of 9 s — deployed and phone checked
+
+Issue #1 (the app is slow), first cause. Profiled on the phone: 9.05 of the Cards tab's 9.1 s were
+one query in `cardsToday` checking each of 67,617 tokens against every earlier encounter in its
+document, and since the storage worker answers one call at a time, everything else waited behind
+it (Progress: 0.5 s alone, 8.5 s right after Cards). `ENCOUNTERED_WORDS` starts from the evidence
+encounters instead: same 3,132 words on the phone's database. A property test compares it with the
+old query (four mutations caught); 532 tests, type check, lint. Phone (build `1791219689613`):
+Cards 0.35–0.37 s, Progress after Cards 0.47 s. Unchanged and still open under #1: cold start to the
+library 3.4–3.6 s, library tab ~1.2 s, opening a video 0.65–1.05 s. The `cardlayout` browser
+scenario fails at its first step, also before this change (#26).
+
 ## Next line past a short seek; rotation after full screen — deployed and phone checked
 
 Issues #3 and #4 (open work is now tracked as GitHub issues; backlog.md keeps the reasoning). #3:
