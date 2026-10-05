@@ -43,6 +43,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | `sheet` | The word sheet fits a phone in full screen (landscape, ~384 px tall) and in portrait; screenshots to `sheet-*.png`. |
 | `corrections` | Spec 004: join from the word sheet within a second, split back, refused across 。, undone from More back to the analyzer's cut. |
 | `live` | Spec 008: a video without subtitles (make-fixtures.sh's `fixture-live`, served by `reader-service.py --root <dir>`) gets the speech-model offer, downloads it (239 MB, slow), shows its first lines within 20 s, and becomes a document with `media.zh.method.json`. Run the service with `READER_TRANSLATE=scripts/termux/translate.py TRANSLATE_STUB=1` to see the transcript handed back and translated. |
+| `newsubtitles` | Issue #9: one video shared twice (make-fixtures.sh's `fixture-video-*`, same YouTube id; service on port 18765). The second download replaces the first document: one library entry, its watched progress and Continue watching kept, the first job not offered again. Then the video's Chinese switch moves to the kept pinyin track, the video moved with it; More lists neither replaced document as deleted. Verification-mode build; about 40 s. |
 | `bigimport` | SC-004: a 4,999-character document imports and opens within 3 seconds **with the model on the device**. Warms with `model`, so it is slow. |
 
 `model` really does fetch the weights from HuggingFace, so it takes minutes and needs a network.

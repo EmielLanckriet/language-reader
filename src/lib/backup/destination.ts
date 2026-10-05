@@ -6,7 +6,7 @@
 
 import { session } from '$lib/storage/session';
 import { readTar } from '$lib/media/tar';
-import { isPlayable, isSubtitle, mediaFiles, saveMedia } from '$lib/media/store';
+import { isPlayable, isSubtitle, mediaFiles, replacesIn, saveMedia } from '$lib/media/store';
 import { version } from '$app/environment';
 import { open, seal, type CopyBody } from './format';
 
@@ -95,9 +95,13 @@ export async function restore(text: string): Promise<string | null> {
 		const media = document.media;
 		const id = result.restored.get(document.id);
 		if (!media || id === undefined) continue;
+		// The documents a video's earlier subtitles were (issue #9), under their new numbers.
+		const meta = { ...media.meta };
+		if (meta.replaces !== undefined)
+			meta.replaces = replacesIn(media.meta).flatMap((old) => result.restored.get(old) ?? []);
 		await saveMedia(id, [
 			{ name: media.subtitles.name, blob: new Blob([media.subtitles.text]) },
-			{ name: 'meta.json', blob: new Blob([JSON.stringify(media.meta)]) }
+			{ name: 'meta.json', blob: new Blob([JSON.stringify(meta)]) }
 		]);
 		await fetchVideo(id, media.meta).catch(() => {
 			// The document reads without its video, and its page says so.

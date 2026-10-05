@@ -529,26 +529,43 @@ export class Repository {
 	 * caller's (media/store.ts).
 	 */
 	removeDocument(id: DocumentId): 'deleted' | 'hidden' {
-		return transact(this.db, () => {
-			const pointing = queryRows(
-				this.db,
-				`SELECT (SELECT COUNT(*) FROM status_event WHERE document_id = ?)
+		return transact(this.db, () => this.hideOrDelete(id));
+	}
+
+	private hideOrDelete(id: DocumentId): 'deleted' | 'hidden' {
+		const pointing = queryRows(
+			this.db,
+			`SELECT (SELECT COUNT(*) FROM status_event WHERE document_id = ?)
               + (SELECT COUNT(*) FROM session WHERE document_id = ?)
               + (SELECT COUNT(*) FROM encounter WHERE document_id = ?)
               + (SELECT COUNT(*) FROM correction_event WHERE document_id = ?) AS n`,
-				[id, id, id, id]
-			)[0];
-			if (Number(pointing.n) > 0) {
-				run(this.db, 'UPDATE document SET removed_at = ? WHERE id = ? AND removed_at IS NULL', [
-					new Date().toISOString(),
-					id
-				]);
-				return 'hidden';
-			}
-			run(this.db, 'DELETE FROM token WHERE document_id = ?', [id]);
-			run(this.db, 'DELETE FROM analyzed_token WHERE document_id = ?', [id]);
-			run(this.db, 'DELETE FROM document WHERE id = ?', [id]);
-			return 'deleted';
+			[id, id, id, id]
+		)[0];
+		if (Number(pointing.n) > 0) {
+			run(this.db, 'UPDATE document SET removed_at = ? WHERE id = ? AND removed_at IS NULL', [
+				new Date().toISOString(),
+				id
+			]);
+			return 'hidden';
+		}
+		run(this.db, 'DELETE FROM token WHERE document_id = ?', [id]);
+		run(this.db, 'DELETE FROM analyzed_token WHERE document_id = ?', [id]);
+		run(this.db, 'DELETE FROM document WHERE id = ?', [id]);
+		return 'deleted';
+	}
+
+	/**
+	 * A video's new subtitles (issue #9): the replacement takes the old document's place in the
+	 * library, and the old one goes as a deleted one does, hidden while history points into it.
+	 */
+	replaceDocument(old: DocumentId, replacement: DocumentId): 'deleted' | 'hidden' {
+		return transact(this.db, () => {
+			run(
+				this.db,
+				'UPDATE document SET created_at = (SELECT created_at FROM document WHERE id = ?) WHERE id = ?',
+				[old, replacement]
+			);
+			return this.hideOrDelete(old);
 		});
 	}
 
@@ -1824,16 +1841,21 @@ export class Repository {
 
 	/** Only retained, unwithdrawn encounter ranges qualify as a familiar Reader example. */
 	cardSentence(lexemeId: LexemeId): CardSentence | undefined {
-		const occurrences = queryRows(
+		const found = queryRows(
 			this.db,
-			`SELECT t.document_id,t.start,t.end FROM token t
+			`SELECT t.document_id,t.start,t.end,d.removed_at IS NOT NULL AS hidden FROM token t
+          JOIN document d ON d.id=t.document_id
           WHERE t.lexeme_id=? AND ${ENCOUNTERED_TOKEN} ORDER BY t.document_id,t.start`,
 			[lexemeId]
 		).map((row) => ({
 			documentId: Number(row.document_id),
 			start: Number(row.start),
-			end: Number(row.end)
+			end: Number(row.end),
+			hidden: Number(row.hidden) === 1
 		}));
+		// A hidden document (deleted, or replaced by new subtitles) only when no visible one has it.
+		const visible = found.filter((o) => !o.hidden);
+		const occurrences = visible.length ? visible : found;
 		if (!occurrences.length) return this.ankiExample(lexemeId);
 		const at = (d: unknown, o: unknown) =>
 			occurrences.findIndex((v) => v.documentId === Number(d) && v.start === Number(o));

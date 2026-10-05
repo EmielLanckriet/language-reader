@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { session } from '$lib/storage/session';
+	import { replacements } from '$lib/media/store';
 	import { EARNED_CHANGE } from '$lib/storage/client';
 	import type { StudyOverview } from '$lib/domain/study';
 	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
@@ -57,10 +58,19 @@
 		const request = ++generation;
 		try {
 			const { repository } = await session();
-			const result = await repository.studyOverview(
-				Intl.DateTimeFormat().resolvedOptions().timeZone,
-				dayEndHour
-			);
+			const [result, moved] = await Promise.all([
+				repository.studyOverview(Intl.DateTimeFormat().resolvedOptions().timeZone, dayEndHour),
+				replacements()
+			]);
+			// A video given new subtitles (issue #9) is another document now: continue in that one.
+			const resume = result.sessions.find((s) => s.available || moved.has(s.documentId));
+			result.resume = resume
+				? {
+						documentId: moved.get(resume.documentId) ?? resume.documentId,
+						title: resume.title,
+						modality: resume.modality
+					}
+				: null;
 			if (!disposed && request === generation) {
 				if (overview === null) {
 					const firstPending = result.sessions.find((entry) => !entry.answered)?.id;

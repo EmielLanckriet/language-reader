@@ -9,6 +9,7 @@
 	import { speechSetup } from '$lib/speech/app';
 	import { resolve } from '$app/paths';
 	import { readNewCards, keepNewCards } from '$lib/ui/new-cards';
+	import { replacements } from '$lib/media/store';
 
 	// Cards settings (moved off the Cards page). The waiting count needs today's queue, so it is
 	// only asked for when the group is opened.
@@ -40,6 +41,15 @@
 		[]
 	);
 
+	/** Deleted documents, not the earlier subtitles of a video still in the library (issue #9). */
+	async function deletedByReader() {
+		const [deleted, replaced] = await Promise.all([
+			(await session()).repository.deletedWithHistory(),
+			replacements()
+		]);
+		return deleted.filter((document) => !replaced.has(document.id));
+	}
+
 	let forgetting = $state<number | null>(null);
 	let forgetProblem = $state<string | null>(null);
 
@@ -54,7 +64,7 @@
 		forgetting = document.id;
 		try {
 			await repository.withdrawDocument(document.id, 'forgotten from Diagnostics');
-			deletedHistory = await repository.deletedWithHistory();
+			deletedHistory = await deletedByReader();
 		} catch (error) {
 			forgetProblem = error instanceof Error ? error.message : String(error);
 		} finally {
@@ -312,7 +322,7 @@
 			persistence = s.persistence;
 			entries = await s.repository.readDiagnostics();
 			recent = await s.repository.recentEncounters();
-			deletedHistory = await s.repository.deletedWithHistory();
+			deletedHistory = await deletedByReader();
 			const analyzer = await activeAnalyzer();
 			stale = (await s.repository.staleDocumentIds(analyzer.name, analyzer.version)).length;
 			loading = false;

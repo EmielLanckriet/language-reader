@@ -6,6 +6,7 @@
 #
 #   <serve-root>/downloads/fixture-media/  bundle.tar (45 s clip + subtitles), meta.json, the .vtt
 #   <serve-root>/downloads/fixture-tracks-*/  spec 012 bundles with track.<lang>.vtt and tracks.json
+#   <serve-root>/downloads/fixture-video-*/   one video downloaded twice, for new subtitles (issue #9)
 #   <serve-root>/downloads/fixture-live/   bundle.tar (clip, no subtitles, and the transcribing.json
 #                                          an older Termux wrote: Reader transcribes it anyway)
 #
@@ -52,7 +53,7 @@ def shift(stamp, seconds):
     total = int(h) * 3600 + int(m) * 60 + float(s) + seconds
     return f'{int(total // 3600):02d}:{int(total % 3600 // 60):02d}:{total % 60:06.3f}'
 
-def write(job, tracks, title):
+def write(job, tracks, title, video=None):
     folder = os.path.join(downloads, job)
     shutil.rmtree(folder, ignore_errors=True)
     os.makedirs(folder)
@@ -61,7 +62,8 @@ def write(job, tracks, title):
         with open(os.path.join(folder, track['file']), 'w', encoding='utf-8') as file:
             file.write(track.pop('vtt'))
     json.dump(tracks, open(os.path.join(folder, 'tracks.json'), 'w'), ensure_ascii=False)
-    json.dump({'title': title, 'job': job}, open(os.path.join(folder, 'meta.json'), 'w'), ensure_ascii=False)
+    meta = {'title': title, 'job': job, **({'id': video} if video else {})}
+    json.dump(meta, open(os.path.join(folder, 'meta.json'), 'w'), ensure_ascii=False)
     names = ['media.mp4', 'meta.json', 'tracks.json'] + [t['file'] for t in tracks]
     subprocess.run(['tar', 'cf', os.path.join(folder, 'bundle.tar'), '-C', folder, *names], check=True)
 
@@ -85,6 +87,12 @@ write('fixture-tracks-clean-mixed', [track('track.zh.vtt', 'zh', 'Chinese', clea
       track('track.zh-Hans.vtt', 'zh-Hans', 'Chinese (Simplified)', mixed)], 'Test clip, clean and mixed tracks')
 write('fixture-tracks-english', [track('track.zh.vtt', 'zh', 'Chinese', clean),
       track('track.en.vtt', 'en', 'English', human)], 'Test clip, human English')
+# Issue #9: one video downloaded twice. The first time only its pinyin-style track came, as for a
+# download before spec 012 kept every track; shared again, it brings the clean one too.
+write('fixture-video-first', [track('track.zh-Hans.vtt', 'zh-Hans', 'Chinese (Simplified)', mixed)],
+      'Test clip, one video', 'fixtureVideo1')
+write('fixture-video-again', [track('track.zh.vtt', 'zh', 'Chinese', clean),
+      track('track.zh-Hans.vtt', 'zh-Hans', 'Chinese (Simplified)', mixed)], 'Test clip, one video (again)', 'fixtureVideo1')
 EOF
 
 echo "service:     python3 scripts/termux/reader-service.py --root $root"

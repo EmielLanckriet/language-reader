@@ -316,3 +316,49 @@ export async function mediaDocuments(): Promise<Set<number>> {
 	}
 	return ids;
 }
+
+/**
+ * Moved, not copied, from one document's folder to another's: a video's own file is hundreds of
+ * megabytes. For a video given new subtitles (issue #9).
+ */
+export async function moveMediaFiles(from: number, to: number, names: string[]): Promise<void> {
+	const source = await directoryAt([String(from)], false);
+	const target = await directoryAt([String(to)], true);
+	for (const name of names) {
+		const handle = await source.getFileHandle(name);
+		await (
+			handle as FileSystemFileHandle & { move(to: FileSystemDirectoryHandle): Promise<void> }
+		).move(target);
+	}
+}
+
+/** Each media document's meta.json, by document. */
+async function metas(): Promise<Map<number, Record<string, unknown>>> {
+	const found = new Map<number, Record<string, unknown>>();
+	for (const id of await mediaDocuments()) {
+		const meta = await readMediaJson<Record<string, unknown>>(id, 'meta.json');
+		if (meta) found.set(id, meta);
+	}
+	return found;
+}
+
+/** The documents a video's earlier subtitles were, which its meta.json records (issue #9). */
+export function replacesIn(meta: Record<string, unknown>): number[] {
+	return Array.isArray(meta.replaces) ? meta.replaces.filter((id) => typeof id === 'number') : [];
+}
+
+/** The library's document for this YouTube video, if it has one. */
+export async function videoDocument(youtubeId: string): Promise<number | undefined> {
+	for (const [id, meta] of await metas()) if (meta.id === youtubeId) return id;
+	return undefined;
+}
+
+/**
+ * Each document some video's later subtitles replaced, to the document that video is now: not
+ * deleted by the reader, and still that video for whatever pointed at it.
+ */
+export async function replacements(): Promise<Map<number, number>> {
+	return new Map(
+		[...(await metas())].flatMap(([id, meta]) => replacesIn(meta).map((old) => [old, id] as const))
+	);
+}

@@ -3,6 +3,20 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Change a video's Chinese subtitles — built, browser checked, phone check pending
+
+Issue #9, ADR-0036's amendment. A video's Chinese menu switches among its kept tracks; sharing a
+video again whose YouTube id is already in the library replaces it (for documents imported before
+spec 012, like Jun's "Hidden Challenges", document 19 on the phone, which kept only its pinyin
+track). Either way the reader sees one video: a new document takes the old one's place and date,
+the video file is moved, settings and LLM English carried, and the old document is hidden with its
+history counting; progress, Continue watching and More's deleted list follow `meta.json`'s
+`replaces`, which restore renumbers. Cards take sentences from visible documents first.
+Validation: 547 tests (`replaceDocument` and the visible-first card sentence red first, both
+mutation-checked), type check, lint; browser `newsubtitles` (new; fails when re-share detection is
+removed), `tracks`, `study`, `cardlayout`, `cardaudio`. `media` failed only on its "more than 10
+lines" check: this session's fixture clip has 9 cues.
+
 ## Card fills the page; no Device service row — deployed and phone checked
 
 Follow-up to the leaner Cards page. The Device service row is gone from every tab (Termux's state
@@ -17,8 +31,9 @@ Phone (build after `dc9c264`, 411×831, read-only): no Device service row; 年�
 meaning, two-line sentence and pinyin, English) ends at 494 px, its buttons at 634, the tab bar at
 764, and the page does not scroll (it ended 726 px down, under the buttons, before). Not graded.
 After `1b443ee`: the buttons are fixed at 612–747 px on both faces (tab bar 764) whatever the card's
-length; 记忆's back ends at 433 px. Seen in passing: that Anki example's sentence field carries its
-own pinyin ("你的记忆好好啊。 Nǐ de jìyì hǎohǎo a."), which the card shows and spells out letter by letter.
+length; 记忆's back ends at 433 px. Seen in passing: 记忆's sentence carries pinyin ("你的记忆好好啊。 Nǐ de jìyì hǎohǎo a.").
+It comes from Jun's "Hidden Challenges" video (document 19), imported before spec 012 with only its
+pinyin track (95% of cues have a pinyin line); no other document is affected (issue #9).
 
 ## Leaner Cards page; card settings in More — deployed and phone checked
 

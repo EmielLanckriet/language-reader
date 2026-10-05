@@ -30,3 +30,21 @@ shows machine English, as before 012, until its download is imported again.
 Rejected: one yt-dlp pass with automatic captions for all languages (rate limited); adding `en` to
 the automatic list (falls back to machine-translated English); translating before the choice and
 redoing it (wasted phone work during open thermal validation); matching English by cue index.
+
+## Amendment, 2026-10-06: new subtitles replace the document (issue #9)
+
+A video's Chinese can now be changed after import, and to the reader it stays one video. Underneath
+it is still a new document, since a document's text is fixed: Reader creates it, gives it the old
+document's library date, moves the video file over (OPFS `move`, never a copy), keeps the thumbnail,
+English title, kept tracks, English choice and the LLM English (matched to lines by time), and hides
+the old document as Delete does, so the old sessions keep counting (ADR-0030). The new `meta.json`
+lists the documents it replaces (`replaces`); the library's progress, Continue watching, and More's
+deleted list follow that link, and restore renumbers it with the documents. Two ways in: the video
+page's Chinese menu (kept tracks, when there are two or more), and sharing a video again whose
+YouTube id is already in the library (for a document imported before spec 012, which kept one
+track). Card sentences come from visible documents first, so a replaced document's lines only show
+when nothing else has the word.
+
+Not covered: a re-shared video whose new download has no Chinese track (it is transcribed, as a
+separate document); a reading session open during a switch ends without its questions.
+

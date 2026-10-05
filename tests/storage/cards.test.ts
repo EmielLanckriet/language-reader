@@ -68,6 +68,56 @@ describe('a card’s sentence', () => {
 		void first;
 	});
 
+	// A replaced video (issue #9) is hidden but keeps its encounters: its old lines stay out of cards
+	// while a visible document has the word, and are still better than no sentence.
+	it('comes from a visible document before a hidden one', async () => {
+		const { repository, first, second, kan } = await library();
+		const session = repository.startSession(first, 'reading');
+		repository.recordEncounters(session, [
+			{
+				kind: 'lookup',
+				at: '2026-10-01T10:00:00Z',
+				lexemeId: kan.lexemeId,
+				documentId: first,
+				fromOffset: 5,
+				toOffset: 6
+			}
+		]);
+		repository.recordEncounters(repository.startSession(second, 'reading'), [
+			{ kind: 'read', at: '2026-10-01T11:00:00Z', documentId: second, fromOffset: 0, toOffset: 3 }
+		]);
+		expect(repository.removeDocument(first)).toBe('hidden');
+		const shown = [repository.cardSentence(kan.lexemeId!)!];
+		const last = shown[0];
+		repository.recordReview(kan.lexemeId!, 3, {
+			documentId: last.documentId!,
+			fromOffset: last.from + last.wordFrom,
+			toOffset: last.from + last.wordTo
+		});
+		shown.push(repository.cardSentence(kan.lexemeId!)!);
+		expect(shown.map((s) => [s.documentId, s.available])).toEqual([
+			[second, true],
+			[second, true]
+		]);
+
+		const { repository: alone, first: only, kan: word } = await library();
+		alone.recordEncounters(alone.startSession(only, 'reading'), [
+			{
+				kind: 'lookup',
+				at: '2026-10-01T10:00:00Z',
+				lexemeId: word.lexemeId,
+				documentId: only,
+				fromOffset: 5,
+				toOffset: 6
+			}
+		]);
+		alone.removeDocument(only);
+		expect(alone.cardSentence(word.lexemeId!)).toMatchObject({
+			documentId: only,
+			available: false
+		});
+	});
+
 	it('is none for a word in no document', async () => {
 		const { repository } = await library();
 		expect(repository.cardSentence(repository.findOrCreateLexeme('zh', '将来'))).toBeUndefined();

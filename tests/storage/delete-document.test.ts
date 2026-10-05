@@ -56,3 +56,28 @@ describe('deleting a document', () => {
 		expect(repository.exportBody('test', 'now').sessions).toHaveLength(1);
 	});
 });
+
+// New subtitles for a video (issue #9) are a new document in the old one's place: the library shows
+// it where the old one was, and the old one is hidden like a deleted one, its history still counting.
+describe('replacing a document', () => {
+	it('puts the replacement in the old place and hides the old one', async () => {
+		const db = await freshDatabase();
+		const repository = new Repository(db);
+		const [older, old, newer] = await buildHistory(repository, ['我看书', '你好', '他来'], []);
+		['2026-01-01', '2026-02-01', '2026-03-01'].forEach((day, i) =>
+			db.exec(
+				`UPDATE document SET created_at = '${day}T00:00:00Z' WHERE id = ${[older, old, newer][i]}`
+			)
+		);
+		repository.startSession(old, 'media');
+		const [replacement] = await buildHistory(repository, ['你好吗'], []);
+		const before = repository.exportBody('test', 'now');
+
+		expect(repository.replaceDocument(old, replacement)).toBe('hidden');
+
+		expect(repository.listDocuments().map((d) => d.id)).toEqual([newer, replacement, older]);
+		const after = repository.exportBody('test', 'now');
+		expect(after.sessions).toEqual(before.sessions);
+		expect(after.documents.find((d) => d.id === old)?.removedAt).toBeDefined();
+	});
+});

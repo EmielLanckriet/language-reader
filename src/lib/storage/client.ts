@@ -408,6 +408,14 @@ export class RepositoryClient {
 		return this.call<'deleted' | 'hidden'>({ method: 'removeDocument', args: [id] }).then(earned);
 	}
 
+	/** New subtitles for a video: see Repository.replaceDocument. */
+	replaceDocument(old: number, replacement: number): Promise<'deleted' | 'hidden'> {
+		return this.call<'deleted' | 'hidden'>({
+			method: 'replaceDocument',
+			args: [old, replacement]
+		}).then(earned);
+	}
+
 	restoreCopy(
 		body: CopyBody
 	): Promise<{ restored: Map<number, number> } | { rejected: string; message: string }> {

@@ -44,6 +44,7 @@ const READER_CHANGES = new Set([
 	'saveDocument',
 	'assertState',
 	'removeDocument',
+	'replaceDocument',
 	'importAnki',
 	'importCardExamples',
 	'undoAnkiImport',
@@ -294,6 +295,8 @@ function run(request: Request): unknown {
 			return repository.rebuildProjection();
 		case 'removeDocument':
 			return repository.removeDocument(request.args[0]);
+		case 'replaceDocument':
+			return repository.replaceDocument(request.args[0], request.args[1]);
 		case 'startSession':
 			return repository.startSession(request.args[0], request.args[1] as Modality);
 		case 'recordEncounters':

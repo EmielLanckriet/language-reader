@@ -2127,6 +2127,153 @@ const scenarios = {
 
 	// Spec 007 US3: a word looked up on the stage becomes a card, shown in its sentence; Again brings
 	// it back in the same session, Easy finishes it. Needs the fixture-media job served.
+	// Issue #9 (make-fixtures.sh's fixture-video-*, a reader service on the build's port): one video
+	// shared twice. The second download replaces the first document, so the library keeps one entry
+	// with its progress; then the read page's Chinese switch does the same from the kept tracks, the
+	// video moved, not lost. Neither replaced document is listed in More as deleted.
+	async newsubtitles() {
+		const tab = await openTab('about:blank');
+		const reading = `if (!location.pathname.includes('/read/')) return null;
+			const lines = [...document.querySelectorAll('.lines p')].map((p) => p.textContent);
+			const select = [...document.querySelectorAll('.english-choice label')].find((l) => l.textContent.trim().startsWith('Chinese'))?.querySelector('select');
+			const video = document.querySelector('video');
+			return lines.length > 3 ? { path: location.pathname, roman: lines.filter((l) => l.includes('roman line')).length, lines: lines.length, chinese: select ? [...select.options].map((o) => o.value + (o.selected ? '*' : '')) : [], video: video ? Math.round(video.duration || 0) : null } : null;`;
+		const library = `const items = [...document.querySelectorAll('.library.collection a[href*="/read/"]')].filter((a) => a.textContent.includes('Test clip, one video'));
+			if (!items.length) return null;
+			return { entries: items.length, watched: items[0].querySelector('.watched')?.style.width ?? null, resume: document.querySelector('.continue-card')?.getAttribute('href') ?? null, offered: [...document.querySelectorAll('.fresh li')].filter((li) => li.textContent.includes('one video')).length };`;
+		const back = async () => {
+			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
+			await until('the library', () =>
+				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+			);
+		};
+		try {
+			await importFromTermux(tab, 'Test clip, one video');
+			const first = await until('the first import', () => tab.evaluate(reading), 60000, 250);
+			await tab.evaluate(
+				`const v = document.querySelector('video'); v.muted = true; v.play(); return true;`
+			);
+			await until(
+				'8 s played',
+				() => tab.evaluate(`return document.querySelector('video').currentTime > 8 || null;`),
+				30000,
+				250
+			);
+			await tab.evaluate(`document.querySelector('video').pause(); return true;`);
+			await back();
+			const watched = await until(
+				'progress in the library',
+				() =>
+					tab.evaluate(
+						library.replace(
+							'return {',
+							"if (!document.querySelector('.library.collection .watched')) return null; return {"
+						)
+					),
+				20000,
+				250
+			);
+
+			await until(
+				'the second download under New from Termux',
+				() =>
+					tab.evaluate(`const item = [...document.querySelectorAll('.fresh li')].find((li) => li.textContent.includes('(again)'));
+					if (!item) return null; item.querySelector('button').click(); return true;`),
+				30000,
+				250
+			);
+			const again = await until(
+				'the re-import',
+				() =>
+					tab.evaluate(
+						reading.replace(
+							'return lines.length',
+							`if (location.pathname === ${JSON.stringify(first.path)}) return null; return lines.length`
+						)
+					),
+				60000,
+				250
+			);
+			await back();
+			const afterShare = await until(
+				'the library after sharing again',
+				() =>
+					tab.evaluate(
+						library.replace(
+							'return {',
+							"if (!document.querySelector('.library.collection .watched')) return null; return {"
+						)
+					),
+				20000,
+				250
+			);
+
+			await tab.evaluate(
+				`[...document.querySelectorAll('a[href*="/read/"]')].find((a) => a.textContent.includes('one video')).click(); return true;`
+			);
+			await until('the video again', () => tab.evaluate(reading), 30000, 250);
+			await tab.evaluate(`const select = [...document.querySelectorAll('.english-choice label')].find((l) => l.textContent.trim().startsWith('Chinese')).querySelector('select');
+				select.value = 'track.zh-Hans.vtt'; select.dispatchEvent(new Event('change', { bubbles: true })); return true;`);
+			const switched = await until(
+				'the switched subtitles',
+				() =>
+					tab.evaluate(
+						reading.replace(
+							'return lines.length',
+							`if (location.pathname === ${JSON.stringify(again.path)}) return null; if (!(document.querySelector('video')?.duration > 0)) return null; return lines.length`
+						)
+					),
+				60000,
+				250
+			);
+			await back();
+			const afterSwitch = await until(
+				'the library after switching',
+				() =>
+					tab.evaluate(
+						library.replace(
+							'return {',
+							"if (!document.querySelector('.library.collection .watched')) return null; return {"
+						)
+					),
+				20000,
+				250
+			);
+			await tab.goto('/diagnostics');
+			await until('More', () =>
+				tab.evaluate(`return document.querySelectorAll('details.group').length > 0 || null;`)
+			);
+			const listedAsDeleted = await tab.evaluate(
+				`return [...document.querySelectorAll('details.group')].some((g) => g.textContent.includes('Test clip, one video'));`
+			);
+			return {
+				pass:
+					first.roman > 0 &&
+					!!watched.watched &&
+					again.roman === 0 &&
+					again.chinese.join(',') === 'track.zh.vtt*,track.zh-Hans.vtt' &&
+					afterShare.entries === 1 &&
+					afterShare.offered === 0 &&
+					afterShare.watched === watched.watched &&
+					afterShare.resume?.endsWith(again.path.split('/').pop()) &&
+					switched.roman === switched.lines &&
+					switched.video > 40 &&
+					afterSwitch.entries === 1 &&
+					afterSwitch.watched === watched.watched &&
+					afterSwitch.resume?.endsWith(switched.path.split('/').pop()) &&
+					!listedAsDeleted,
+				first,
+				watched,
+				again,
+				afterShare,
+				switched,
+				afterSwitch,
+				listedAsDeleted
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	async cards() {
 		const tab = await openTab('about:blank');
 		try {

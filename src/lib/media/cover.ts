@@ -11,6 +11,7 @@ import {
 	isSubtitle,
 	mediaFiles,
 	readMediaJson,
+	replacesIn,
 	saveMedia,
 	writeMediaJson,
 	THUMBNAIL
@@ -140,12 +141,22 @@ async function durationOf(documentId: DocumentId): Promise<number | undefined> {
 	);
 }
 
-/** How far into each video the reader got, as a fraction: the furthest point played. */
+/**
+ * How far into each video the reader got, as a fraction: the furthest point played, also under the
+ * subtitles it had before (issue #9), which were other documents.
+ */
 export async function progressOf(ids: DocumentId[]): Promise<Map<DocumentId, number>> {
 	const { repository } = await session();
-	const through = await repository.playedThrough(ids);
+	const earlier = new Map(
+		await Promise.all(
+			ids.map(async (id) => [id, replacesIn((await readMediaJson(id, 'meta.json')) ?? {})] as const)
+		)
+	);
+	const through = await repository.playedThrough([...ids, ...[...earlier.values()].flat()]);
 	const found = new Map<DocumentId, number>();
-	for (const [id, ms] of through) {
+	for (const id of ids) {
+		const ms = Math.max(...[id, ...(earlier.get(id) ?? [])].map((each) => through.get(each) ?? 0));
+		if (ms === 0) continue;
 		const duration = await durationOf(id);
 		if (duration && ms > 0) found.set(id, Math.min(1, ms / duration));
 	}

@@ -17,7 +17,8 @@
 	import { upgradeOf } from '$lib/storage/upgrades';
 	import { loadMedia, type EnglishSetting, type StoredMedia } from '$lib/media/store';
 	import { reportChoice } from '$lib/media/termux';
-	import { parseSubtitles } from '$lib/media/subtitles';
+	import { classifyTracks, parseSubtitles } from '$lib/media/subtitles';
+	import { switchChinese } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import Progress from '$lib/ui/Progress.svelte';
 	import { findVideo } from '$lib/backup/destination';
@@ -102,6 +103,43 @@
 	const englishTracks = $derived(media?.tracks.filter((t) => /^en\b/i.test(t.lang)) ?? []);
 	let englishProblem = $state<string | null>(null);
 
+	/** The kept track whose lines are this document's lines: the Chinese it is read from. */
+	function currentTrack(stored: StoredMedia): string | undefined {
+		const lines = stored.cues.map((cue) => cue.text).join('\n');
+		return stored.tracks.find(
+			(t) =>
+				parseSubtitles(t.text)
+					.map((cue) => cue.text)
+					.join('\n') === lines
+		)?.file;
+	}
+
+	/** The video's other Chinese tracks, when it kept any (issue #9). */
+	const chineseTracks = $derived(
+		media ? classifyTracks(media.tracks).filter((t) => t.chinese && !t.duplicateOf) : []
+	);
+	let chineseProblem = $state<string | null>(null);
+	let switchingChinese = $state(false);
+
+	/**
+	 * New Chinese subtitles: a new document in this one's place (switchChinese). A full load of the
+	 * new page, so the reading session starts afresh on it.
+	 */
+	async function switchChineseTrack(file: string) {
+		if (!document) return;
+		chineseProblem = null;
+		switchingChinese = true;
+		try {
+			await recorder?.close();
+			const id = await switchChinese(document.id, file);
+			leavingQuietly = true;
+			location.replace(resolve('/read/[id]', { id: String(id) }));
+		} catch (error) {
+			chineseProblem = error instanceof Error ? error.message : String(error);
+			switchingChinese = false;
+		}
+	}
+
 	/** US4: which English this video shows. Derived data only: marks and history are untouched. */
 	async function switchEnglish(value: string) {
 		const id = documentId;
@@ -113,14 +151,8 @@
 		englishProblem = null;
 		await saveMedia(id, [{ name: ENGLISH_SETTING, blob: new Blob([JSON.stringify(setting)]) }]);
 		const job = jobOf(media.meta);
-		// The Termux name of the track this document reads: the one whose lines are its lines.
-		const lines = media.cues.map((cue) => cue.text).join('\n');
-		const chinese = media.tracks.find(
-			(t) =>
-				parseSubtitles(t.text)
-					.map((cue) => cue.text)
-					.join('\n') === lines
-		)?.file;
+		// The Termux name of the track this document reads.
+		const chinese = currentTrack(media);
 		if (job && chinese && value === 'machine') {
 			await reportChoice(job, { chinese, english: 'machine' }).catch((error) => {
 				englishProblem = error instanceof Error ? error.message : String(error);
@@ -940,6 +972,29 @@
 				</select>
 			</label>
 			{#if englishProblem}<span role="alert">{englishProblem}</span>{/if}
+		</p>
+	{/if}
+
+	{#if chineseTracks.length > 1 && media}
+		<p class="english-choice">
+			<label>
+				Chinese
+				<select
+					value={currentTrack(media)}
+					disabled={switchingChinese}
+					onchange={(event) => void switchChineseTrack(event.currentTarget.value)}
+				>
+					{#each chineseTracks as track (track.file)}
+						<option value={track.file}
+							>{track.name || track.lang}{track.mixed
+								? ', with pinyin or English'
+								: ''}{track.kind === 'automatic' ? ', automatic' : ''}</option
+						>
+					{/each}
+				</select>
+			</label>
+			{#if switchingChinese}<span role="status">Changing the subtitles…</span>{/if}
+			{#if chineseProblem}<span role="alert">{chineseProblem}</span>{/if}
 		</p>
 	{/if}
 

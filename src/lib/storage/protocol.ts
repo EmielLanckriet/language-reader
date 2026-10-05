@@ -34,6 +34,7 @@ export type Call =
 	| { method: 'exportBody'; args: [string, string] }
 	| { method: 'restoreCopy'; args: [unknown] }
 	| { method: 'removeDocument'; args: [number] }
+	| { method: 'replaceDocument'; args: [number, number] }
 	| { method: 'startSession'; args: [number, string] }
 	| { method: 'recordEncounters'; args: [number, unknown[]] }
 	| { method: 'recentEncounters'; args: [] }
