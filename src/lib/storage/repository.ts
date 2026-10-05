@@ -199,6 +199,19 @@ const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
  AND e.kind IN ('read','played','lookup','check')
  AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN})))`;
 
+/**
+ * Every word met in the library: a token inside an evidence encounter, or an Anki example. Starts
+ * from the encounters and looks each one's tokens up by position: checking every token against the
+ * encounters before it instead took 9 s on the phone at 67,617 tokens (issue #1), on every visit to
+ * Cards, and held up every other storage call behind it.
+ */
+export const ENCOUNTERED_WORDS = `SELECT DISTINCT t.lexeme_id FROM encounter e
+  JOIN token t ON t.document_id=e.document_id
+   AND t.start>=e.from_offset AND t.start<=e.to_offset AND t.end<=e.to_offset
+ WHERE e.kind IN ('read','played','lookup','check')
+   AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN}))
+ UNION SELECT lexeme_id FROM encounter WHERE kind='anki-example' AND lexeme_id IS NOT NULL`;
+
 const ATTENTIVELY_SEEN = `
   SELECT DISTINCT t.lexeme_id FROM encounter a
     JOIN encounter e ON e.session_id = a.session_id AND e.kind IN ('read', 'played')
@@ -1801,11 +1814,7 @@ export class Repository {
        WHERE m.skill = 'reading' AND m.card = 1`
 		);
 		const eligible = new Set(
-			queryRows(
-				this.db,
-				`SELECT DISTINCT t.lexeme_id FROM token t WHERE ${ENCOUNTERED_TOKEN}
-          UNION SELECT lexeme_id FROM encounter WHERE kind='anki-example' AND lexeme_id IS NOT NULL`
-			).map((row) => Number(row.lexeme_id))
+			queryRows(this.db, ENCOUNTERED_WORDS).map((row) => Number(row.lexeme_id))
 		);
 		const readyRows = rows.filter((row) => eligible.has(Number(row.lexeme_id)));
 		const frequency = new Map(
