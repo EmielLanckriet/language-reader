@@ -3,6 +3,17 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Anki words exported with stability 0 can be graded — deployed, not phone checked
+
+2026-10-06, the reader: grading 要不 on Cards gave "Invalid memory state". The Anki exporter rounded
+stability to 0.1 day, and a card without FSRS memory exports its interval, so a card in learning
+arrived as `s=0`; ts-fsrs refuses to grade stability 0 with a difficulty. Suspected for 要不, not
+confirmed on the phone (no cable). `ankiSeedOf` now raises a seed's stability to ts-fsrs's
+`S_MIN`, which repairs words already imported for cards and the FSRS fit alike, and the exporter
+writes stability unrounded (the reader's choice: the next import rewrites every Anki word's
+provenance once). Validation: a memory test red with the phone's exact error first, and the
+exporter test, each red when its fix is removed; 549 tests, type check, lint.
+
 ## Termux's wake lock only while a job runs — deployed on the phone
 
 Issue #27, ADR-0020's second amendment. Termux held its wake lock from boot and never released it:

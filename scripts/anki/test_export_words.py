@@ -34,7 +34,7 @@ class CardWord(unittest.TestCase):
     def test_reads_stability_difficulty_decay_and_the_last_review(self):
         word = card_word(self.FIELDS, 0, 2, 900, '{"s":983.68,"d":6.708,"decay":0.264}', 1, 0, 1787064920869)
         self.assertEqual(word, {
-            'word': '将来', 'level': 'anki-long-term', 'stability': 983.7, 'difficulty': 6.708,
+            'word': '将来', 'level': 'anki-long-term', 'stability': 983.68, 'difficulty': 6.708,
             'decay': 0.264, 'lastReview': '2026-08-18T14:55:20Z', 'type': 2, 'lapses': 1,
             'suspended': False,
         })

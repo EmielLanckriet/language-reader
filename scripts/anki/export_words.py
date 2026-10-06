@@ -137,7 +137,7 @@ def card_word(fields, field, card_type, interval, data, lapses, queue, last_revi
     memory = json.loads(data) if data else {}
     stability = float(memory.get('s', interval))
     return {
-        'word': word, 'level': level(card_type, stability), 'stability': round(stability, 1),
+        'word': word, 'level': level(card_type, stability), 'stability': stability,
         'difficulty': memory.get('d'), 'decay': memory.get('decay'),
         'lastReview': stamp(last_review_ms / 1000) if last_review_ms else None,
         'type': card_type, 'lapses': lapses, 'suspended': queue == -1,

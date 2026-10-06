@@ -270,6 +270,13 @@ describe('evidence-1', () => {
 		expect(lapsed.lapses).toBe(1);
 	});
 
+	it('grades a word Anki exported with stability 0, as it did for a card still in learning', () => {
+		const zero = mark('anki-learning', `anki 2026-09-27T20:00:00Z s=0 d=5 r=${at(1)}`, at(1));
+		const graded = memoryOf(history({ marks: [zero], events: [review(GOOD, at(3))] })).reading!;
+		expect(graded.stability).toBeGreaterThan(0);
+		expect(graded.reps).toBe(2);
+	});
+
 	it('depends on history order, not on the order the lists arrive in', () => {
 		const h = history({
 			marks: [seed(at(1)), mark('ignored', 'manual', at(2)), mark('learning', 'manual', at(4))],

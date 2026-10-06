@@ -3,6 +3,8 @@
  * deciding what an import writes for each word. Pure; the repository applies the plan.
  */
 
+import { S_MIN } from 'ts-fsrs';
+
 export interface AnkiWord {
 	word: string;
 	level: string;
@@ -80,7 +82,9 @@ export function ankiSeedOf(provenance: string): AnkiSeed | undefined {
 	if (!field.has('s')) return undefined;
 	const decay = field.get('decay');
 	return {
-		stability: Number(field.get('s')),
+		// Exports before 2026-10-06 rounded to 0.1 day, so a card in learning arrived as s=0, a state
+		// ts-fsrs refuses to grade.
+		stability: Math.max(Number(field.get('s')), S_MIN),
 		difficulty: field.has('d') ? Number(field.get('d')) : MIDDLE_DIFFICULTY,
 		lastReview: field.get('r') ?? importId,
 		decay: decay === undefined ? undefined : Number(decay),
