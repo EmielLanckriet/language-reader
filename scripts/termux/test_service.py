@@ -125,5 +125,49 @@ class TakingAChoice(TakingATranscript):
         self.assertEqual(self.choose('no-such-job', '{"chinese": "transcribe", "english": "none"}'), 404)
 
 
+class HoldingTheWakeLock(unittest.TestCase):
+    """Issue #27: the wake lock only while a download or translation runs, not all night."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.job = os.path.join(self.root, 'downloads', 'job-1')
+        os.makedirs(self.job)
+        self.service = load_service('unused')
+        self.calls = []
+        self.lock = self.service.WakeLock(self.calls.append, grace=60)
+
+    def test_sees_a_download_and_a_translation_but_not_a_finished_or_dead_job(self):
+        working = self.service.working
+        self.assertFalse(working(self.root))
+        progress = os.path.join(self.job, 'progress.json')
+        open(progress, 'w').write('{"stage": "starting"}')
+        self.assertTrue(working(self.root))
+        os.utime(progress, (time.time() - 700, time.time() - 700))
+        self.assertFalse(working(self.root))
+        open(os.path.join(self.job, 'translate.lock'), 'w').write(str(os.getpid()))
+        self.assertTrue(working(self.root))
+        open(os.path.join(self.job, 'translate.lock'), 'w').write('999999999')
+        self.assertFalse(working(self.root))
+
+    def test_takes_it_for_a_job_and_releases_it_after_a_minute_idle(self):
+        lock = self.lock
+        lock.update(False, 0)
+        lock.update(False, 59)
+        self.assertEqual(self.calls, [])
+        # A lock an older version left held is released too.
+        lock.update(False, 60)
+        self.assertEqual(self.calls, ['termux-wake-unlock'])
+        lock.update(True, 100)
+        lock.update(True, 115)
+        lock.update(False, 130)
+        lock.update(True, 145)
+        lock.update(False, 160)
+        lock.update(False, 219)
+        self.assertEqual(self.calls, ['termux-wake-unlock', 'termux-wake-lock'])
+        lock.update(False, 220)
+        lock.update(False, 300)
+        self.assertEqual(self.calls, ['termux-wake-unlock', 'termux-wake-lock', 'termux-wake-unlock'])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -1,8 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 # Start the reader service unless it already answers, and run it in the foreground, so whatever ran
-# this hosts it: Termux:Boot's task, the Reader Start app's task, or a share. Termux keeps its wake
-# lock only while a task or session runs, and a service its task left behind was frozen or killed
-# (ADR-0020's amendment).
+# this hosts it: Termux:Boot's task, the Reader Start app's task, or a share. Termux keeps its
+# foreground service only while a task or session runs, and a service its task left behind was frozen
+# or killed (ADR-0020's amendment). The service takes the wake lock itself, only while a job runs.
 curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null && exit 0
-termux-wake-lock
 exec python3 ~/bin/reader-service.py

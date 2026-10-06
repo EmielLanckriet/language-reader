@@ -71,3 +71,16 @@ SYSTEM_ALERT_WINDOW allow`).
 The warning is quieter: Termux away with a copy under a day old says nothing. Diagnostics notes each
 time the service is found not running, and each restart (from `/health`'s new `started`), to measure
 how often Android stops it.
+
+## Amendment 2026-10-06: the wake lock only while a job runs
+
+Held all the time, the wake lock kept the phone from deep sleep all night (7h49m held on battery,
+33 s of service CPU; `docs/battery-drain-investigation.md`, issue #27), and `termux-wake-lock` also
+takes a high-performance Wi-Fi lock. What keeps the service alive is the task that hosts it, which
+the scripts keep. An idle service needs no CPU while the screen is off, because Reader calls it only
+while it is in use. So the reader service now owns the lock. Every 15 s it checks for a job: a
+download whose `progress.json` is under ten minutes old, or a `translate.lock` naming a live
+process. It takes the lock while a job runs and releases it after a minute without one; the scripts
+no longer take it. The remaining risk is the one the first amendment guarded against: Android
+freezing an idle service that holds no lock. Watch Diagnostics' restart count (issue #17) after the
+change; if the service dies while idle, start it on demand instead (issue #27, option 3).

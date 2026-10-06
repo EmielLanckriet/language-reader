@@ -39,14 +39,14 @@ curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 # transcripts to translate (ADR-0020, ADR-0029). Termux:Boot
 # (F-Droid, next to Termux; open it once after installing) starts it at boot; opening Termux starts
 # it again if Android stopped it. The boot task runs the service in the foreground and so lasts as
-# long as it does: Termux keeps its wake lock only while a task or session runs, and a service left
-# behind by a task that ended was frozen or killed.
+# long as it does: Termux keeps its foreground service only while a task or session runs, and a
+# service left behind by a task that ended was frozen or killed. No wake lock here: the service takes
+# it only while a download or translation runs (issue #27).
 START='curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || (nohup python3 ~/bin/reader-service.py >/dev/null 2>&1 &)'
 mkdir -p ~/.termux/boot
 printf '#!/data/data/com.termux/files/usr/bin/sh\nexec ~/bin/reader-service-up\n' >~/.termux/boot/reader-service
 chmod +x ~/.termux/boot/reader-service
 grep -q reader-service ~/.bashrc 2>/dev/null || printf '%s\n' "$START" >>~/.bashrc
-termux-wake-lock
 eval "$START"
 # Reader Start (android/reader-start) runs reader-service-up through Termux's RUN_COMMAND, which
 # Termux refuses unless this is set.

@@ -3,8 +3,9 @@
 # Chinese subtitles and packs them into one tar, which Reader then fetches from the reader service.
 set -euo pipefail
 url="$1"
-# The service serves live transcripts and keeps copies; make sure it runs (ADR-0020). Termux keeps
-# its foreground service, and with it the wake lock, only while a session or task runs; a service
+# The service serves live transcripts and keeps copies; make sure it runs (ADR-0020). It also holds
+# the wake lock while this job downloads and translates (issue #27). Termux keeps its foreground
+# service only while a session or task runs; a service
 # started in the background of a task that then ends is frozen or killed (measured on the emulator:
 # it answered, the task ended, and it was gone). So this task hosts it: the final `wait` below and
 # the one in the start branch outlast the job for as long as the service runs.
@@ -109,9 +110,6 @@ echo "Ready: open Reader, it is at the top of the library under New from Termux.
 echo "$work/bundle.tar"
 
 # Everything below runs while the reader watches; the app picks it up from the reader service.
-# The wake lock is Termux's only one, and the service needs it for as long as it runs, so it is taken
-# and never released here: an unlock at the end of a job used to leave the service to be frozen.
-command -v termux-wake-lock >/dev/null && termux-wake-lock
 # English for each line of a downloaded track, but only when Reader will not ask which tracks to use
 # (spec 012): then translation waits for Reader's choice, which the reader service receives. A video
 # without subtitles is translated when Reader's transcript arrives (the service starts it then too).

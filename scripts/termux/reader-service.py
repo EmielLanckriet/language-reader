@@ -14,8 +14,10 @@ import hashlib
 import http.server
 import json
 import os
+import shutil
 import subprocess
 import sys
+import threading
 import time
 
 VERSION = 1
@@ -75,6 +77,60 @@ def translating(folder):
         return True
     except (OSError, ValueError):
         return False
+
+
+def working(root):
+    """Whether a download or a translation is running: the jobs that need the CPU with the screen off."""
+    downloads = os.path.join(root, 'downloads')
+    for job in sorted(os.listdir(downloads) if os.path.isdir(downloads) else [], reverse=True)[:30]:
+        folder = os.path.join(downloads, job)
+        if translating(folder):
+            return True
+        try:
+            # The same ten minutes as jobs(): an untouched progress file is a download that died.
+            if (not os.path.exists(os.path.join(folder, 'bundle.tar'))
+                    and time.time() - os.path.getmtime(os.path.join(folder, 'progress.json')) <= 600):
+                return True
+        except OSError:
+            pass
+    return False
+
+
+class WakeLock:
+    """Termux's wake lock, held only while a job runs (issue #27). Held all the time, it kept the phone
+    from sleeping all night, and its Wi-Fi lock kept Wi-Fi out of power saving; an idle service
+    needs neither, since Reader only calls it with the screen on. Released after a minute without a
+    job, which bridges the gaps between a job's steps (packing, then translate.py starting)."""
+
+    def __init__(self, run, grace=60):
+        self.run = run
+        self.grace = grace
+        # Unknown at start: an older version took the lock and never released it.
+        self.held = None
+        self.idle_since = None
+
+    def update(self, busy, now):
+        if busy:
+            self.idle_since = None
+            if self.held is not True:
+                self.run('termux-wake-lock')
+                self.held = True
+            return
+        if self.idle_since is None:
+            self.idle_since = now
+        if self.held is not False and now - self.idle_since >= self.grace:
+            self.run('termux-wake-unlock')
+            self.held = False
+
+
+def keep_awake_while_working(root, interval=15):
+    def run(command):
+        if shutil.which(command):
+            subprocess.run([command], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    lock = WakeLock(run)
+    while True:
+        lock.update(working(root), time.monotonic())
+        time.sleep(interval)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -271,6 +327,7 @@ def main():
     downloads = os.path.join(args.root, 'downloads')
     if not os.path.exists(downloads) and os.path.isdir(os.path.expanduser('~/downloads')):
         os.symlink(os.path.expanduser('~/downloads'), downloads)
+    threading.Thread(target=keep_awake_while_working, args=(args.root,), daemon=True).start()
     server = http.server.ThreadingHTTPServer(
         ('127.0.0.1', args.port), lambda *a: Handler(*a, directory=args.root)
     )
