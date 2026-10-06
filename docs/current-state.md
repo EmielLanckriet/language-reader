@@ -3,6 +3,21 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Termux's wake lock only while a job runs — deployed on the phone
+
+Issue #27, ADR-0020's second amendment. Termux held its wake lock from boot and never released it:
+overnight 7h49m held on battery for 33 s of service CPU, about 6%/h with the screen mostly off, and
+`termux-wake-lock` keeps a high-performance Wi-Fi lock as well (`docs/battery-drain-investigation.md`).
+The reader service now owns the lock: every 15 s it checks for a download (`progress.json` under ten
+minutes old, no bundle) or a live `translate.lock`, takes the lock while one runs and releases it
+after a minute without one. The scripts no longer take it. Validation: `test_service.py` (job
+detection and take/grace/release, red first, four mutations each caught).
+Phone (scripts at `d80fdaa`, service restarted from Termux session 1): the old lock was released 61 s
+after the restart (Wake Locks size=0, no Termux Wi-Fi lock, Termux still a foreground service); a fake
+download folder took the lock after 7 s, with the Wi-Fi lock, and removing it released it after 74 s.
+Not yet checked: a night on battery (drain rate, and Diagnostics' restart count — does Android freeze
+the idle service without the lock? issue #17), and a real share's download and translation.
+
 ## An update no longer deletes the next update's files — fix deployed
 
 2026-10-06, on the phone: after several deploys minutes apart, accepting an update left the active
