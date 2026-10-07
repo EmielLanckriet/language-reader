@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { default_request_retention, default_w, forgetting_curve } from 'ts-fsrs';
+import { isActive } from '../../src/lib/domain/queue';
 import {
 	evidenceFor,
 	memoryOf,
+	setAsideProvenance,
 	recall,
 	colourBand,
 	type WordHistory,
@@ -223,6 +225,27 @@ describe('evidence-1', () => {
 		expect(memoryOf(ignored)).toEqual({});
 		ignored.marks.push(mark('learning', 'manual', at(3)));
 		expect(memoryOf(ignored).reading).toBeDefined();
+	});
+
+	// The reader, 2026-10-07: Anki words outside the most common are set aside, a retire that lets
+	// the word compete for a new-card slot again, and be due again once reviewed in Reader.
+	it('keeps a set-aside word a candidate, not due, until a review after the mark', () => {
+		const h = history({ marks: [seed(at(1))], events: [review(GOOD, at(2))] });
+		const before = memoryOf(h).reading!;
+		h.marks.push(mark('retired', setAsideProvenance(2000), at(5)));
+		const aside = memoryOf(h).reading!;
+		expect(aside.stability).toBe(before.stability);
+		expect(aside.card).toBe(true);
+		expect(aside.setAside).toBe(true);
+		expect(isActive(aside)).toBe(false);
+		h.events.push(review(GOOD, at(9)));
+		const back = memoryOf(h).reading!;
+		expect(back.setAside).toBeUndefined();
+		expect(isActive(back)).toBe(true);
+		// An ordinary retire is still no card at all.
+		const retired = history({ marks: [seed(at(1)), mark('retired', 'manual', at(5))] });
+		expect(memoryOf(retired).reading!.card).toBe(false);
+		expect(memoryOf(retired).reading!.setAside).toBeUndefined();
 	});
 
 	it('makes a card of a tap, an Anki word, or a word marked learning, and nothing else', () => {

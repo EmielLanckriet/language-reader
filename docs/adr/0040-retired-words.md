@@ -23,3 +23,16 @@ How:
 - `retireIgnored`, run when the app opens after `reapplyCorrections`: every word whose current mark
   is `ignored` gets an appended `retired` mark with provenance "converted from ignored (ADR-0040)".
   The `ignored` marks stay in the history; a second run finds nothing to do.
+
+## Amendment 2026-10-07: setting Anki words aside
+
+The reader, annoyed by a queue of 253 due cards that were all Anki words: retire the Anki words
+outside the 2,000 most common in general Chinese, and let one come back only by coming up in what
+they read or watch, among the most common new words. A **set-aside** word is a `retired` mark with
+provenance "set aside: outside the N most common words". Unlike a plain retire it stays a card
+(`memory.card` 3), never due by itself: once met while reading, watching or tapping (an Anki
+example sentence does not count), it is a new-word candidate ranked by general frequency under the
+daily budget; a Reader review after the mark makes it an ordinary card again, starting from its
+Anki memory. `setAsideAnki(top, dryRun)` marks every word whose current mark is an Anki level and
+whose rank is not below `top`; an Anki re-import keeps these marks (the reader's own), and Undo or
+any later mark ends them. This revises ADR-0039's "seeded words stay active".

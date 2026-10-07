@@ -45,6 +45,7 @@ export type Call =
 	| { method: 'staleMemory'; args: [number] }
 	| { method: 'reapplyCorrections'; args: [] }
 	| { method: 'retireIgnored'; args: [] }
+	| { method: 'setAsideAnki'; args: [number, boolean] }
 	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }

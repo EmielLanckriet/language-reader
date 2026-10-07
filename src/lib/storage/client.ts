@@ -338,6 +338,10 @@ export class RepositoryClient {
 		return this.call({ method: 'retireIgnored', args: [] });
 	}
 
+	setAsideAnki(top: number, dryRun: boolean): Promise<number> {
+		return this.call({ method: 'setAsideAnki', args: [top, dryRun] });
+	}
+
 	staleMemory(limit: number): Promise<number[]> {
 		return this.call({ method: 'staleMemory', args: [limit] });
 	}

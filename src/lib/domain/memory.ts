@@ -128,8 +128,17 @@ export interface WordEvidence {
 	 * didn't know", with the English not shown: an active card outside the new-word budget (#5).
 	 */
 	known: boolean;
+	/** Set aside (the reader, 2026-10-07): a candidate card, not due, until reviewed after the mark. */
+	setAside: boolean;
 	reading: SkillEvidence;
 	listening: SkillEvidence;
+}
+
+const SET_ASIDE = 'set aside:';
+
+/** The provenance of a retire that sets an Anki word outside the `top` most common aside. */
+export function setAsideProvenance(top: number): string {
+	return `${SET_ASIDE} outside the ${top} most common words`;
 }
 
 export interface Memory {
@@ -143,6 +152,8 @@ export interface Memory {
 	card: boolean;
 	/** A known word's card (WordEvidence.known); reading only. */
 	known?: true;
+	/** A set-aside word's card (WordEvidence.setAside); reading only. */
+	setAside?: true;
 	reviewed: boolean;
 	/** `anki`, or `anki-undated` when the import did not know the last review (format 1). */
 	seeded?: string;
@@ -182,6 +193,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 	const none: WordEvidence = {
 		card: false,
 		known: false,
+		setAside: false,
 		reading: { evidence: [] },
 		listening: { evidence: [] }
 	};
@@ -209,6 +221,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			events.some((event) => isTap(event) || event.kind === 'review') ||
 			marks.some((mark) => mark.asserted === 'learning'),
 		known: false,
+		setAside: false,
 		reading: { seed, evidence: [] },
 		listening: { evidence: [] }
 	};
@@ -262,9 +275,17 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		}
 	}
 	found.known = !events.some(isTap) && attentive.size >= KNOWN_SESSIONS;
-	// Retired from the deck (ADR-0040): the memory goes on, the word is never a card or due.
+	// Retired from the deck (ADR-0040): the memory goes on, the word is never a card or due. Set
+	// aside, it stays a candidate the budget may pick, and a Reader review after the mark ends it.
 	if (current === 'retired') {
-		found.card = false;
+		const last = marks.at(-1)!;
+		const aside = last.provenance.startsWith(SET_ASIDE);
+		const reviewedSince = events.some(
+			(event) =>
+				event.kind === 'review' && event.detail.skill === 'reading' && byHistory(event, last) > 0
+		);
+		if (!aside) found.card = false;
+		else found.setAside = !reviewedSince;
 		found.known = false;
 	}
 	return found;
@@ -433,6 +454,7 @@ export function memoryOf(
 			lapses: card.lapses,
 			card: skill === 'reading' && found.card,
 			...(skill === 'reading' && found.known && !found.card ? { known: true as const } : {}),
+			...(skill === 'reading' && found.setAside ? { setAside: true as const } : {}),
 			reviewed: history.events.some(
 				(event) => event.kind === 'review' && event.detail.skill === skill
 			),

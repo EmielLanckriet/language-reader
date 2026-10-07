@@ -307,6 +307,8 @@ function run(request: Request): unknown {
 			return repository.reapplyCorrections();
 		case 'retireIgnored':
 			return repository.retireIgnored();
+		case 'setAsideAnki':
+			return repository.setAsideAnki(request.args[0], request.args[1]);
 		case 'refreshMemory':
 			return repository.refreshMemory(request.args[0]);
 		case 'recordReview':

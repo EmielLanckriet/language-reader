@@ -30,7 +30,7 @@ import { baselineSet, checkParameterSet, type ParameterSet } from '../domain/fit
 import { default_w } from 'ts-fsrs';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain/tuning';
-import { RULE } from '../domain/memory';
+import { RULE, setAsideProvenance } from '../domain/memory';
 import { studyWeek, type StudyOverview, type StudySession } from '../domain/study';
 import { projectStates, RETRACTED } from '../domain/state';
 import { MAX_RANGE, validateEncounter, type Encounter, type Modality } from '../domain/encounter';
@@ -83,8 +83,9 @@ function memoryFromRow(row: Row): Memory {
 		due: String(row.due),
 		reps: Number(row.reps),
 		lapses: Number(row.lapses),
-		card: row.card === 1,
+		card: row.card === 1 || row.card === 3,
 		...(row.card === 2 ? { known: true as const } : {}),
+		...(row.card === 3 ? { setAside: true as const } : {}),
 		reviewed: row.reviewed === 1,
 		...(row.seeded === null ? {} : { seeded: String(row.seeded) })
 	};
@@ -182,7 +183,7 @@ export interface StoredDocument {
 export { StorageFailure } from './failures';
 import { StorageFailure } from './failures';
 import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
-import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
+import { ankiImportOf, isFromAnki, planImport, type AnkiExport } from '../domain/anki';
 
 /** Every word a stretch covered in a session answered "I tapped every word I didn't know". */
 /**
@@ -207,11 +208,14 @@ const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
  * encounters before it instead took 9 s on the phone at 67,617 tokens (issue #1), on every visit to
  * Cards, and held up every other storage call behind it.
  */
-export const ENCOUNTERED_WORDS = `SELECT DISTINCT t.lexeme_id FROM encounter e
+/** Words met while reading, watching or tapping: how a set-aside word comes up again. */
+const MET_WORDS = `SELECT DISTINCT t.lexeme_id FROM encounter e
   JOIN token t ON t.document_id=e.document_id
    AND t.start>=e.from_offset AND t.start<=e.to_offset AND t.end<=e.to_offset
  WHERE e.kind IN ('read','played','lookup','check')
-   AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN}))
+   AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN}))`;
+
+export const ENCOUNTERED_WORDS = `${MET_WORDS}
  UNION SELECT lexeme_id FROM encounter WHERE kind='anki-example' AND lexeme_id IS NOT NULL`;
 
 const ATTENTIVELY_SEEN = `
@@ -733,6 +737,41 @@ export class Repository {
 			this.appendEvent(entry);
 			this.projectEntry(entry);
 		});
+	}
+
+	/**
+	 * Sets aside every word whose current mark is an Anki level and whose general frequency is not
+	 * among the `top` most common (the reader, 2026-10-07); returns how many, and with `dryRun` only
+	 * counts. A retire whose word comes back by coming up in what the reader reads or watches.
+	 */
+	setAsideAnki(top: number, dryRun: boolean): number {
+		if (this.frequency.size === 0) throw new Error('The frequency list is not loaded yet.');
+		const words = queryRows(
+			this.db,
+			`SELECT w.lexeme_id, l.surface, w.provenance FROM word_state w
+       JOIN lexeme l ON l.id = w.lexeme_id WHERE w.state LIKE 'anki-%'`
+		).filter(
+			(row) =>
+				isFromAnki(String(row.provenance)) &&
+				!((this.frequency.get(String(row.surface)) ?? Infinity) < top)
+		);
+		if (dryRun || words.length === 0) return words.length;
+		transact(this.db, () => {
+			const deviceId = deviceIdOf(this.db);
+			for (const row of words) {
+				const entry = assertion({
+					lexemeId: Number(row.lexeme_id),
+					asserted: 'retired',
+					deviceId,
+					deviceSeq: nextDeviceSeq(this.db, deviceId),
+					assertedAt: new Date().toISOString(),
+					provenance: setAsideProvenance(top)
+				});
+				this.appendEvent(entry);
+				this.projectEntry(entry);
+			}
+		});
+		return words.length;
 	}
 
 	/**
@@ -1429,8 +1468,8 @@ export class Repository {
 						m.due,
 						m.reps,
 						m.lapses,
-						// 2 marks a known word's card (issue #5): derived like the rest of the row.
-						m.known ? 2 : m.card ? 1 : 0,
+						// 2 marks a known word's card (issue #5), 3 a set-aside one: derived like the rest.
+						m.setAside ? 3 : m.known ? 2 : m.card ? 1 : 0,
 						m.reviewed ? 1 : 0,
 						m.seeded ?? null,
 						rule
@@ -1916,10 +1955,13 @@ export class Repository {
 			`SELECT m.*, l.surface FROM memory m JOIN lexeme l ON l.id = m.lexeme_id
        WHERE m.skill = 'reading' AND m.card > 0`
 		);
-		const eligible = new Set(
-			queryRows(this.db, ENCOUNTERED_WORDS).map((row) => Number(row.lexeme_id))
+		const ids = (sql: string) =>
+			new Set(queryRows(this.db, sql).map((row) => Number(row.lexeme_id)));
+		const eligible = ids(ENCOUNTERED_WORDS);
+		const met = rows.some((row) => row.card === 3) ? ids(MET_WORDS) : new Set<number>();
+		const readyRows = rows.filter((row) =>
+			(row.card === 3 ? met : eligible).has(Number(row.lexeme_id))
 		);
-		const readyRows = rows.filter((row) => eligible.has(Number(row.lexeme_id)));
 		const rank = new Map<number, number>();
 		for (const row of readyRows) {
 			const at = this.frequency.get(String(row.surface));

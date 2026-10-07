@@ -14,9 +14,11 @@ export interface QueueCard {
 
 /**
  * A card that comes due on its own schedule, outside the new-word budget (issue #5): reviewed in
- * Reader, seen in Anki, or a known word. Any other card is a candidate the budget may pick.
+ * Reader, seen in Anki, or a known word, and not set aside. Any other card is a candidate the
+ * budget may pick.
  */
 export function isActive(memory: Memory): boolean {
+	if (memory.setAside) return false;
 	return memory.reviewed || memory.seeded !== undefined || memory.known === true;
 }
 

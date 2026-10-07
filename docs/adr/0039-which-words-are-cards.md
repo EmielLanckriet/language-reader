@@ -49,3 +49,6 @@ by watching); "5 encounters across 2 videos" (a proxy for library prevalence); p
 low-frequency Anki words (the reader keeps everything already seen in Anki); a daily review cap
 (the reader clears due cards as they come); SUBTLEX-CH directly (its data is "freely available for
 research purposes", less clear for a public repository than wordfreq's CC BY-SA).
+
+Amended 2026-10-07 by ADR-0040's amendment: Anki words outside the 2,000 most common are set
+aside, and come back as candidates only when they come up in the reader's own reading or watching.

@@ -3,6 +3,19 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Anki words outside the 2,000 most common set aside — deployed, not yet run on the phone
+
+2026-10-07, the reader: Cards showed 253 due, every one an Anki word; the 496 tapped words had none
+due. Measured on the phone: Anki words' median general-frequency rank 1,913, tapped words' 6,266.
+The reader chose to retire Anki words outside the 2,000 most common, coming back only by coming up
+in their reading or watching, as new-word candidates ranked by frequency (ADR-0040 amendment):
+`setAsideAnki(top, dryRun)` appends `retired` marks with provenance "set aside: …"; such a word is
+`memory.card` 3, never due, a candidate once met (Anki examples do not count), and an ordinary card
+after a Reader review. Validation: `set-aside.test.ts` and a memory test, red first; six mutations
+(example counted as met, isActive, review before the mark, top ignored, dry run writing, card 3 not
+stored) each caught; 553 tests, type check, lint. One full-suite run had `replay.test.ts`'s
+property test fail after 344 s; alone (1.8 s) and in a second full run it passed, cause unknown.
+
 ## Apply a fitted set whatever its verdict — deployed and phone checked
 
 2026-10-07, the reader: the Learning data table did not change after a fit, because no fit could
