@@ -35,11 +35,12 @@
 	let imported = $state<Fitted | null>(null);
 	let parameterProblem = $state<unknown>(null);
 	let parameterNote = $state('');
-	/** Why Apply is not offered for the imported set, or null when it is (FR-012). */
+	/**
+	 * Why Apply is not offered for the imported set, or null when it is (FR-012). A set that did not
+	 * predict better can still be applied (the reader, 2026-10-07); its verdict is shown beside it.
+	 */
 	const refusal = $derived.by(() => {
 		if (!imported || !inForce) return null;
-		if (imported.report?.applicable !== true)
-			return `Not applied: ${imported.report?.why ?? 'it has no report'}.`;
 		if (imported.comparedWith !== inForce.id)
 			return 'It was fitted against a different set than the one in force: export and fit again.';
 		return null;
@@ -262,8 +263,8 @@
 	{/if}
 	<p>
 		Fit on your laptop with <code>node scripts/fsrs/fit.mjs</code> on an export, then import the set it
-		writes. It can only be applied if it predicted your later reading better, with enough data, and your
-		card answers no worse.
+		writes. Its verdict says whether it predicted your later reading better, with enough data, and your
+		card answers no worse; you can apply it either way, and return to your current set at any time.
 	</p>
 	{#if fitting}
 		<p role="status">
@@ -304,7 +305,7 @@
 								repository.applyParameters($state.snapshot(imported))
 							),
 						'Applied.'
-					)}>Apply this set</button
+					)}>{imported.report?.applicable === true ? 'Apply this set' : 'Apply anyway'}</button
 			>
 		{/if}
 	{/if}

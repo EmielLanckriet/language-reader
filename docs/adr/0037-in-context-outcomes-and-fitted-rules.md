@@ -31,3 +31,12 @@ Consequences: memory shifts once when `evidence-3` ships (past checks become tap
 lose their Good). Older sessions count as blurred unless a blur-off was recorded. The guard means
 nothing can be applied until about 100 later in-context outcomes exist. Listening has inputs but
 no outcome yet.
+
+## Amendment 2026-10-07: the verdict informs, it does not forbid
+
+The reader reversed the guard: with 92 later in-context outcomes, every fit stopped at "too little
+data" and the Learning data table could not change. A fitted set can now be applied whatever its
+verdict, shown beside it, with **Apply anyway** for a set that did not pass; `applyParameters` no
+longer checks `applicable`. It still refuses an altered set or one fitted against a set no longer
+in force, since its verdict would then describe a different comparison. Return stays exact, so a
+set applied too early is undone in one step. The verdict and its minimum of 100 are unchanged.

@@ -86,14 +86,21 @@ describe('a fitted set', () => {
 		).toEqual([{ n: 2 }]);
 	});
 
-	it('is refused unless it predicted better, against the set in force, unaltered', async () => {
+	it('is refused unless fitted against the set in force, unaltered', async () => {
 		const { repository } = await reader();
 		const inForce = repository.parametersInForce().id;
-		expect(() => repository.applyParameters(fitted(inForce, false))).toThrow(/predict/);
 		expect(() => repository.applyParameters(fitted('someone-else'))).toThrow(/different set/);
 		const altered = { ...fitted(inForce), falseSuccess: 0.3 };
 		expect(() => repository.applyParameters(altered)).toThrow();
 		expect(repository.parametersInForce().id).toBe(inForce);
+	});
+
+	// The reader's choice (2026-10-07): the verdict informs, it does not forbid; Return undoes it.
+	it('is applied even when it did not predict better', async () => {
+		const { repository } = await reader();
+		const refused = fitted(repository.parametersInForce().id, false);
+		repository.applyParameters(refused);
+		expect(repository.parametersInForce().id).toBe(refused.id);
 	});
 
 	it('can always be returned to, and the history lists every change', async () => {

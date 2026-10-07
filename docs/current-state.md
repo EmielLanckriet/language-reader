@@ -3,6 +3,16 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Apply a fitted set whatever its verdict — deployed, not phone checked
+
+2026-10-07, the reader: the Learning data table did not change after a fit, because no fit could
+be applied: 92 later in-context outcomes, under the minimum of 100. The reader reversed ADR-0037's
+guard (amendment): Learning data shows each fit's verdict and offers **Apply anyway** when it did
+not pass; an altered set or one fitted against another set is still refused. Validation:
+`activation.test.ts` red first, browser `parameters` (fails when the refused set shows Apply this
+set) and `fithere`. Also measured on the phone: opening Learning data takes 17.3 s before Fit is
+enabled (the whole report is built first); not yet profiled.
+
 ## Anki words exported with stability 0 can be graded — deployed, not phone checked
 
 2026-10-06, the reader: grading 要不 on Cards gave "Invalid memory state". The Anki exporter rounded

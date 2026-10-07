@@ -1223,19 +1223,13 @@ export class Repository {
 	}
 
 	/**
-	 * Put a fitted set in force (FR-012): only an unaltered set whose report says it predicted
-	 * better, fitted against the set in force now. Memory follows in the background sweep.
+	 * Put a fitted set in force (FR-012): an unaltered set fitted against the set in force now.
+	 * Its verdict does not decide (the reader, 2026-10-07): Return undoes it exactly. Memory
+	 * follows in the background sweep.
 	 */
 	applyParameters(value: unknown): void {
 		checkParameterSet(value);
-		const set = value as ParameterSet & {
-			comparedWith?: unknown;
-			report?: { applicable?: unknown };
-		};
-		if (set.report?.applicable !== true)
-			throw new Error(
-				'This set did not predict better than the one in force, so it is not applied.'
-			);
+		const set = value as ParameterSet & { comparedWith?: unknown };
 		if (set.comparedWith !== this.inForce().id)
 			throw new Error(
 				'This set was fitted against a different set than the one in force: fit again.'

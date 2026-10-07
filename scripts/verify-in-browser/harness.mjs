@@ -1275,7 +1275,7 @@ const scenarios = {
 				'the fit to finish',
 				() =>
 					tab.evaluate(
-						`const t = document.body.innerText; return t.includes('Fitted here in') && t.includes('too little data while reading') && !t.includes('Apply this set') || null;`
+						`const t = document.body.innerText; return t.includes('Fitted here in') && t.includes('too little data while reading') && [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Apply anyway') || null;`
 					),
 				60000,
 				250
@@ -1299,7 +1299,8 @@ const scenarios = {
 		}
 	},
 
-	// Spec 013 Story 3: a refused set shows why; an applicable one is applied, listed, and returned
+	// Spec 013 Story 3: a set that did not predict better shows why and is offered as Apply anyway;
+	// an applicable one is applied, listed, and returned
 	// from. Uses the fixture sets next to this file, fitted against a fresh profile's defaults.
 	async parameters() {
 		const { readFileSync } = await import('node:fs');
@@ -1318,9 +1319,9 @@ const scenarios = {
 					return true;
 				`);
 			await until('the import field', () => choose(fixture('fitted-set-refused.json')));
-			const refused = await until('the refusal', () =>
+			const refused = await until('the verdict with Apply anyway', () =>
 				tab.evaluate(
-					`return document.body.innerText.includes('Not applied: did not predict better.') && ![...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Apply this set') || null;`
+					`const labels = [...document.querySelectorAll('button')].map((b) => b.textContent.trim()); return document.body.innerText.includes(': did not predict better') && labels.includes('Apply anyway') && !labels.includes('Apply this set') || null;`
 				)
 			);
 			await choose(fixture('fitted-set.json'));
