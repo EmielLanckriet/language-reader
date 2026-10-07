@@ -3,7 +3,7 @@
 Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Anki words outside the 2,000 most common set aside — deployed, not yet run on the phone
+## Anki words outside the 2,000 most common set aside — deployed and run on the phone
 
 2026-10-07, the reader: Cards showed 253 due, every one an Anki word; the 496 tapped words had none
 due. Measured on the phone: Anki words' median general-frequency rank 1,913, tapped words' 6,266.
@@ -15,6 +15,9 @@ after a Reader review. Validation: `set-aside.test.ts` and a memory test, red fi
 (example counted as met, isActive, review before the mark, top ignored, dry run writing, card 3 not
 stored) each caught; 553 tests, type check, lint. One full-suite run had `replay.test.ts`'s
 property test fail after 344 s; alone (1.8 s) and in a second full run it passed, cause unknown.
+Phone (build `1791389180533`, the reader's go-ahead after a dry run of 1,036): 1,036 marks written
+in 4.6 s; due 253 → 106; none left to set aside. Without the daily cap 656 new-word candidates,
+198 of them set-aside words already met; the other 838 wait to come up.
 
 ## Apply a fitted set whatever its verdict — deployed and phone checked
 
