@@ -8,12 +8,14 @@ import { windowPlan, keep, type Token } from '../../src/lib/speech/windows';
  */
 const duration = fc.double({ min: 0.5, max: 4000, noNaN: true });
 const first = fc.integer({ min: 5, max: 30 });
+/** Any window length the speech model takes: Reader's is 10 s since issue #30, 30 s before. */
+const length = fc.integer({ min: 5, max: 30 });
 
 describe('the window plan', () => {
 	it('keeps every moment of the audio in exactly one window', () => {
 		fc.assert(
-			fc.property(duration, first, (d, f) => {
-				const plan = windowPlan(d, { first: f, length: 30, overlap: 2 });
+			fc.property(duration, first, length, (d, f, l) => {
+				const plan = windowPlan(d, { first: f, length: l, overlap: 2 });
 				expect(plan[0].keepFrom).toBe(0);
 				expect(plan.at(-1)!.keepTo).toBe(d);
 				plan.forEach((w, i) => {
@@ -21,7 +23,7 @@ describe('the window plan', () => {
 					expect(w.keepTo).toBeGreaterThan(w.keepFrom);
 					expect(w.start).toBeLessThanOrEqual(w.keepFrom);
 					expect(w.end).toBeGreaterThanOrEqual(w.keepTo);
-					expect(w.end - w.start).toBeLessThanOrEqual(30);
+					expect(w.end - w.start).toBeLessThanOrEqual(Math.max(f, l));
 				});
 			})
 		);
@@ -29,8 +31,8 @@ describe('the window plan', () => {
 
 	it('survives JSON, since a resumed transcript recomputes and compares it', () => {
 		fc.assert(
-			fc.property(duration, first, (d, f) => {
-				const plan = windowPlan(d, { first: f, length: 30, overlap: 2 });
+			fc.property(duration, first, length, (d, f, l) => {
+				const plan = windowPlan(d, { first: f, length: l, overlap: 2 });
 				expect(JSON.parse(JSON.stringify(plan))).toEqual(plan);
 			})
 		);
@@ -42,9 +44,10 @@ describe('keeping a window’s tokens', () => {
 		fc.assert(
 			fc.property(
 				duration,
+				length,
 				fc.array(fc.double({ min: 0, max: 1, noNaN: true }), { maxLength: 200, size: 'max' }),
-				(d, fractions) => {
-					const plan = windowPlan(d, { first: 10, length: 30, overlap: 2 });
+				(d, l, fractions) => {
+					const plan = windowPlan(d, { first: 10, length: l, overlap: 2 });
 					const tokens: Token[] = fractions.map((x, i) => [`t${i}`, x * d * 0.999]);
 					const kept = plan.flatMap((w, i) =>
 						keep(

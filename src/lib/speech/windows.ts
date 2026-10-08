@@ -2,10 +2,14 @@
  * Where the audio is cut for the speech model, and which part of each cut is kept (research R3).
  *
  * SenseVoice is built for at most 30 s of audio; longer windows dropped phrases on the street
- * interview, and cutting at pauses either skipped quiet voices or found no pauses. So: fixed 30 s
+ * interview, and cutting at pauses either skipped quiet voices or found no pauses. So: fixed
  * windows overlapping by 2 s, each keeping its tokens from the middle of one overlap to the middle
- * of the next, which keeps a word cut at a boundary whole. The first window is shorter so that the
- * first lines arrive sooner (Principle VIII); measured to cost no accuracy.
+ * of the next, which keeps a word cut at a boundary whole.
+ *
+ * 10 s long, not 30 (issue #30): under music and sound effects a long window drops whole phrases.
+ * Measured 2026-10-08 against human subtitles over 10 minutes each: a cartoon film 44% of its
+ * characters right at 30 s, 57% at 20, 74% at 15, 81% at 10; a talking vlog 99% at every length.
+ * About a fifth more compute than 30 s on the laptop (scripts/measure/sensevoice/cer.py).
  */
 
 /** A recognised token and its time in the whole recording, in seconds. */
@@ -25,7 +29,7 @@ export interface WindowSettings {
 	overlap: number;
 }
 
-export const WINDOWS: WindowSettings = { first: 10, length: 30, overlap: 2 };
+export const WINDOWS: WindowSettings = { first: 10, length: 10, overlap: 2 };
 
 export function windowPlan(duration: number, settings: WindowSettings = WINDOWS): Window[] {
 	const { first, length, overlap } = settings;

@@ -69,3 +69,15 @@ ADR-0017's "Termux is needed only while an import is finishing" (as amended by A
     measured 2026-09-29: 29–33 s per 28 s window on the live page, kept in check by the lead);
   - Hugging Face's pinned revision disappears, in which case Termux fetching the model becomes the
     route.
+
+## Amendment 2026-10-08: 10 s windows (issue #30)
+
+PAW Patrol came out with a fifth of its lines (20 of 102) one-character scraps: under music and sound effects
+a 30 s window drops whole phrases, keeping a syllable or nothing, while a window placed or sized
+differently hears them. Measured against human subtitles over 10 minutes each
+(`scripts/measure/sensevoice/cer.py`): a 熊出没 film 44% of its characters right at 30 s, 57% at
+20 s, 74% at 15 s, 81% at 10 s, with inserted characters rising from 14 to 65 of 723; a talking
+vlog 99% at every length. So every window is now 10 s, overlapping 2 s, at about a fifth more
+laptop compute (45 s against 38 s for 12 minutes of audio); phone time is to be measured. A
+second pass over the gaps a 30 s pass left recovered less than shorter windows alone and was not
+kept. A transcript saved under the old method restarts rather than mixing the two.

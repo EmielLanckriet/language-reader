@@ -16,6 +16,9 @@ version.
 
 ## Laptop
 
+- `app-tokens.mjs` — the app's pipeline over a recording as JSON tokens, at any window settings;
+  `cer.py` scores several window lengths against a human subtitle track (issue #30, which moved
+  Reader from 30 s to 10 s windows).
 - `sherpa_ref.py` — sherpa-onnx's transcript in fixed windows, the reference.
 - `check.mjs` — the JS pipeline against that reference, window by window (`web` or `node`
   runtime). Expect identical text except at near-tied tokens.

@@ -3,6 +3,16 @@
 Updated 2026-10-08. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## 10 s transcription windows (#30) — built, not yet on the phone
+
+2026-10-08: a PAW Patrol episode transcribed with a fifth of its lines (20 of 102) one-character scraps.
+Measured: not the line rule or the window overlap, but speech dropped under music by 30 s windows.
+Against human subtitles over 10 minutes, a 熊出没 film went from 44% of characters right at 30 s
+windows to 81% at 10 s; a talking vlog stayed at 99% (ADR-0029 amendment). Windows are now 10 s.
+Laptop: about a fifth more compute. Not yet measured on the phone: time per episode, and how the
+remaining PAW Patrol episodes come out. Episodes 1–2 were transcribed under 30 s windows and are
+kept as they are (the reader's choice).
+
 ## A sentence seen before counts less (`evidence-4`, `fit-2`, #6) — built, not yet on the phone
 
 2026-10-08, the reader: a word understood in a sentence already read or watched may be remembered
