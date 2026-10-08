@@ -11,8 +11,11 @@ Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
 offered from an empty copy · #28 a failed download stays at "packing", then vanishes from New.
 
+Important: #29 find which information predicts understanding, and which exposures help.
+
 Cards and memory: #6 weigh encounters in an
-already-watched video · #18 fit the evidence rule · #20 Anki reset and live recall.
+already-watched video (built, phone check open) · #18 fit the evidence rule · #20 Anki reset and
+live recall.
 
 Library and content: #8 delete a video or text · #9 switch subtitle track after import · #10
 generated story with due words · #11 find YouTube videos by due and new words · #13 video
@@ -30,6 +33,15 @@ not in the card queue, but reading and listening still record evidence, so its m
 it activates. Open: the thresholds; occurrences or separate lines (as the library's recurring words
 count); what happens to cards already active that don't meet the rule; whether a lookup activates
 a word sooner; whether the library's due counts follow the same rule.
+
+## Which information predicts understanding, which exposures help — #29 (important)
+
+2026-10-08, the reader: wants to learn from the data which inputs predict understanding in context
+(for the fit) and which exposures are worth the time (bike listening, rewatching, how many times).
+Today an inattentive or listen-only exposure reaches neither FSRS nor the fit, so the data cannot
+show it helps. Plan, data estimates and confounders in the issue. The reader's main confounder for
+bike listening: how clearly the story comes through by sound alone (Peppa Pig: sound effects,
+expressive voices). A randomised choice of bike videos would separate it from rewatching.
 
 ## Encounters in an already-watched video — built as `evidence-4` (#6)
 
