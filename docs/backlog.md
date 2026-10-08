@@ -5,11 +5,11 @@ this file keeps the reasoning and measurements behind them. Each entry's heading
 When adding an entry, open its issue; when closing an issue, update or remove its entry here.
 Entries newest first.
 
-## Index of open issues (2026-10-05)
+## Index of open issues (2026-10-08)
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy.
+offered from an empty copy · #28 a failed download stays at "packing", then vanishes from New.
 
 Cards and memory: #6 weigh encounters in an
 already-watched video · #18 fit the evidence rule · #20 Anki reset and live recall.
