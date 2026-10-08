@@ -3,6 +3,7 @@ import { default_w } from 'ts-fsrs';
 import {
 	applicable,
 	baselineSet,
+	checkParameterSet,
 	compare,
 	cutoffOf,
 	fit,
@@ -63,8 +64,15 @@ function simulate(truth: ParameterSet, words: number, seed = 7): FitWord[] {
 					const seen =
 						next() < truth.falseSuccess + (1 - truth.falseSuccess - truth.falseFailure) * r;
 					session++;
+					// Half of them in a sentence seen up to a month before (issue #6).
+					const rewatch = next() < 0.5 ? { rewatchDays: next() * 30 } : {};
 					if (seen) {
-						h.exposures.push({ ...ordered(), sessionId: session, modality: 'reading' });
+						h.exposures.push({
+							...ordered(),
+							sessionId: session,
+							modality: 'reading',
+							...rewatch
+						});
 						h.answers.set(session, 'all');
 					} else
 						h.events.push({
@@ -85,7 +93,13 @@ const start = baselineSet([...default_w], 0.9);
 const truth: ParameterSet = (() => {
 	const set = {
 		...start,
-		strengths: { seenReading: 0.5, seenListening: 1, tapStability: 2 },
+		strengths: {
+			seenReading: 0.5,
+			seenListening: 1,
+			tapStability: 2,
+			rewatchDiscount: 0.9,
+			rewatchHalfLife: 14
+		},
 		falseSuccess: 0.15,
 		falseFailure: 0.05
 	};
@@ -112,6 +126,14 @@ describe('fitting', { timeout: 60_000 }, () => {
 		expect(fittedLoss).toBeLessThanOrEqual(loss(score(words, truth), cutoff) * 1.02);
 		// And it moved: today's rule predicts worse.
 		expect(fittedLoss).toBeLessThan(loss(score(words, start), cutoff));
+	});
+
+	// Not towards the truth: measured 2026-10-08, across discounts 0 to 1 the earlier loss here moves
+	// by 1.3 of 768, noise favouring the low end. The data barely tells the discount; the fit must
+	// still be able to move it.
+	it('fits the rewatch strengths too', () => {
+		expect(fitted.set.strengths.rewatchDiscount).not.toBe(0.5);
+		expect(fitted.set.strengths.rewatchHalfLife).not.toBe(14);
 	});
 
 	it('gives the same parameters every time', () => {
@@ -193,5 +215,35 @@ describe('the verdict', () => {
 		const card = compare(score(words, truth), score(words, start), 'card', cutoff);
 		expect(inContext.verdict).toBe('better');
 		expect(applicable(inContext, card)).toEqual({ ok: true, why: 'predicted better' });
+	});
+});
+
+describe('a set stored before the rewatch strengths (issue #6)', () => {
+	// The baseline as `fit-1` named it: its id was computed before rewatching had numbers of its own.
+	const stored = {
+		id: 'ec0e6825',
+		model: 'fit-1',
+		weights: [...default_w],
+		strengths: { seenReading: 1, seenListening: 1, tapStability: 1 },
+		falseSuccess: 0,
+		falseFailure: 0,
+		retention: 0.9
+	};
+
+	it('is still accepted under its own id', () => {
+		expect(() => checkParameterSet(stored)).not.toThrow();
+	});
+
+	it('is fitted onwards into a set with the rewatch strengths, from where they start', () => {
+		const set = baselineSet([...default_w], 0.9);
+		expect(set.model).toBe('fit-2');
+		expect(set.strengths).toMatchObject({ rewatchDiscount: 0.5, rewatchHalfLife: 14 });
+		expect(() => checkParameterSet(set)).not.toThrow();
+		const fitted = fit(simulate(truth, 20), stored as ParameterSet, Infinity, {
+			iterations: 1,
+			gammas: [1]
+		}).set;
+		expect(fitted.model).toBe('fit-2');
+		expect(fitted.strengths.rewatchHalfLife).toBeCloseTo(14, 0);
 	});
 });

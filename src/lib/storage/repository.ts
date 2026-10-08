@@ -1398,20 +1398,41 @@ export class Repository {
 		// One exposure per session and text visibility, the earliest: the rule counts a word met in a
 		// session at most once, and a session's every 5 s chunk covering the word made this the cost
 		// of recomputing a busy word (measured 2026-09-27: 1.2 s a session at 20,000 encounters).
-		// Grouped by occurrence too, so that whether English was shown over each one can be asked.
-		const rows = queryRows(
+		// Grouped by occurrence too, so that whether English was shown over each one can be asked,
+		// and when its sentence was seen before (issue #6). A withdrawn session's evidence counts for
+		// nothing, but its sentences were still seen.
+		const all = queryRows(
 			this.db,
 			`SELECT e.session_id, s.modality, s.document_id, e.text_visible, MIN(e.device_seq) AS device_seq,
-              e.device_id, MIN(e.at) AS at, t.start, t."end"
+              e.device_id, MIN(e.at) AS at, t.start, t."end",
+              e.session_id IN (${WITHDRAWN}) AS withdrawn
        FROM token t
        JOIN encounter e ON e.document_id = t.document_id
                        AND e.from_offset < t.end AND e.from_offset > t.start - ${MAX_RANGE}
                        AND e.to_offset > t.start AND e.kind IN ('read', 'played')
        JOIN session s ON s.id = e.session_id
-       WHERE t.lexeme_id = ? AND e.session_id NOT IN (${WITHDRAWN})
+       WHERE t.lexeme_id = ?
        GROUP BY e.session_id, e.text_visible, e.device_id, t.start`,
 			[lexemeId]
 		);
+		const rows = all.filter((row) => row.withdrawn === 0);
+		const viewings = new Map<string, { session: number; at: number }[]>();
+		for (const row of all) {
+			const occurrence = `${row.document_id} ${row.start}`;
+			viewings.set(occurrence, [
+				...(viewings.get(occurrence) ?? []),
+				{ session: Number(row.session_id), at: Date.parse(String(row.at)) }
+			]);
+		}
+		/** Days since this occurrence's sentence was last seen in another session, or undefined. */
+		const rewatchDays = (row: Row) => {
+			const at = Date.parse(String(row.at));
+			const before = viewings
+				.get(`${row.document_id} ${row.start}`)!
+				.filter((v) => v.session !== Number(row.session_id) && v.at < at);
+			if (before.length === 0) return undefined;
+			return (at - Math.max(...before.map((v) => v.at))) / 86_400_000;
+		};
 		const helpIn = this.englishShown(rows);
 		const grouped = new Map<string, Exposure>();
 		for (const row of rows) {
@@ -1421,11 +1442,22 @@ export class Repository {
 				Number(row.start),
 				Number(row.end)
 			);
+			const days = rewatchDays(row);
 			const kept = grouped.get(key);
-			if (!kept) grouped.set(key, { ...ordered(row), ...optional(row), helped } as Exposure);
+			if (!kept)
+				grouped.set(key, {
+					...ordered(row),
+					...optional(row),
+					helped,
+					...(days === undefined ? {} : { rewatchDays: days })
+				} as Exposure);
 			else {
 				// Helped only if every occurrence was; the earliest stands for the group.
 				kept.helped = kept.helped && helped;
+				// Seen before only if every occurrence's sentence was; then the freshest one counts.
+				if (days === undefined) delete kept.rewatchDays;
+				else if (kept.rewatchDays !== undefined)
+					kept.rewatchDays = Math.max(kept.rewatchDays, days);
 				if (Number(row.device_seq) < kept.deviceSeq) Object.assign(kept, ordered(row));
 			}
 		}

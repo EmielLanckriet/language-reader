@@ -489,3 +489,36 @@ describe('a card from knowing (issue #5)', () => {
 		expect(reading(h)?.card).toBe(true);
 	});
 });
+
+describe('a sentence seen before (issue #6)', () => {
+	// Untapped in a sentence already read or watched, a word may be understood from memory of the
+	// line: the Good counts for less, a discount halving with every 14 days since the line was seen.
+	const allIn = (...sessions: number[]) =>
+		new Map(sessions.map((session) => [session, 'all' as const]));
+	const rewatch = (session: number, when: string, days: number): Exposure => ({
+		...seen(session, when),
+		rewatchDays: days
+	});
+	const stability = (h: WordHistory) => memoryOf(h).reading!.stability;
+	const fresh = stability(history({ exposures: [seen(2, at(5))], answers: allIn(2) }));
+
+	it('counts half a Good just after the first viewing, the discount halving every 14 days', () => {
+		const after = (days: number) =>
+			stability(history({ exposures: [rewatch(2, at(5), days)], answers: allIn(2) }));
+		expect(after(0)).toBeCloseTo(fresh * 0.5, 10);
+		expect(after(14)).toBeCloseTo(fresh * 0.75, 10);
+	});
+
+	it('counts a day with a sentence not seen before in full, whatever was rewatched earlier', () => {
+		const h = history({
+			exposures: [rewatch(2, at(5, 9), 0), seen(3, at(5, 11))],
+			answers: allIn(2, 3)
+		});
+		expect(stability(h)).toBe(fresh);
+	});
+
+	it('does not make a word known: that takes two sessions in sentences not seen before', () => {
+		const h = history({ exposures: [seen(1, at(3)), rewatch(2, at(5), 2)], answers: allIn(1, 2) });
+		expect(memoryOf(h).reading?.known).toBeFalsy();
+	});
+});

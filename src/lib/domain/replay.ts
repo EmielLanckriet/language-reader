@@ -17,6 +17,7 @@ export interface PreparedStep {
 	at: number;
 	grade: 1 | 2 | 3 | 4;
 	from?: 'tap' | 'seen';
+	rewatchDays?: number;
 	/** Scored here: a card answer or an in-context observation. */
 	type?: 'card' | 'in-context';
 }
@@ -56,6 +57,7 @@ export function prepare(history: WordHistory): PreparedSkill[] {
 				at: Date.parse(e.at),
 				grade: e.rating as 1 | 2 | 3 | 4,
 				...(e.from ? { from: e.from } : {}),
+				...(e.rewatchDays === undefined ? {} : { rewatchDays: e.rewatchDays }),
 				...(e.review ? { type: 'card' as const } : e.context ? { type: 'in-context' as const } : {})
 			}))
 		};
@@ -114,13 +116,14 @@ export function replay(
 			}
 			const t = last === undefined ? 0 : calendarDays(last, now);
 			const next = nextState(w, memory, Math.max(t, 0), step.grade);
-			if (rule && step.from)
+			if (step.from)
 				next.stability = strengthened(
 					memory?.stability ?? 0,
 					next.stability,
 					step.from,
 					skill,
-					rule
+					rule,
+					step.rewatchDays
 				);
 			memory = next;
 			last = now;

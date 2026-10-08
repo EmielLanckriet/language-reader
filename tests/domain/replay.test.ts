@@ -32,6 +32,7 @@ const step = fc.record({
 	media: fc.boolean(),
 	textVisible: fc.boolean(),
 	helped: fc.boolean(),
+	rewatchDays: fc.option(fc.double({ min: 0, max: 200, noNaN: true }), { nil: undefined }),
 	answer: fc.constantFrom('all', 'all', 'some', null)
 });
 
@@ -72,7 +73,14 @@ function historyOf(steps: ValueOf<typeof step>[], imported?: ValueOf<typeof seed
 				detail: {}
 			});
 		else {
-			h.exposures.push({ ...ordered, sessionId: i, modality, textVisible, helped: s.helped });
+			h.exposures.push({
+				...ordered,
+				sessionId: i,
+				modality,
+				textVisible,
+				helped: s.helped,
+				...(s.rewatchDays === undefined ? {} : { rewatchDays: s.rewatchDays })
+			});
 			h.answers.set(i, s.answer);
 		}
 	});
@@ -82,7 +90,9 @@ function historyOf(steps: ValueOf<typeof step>[], imported?: ValueOf<typeof seed
 const strengths = fc.record({
 	seenReading: fc.double({ min: 0, max: 2, noNaN: true }),
 	seenListening: fc.double({ min: 0, max: 2, noNaN: true }),
-	tapStability: fc.double({ min: 0.2, max: 5, noNaN: true })
+	tapStability: fc.double({ min: 0.2, max: 5, noNaN: true }),
+	rewatchDiscount: fc.double({ min: 0, max: 1, noNaN: true }),
+	rewatchHalfLife: fc.double({ min: 1, max: 180, noNaN: true })
 });
 
 describe('the fit replay', () => {

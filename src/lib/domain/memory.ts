@@ -20,7 +20,7 @@ import { ankiSeedOf, isFromAnki, type AnkiSeed, type FsrsParameters } from './an
 import type { AttentionAnswer, Modality, Skill } from './encounter';
 import { RETRACTED } from './state';
 
-export const RULE = 'evidence-3';
+export const RULE = 'evidence-4';
 /** How due dates follow from a memory: part of what a stored memory was computed under. */
 const SCHEDULE = 'no-steps';
 /** Which words are active cards (issue #5): part of what a stored memory was computed under. */
@@ -57,6 +57,11 @@ export interface Exposure extends Ordered {
 	textVisible?: boolean;
 	/** Every occurrence the stretch covered was under shown English (helped.ts). */
 	helped?: boolean;
+	/**
+	 * Days since every occurrence's sentence was last read or watched, in an earlier session (issue
+	 * #6): the freshest one's. Absent when one of them had not been seen before.
+	 */
+	rewatchDays?: number;
 }
 
 export interface WordHistory {
@@ -80,18 +85,29 @@ export interface Evidence {
 	context?: Pick<Ordered, 'deviceId' | 'deviceSeq'>;
 	/** What the rating stands for when it is not a card answer: how strongly it counts is fitted. */
 	from?: 'tap' | 'seen';
+	/** A seen word in a sentence seen this many days before (Exposure.rewatchDays). */
+	rewatchDays?: number;
 }
 
 /**
  * How strongly a tap and a word read untapped count (spec 013, `fit-1`), as multiples of the FSRS
  * step they stand in for: a seen word moves stability `seen…` of the way a Good would; a tap leaves
  * `tapStability` times what an Again would. All 1 is `evidence-3` as it stands.
+ *
+ * In a sentence seen `days` before (issue #6, `fit-2`), a seen word counts `1 − d · 2^(−days / h)`
+ * of that, `d` the discount and `h` its half-life in days. A `fit-1` set has neither: the defaults.
  */
 export interface RuleStrengths {
 	seenReading: number;
 	seenListening: number;
 	tapStability: number;
+	rewatchDiscount?: number;
+	rewatchHalfLife?: number;
 }
+
+/** Guesses (the reader, 2026-10-08), where the fit starts and what a rule without them uses. */
+export const REWATCH = { rewatchDiscount: 0.5, rewatchHalfLife: 14 };
+const NEUTRAL: RuleStrengths = { seenReading: 1, seenListening: 1, tapStability: 1 };
 
 const S_MAX = 36500;
 
@@ -101,14 +117,20 @@ export function strengthened(
 	after: number,
 	from: 'tap' | 'seen',
 	skill: Skill,
-	rule: RuleStrengths
+	rule: RuleStrengths = NEUTRAL,
+	rewatchDays?: number
 ): number {
-	const strength =
+	let strength =
 		from === 'tap'
 			? rule.tapStability
 			: skill === 'reading'
 				? rule.seenReading
 				: rule.seenListening;
+	if (from === 'seen' && rewatchDays !== undefined) {
+		const d = rule.rewatchDiscount ?? REWATCH.rewatchDiscount;
+		const h = rule.rewatchHalfLife ?? REWATCH.rewatchHalfLife;
+		strength *= 1 - d * 2 ** (-rewatchDays / h);
+	}
 	// Exactly FSRS's own step at 1: `before + (after − before)` can differ from `after` in the last bit.
 	if (strength === 1) return after;
 	const adjusted = from === 'tap' ? after * strength : before + strength * (after - before);
@@ -227,6 +249,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 	};
 	const counted = new Set<string>();
 	const once = (key: string) => (counted.has(key) ? false : (counted.add(key), true));
+	const seenOn = new Map<string, Evidence>();
 
 	const attentive = new Set<number>();
 	type Item = { event?: HistoryEvent; exposure?: Exposure };
@@ -262,16 +285,29 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			if (exposure.helped) continue;
 			if (history.answers.get(exposure.sessionId) !== 'all') continue;
 			if (lookedIn.has(exposure.sessionId)) continue;
-			attentive.add(exposure.sessionId);
-			if (!once(`seen ${skill} ${exposure.at.slice(0, 10)}`)) continue;
-			found[skill].evidence.push({
+			// Known takes two contexts: a sentence seen again may be understood from memory of it.
+			if (exposure.rewatchDays === undefined) attentive.add(exposure.sessionId);
+			const day = `${skill} ${exposure.at.slice(0, 10)}`;
+			const earlier = seenOn.get(day);
+			if (earlier) {
+				// One Good a day, counted as the freshest sentence that day would count it.
+				if (earlier.rewatchDays !== undefined) {
+					if (exposure.rewatchDays === undefined) delete earlier.rewatchDays;
+					else earlier.rewatchDays = Math.max(earlier.rewatchDays, exposure.rewatchDays);
+				}
+				continue;
+			}
+			const evidence: Evidence = {
 				at: exposure.at,
 				rating: GOOD,
 				from: 'seen',
+				...(exposure.rewatchDays === undefined ? {} : { rewatchDays: exposure.rewatchDays }),
 				...(skill === 'reading'
 					? { context: { deviceId: exposure.deviceId, deviceSeq: exposure.deviceSeq } }
 					: {})
-			});
+			};
+			seenOn.set(day, evidence);
+			found[skill].evidence.push(evidence);
 		}
 	}
 	found.known = !events.some(isTap) && attentive.size >= KNOWN_SESSIONS;
@@ -348,8 +384,9 @@ function seededCard(f: FSRS, seed: AnkiSeed): Card {
 function fold(
 	f: FSRS,
 	skill: SkillEvidence,
-	observe?: (evidence: Evidence, card: Card | undefined, now: Date, dated: boolean) => void,
-	rule?: { strengths: RuleStrengths; skill: Skill }
+	observe:
+		((evidence: Evidence, card: Card | undefined, now: Date, dated: boolean) => void) | undefined,
+	rule: { strengths?: RuleStrengths; skill: Skill }
 ): Card | undefined {
 	let card = skill.seed ? seededCard(f, skill.seed) : undefined;
 	let latest = card?.last_review?.getTime() ?? -Infinity;
@@ -362,11 +399,17 @@ function fold(
 		observe?.(evidence, card, now, dated);
 		const before = card?.stability ?? 0;
 		card = f.next(card ?? createEmptyCard(now), now, rating).card;
-		const adjusted =
-			rule && evidence.from
-				? strengthened(before, card.stability, evidence.from, rule.skill, rule.strengths)
-				: card.stability;
-		// Only a strength other than 1 touches the stability, so today's rule stays exactly ts-fsrs's.
+		const adjusted = evidence.from
+			? strengthened(
+					before,
+					card.stability,
+					evidence.from,
+					rule.skill,
+					rule.strengths,
+					evidence.rewatchDays
+				)
+			: card.stability;
+		// Only a strength other than 1 touches the stability, so a fresh sentence stays exactly ts-fsrs's.
 		card.stability = adjusted;
 		card.due = dueAfter(f, now, card.stability);
 		dated = true;
@@ -400,7 +443,7 @@ export function reviewPredictions(
 	const f = scheduler(parameters, false);
 	const predictions: ReviewPrediction[] = [];
 	for (const skill of ['reading', 'listening'] as const) {
-		const rule = strengths && { strengths, skill };
+		const rule = { strengths, skill };
 		fold(
 			f,
 			found[skill],
@@ -441,7 +484,7 @@ export function memoryOf(
 	const f = scheduler(parameters);
 	const memory: Partial<Record<Skill, Memory>> = {};
 	for (const skill of ['reading', 'listening'] as const) {
-		const card = fold(f, found[skill], undefined, strengths && { strengths, skill });
+		const card = fold(f, found[skill], undefined, { strengths, skill });
 		if (!card) continue;
 		const seed = found[skill].seed;
 		memory[skill] = {

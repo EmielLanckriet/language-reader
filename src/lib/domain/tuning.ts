@@ -5,8 +5,11 @@ import { RULE, reviewPredictions, type ReviewPrediction, type WordHistory } from
 import type { ParameterSet } from './fit';
 
 export const TUNING_SCHEDULER = 'ts-fsrs@5.4.2';
-/** Rules a format-1 export may have been made under; its raw history replays under `RULE`. */
-const READABLE_RULES = ['evidence-2', RULE];
+/**
+ * Rules an export may have been made under; its raw history replays under `RULE`. One from before
+ * `evidence-4` has no `rewatchDays`, so it replays as if every sentence was new.
+ */
+const READABLE_RULES = ['evidence-2', 'evidence-3', RULE];
 
 export interface TuningDataset {
 	/** 2 (spec 013): exposures carry `helped`, and words without reviews are included. */
@@ -111,6 +114,9 @@ export function validateDataset(value: unknown): asserts value is TuningDataset 
 				if (kind === 'exposures') {
 					integer(event.sessionId);
 					text(event.modality);
+					const days = event.rewatchDays;
+					if (days !== undefined && !(typeof days === 'number' && days >= 0 && days < Infinity))
+						throw new Error('Invalid days since a sentence was seen.');
 				}
 				if (kind === 'events') {
 					if (!['lookup', 'check', 'review'].includes(String(event.kind)))

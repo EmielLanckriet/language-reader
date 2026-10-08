@@ -31,7 +31,11 @@ it activates. Open: the thresholds; occurrences or separate lines (as the librar
 count); what happens to cards already active that don't meet the rule; whether a lookup activates
 a word sooner; whether the library's due counts follow the same rule.
 
-## Encounters in an already-watched video — #6
+## Encounters in an already-watched video — built as `evidence-4` (#6)
+
+Built 2026-10-08 (current-state.md, ADR-0037 amendment): a seen word in a sentence seen before
+counts less, by a fitted discount fading with a fitted half-life. Taps unchanged.
+
 
 2026-10-05, the reader: in a video already watched, a word is understood more easily from memory
 of the context or the line itself, and might not be understood elsewhere. So whether an encounter

@@ -40,3 +40,16 @@ verdict, shown beside it, with **Apply anyway** for a set that did not pass; `ap
 longer checks `applicable`. It still refuses an altered set or one fitted against a set no longer
 in force, since its verdict would then describe a different comparison. Return stays exact, so a
 set applied too early is undone in one step. The verdict and its minimum of 100 are unchanged.
+
+## Amendment 2026-10-08: a sentence seen before counts less (`evidence-4`, `fit-2`, issue #6)
+
+The reader: a word in a sentence already read or watched may be understood from memory of the
+line, not in a new context. A seen word whose every sentence in the session was seen in an earlier
+session (withdrawn ones included: the evidence is withdrawn, not the viewing) counts
+`1 − d · 2^(−days / h)` of an ordinary seen word, `days` since the freshest sentence was last seen.
+`d` and `h` are fitted with the other strengths, starting from the guesses 0.5 and 14 days, which a
+rule with no fitted set also uses. Derived from the encounters, no new data. Such a session no
+longer counts towards a known card (ADR-0039). Taps are unchanged: Again is already the strongest
+failure. A stored `fit-1` set keeps its id and runs with the guesses; new sets are `fit-2`, so the
+Anki baseline's id changes and a set fitted against it before this must be fitted again. Until enough rewatched
+outcomes exist, the prior keeps `h` near its guess.

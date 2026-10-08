@@ -1,7 +1,22 @@
 # Current state
 
-Updated 2026-10-06. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-08. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## A sentence seen before counts less (`evidence-4`, `fit-2`, #6) — built, not yet on the phone
+
+2026-10-08, the reader: a word understood in a sentence already read or watched may be remembered
+from the line, not understood in a new context. An exposure now carries `rewatchDays`, derived in
+`wordHistory` from earlier read/played stretches over the same occurrence (withdrawn sessions
+included), the freshest of a session's occurrences, absent if any was new. Its Good counts
+`1 − d · 2^(−days / h)` of an ordinary one; `d` 0.5 and `h` 14 days are guesses, fitted with the
+other strengths (ADR-0037 amendment). A rewatch session no longer counts towards a known card.
+Stored `fit-1` sets keep their id and use the guesses; the Anki baseline's id changed. Validation:
+memory, replay, fit and a storage test, red first; nine mutations each caught; 560 tests, type
+check, lint. Measured on simulated data (400 words, 677 rewatches): the earlier-period loss moves
+1.3 of 768 across `d` from 0 to 1, so the fit can barely tell it; expect `d` and `h` to stay near the
+guesses for months. Not yet measured: how many of the reader's exposures are rewatches, and how
+the due count moves when memory is recomputed.
 
 ## Anki words outside the 2,000 most common set aside — deployed and run on the phone
 

@@ -183,11 +183,15 @@ it('excludes unread occurrences and withdrawn encounters, including from the que
 
 it('offers a known word as due outside the budget, stored and read back as known (issue #5)', async () => {
 	const repository = new Repository(await freshDatabase());
-	const [documentId] = await buildHistory(repository, ['我看书你好将来'], []);
+	// The word in two sentences, one read in each session: a sentence read again would not count.
+	const [documentId] = await buildHistory(repository, ['我看书。\n我来了。'], []);
 	const word = repository.getDocument(documentId).tokens.find((t) => t.isWord)!.lexemeId!;
-	for (const day of ['2026-10-01', '2026-10-03']) {
+	for (const [day, fromOffset] of [
+		['2026-10-01', 0],
+		['2026-10-03', 5]
+	] as const) {
 		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
-			{ kind: 'read', at: `${day}T10:00:00Z`, documentId, fromOffset: 0, toOffset: 7 },
+			{ kind: 'read', at: `${day}T10:00:00Z`, documentId, fromOffset, toOffset: fromOffset + 4 },
 			{ kind: 'attention', at: `${day}T10:05:00Z`, detail: { answer: 'all' } }
 		]);
 	}

@@ -54,7 +54,13 @@ function fitted(comparedWith: string, applicable = true): ParameterSet & Record<
 	const set = {
 		model: base.model,
 		weights: base.weights,
-		strengths: { seenReading: 0.4, seenListening: 1, tapStability: 3 },
+		strengths: {
+			seenReading: 0.4,
+			seenListening: 1,
+			tapStability: 3,
+			rewatchDiscount: 0.3,
+			rewatchHalfLife: 20
+		},
 		falseSuccess: 0.1,
 		falseFailure: 0.05,
 		retention: 0.9

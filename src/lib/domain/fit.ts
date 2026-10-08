@@ -1,6 +1,7 @@
 /**
  * Fitting personal parameters (spec 013, ADR-0037, research R4–R5): FSRS-6's 21 weights, how
- * strongly a tap and a word read untapped count, and how noisy in-context observations are.
+ * strongly a tap and a word read untapped count, how noisy in-context observations are, and how
+ * much less a sentence seen before counts (issue #6).
  *
  * - Only outcomes before the cutoff (the 80% timestamp, as `evaluateDataset`) are fitted; the rest
  *   are scored afterwards with the parameters frozen.
@@ -13,18 +14,20 @@
  */
 
 import { prepare, replay, type PreparedSkill } from './replay';
-import type { RuleStrengths, WordHistory } from './memory';
+import { REWATCH, type RuleStrengths, type WordHistory } from './memory';
 import type { Skill } from './encounter';
 import { clockAmbiguous, validateDataset, type TuningDataset } from './tuning';
 import { CLAMP_PARAMETERS, default_w, W17_W18_Ceiling } from 'ts-fsrs';
 
-export const MODEL = 'fit-1';
+/** `fit-2` added the rewatch strengths; a stored `fit-1` set keeps its id and uses their defaults. */
+export const MODEL = 'fit-2';
+const MODELS = ['fit-1', MODEL];
 /** Fewer later outcomes of a type than this, and no verdict is given (spec assumption). */
 export const MIN_OUTCOMES = 100;
 
 export interface ParameterSet {
 	id: string;
-	model: typeof MODEL;
+	model: 'fit-1' | typeof MODEL;
 	weights: number[];
 	strengths: RuleStrengths;
 	/** P(observed understood) = falseSuccess + (1 − falseSuccess − falseFailure) · recall. */
@@ -39,38 +42,53 @@ export interface FitWord {
 	prepared: PreparedSkill[];
 }
 
-/** fsrs-rs's per-weight prior spread for FSRS-6 (training_v6.rs), then the five extras'. */
+/** fsrs-rs's per-weight prior spread for FSRS-6 (training_v6.rs), then the seven extras'. */
 const SIGMA = [
 	6.43, 9.66, 17.58, 27.85, 0.57, 0.28, 0.6, 0.12, 0.39, 0.18, 0.33, 0.3, 0.09, 0.16, 0.57, 0.25,
-	1.03, 0.31, 0.32, 0.14, 0.27, 0.5, 0.5, 0.5, 0.05, 0.05
+	1.03, 0.31, 0.32, 0.14, 0.27, 0.5, 0.5, 0.5, 0.05, 0.05, 0.25, 10
 ];
-const EXTRA_CENTRE = [1, 1, 1, 0.1, 0.05];
+const EXTRA_CENTRE = [1, 1, 1, 0.1, 0.05, REWATCH.rewatchDiscount, REWATCH.rewatchHalfLife];
 const BOUNDS = [
 	...(CLAMP_PARAMETERS(W17_W18_Ceiling, true) as [number, number][]),
 	[0, 2],
 	[0, 2],
 	[0.2, 5],
 	[0, 0.4],
-	[0, 0.4]
+	[0, 0.4],
+	[0, 1],
+	[1, 365]
 ];
 
 function vectorOf(set: ParameterSet): number[] {
 	const { seenReading, seenListening, tapStability } = set.strengths;
+	const { rewatchDiscount, rewatchHalfLife } = { ...REWATCH, ...set.strengths };
 	return [
 		...set.weights,
 		seenReading,
 		seenListening,
 		tapStability,
 		set.falseSuccess,
-		set.falseFailure
+		set.falseFailure,
+		rewatchDiscount,
+		rewatchHalfLife
 	];
+}
+
+function strengthsOf(v: number[]): RuleStrengths {
+	return {
+		seenReading: v[21],
+		seenListening: v[22],
+		tapStability: v[23],
+		rewatchDiscount: v[26],
+		rewatchHalfLife: v[27]
+	};
 }
 
 function setOf(v: number[], retention: number): ParameterSet {
 	const set = {
 		model: MODEL as typeof MODEL,
 		weights: v.slice(0, 21),
-		strengths: { seenReading: v[21], seenListening: v[22], tapStability: v[23] },
+		strengths: strengthsOf(v),
 		falseSuccess: v[24],
 		falseFailure: v[25],
 		retention
@@ -102,9 +120,11 @@ export function checkParameterSet(value: unknown): asserts value is ParameterSet
 		throw new Error(`Not a usable parameter set: ${why}.`);
 	};
 	if (!set || typeof set !== 'object') return fail('not an object');
-	if (set.model !== MODEL) fail(`not a ${MODEL} set`);
+	if (!MODELS.includes(set.model as string)) fail(`not a ${MODEL} set`);
 	if (!Array.isArray(set.weights) || set.weights.length !== 21) fail('not 21 weights');
 	if (!set.strengths || typeof set.retention !== 'number') fail('missing fields');
+	const rewatch = ['rewatchDiscount', 'rewatchHalfLife'].filter((k) => k in set.strengths!);
+	if (rewatch.length !== (set.model === MODEL ? 2 : 0)) fail(`not the strengths of ${set.model}`);
 	const vector = vectorOf(set as ParameterSet);
 	if (!vector.every((x, i) => Number.isFinite(x) && x >= BOUNDS[i][0] && x <= BOUNDS[i][1]))
 		fail('a number outside its bounds');
@@ -112,9 +132,12 @@ export function checkParameterSet(value: unknown): asserts value is ParameterSet
 	if (set.id !== idOf(set as ParameterSet)) fail('altered since it was fitted');
 }
 
-/** Today's rule as a parameter set: these weights, every strength 1, no noise. */
+/** Today's rule as a parameter set: these weights, every strength 1, no noise, the rewatch guesses. */
 export function baselineSet(weights: number[], retention: number): ParameterSet {
-	return setOf([...weights, 1, 1, 1, 0, 0], retention);
+	return setOf(
+		[...weights, 1, 1, 1, 0, 0, REWATCH.rewatchDiscount, REWATCH.rewatchHalfLife],
+		retention
+	);
 }
 
 export function prepareWords(words: { id: number; history: WordHistory }[]): FitWord[] {
@@ -205,7 +228,7 @@ export function fit(
 /** The summed log loss of every observation before `cutoff` under these numbers. */
 function lossBefore(words: FitWord[], theta: number[], cutoff: number): number {
 	const weights = theta.slice(0, 21);
-	const strengths = { seenReading: theta[21], seenListening: theta[22], tapStability: theta[23] };
+	const strengths = strengthsOf(theta);
 	const [falseSuccess, falseFailure] = [theta[24], theta[25]];
 	let loss = 0;
 	for (const { prepared } of words)

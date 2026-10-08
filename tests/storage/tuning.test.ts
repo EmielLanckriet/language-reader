@@ -77,7 +77,7 @@ it('exports format 2: tapped and fully-answered words without reviews too, with 
 		]);
 		const data: unknown = JSON.parse(JSON.stringify(repo.tuningDataset()));
 		validateDataset(data);
-		expect(data).toMatchObject({ format: 2, rule: 'evidence-3' });
+		expect(data).toMatchObject({ format: 2, rule: 'evidence-4' });
 		const exported = new Map(data.words.map((w) => [w.id, w.history]));
 		const ids = (tokens: typeof words) => [...new Set(tokens.map((t) => t.lexemeId!))].sort();
 		expect([...exported.keys()].sort()).toEqual(ids([...onLine(0), ...onLine(1)]));
