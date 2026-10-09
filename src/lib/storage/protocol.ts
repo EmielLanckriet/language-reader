@@ -24,6 +24,7 @@ export type Call =
 	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'wordLines'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }
+	| { method: 'lastPlayed'; args: [number[]] }
 	| { method: 'deletedWithHistory'; args: [] }
 	| { method: 'withdrawDocument'; args: [number, string] }
 	| { method: 'readHistory'; args: [] }

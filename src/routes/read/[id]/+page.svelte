@@ -16,6 +16,7 @@
 	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 	import { upgradeOf } from '$lib/storage/upgrades';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
+	import { resumeOf } from '$lib/media/cover';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import Progress from '$lib/ui/Progress.svelte';
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
@@ -196,8 +197,11 @@
 		return () => (current = false);
 	});
 
-	/** Where to start playing, when arriving from a transcript that just finished. */
-	const startAt = Number(page.url.searchParams.get('t') ?? 0);
+	/**
+	 * Where to start playing, in seconds: `?t=` when given (a transcript that just finished, or the
+	 * document page's Start from the beginning), otherwise where playback last stopped.
+	 */
+	let startAt = $state(0);
 
 	/** Line i of a media document is cue i, so tokens are grouped by the line they start on. */
 	const lines = $derived.by(() => {
@@ -490,8 +494,17 @@
 			document = await bringUpToDate(repository, loaded);
 			states = await repository.getStates(lexemesIn(document));
 			await readMemory(lexemesIn(document));
-			media = await loadMedia(id);
-			if (media && !media.media && (await findVideo(id))) media = await loadMedia(id);
+			let found = await loadMedia(id);
+			if (found && !found.media && (await findVideo(id))) found = await loadMedia(id);
+			// Known before the player mounts: it seeks once, when the video's metadata loads.
+			const asked = page.url.searchParams.get('t');
+			startAt =
+				asked !== null
+					? Number(asked)
+					: found?.media
+						? await resumeOf(id, found.cues).catch(() => 0)
+						: 0;
+			media = found;
 		} catch (error) {
 			problem = error;
 			await record(error);

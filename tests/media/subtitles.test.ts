@@ -3,7 +3,8 @@ import {
 	classifyTracks,
 	defaultChoice,
 	lineAt,
-	parseSubtitles
+	parseSubtitles,
+	resumeAt
 } from '../../src/lib/media/subtitles';
 
 function chooseChineseTrack(tracks: { name: string; text: string }[]) {
@@ -118,5 +119,30 @@ describe('the line playing at a time', () => {
 		expect(lineAt(cues, 260.5)).toBe(0);
 		expect(lineAt(cues, 280)).toBe(2);
 		expect(lineAt(cues, 100)).toBe(-1);
+	});
+});
+
+describe('where a video continues', () => {
+	const cues = [
+		{ start: 10, end: 14, text: '一' },
+		{ start: 15, end: 19, text: '二' },
+		{ start: 30, end: 34, text: '三' }
+	];
+
+	it('goes back to the start of the line playback stopped in, or last passed', () => {
+		expect(resumeAt(17_500, 600_000, cues)).toBe(15);
+		expect(resumeAt(25_000, 600_000, cues)).toBe(15);
+		expect(resumeAt(15_000, 600_000, cues)).toBe(15);
+	});
+
+	it('starts from the beginning when never played, or stopped before the first line', () => {
+		expect(resumeAt(undefined, 600_000, cues)).toBe(0);
+		expect(resumeAt(8_000, 600_000, cues)).toBe(0);
+	});
+
+	it('starts from the beginning once playback came within 30 s of the end', () => {
+		expect(resumeAt(31_000, 61_000, cues)).toBe(0);
+		expect(resumeAt(31_000, 61_001, cues)).toBe(30);
+		expect(resumeAt(31_000, undefined, cues)).toBe(30);
 	});
 });

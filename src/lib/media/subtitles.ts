@@ -183,3 +183,21 @@ export function lineAt(cues: readonly Cue[], time: number): number {
 	for (let i = 0; i < cues.length && cues[i].start <= time + SEEK_SLACK; i++) at = i;
 	return at;
 }
+
+/** Within this much of the end, a video counts as finished and opens from the beginning again. */
+const FINISHED_WITHIN_MS = 30_000;
+
+/**
+ * Where a video continues, in seconds: the start of the line playback last stopped in, so the
+ * sentence is heard whole. Never played, before the first line, or finished: the beginning.
+ */
+export function resumeAt(
+	stoppedMs: number | undefined,
+	durationMs: number | undefined,
+	cues: readonly Cue[]
+): number {
+	if (stoppedMs === undefined) return 0;
+	if (durationMs !== undefined && stoppedMs >= durationMs - FINISHED_WITHIN_MS) return 0;
+	const line = lineAt(cues, stoppedMs / 1000);
+	return line < 0 ? 0 : cues[line].start;
+}

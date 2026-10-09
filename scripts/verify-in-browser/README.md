@@ -24,6 +24,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 | scenario | what it establishes |
 | --- | --- |
 | `documentpage` | Issue #31: an import lands on the document's page (title, the library's figures, Play, the Chinese switch, Delete); Play opens the player; the library entry opens the page, not the player; switching Chinese on the page reopens the new document's page; Delete there removes the entry. 390px screenshot in `/tmp/reader-document-page.png`. Needs make-fixtures.sh's `fixture-video-again` on port 18765 and a verification-mode build; about 20 s. |
+| `resume` | A video continues at the start of the line where playback stopped (stopped at 11 s → 9 s), its page offering Continue watching and Start from the beginning (which starts at 0); stopped within 30 s of the end, the page says Watch again and the video starts at 0. Needs make-fixtures.sh's 45 s clip on port 18765 and a verification-mode build; about 30 s. |
 | `faileddownload` | Issue #28: make-fixtures.sh's `fixture-failed` shows under New from Termux as "Download failed" with yt-dlp's reason and the shared address as its title; ✕ dismisses it and a reload does not offer it again. Needs the fixture service on port 18765 and a verification-mode build; about 15 s. |
 | `probe` | What is actually on the page — buttons, links, text. Run this first when a selector fails, instead of guessing. |
 | `tuning` | More → Cards → Learning data, empty report and JSON export through the storage worker in a disposable profile. Use a verification-mode build. |

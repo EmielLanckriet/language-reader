@@ -263,6 +263,10 @@ export class RepositoryClient {
 		return this.call({ method: 'playedThrough', args: [documentIds] });
 	}
 
+	lastPlayed(documentIds: DocumentId[]): Promise<Map<DocumentId, { at: string; toMs: number }>> {
+		return this.call({ method: 'lastPlayed', args: [documentIds] });
+	}
+
 	wordOccurrences(documentIds: DocumentId[]): Promise<Map<DocumentId, Map<LexemeId, number>>> {
 		return this.call({ method: 'wordOccurrences', args: [documentIds] });
 	}

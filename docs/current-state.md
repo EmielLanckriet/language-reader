@@ -3,6 +3,19 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Continue a video where it stopped — built, browser checked
+
+2026-10-09, the reader: closing a video and opening it again started it from the beginning. The
+player only ever took a start time from `?t=` (a finished transcript). Now, without `?t=`, it starts
+at the start of the line playback last stopped in: the end of the latest `played` stretch
+(`lastPlayed`, also under subtitles the video had before, issue #9), not the furthest point that the
+library's progress shows. Within 30 s of the video's end it counts as finished and starts over (the
+reader's choice over "reached the last line"). The document page says Continue watching, with an
+outlined Start from the beginning (`?t=0`) under it; Watch again once finished. Validation: `resumeAt`
+and `lastPlayed` tests red first, five mutations caught; 564 tests, type check, lint; browser
+`resume` (new; fails with the player's resume removed), `documentpage`, `newsubtitles`, `listened`,
+`leavingvideo` (the last two had waited for a video since #31 without pressing Play; they now do).
+
 ## A page for each video and text (#31) — deployed and phone checked
 
 2026-10-09, the reader: tapping a video should not start it. Every way into a document now opens

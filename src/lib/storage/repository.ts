@@ -586,6 +586,22 @@ export class Repository {
 		return new Map(rows.map((row) => [Number(row.document_id), Number(row.through)]));
 	}
 
+	/** Where playback last stopped in each of these videos: the end of its latest played stretch. */
+	lastPlayed(documentIds: DocumentId[]): Map<DocumentId, { at: string; toMs: number }> {
+		if (documentIds.length === 0) return new Map();
+		const rows = queryRows(
+			this.db,
+			`SELECT document_id, at, json_extract(detail, '$.toMs') AS to_ms FROM encounter e
+        WHERE id = (SELECT id FROM encounter WHERE kind = 'played' AND document_id = e.document_id
+                    ORDER BY at DESC, id DESC LIMIT 1)
+          AND document_id IN (${documentIds.map(() => '?').join(', ')})`,
+			documentIds
+		);
+		return new Map(
+			rows.map((row) => [Number(row.document_id), { at: String(row.at), toMs: Number(row.to_ms) }])
+		);
+	}
+
 	/** How often each word occurs in each of these documents, for the library's shares. */
 	wordOccurrences(documentIds: DocumentId[]): Map<DocumentId, Map<LexemeId, number>> {
 		const found = new Map<DocumentId, Map<LexemeId, number>>();

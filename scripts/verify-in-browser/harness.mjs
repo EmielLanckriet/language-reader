@@ -686,7 +686,8 @@ const scenarios = {
 			await importFromTermux(tab, 'Test clip, 45 s');
 			await until(
 				'the video to be playable',
-				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				() =>
+					tab.evaluate(`${PLAY} return document.querySelector('video')?.readyState >= 2 || null;`),
 				30000,
 				250
 			);
@@ -1073,7 +1074,8 @@ const scenarios = {
 			await importFromTermux(tab, 'Test clip, 45 s');
 			await until(
 				'the video to be playable',
-				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				() =>
+					tab.evaluate(`${PLAY} return document.querySelector('video')?.readyState >= 2 || null;`),
 				30000,
 				250
 			);
@@ -1129,7 +1131,8 @@ const scenarios = {
 			await importFromTermux(tab, 'Test clip, 45 s');
 			await until(
 				'the video to be playable',
-				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				() =>
+					tab.evaluate(`${PLAY} return document.querySelector('video')?.readyState >= 2 || null;`),
 				30000,
 				250
 			);
@@ -2036,7 +2039,8 @@ const scenarios = {
 			await importFromTermux(tab, 'Test clip, 45 s');
 			await until(
 				'the video to be playable',
-				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				() =>
+					tab.evaluate(`${PLAY} return document.querySelector('video')?.readyState >= 2 || null;`),
 				60000,
 				250
 			);
@@ -2293,7 +2297,8 @@ const scenarios = {
 			await importFromTermux(tab, 'Test clip, 45 s');
 			await until(
 				'the video to be playable',
-				() => tab.evaluate(`return document.querySelector('video')?.readyState >= 2 || null;`),
+				() =>
+					tab.evaluate(`${PLAY} return document.querySelector('video')?.readyState >= 2 || null;`),
 				60000,
 				250
 			);
@@ -2808,6 +2813,106 @@ const scenarios = {
 	// Chinese switch and Delete; Play opens the player; a library entry opens the page, not the
 	// player; switching Chinese there reopens the new document's page; Delete there empties the
 	// entry. Needs make-fixtures.sh's fixture-video-again on the service at port 18765.
+	// Continue where playback stopped, at the start of that line; within 30 s of the end, start over.
+	// make-fixtures.sh's 45 s clip (fixture-media, a line every 3 s) on port 18765; about 30 s.
+	async resume() {
+		const tab = await openTab('about:blank');
+		const pageInfo = `if (!location.pathname.includes('/document/') || !document.querySelector('.shares')) return null;
+			return { play: document.querySelector('a.play')?.textContent.trim(), again: [...document.querySelectorAll('a')].some((a) => a.textContent.trim() === 'Start from the beginning') };`;
+		const startedAt = async () =>
+			(
+				await until(
+					'the player at its start',
+					() =>
+						tab.evaluate(
+							`const v = document.querySelector('video'); return location.pathname.includes('/read/') && v?.readyState >= 1 && !v.seeking ? { at: v.currentTime } : null;`
+						),
+					30000,
+					250
+				)
+			).at;
+		const play = async (from, seconds) => {
+			await tab.evaluate(`const v = document.querySelector('video'); v.muted = true; v.currentTime = ${from};
+				await new Promise((r) => v.addEventListener('seeked', r, { once: true })); await v.play(); window.playSince = Date.now(); return true;`);
+			await until(
+				`${seconds} s of playing`,
+				() => tab.evaluate(`return Date.now() - window.playSince >= ${seconds * 1000}`),
+				20000,
+				250
+			);
+			return tab.evaluate(
+				`const v = document.querySelector('video'); v.pause(); return v.currentTime;`
+			);
+		};
+		// Back to the library, then the video's page, as a reader comes back to it later.
+		const reopen = async (label) => {
+			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
+			await until(
+				'the library entry',
+				() =>
+					tab.evaluate(`const a = [...document.querySelectorAll('.library.collection a')].find((a) => a.textContent.includes('45 s'));
+					if (!a) return null; a.click(); return true;`),
+				20000,
+				250
+			);
+			// The resume point loads after the page, so wait for the label it should give.
+			return until(
+				`the page offering ${label}`,
+				async () => {
+					const info = await tab.evaluate(pageInfo);
+					return info?.play === label ? info : null;
+				},
+				20000,
+				250
+			);
+		};
+		const click = (text) =>
+			tab.evaluate(
+				`[...document.querySelectorAll('a')].find((a) => a.textContent.trim() === ${JSON.stringify(text)}).click(); return true;`
+			);
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			const first = await until('the new document page', () => tab.evaluate(pageInfo), 60000, 250);
+			await tab.evaluate(`document.querySelector('a.play').click(); return true;`);
+			const firstStart = await startedAt();
+			const stopped = await play(7, 4);
+			const halfway = await reopen('Continue watching');
+			await click('Continue watching');
+			const continued = await startedAt();
+			await reopen('Continue watching');
+			await click('Start from the beginning');
+			const fromStart = await startedAt();
+			const nearEnd = await play(36, 3);
+			const finished = await reopen('Watch again');
+			await tab.evaluate(`document.querySelector('a.play').click(); return true;`);
+			const again = await startedAt();
+			return {
+				pass:
+					first.play === 'Play' &&
+					!first.again &&
+					firstStart === 0 &&
+					halfway.play === 'Continue watching' &&
+					halfway.again &&
+					Math.abs(continued - 9) < 0.1 &&
+					fromStart === 0 &&
+					finished.play === 'Watch again' &&
+					!finished.again &&
+					again === 0,
+				first,
+				firstStart,
+				stopped,
+				halfway,
+				continued,
+				fromStart,
+				nearEnd,
+				finished,
+				again
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async documentpage() {
 		const tab = await openTab('about:blank');
 		const onPage = `if (!location.pathname.includes('/document/')) return null;

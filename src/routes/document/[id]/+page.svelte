@@ -4,7 +4,7 @@
 	import { session } from '$lib/storage/session';
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
-	import { englishTitles, progressOf, sharesOf, thumbnailOf } from '$lib/media/cover';
+	import { englishTitles, progressOf, resumeOf, sharesOf, thumbnailOf } from '$lib/media/cover';
 	import type { Shares, WordCounts } from '$lib/domain/shares';
 	import DocumentCard from '$lib/ui/DocumentCard.svelte';
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
@@ -20,6 +20,8 @@
 	let problem = $state<unknown>(null);
 	let figures = $state<{ shares: Shares; counts: WordCounts } | undefined>();
 	let watched = $state<number | undefined>();
+	/** Where Continue watching starts, in seconds; 0 when never played or finished. */
+	let resume = $state(0);
 	let picture = $state<string | undefined>();
 	let english = $state<string | undefined>();
 
@@ -33,6 +35,7 @@
 		let url: string | undefined;
 		loading = true;
 		problem = null;
+		resume = 0;
 		void (async () => {
 			try {
 				const { repository } = await session();
@@ -52,6 +55,7 @@
 			void sharesOf([wanted]).then((all) => !stopped && (figures = all.get(wanted)));
 			if (!media) return;
 			void progressOf([wanted]).then((all) => !stopped && (watched = all.get(wanted)));
+			void resumeOf(wanted, media.cues).then((at) => !stopped && (resume = at));
 			void thumbnailOf(wanted).then((blob) => {
 				if (stopped || !blob) return;
 				url = URL.createObjectURL(blob);
@@ -96,8 +100,15 @@
 		</div>
 	</div>
 	<a class="play" href={resolve('/read/[id]', { id: String(summary.id) })}>
-		{video ? (watched ? 'Continue watching' : 'Play') : 'Read'}
+		{video ? (resume > 0 ? 'Continue watching' : watched ? 'Watch again' : 'Play') : 'Read'}
 	</a>
+	{#if video && resume > 0}
+		<!-- resolve() is used; the rule cannot see through the query string appended to it. -->
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+		<a class="play again" href={`${resolve('/read/[id]', { id: String(summary.id) })}?t=0`}>
+			Start from the beginning
+		</a>
+	{/if}
 	<DocumentSettings document={summary} bind:media reopen="/document/[id]" />
 {/if}
 
@@ -122,5 +133,12 @@
 		color: var(--on-accent);
 		font-weight: 600;
 		text-decoration: none;
+	}
+	.again {
+		margin-top: 0.5rem;
+		background: transparent;
+		color: var(--accent);
+		border: 1px solid var(--rule);
+		font-weight: normal;
 	}
 </style>

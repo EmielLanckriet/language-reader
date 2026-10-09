@@ -6,6 +6,7 @@ import { session } from '$lib/storage/session';
 import { textShares, wordCounts, type Shares, type WordCounts } from '$lib/domain/shares';
 import { quickTranslation, quickTranslatorPresent } from '$lib/translation/quick';
 import type { DocumentId } from '$lib/domain/types';
+import { resumeAt, type Cue } from './subtitles';
 import {
 	isPlayable,
 	isSubtitle,
@@ -161,6 +162,20 @@ export async function progressOf(ids: DocumentId[]): Promise<Map<DocumentId, num
 		if (duration && ms > 0) found.set(id, Math.min(1, ms / duration));
 	}
 	return found;
+}
+
+/**
+ * Where to continue this video, in seconds (0: from the beginning), also counting playback under
+ * the subtitles it had before (issue #9).
+ */
+export async function resumeOf(id: DocumentId, cues: readonly Cue[]): Promise<number> {
+	const { repository } = await session();
+	const earlier = replacesIn((await readMediaJson(id, 'meta.json')) ?? {});
+	const latest = [...(await repository.lastPlayed([id, ...earlier])).values()].reduce<
+		{ at: string; toMs: number } | undefined
+	>((found, each) => (found && found.at >= each.at ? found : each), undefined);
+	if (!latest) return 0;
+	return resumeAt(latest.toMs, await durationOf(id), cues);
 }
 
 /** Each document's shares of known, learning and new words, and its word counts, as of now. */

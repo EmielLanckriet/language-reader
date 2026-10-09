@@ -269,6 +269,8 @@ function run(request: Request): unknown {
 			return repository.wordLines(request.args[0]);
 		case 'playedThrough':
 			return repository.playedThrough(request.args[0]);
+		case 'lastPlayed':
+			return repository.lastPlayed(request.args[0]);
 		case 'deletedWithHistory':
 			return repository.deletedWithHistory();
 		case 'withdrawDocument':

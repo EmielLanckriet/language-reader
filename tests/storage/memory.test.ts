@@ -131,6 +131,31 @@ describe('memory kept with the history', () => {
 		);
 	});
 
+	it('says where playback last stopped in a video, not how far it got', async () => {
+		const { repository, documentId } = await library();
+		const played = (at: string, fromMs: number, toMs: number) => ({
+			kind: 'played',
+			at,
+			documentId,
+			fromOffset: 0,
+			toOffset: 3,
+			mediaMs: fromMs,
+			speed: 1,
+			textVisible: true,
+			detail: { toMs }
+		});
+		repository.recordEncounters(repository.startSession(documentId, 'media'), [
+			played(day(5, 10), 0, 5000),
+			played(day(5, 11), 20000, 31000)
+		]);
+		repository.recordEncounters(repository.startSession(documentId, 'media'), [
+			played(day(6, 10), 9000, 12000)
+		]);
+		expect(repository.lastPlayed([documentId, documentId + 1])).toEqual(
+			new Map([[documentId, { at: day(6, 10), toMs: 12000 }]])
+		);
+	});
+
 	it('finds words from earlier attentive sessions that have no memory yet, and stops', async () => {
 		const { db, repository, documentId, words, read } = await library();
 		repository.assertState(words[1].lexemeId!, 'ignored');
