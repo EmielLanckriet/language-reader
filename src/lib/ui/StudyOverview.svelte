@@ -182,7 +182,7 @@
 			>{/if}
 		{#if overview.resume}<a
 				class="continue-card"
-				href={resolve('/read/[id]', { id: String(overview.resume.documentId) })}
+				href={resolve('/document/[id]', { id: String(overview.resume.documentId) })}
 			>
 				<span class="eyebrow">Pick up where you left off</span><strong
 					>{overview.resume.title}</strong
@@ -243,7 +243,7 @@
 					/>
 					{#if entry.available}<a
 							class="text-link"
-							href={resolve('/read/[id]', { id: String(entry.documentId) })}>Open again →</a
+							href={resolve('/document/[id]', { id: String(entry.documentId) })}>Open again →</a
 						>{/if}
 				</div>
 			</details>

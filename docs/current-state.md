@@ -3,6 +3,21 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## A page for each video and text (#31) — built, phone pending
+
+2026-10-09, the reader: tapping a video should not start it. Every way into a document now opens
+its page (`/document/[id]`): the library, Continue watching, Progress's "Open again", and an import
+from New from Termux. The page shows the library's card (picture, watched progress, title, English
+title, characters, known/learning/new shares, due and new words; `DocumentCard`, now also the
+library's row), Play / Continue watching / Read, the English and Chinese subtitle choice and Delete
+(`DocumentSettings`, moved out of the player, which still shows it). Videos and texts share it.
+The player's ← still goes to the library; Android back follows history, so it returns to the page.
+A finished transcript still opens the player at the line reached. Richer statistics: brainstorm
+later (#13). Validation: type check, lint, 560 tests; browser `documentpage` (new; fails when the
+library links to the player), `faileddownload`, `lookup`; scenarios that open a document go through
+its page (`PLAY` in the harness). `wipe` fails at a Known button the word sheet no longer has
+(stale since Retire replaced it, not this change).
+
 ## A failed download says so (#28) — built, phone pending
 
 2026-10-09: a share whose yt-dlp fetched nothing stayed at `packing`, showed as "A new video" for

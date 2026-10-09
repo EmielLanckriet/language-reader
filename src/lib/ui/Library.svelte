@@ -5,6 +5,7 @@
 	import { mediaDocuments } from '$lib/media/store';
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import ErrorNotice from './ErrorNotice.svelte';
+	import DocumentCard from './DocumentCard.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
 	import { englishTitles, progressOf, sharesOf, thumbnailOf } from '$lib/media/cover';
 	import type { Shares, WordCounts } from '$lib/domain/shares';
@@ -29,8 +30,6 @@
 	let english = $state<Record<number, string>>({});
 	let pictures = $state<Record<number, string>>({});
 	let progress = $state<Map<number, number>>(new Map());
-
-	const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 	// The extras load after the list, each at its own pace: a slow one never holds the titles back.
 	$effect(() => {
@@ -113,65 +112,20 @@
 {:else}
 	<ul class="library collection" class:video-collection={kind === 'video'}>
 		{#each documents as document (document.id)}
-			{@const share = shares.get(document.id)?.shares}
-			{@const counts = shares.get(document.id)?.counts}
 			<li>
 				<a
-					href={resolve('/read/[id]', { id: String(document.id) })}
+					href={resolve('/document/[id]', { id: String(document.id) })}
 					class:with-picture={kind === 'video'}
 				>
-					{#if kind === 'video'}
-						{@const watched = progress.get(document.id)}
-						<span class="frame">
-							{#if pictures[document.id]}
-								<img class="picture" src={pictures[document.id]} alt="" />
-							{:else}
-								<span class="picture placeholder" aria-hidden="true"
-									><span>文</span><span class="play-symbol">▶</span></span
-								>
-							{/if}
-							{#if watched}
-								<span class="track" title={`Watched to ${percent(watched)}`}>
-									<span class="watched" style:width={percent(watched)}></span>
-								</span>
-							{/if}
-						</span>
-					{/if}
-					<span class="text">
-						<strong class="document-title">{document.title}</strong>
-						{#if english[document.id]}
-							<span class="english-title">{english[document.id]}</span>
-						{/if}
-						<span class="meta">
-							{document.characterCount.toLocaleString()} characters
-							{#if share}
-								· <span class="known">{percent(share.known)} known</span> ·
-								<span class="learning">{percent(share.learning)} learning</span> ·
-								<span class="fresh">{percent(share.fresh)} new</span>
-							{/if}
-						</span>
-						{#if share}
-							<span class="shares" aria-hidden="true">
-								<span class="known" style:width={percent(share.known)}></span>
-								<span class="learning" style:width={percent(share.learning)}></span>
-								<span class="fresh" style:width={percent(share.fresh)}></span>
-							</span>
-						{/if}
-						{#if counts && (counts.due > 0 || counts.fresh > 0)}
-							<span class="meta counts">
-								{#if counts.due > 0}
-									<span class="due">{counts.due} due come up ({counts.dueOccurrences}×)</span>
-								{/if}
-								{#if counts.due > 0 && counts.fresh > 0}·{/if}
-								{#if counts.fresh > 0}
-									{counts.fresh} new {counts.fresh === 1
-										? 'word'
-										: 'words'}{#if counts.freshRecurring > 0}, {counts.freshRecurring}
-										recur{/if}
-								{/if}
-							</span>
-						{/if}
-					</span>
+					<DocumentCard
+						{document}
+						video={kind === 'video'}
+						picture={pictures[document.id]}
+						english={english[document.id]}
+						watched={progress.get(document.id)}
+						share={shares.get(document.id)?.shares}
+						counts={shares.get(document.id)?.counts}
+					/>
 				</a>
 			</li>
 		{/each}

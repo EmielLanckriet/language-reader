@@ -143,8 +143,12 @@ async function openTab(url) {
 }
 
 const SAVE_BUTTON = `[...document.querySelectorAll("main button")].find((b) => b.textContent.trim() === "Save")`;
-const READ_LINKS = `[...document.querySelectorAll("a")].filter((a) => (a.getAttribute("href") || "").includes("/read/")).length`;
-const READ_LINK = `[...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => h && h.includes("/read/"))`;
+// The library links to each document's page (#31); a scenario about reading goes on to the player.
+const READ_LINKS = `[...document.querySelectorAll("a")].filter((a) => (a.getAttribute("href") || "").includes("/document/")).length`;
+const READ_LINK = `[...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => h && h.includes("/document/"))?.replace("/document/", "/read/")`;
+// Put first in a condition that waits for the player: an import or a library entry opens the
+// document's page, and this presses its Play.
+const PLAY = `if (location.pathname.includes('/document/')) { document.querySelector('a.play')?.click(); return null; }`;
 
 // Import a Termux job the way the reader does: open the library, find it under "New from Termux",
 // press Open. The reader service must be serving it (make-fixtures.sh).
@@ -181,7 +185,7 @@ const scenarios = {
 				() =>
 					tab.evaluate(`
 						if (document.querySelector('[role=dialog]')) return { asked: true };
-						if (!location.pathname.includes('/read/')) return null;
+						${PLAY} if (!location.pathname.includes('/read/')) return null;
 						const lines = [...document.querySelectorAll('.lines p')].map((p) => p.textContent);
 						return lines.length > 5 ? { asked: false, lines: lines.length, roman: lines.filter((l) => l.includes('roman line')).length } : null;
 					`),
@@ -244,7 +248,7 @@ const scenarios = {
 				'human English beside the Chinese, the uncovered line left empty',
 				() =>
 					tab.evaluate(`
-						if (!location.pathname.includes('/read/')) return null;
+						${PLAY} if (!location.pathname.includes('/read/')) return null;
 						const all = document.querySelector('.all-english input');
 						if (!all) return null;
 						if (!all.checked) all.click();
@@ -554,9 +558,9 @@ const scenarios = {
 		const path = () => tab.evaluate('return location.pathname');
 		const sheet = () => tab.evaluate(`return !!document.querySelector('.leave-sheet')`);
 		const openText = async () => {
-			await tab.evaluate(`document.querySelector('.library a[href*="/read/"]').click()`);
+			await tab.evaluate(`document.querySelector('.library a[href*="/document/"]').click()`);
 			await until('reading text', () =>
-				tab.evaluate(`return !!document.querySelector('.reading button.token')`)
+				tab.evaluate(`${PLAY} return !!document.querySelector('.reading button.token')`)
 			);
 			await tab.evaluate(
 				`document.querySelector('.reading').scrollIntoView({block:'center'});window.readSince=Date.now();`
@@ -587,7 +591,7 @@ const scenarios = {
 			await until('saved text', () => tab.evaluate(`return ${READ_LINK}`));
 			await tab.goto('/texts');
 			await until('text listed', () =>
-				tab.evaluate(`return !!document.querySelector('.library a[href*="/read/"]')`)
+				tab.evaluate(`return !!document.querySelector('.library a[href*="/document/"]')`)
 			);
 
 			// 1. ← Texts after 30 s of reading asks, and stays until Done.
@@ -629,7 +633,7 @@ const scenarios = {
 			// 3. A short visit leaves without asking.
 			await tab.goto('/texts');
 			await until('text listed again', () =>
-				tab.evaluate(`return !!document.querySelector('.library a[href*="/read/"]')`)
+				tab.evaluate(`return !!document.querySelector('.library a[href*="/document/"]')`)
 			);
 			await openText();
 			await tapBack();
@@ -646,7 +650,11 @@ const scenarios = {
 			await tab.evaluate(
 				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Later').click()`
 			);
-			await until('went back', async () => (await path()).endsWith('/texts') && !(await sheet()));
+			// Back follows history: to the text's page, which the library opened (#31).
+			await until(
+				'went back',
+				async () => (await path()).includes('/document/') && !(await sheet())
+			);
 			return { pass: width.body <= width.viewport, width };
 		} catch (error) {
 			return {
@@ -766,7 +774,7 @@ const scenarios = {
 			const link = await until('saved text', () => tab.evaluate(`return ${READ_LINK}`));
 			await tab.goto(link.replace(BASE, ''));
 			await until('reading text', () =>
-				tab.evaluate(`return !!document.querySelector('.reading button.token')`)
+				tab.evaluate(`${PLAY} return !!document.querySelector('.reading button.token')`)
 			);
 			await tab.evaluate(
 				`document.querySelector('.reading').scrollIntoView({block:'center'});window.studyStarted=Date.now();`
@@ -971,7 +979,9 @@ const scenarios = {
 			const video = await until(
 				'the video document',
 				() =>
-					tab.evaluate(`return location.pathname.includes('/read/') ? location.pathname : null;`),
+					tab.evaluate(
+						`${PLAY} return location.pathname.includes('/read/') ? location.pathname : null;`
+					),
 				30000
 			);
 			await tab.goto('/diagnostics');
@@ -1400,7 +1410,9 @@ const scenarios = {
 			const opened = await until(
 				'the video to open by itself',
 				() =>
-					tab.evaluate(`return location.pathname.includes('/read/') ? location.pathname : null;`),
+					tab.evaluate(
+						`${PLAY} return location.pathname.includes('/read/') ? location.pathname : null;`
+					),
 				20000,
 				250
 			);
@@ -1925,7 +1937,7 @@ const scenarios = {
 					tab.evaluate(`
 						const video = document.querySelector('video');
 						const lines = document.querySelectorAll('.lines p').length;
-						if (!location.pathname.includes('/read/') || !video || !(video.duration > 0) || !lines) return null;
+						${PLAY} if (!location.pathname.includes('/read/') || !video || !(video.duration > 0) || !lines) return null;
 						return { url: location.pathname + location.search, lines };
 					`),
 				180000,
@@ -2134,12 +2146,12 @@ const scenarios = {
 	// video moved, not lost. Neither replaced document is listed in More as deleted.
 	async newsubtitles() {
 		const tab = await openTab('about:blank');
-		const reading = `if (!location.pathname.includes('/read/')) return null;
+		const reading = `${PLAY} if (!location.pathname.includes('/read/')) return null;
 			const lines = [...document.querySelectorAll('.lines p')].map((p) => p.textContent);
 			const select = [...document.querySelectorAll('.english-choice label')].find((l) => l.textContent.trim().startsWith('Chinese'))?.querySelector('select');
 			const video = document.querySelector('video');
 			return lines.length > 3 ? { path: location.pathname, roman: lines.filter((l) => l.includes('roman line')).length, lines: lines.length, chinese: select ? [...select.options].map((o) => o.value + (o.selected ? '*' : '')) : [], video: video ? Math.round(video.duration || 0) : null } : null;`;
-		const library = `const items = [...document.querySelectorAll('.library.collection a[href*="/read/"]')].filter((a) => a.textContent.includes('Test clip, one video'));
+		const library = `const items = [...document.querySelectorAll('.library.collection a[href*="/document/"]')].filter((a) => a.textContent.includes('Test clip, one video'));
 			if (!items.length) return null;
 			return { entries: items.length, watched: items[0].querySelector('.watched')?.style.width ?? null, resume: document.querySelector('.continue-card')?.getAttribute('href') ?? null, offered: [...document.querySelectorAll('.fresh li')].filter((li) => li.textContent.includes('one video')).length };`;
 		const back = async () => {
@@ -2210,7 +2222,7 @@ const scenarios = {
 			);
 
 			await tab.evaluate(
-				`[...document.querySelectorAll('a[href*="/read/"]')].find((a) => a.textContent.includes('one video')).click(); return true;`
+				`[...document.querySelectorAll('a[href*="/document/"]')].find((a) => a.textContent.includes('one video')).click(); return true;`
 			);
 			await until('the video again', () => tab.evaluate(reading), 30000, 250);
 			await tab.evaluate(`const select = [...document.querySelectorAll('.english-choice label')].find((l) => l.textContent.trim().startsWith('Chinese')).querySelector('select');
@@ -2382,7 +2394,7 @@ const scenarios = {
 				'the imported document to open',
 				() =>
 					tab.evaluate(
-						`return location.pathname.includes('/read/') && document.querySelector('.player')?.duration > 0 || null;`
+						`${PLAY} return location.pathname.includes('/read/') && document.querySelector('.player')?.duration > 0 || null;`
 					),
 				120000,
 				250
@@ -2426,7 +2438,7 @@ const scenarios = {
 				'the imported document to open',
 				() =>
 					tab.evaluate(
-						`return (location.pathname.includes('/read/') && document.querySelector('.player')?.duration > 0) || null;`
+						`${PLAY} return (location.pathname.includes('/read/') && document.querySelector('.player')?.duration > 0) || null;`
 					),
 				120000,
 				250
@@ -2559,7 +2571,7 @@ const scenarios = {
 				() =>
 					tab.evaluate(`
 						const player = document.querySelector('.player');
-						if (!location.pathname.includes('/read/') || !player || !(player.duration > 0)) return null;
+						${PLAY} if (!location.pathname.includes('/read/') || !player || !(player.duration > 0)) return null;
 						return { lines: document.querySelectorAll('.lines p').length, duration: player.duration, title: document.querySelector('h1')?.textContent };
 					`),
 				120000,
@@ -2792,6 +2804,103 @@ const scenarios = {
 	},
 
 	// Reports what is actually on the page, so a failing selector is diagnosed rather than guessed at.
+	// Issue #31: a document's own page. An import lands on it, with the library's figures, Play, the
+	// Chinese switch and Delete; Play opens the player; a library entry opens the page, not the
+	// player; switching Chinese there reopens the new document's page; Delete there empties the
+	// entry. Needs make-fixtures.sh's fixture-video-again on the service at port 18765.
+	async documentpage() {
+		const tab = await openTab('about:blank');
+		const onPage = `if (!location.pathname.includes('/document/')) return null;
+			const select = [...document.querySelectorAll('.english-choice label')].find((l) => l.textContent.trim().startsWith('Chinese'))?.querySelector('select');
+			if (!document.querySelector('.shares')) return null;
+			return { path: location.pathname, title: document.querySelector('.document-title')?.textContent, meta: document.querySelector('.meta')?.textContent.replace(/\\s+/g, ' ').trim(), counts: document.querySelector('.counts')?.textContent.replace(/\\s+/g, ' ').trim() ?? null, play: document.querySelector('a.play')?.textContent.trim(), chinese: select ? [...select.options].map((o) => o.value + (o.selected ? '*' : '')) : [], delete: [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Delete this document') };`;
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await importFromTermux(tab, 'Test clip, one video (again)');
+			const page = await until('the new document page', () => tab.evaluate(onPage), 60000, 250);
+			const { writeFileSync } = await import('node:fs');
+			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-document-page.png', Buffer.from(shot.data, 'base64'));
+			page.width = await tab.evaluate(
+				`return { body: document.documentElement.scrollWidth, viewport: innerWidth }`
+			);
+			await tab.evaluate(`document.querySelector('a.play').click(); return true;`);
+			const played = await until(
+				'the player',
+				() =>
+					tab.evaluate(
+						`return location.pathname.includes('/read/') && document.querySelector('video')?.duration > 0 ? location.pathname : null;`
+					),
+				30000,
+				250
+			);
+			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
+			await until(
+				'the library entry',
+				() =>
+					tab.evaluate(`const a = [...document.querySelectorAll('.library.collection a')].find((a) => a.textContent.includes('one video'));
+					if (!a) return null; a.click(); return true;`),
+				20000,
+				250
+			);
+			const fromLibrary = await until('the page again', () => tab.evaluate(onPage), 20000, 250);
+
+			const other = page.chinese.find((value) => !value.endsWith('*'));
+			await tab.evaluate(`const select = [...document.querySelectorAll('.english-choice label')].find((l) => l.textContent.trim().startsWith('Chinese')).querySelector('select');
+				select.value = ${JSON.stringify(other)}; select.dispatchEvent(new Event('change', { bubbles: true })); return true;`);
+			const switched = await until(
+				'the switched document page',
+				() =>
+					tab.evaluate(
+						onPage.replace(
+							'return {',
+							`if (location.pathname === ${JSON.stringify(page.path)}) return null; return {`
+						)
+					),
+				30000,
+				250
+			);
+
+			await tab.evaluate(`window.confirm = () => true;
+				[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Delete this document').click(); return true;`);
+			const afterDelete = await until(
+				'the library after Delete',
+				() =>
+					tab.evaluate(`if (location.pathname.includes('/document/') || !document.querySelector('h1') || document.querySelector('p.loading')) return null;
+					return { path: location.pathname, listed: [...document.querySelectorAll('.library.collection a')].some((a) => a.textContent.includes('one video')) };`),
+				20000,
+				250
+			);
+			return {
+				pass:
+					page.title.includes('one video') &&
+					page.meta.includes('characters') &&
+					page.meta.includes('new') &&
+					page.play === 'Play' &&
+					page.chinese.length === 2 &&
+					page.delete &&
+					page.width.body <= page.width.viewport &&
+					played.endsWith(page.path.split('/').pop()) &&
+					fromLibrary.path === page.path &&
+					switched.path !== page.path &&
+					switched.chinese.includes(`${other}*`) &&
+					!afterDelete.listed,
+				page,
+				played,
+				fromLibrary,
+				switched,
+				afterDelete
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Issue #28: a download that fetched nothing shows under New from Termux as failed, with its
 	// reason and the address shared, and ✕ dismisses it for good. Needs make-fixtures.sh's
 	// fixture-failed on the service at port 18765.

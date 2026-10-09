@@ -170,7 +170,8 @@ textarea {
 	border-top: 1px solid var(--rule);
 }
 
-.library a {
+.library a,
+.library .card {
 	display: block;
 	padding: 0.9rem 0;
 	color: inherit;
@@ -185,7 +186,7 @@ textarea {
 }
 
 /* A video: its picture beside the titles. */
-.library a.with-picture {
+.library .with-picture {
 	display: flex;
 	gap: 0.75rem;
 	align-items: flex-start;
@@ -553,10 +554,11 @@ ruby rt {
 	overflow: hidden;
 	background: var(--surface);
 }
-.collection a {
+.collection a,
+.collection .card {
 	padding: 1rem;
 }
-.collection a.with-picture {
+.collection .with-picture {
 	display: flex;
 	flex-direction: column;
 	padding: 0;

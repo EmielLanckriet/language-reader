@@ -23,7 +23,7 @@ resume and background pass · #16 word senses in context.
 Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
 emulator install test · #24 Termux install size · #25 store wipe cause.
 
-## A page for each video before it plays — #31
+## A page for each video before it plays — built, phone pending — #31
 
 2026-10-09, the reader: tapping a video should open a page for it (delete, change subtitles, more
 detailed statistics, play) instead of starting it. Delete and the track menu now live in the

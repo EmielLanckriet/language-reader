@@ -21,7 +21,7 @@
 			await goto(
 				'pending' in imported
 					? resolve('/live/[job]', { job: imported.pending })
-					: resolve('/read/[id]', { id: String(imported.documentId) })
+					: resolve('/document/[id]', { id: String(imported.documentId) })
 			);
 		} catch (error) {
 			problem = error instanceof Error ? error.message : describeError(error);
