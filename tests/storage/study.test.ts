@@ -187,3 +187,50 @@ it('records only visible non-idle reading time and closes once, with recoverable
 		await recorder.close();
 	}
 });
+
+// Issue #32: opening a video and leaving it put a "0 sec recorded" session on Progress, asking for
+// feedback. A session asks only after 10 s of activity or playback, ended or not.
+it('asks for feedback only after 10 s of activity or playback', async () => {
+	const db = await freshDatabase();
+	try {
+		const repo = new Repository(db);
+		const [id] = await buildHistory(repo, ['你好'], []);
+		const at = '2026-10-09T13:34:12Z';
+		const played = (toMs: number) => ({
+			kind: 'played',
+			at,
+			documentId: id,
+			fromOffset: 0,
+			toOffset: 2,
+			mediaMs: 0,
+			textVisible: false,
+			detail: { toMs }
+		});
+		const reading = (durationMs: number) => ({ kind: 'study-time', at, detail: { durationMs } });
+		const end = { kind: 'session-end', at };
+		const sessions = {
+			visit: [
+				{ kind: 'setting', at, detail: { name: 'stage', value: true } },
+				{ kind: 'seek', at, documentId: id, detail: { fromMs: 0, toMs: 613785 } },
+				end
+			],
+			nineSeconds: [reading(9999), played(9999), end],
+			tenSecondsRead: [reading(10000)],
+			tenSecondsPlayed: [played(10000), end],
+			answeredVisit: [end, { kind: 'attention', at, detail: { answer: 'all' } }]
+		};
+		const ids = new Map<number, string>();
+		for (const [name, encounters] of Object.entries(sessions)) {
+			const session = repo.startSession(id, name.includes('Played') ? 'media' : 'reading');
+			repo.recordEncounters(session, encounters);
+			ids.set(session, name);
+		}
+		const listed = repo
+			.studyOverview('Europe/Brussels', new Date(at))
+			.sessions.map((s) => ids.get(s.id))
+			.sort();
+		expect(listed).toEqual(['answeredVisit', 'tenSecondsPlayed', 'tenSecondsRead']);
+	} finally {
+		db.close();
+	}
+});

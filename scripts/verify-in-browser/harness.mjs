@@ -594,10 +594,10 @@ const scenarios = {
 				tab.evaluate(`return !!document.querySelector('.library a[href*="/document/"]')`)
 			);
 
-			// 1. ← Texts after 30 s of reading asks, and stays until Done.
+			// 1. ← Texts after 10 s of reading asks (36 s read here), and stays until Done.
 			console.log('leaving: reading 36 s, then ← Texts');
 			await openText();
-			await readFor(36000); // 30 s counts: a text is read after 2 s on screen
+			await readFor(36000); // over 10 s counts: a text is read after 2 s on screen
 			await tapBack();
 			await until('sheet on leaving', sheet);
 			if (!(await path()).includes('/read/')) throw new Error('Left before the sheet was answered');
@@ -643,7 +643,7 @@ const scenarios = {
 			// 4. Back (Android's back button) asks too, and Later goes back.
 			console.log('leaving: reading 36 s, then back');
 			await openText();
-			await readFor(36000); // 30 s counts: a text is read after 2 s on screen
+			await readFor(36000); // over 10 s counts: a text is read after 2 s on screen
 			await tab.evaluate('history.back()');
 			await until('sheet on back', sheet);
 			if (!(await path()).includes('/read/')) throw new Error('Back left before the sheet');

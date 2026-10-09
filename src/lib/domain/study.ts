@@ -22,6 +22,12 @@ export interface StudySession {
 }
 
 /**
+ * How much reading or playing a session needs before it asks for feedback, on leaving or on
+ * Progress (issue #32, the reader: a mere visit does not deserve a grade).
+ */
+export const FEEDBACK_AFTER_MS = 10_000;
+
+/**
  * Calendar arithmetic uses UTC dates as date labels, not 24-hour jumps through local DST. A day
  * ends at `dayEndHour` on the local clock (asked for 2026-10-04): activity before it belongs to
  * the day before, and a week runs from that hour on Monday.

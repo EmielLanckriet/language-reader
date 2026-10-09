@@ -33,6 +33,7 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import SessionQuestions from '$lib/ui/SessionQuestions.svelte';
 	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
+	import { FEEDBACK_AFTER_MS } from '$lib/domain/study';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { colourBand } from '$lib/domain/memory';
 	import { readingsOf } from '$lib/analyzer/pronounce';
@@ -323,7 +324,6 @@
 	 * otherwise (asked for 2026-10-04). Only after some real reading or playing, and only for leaving
 	 * within the app: closing the app cannot wait for a sheet, and Progress still asks later.
 	 */
-	const ASK_AFTER_MS = 30_000;
 	let leaving = $state<{
 		session: number;
 		modality: string;
@@ -338,7 +338,7 @@
 	beforeNavigate((navigation) => {
 		if (leavingQuietly || finishing || leaving || !recorder) return;
 		if (navigation.willUnload || !navigation.to) return;
-		if (recorder.engagedMs() < ASK_AFTER_MS) return;
+		if (recorder.engagedMs() < FEEDBACK_AFTER_MS) return;
 		navigation.cancel();
 		const target = navigation.to.url.href;
 		const delta = navigation.type === 'popstate' ? navigation.delta : undefined;

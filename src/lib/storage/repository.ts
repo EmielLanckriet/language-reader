@@ -31,7 +31,12 @@ import { default_w } from 'ts-fsrs';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain/tuning';
 import { RULE, setAsideProvenance } from '../domain/memory';
-import { studyWeek, type StudyOverview, type StudySession } from '../domain/study';
+import {
+	FEEDBACK_AFTER_MS,
+	studyWeek,
+	type StudyOverview,
+	type StudySession
+} from '../domain/study';
 import { projectStates, RETRACTED } from '../domain/state';
 import { MAX_RANGE, validateEncounter, type Encounter, type Modality } from '../domain/encounter';
 import { checkedExample, type AnkiExample } from '../domain/card-examples';
@@ -1704,7 +1709,7 @@ export class Repository {
 			(SELECT detail FROM encounter g WHERE g.session_id=s.id AND g.kind='engagement' ORDER BY g.device_id DESC,g.device_seq DESC LIMIT 1) AS engagement
 			FROM session s JOIN document d ON d.id=s.document_id JOIN encounter e ON e.session_id=s.id
 			WHERE s.id NOT IN (${WITHDRAWN}) GROUP BY s.id
-			HAVING activity_ms >= 30000 OR played_ms >= 30000 OR ended=1 OR answer IS NOT NULL OR engagement IS NOT NULL
+			HAVING activity_ms >= ${FEEDBACK_AFTER_MS} OR played_ms >= ${FEEDBACK_AFTER_MS} OR answer IS NOT NULL OR engagement IS NOT NULL
 			ORDER BY last_at DESC`
 		).map((row) => ({
 			id: Number(row.id),
