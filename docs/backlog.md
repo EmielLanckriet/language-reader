@@ -5,22 +5,30 @@ this file keeps the reasoning and measurements behind them. Each entry's heading
 When adding an entry, open its issue; when closing an issue, update or remove its entry here.
 Entries newest first.
 
-## Index of open issues (2026-10-08)
+## Index of open issues (2026-10-09)
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy · #28 a failed download stays at "packing", then vanishes from New.
+offered from an empty copy · #27 Termux's wake lock all night · #28 a failed download stays at
+"packing", then vanishes from New.
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
 Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
 
-Library and content: #8 delete a video or text · #9 switch subtitle track after import · #10
-generated story with due words · #11 find YouTube videos by due and new words · #13 video
-statistics · #14 transcription resume and background pass · #16 word senses in context.
+Library and content: #31 a page for each video before it plays · #10 generated story with due
+words · #11 find YouTube videos by due and new words · #13 video statistics · #14 transcription
+resume and background pass · #16 word senses in context.
 
 Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
 emulator install test · #24 Termux install size · #25 store wipe cause.
+
+## A page for each video before it plays — #31
+
+2026-10-09, the reader: tapping a video should open a page for it (delete, change subtitles, more
+detailed statistics, play) instead of starting it. Delete and the track menu now live in the
+player; the statistics are one line in the library list. This page would settle #13's "where the
+statistics appear". Open questions in the issue.
 
 ## Card activation — built as ADR-0039 (#5, closed)
 
