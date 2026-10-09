@@ -3,6 +3,19 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Feedback asked only after 10 s of activity (#32) — deployed and phone checked
+
+2026-10-09, the reader: a mere visit does not deserve a grade. Opening a video and leaving it put
+a "0 sec recorded" session on Progress asking for feedback: the resume's seek starts a session (a
+resume is a new session, the reader's view), and Progress listed every session with a
+`session-end`. Progress now lists a session after 10 s of reading or playback, or once answered,
+ended or not; leaving asks after the same 10 s instead of 30 s (`FEEDBACK_AFTER_MS`,
+`domain/study.ts`). Short sessions already recorded are hidden, not withdrawn. Validation: test red
+first, five mutations caught; 567 tests, type check, lint; browser `leaving`, `study`
+(`leavingvideo` not run: no subtitled fixture video on the laptop). Phone (build `1791554267336`):
+the 0 s test session is gone from Progress; the three listed sessions under 10 s all have saved
+feedback.
+
 ## Library in 1.6 s instead of 4 s at start — deployed and phone checked
 
 Issue #1, second cause. Timed per storage call over CDP on the phone (three reloads): the library's

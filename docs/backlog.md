@@ -9,8 +9,7 @@ Entries newest first.
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy · #27 Termux's wake lock all night · #32 feedback asked after a visit,
-not real activity.
+offered from an empty copy · #27 Termux's wake lock all night.
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
