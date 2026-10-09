@@ -3,7 +3,7 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## A page for each video and text (#31) — built, phone pending
+## A page for each video and text (#31) — deployed and phone checked
 
 2026-10-09, the reader: tapping a video should not start it. Every way into a document now opens
 its page (`/document/[id]`): the library, Continue watching, Progress's "Open again", and an import
@@ -17,8 +17,14 @@ later (#13). Validation: type check, lint, 560 tests; browser `documentpage` (ne
 library links to the player), `faileddownload`, `lookup`; scenarios that open a document go through
 its page (`PLAY` in the harness). `wipe` fails at a Known button the word sheet no longer has
 (stale since Retire replaced it, not this change).
+Phone (build `1791543736774`, 2026-10-09): library entries link to `/document/N`; document 39 (PAW
+Patrol) opened its page from the library with its picture, titles, "1,170 characters · 69% known ·
+3% learning · 28% new", "1 due come up (1×) · 133 new words, 13 recur" and Play → `/read/39`, no
+horizontal scroll at 411 px; Play itself not pressed, so no session was recorded. No texts on the
+phone, so a text's page was checked only in the browser (`leaving`). Delete was a filled button with
+muted text, hard to read; now `secondary`, in the player too.
 
-## A failed download says so (#28) — built, phone pending
+## A failed download says so (#28) — deployed and phone checked
 
 2026-10-09: a share whose yt-dlp fetched nothing stayed at `packing`, showed as "A new video" for
 ten minutes and vanished, and its cause closed with the Termux window. `termux-url-opener` now
@@ -29,7 +35,12 @@ whatever its age, titled by the shared address when no title arrived, and does n
 lock for it. New from Termux shows it as "Download failed. Share it to Termux again." with the
 reason and ✕. Validation: `test_service.py` runs the real opener with a stubbed yt-dlp (failed and
 packed), plus listing and the wake lock, red first, five mutations caught; browser
-`faileddownload` (new; fails with the failed branch removed); type check. Not yet on the phone.
+`faileddownload` (new; fails with the failed branch removed); type check.
+Phone (scripts at `be9eff3`, service restarted 11:06 UTC): a share of a missing video
+(`watch?v=zzzzzzzzzz0`) became job 20261009-130659 with `stage: failed`, reason "ERROR: [youtube]
+zzzzzzzzzz0: This video is unavailable" and `download.log`; Reader listed it under New from Termux
+as "Download failed", and ✕ dismissed it. The wake lock was taken at 13:07:08 and released at
+13:08:24, a minute after the failure, not ten.
 
 ## 10 s transcription windows (#30) — deployed and checked on the phone
 

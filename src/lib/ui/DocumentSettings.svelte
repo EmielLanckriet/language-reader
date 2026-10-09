@@ -171,7 +171,7 @@
 {/if}
 
 <p class="delete">
-	<button onclick={deleteDocument}>Delete this document</button>
+	<button class="secondary" onclick={deleteDocument}>Delete this document</button>
 	{#if deleteProblem}<span role="alert">{deleteProblem}</span>{/if}
 </p>
 
