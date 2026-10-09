@@ -28,7 +28,12 @@ emulator install test · #24 Termux install size · #25 store wipe cause.
 2026-10-09, the reader: tapping a video should open a page for it (delete, change subtitles, more
 detailed statistics, play) instead of starting it. Delete and the track menu now live in the
 player; the statistics are one line in the library list. This page would settle #13's "where the
-statistics appear". Open questions in the issue.
+statistics appear".
+
+Decided the same day: every way in goes through the page, Continue watching too; texts get the
+same page (one page for every document); the first version shows the statistics the library
+already shows (new, learning, due), with a brainstorm on more later; delete and the subtitle menu
+stay in the player as well.
 
 ## Card activation — built as ADR-0039 (#5, closed)
 
