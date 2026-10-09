@@ -1,4 +1,4 @@
-"""python3 -m unittest scripts/termux/test_service.py — the one check on taking Reader's transcript.
+"""python3 -m unittest scripts/termux/test_service.py — the reader service and the URL opener.
 
 A transcript Reader sends (spec 008, contracts/reader-service.md) is stored, and starts one
 translation: sent again while that runs, it does not start a second.
@@ -6,7 +6,10 @@ translation: sent again while that runs, it does not start a second.
 
 import http.client
 import importlib.util
+import json
 import os
+import subprocess
+import tarfile
 import tempfile
 import textwrap
 import threading
@@ -167,6 +170,81 @@ class HoldingTheWakeLock(unittest.TestCase):
         lock.update(False, 220)
         lock.update(False, 300)
         self.assertEqual(self.calls, ['termux-wake-unlock', 'termux-wake-lock', 'termux-wake-unlock'])
+
+    def test_does_not_hold_it_for_a_failed_download(self):
+        open(os.path.join(self.job, 'progress.json'), 'w').write('{"stage": "failed", "reason": "x"}')
+        self.assertFalse(self.service.working(self.root))
+
+
+class ListingAFailedDownload(unittest.TestCase):
+    """Issue #28: a download that fetched nothing is listed as failed, not as "packing" for ten
+    minutes and then nothing."""
+
+    def test_lists_it_as_failed_however_old(self):
+        root = tempfile.mkdtemp()
+        job = os.path.join(root, 'downloads', '20261008-200612')
+        os.makedirs(job)
+        progress = os.path.join(job, 'progress.json')
+        open(progress, 'w').write('{"stage": "failed", "reason": "ERROR: gone", "url": "https://y/1"}')
+        os.utime(progress, (time.time() - 7200, time.time() - 7200))
+        service = load_service('unused')
+        service.Handler.root = root
+        listed = service.Handler.jobs(service.Handler)
+        self.assertEqual([(j['job'], j['title'], j['ready'], j['progress']['stage']) for j in listed],
+                         [('20261008-200612', 'https://y/1', False, 'failed')])
+
+
+class RunningTheUrlOpener(unittest.TestCase):
+    """termux-url-opener itself, with yt-dlp and the reader service replaced by stubs."""
+
+    def run_opener(self, ytdlp):
+        home = tempfile.mkdtemp()
+        os.makedirs(os.path.join(home, 'bin'))
+        up = os.path.join(home, 'bin', 'reader-service-up')
+        open(up, 'w').write('#!/bin/sh\nexit 0\n')
+        os.chmod(up, 0o755)
+        # Run as `python3 "$(command -v yt-dlp)"`, so the stub is Python.
+        stub = os.path.join(home, 'bin', 'yt-dlp')
+        open(stub, 'w').write(textwrap.dedent(ytdlp))
+        os.chmod(stub, 0o755)
+        env = dict(os.environ, HOME=home, PATH=os.path.join(home, 'bin') + os.pathsep + os.environ['PATH'])
+        result = subprocess.run(['bash', os.path.join(HERE, 'termux-url-opener'), 'https://y/1'],
+                                env=env, capture_output=True, text=True, timeout=60)
+        downloads = os.path.join(home, 'downloads')
+        return result, os.path.join(downloads, os.listdir(downloads)[0])
+
+    def test_a_download_that_fetched_nothing_ends_failed_with_its_log(self):
+        result, job = self.run_opener('''
+            import sys
+            if '--skip-download' not in sys.argv:
+                print('[youtube] Extracting URL: https://y/1')
+                print('ERROR: [youtube] u5luMo-WYEM: Video unavailable', file=sys.stderr)
+            sys.exit(1)
+        ''')
+        self.assertNotEqual(result.returncode, 0)
+        with open(os.path.join(job, 'progress.json'), encoding='utf-8') as file:
+            progress = json.load(file)
+        self.assertEqual(progress['stage'], 'failed')
+        self.assertIn('Video unavailable', progress['reason'])
+        self.assertEqual(progress['url'], 'https://y/1')
+        log = open(os.path.join(job, 'download.log'), encoding='utf-8').read()
+        self.assertIn('Extracting URL', log)
+
+    def test_a_download_is_packed_without_its_log_or_progress_lines(self):
+        result, job = self.run_opener('''
+            import sys
+            if '--skip-download' not in sys.argv:
+                print('[youtube] Extracting URL: https://y/1')
+                print('download:A title\\tavc1\\t 50.0%')
+                open('media.mp4', 'w').write('video')
+        ''')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(os.path.exists(os.path.join(job, 'progress.json')))
+        with tarfile.open(os.path.join(job, 'bundle.tar')) as bundle:
+            self.assertEqual(sorted(bundle.getnames()), ['./media.mp4'])
+        log = open(os.path.join(job, 'download.log'), encoding='utf-8').read()
+        self.assertIn('Extracting URL', log)
+        self.assertNotIn('download:', log)
 
 
 if __name__ == '__main__':

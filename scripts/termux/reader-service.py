@@ -79,6 +79,19 @@ def translating(folder):
         return False
 
 
+def progress_of(folder):
+    """A download still without its bundle: its progress file, and how many seconds since it changed."""
+    path = os.path.join(folder, 'progress.json')
+    if os.path.exists(os.path.join(folder, 'bundle.tar')):
+        return None
+    try:
+        age = time.time() - os.path.getmtime(path)
+        with open(path, encoding='utf-8') as file:
+            return json.load(file), age
+    except (OSError, ValueError):
+        return None
+
+
 def working(root):
     """Whether a download or a translation is running: the jobs that need the CPU with the screen off."""
     downloads = os.path.join(root, 'downloads')
@@ -86,13 +99,10 @@ def working(root):
         folder = os.path.join(downloads, job)
         if translating(folder):
             return True
-        try:
-            # The same ten minutes as jobs(): an untouched progress file is a download that died.
-            if (not os.path.exists(os.path.join(folder, 'bundle.tar'))
-                    and time.time() - os.path.getmtime(os.path.join(folder, 'progress.json')) <= 600):
-                return True
-        except OSError:
-            pass
+        # The same ten minutes as jobs(): an untouched progress file is a download that died.
+        progress = progress_of(folder)
+        if progress and progress[0].get('stage') != 'failed' and progress[1] <= 600:
+            return True
     return False
 
 
@@ -171,18 +181,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         for job in sorted(os.listdir(downloads) if os.path.isdir(downloads) else [], reverse=True)[:30]:
             folder = os.path.join(downloads, job)
             bundle = os.path.join(folder, 'bundle.tar')
-            progress = os.path.join(folder, 'progress.json')
             if not os.path.isfile(bundle):
                 # Still downloading, so Reader can show it from the moment of the share. A progress
                 # file nobody has touched for ten minutes is a download that died, not one to wait for.
-                try:
-                    if time.time() - os.path.getmtime(progress) > 600:
-                        continue
-                    with open(progress, encoding='utf-8') as file:
-                        state = json.load(file)
-                except (OSError, ValueError):
+                # A failed one stays until Reader dismisses it, so the reader learns what happened.
+                progress = progress_of(folder)
+                if not progress:
                     continue
-                found.append({'job': job, 'title': state.get('title') or 'A new video', 'id': None,
+                state, age = progress
+                if state.get('stage') != 'failed' and age > 600:
+                    continue
+                # A download that failed before its title arrived is known by the address shared.
+                title = state.get('title') or state.get('url') or 'A new video'
+                found.append({'job': job, 'title': title, 'id': None,
                               'bytes': 0, 'ready': False, 'progress': state})
                 continue
             try:

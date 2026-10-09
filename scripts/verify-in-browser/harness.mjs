@@ -2792,6 +2792,45 @@ const scenarios = {
 	},
 
 	// Reports what is actually on the page, so a failing selector is diagnosed rather than guessed at.
+	// Issue #28: a download that fetched nothing shows under New from Termux as failed, with its
+	// reason and the address shared, and ✕ dismisses it for good. Needs make-fixtures.sh's
+	// fixture-failed on the service at port 18765.
+	async faileddownload() {
+		const tab = await openTab('about:blank');
+		const entry = `return [...document.querySelectorAll('.fresh li')].find((li) => li.textContent.includes('fixtureFailed'))`;
+		try {
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+			await tab.goto('/');
+			const shown = await until(
+				'the failed download under New from Termux',
+				() => tab.evaluate(`const li = (() => { ${entry} })(); return li ? li.innerText : null;`),
+				30000,
+				250
+			);
+			await tab.evaluate(
+				`(() => { ${entry} })().querySelector('button.dismiss').click(); return true;`
+			);
+			await until(
+				'it to go',
+				() => tab.evaluate(`return (() => { ${entry} })() ? null : true;`),
+				10000,
+				250
+			);
+			await tab.goto('/');
+			await until('New from Termux to load again', () =>
+				tab.evaluate(`return document.querySelector('.fresh li') ? true : null;`)
+			);
+			const back = await tab.evaluate(`return !!(() => { ${entry} })();`);
+			return {
+				pass: shown.includes('Download failed') && shown.includes('Video unavailable') && !back,
+				shown,
+				offeredAgainAfterReload: back
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async probe() {
 		const tab = await openTab('about:blank');
 		try {

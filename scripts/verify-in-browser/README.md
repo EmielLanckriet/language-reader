@@ -23,6 +23,7 @@ the scenario's. Add `--keep` to leave the browser profile behind for inspection.
 
 | scenario | what it establishes |
 | --- | --- |
+| `faileddownload` | Issue #28: make-fixtures.sh's `fixture-failed` shows under New from Termux as "Download failed" with yt-dlp's reason and the shared address as its title; ✕ dismisses it and a reload does not offer it again. Needs the fixture service on port 18765 and a verification-mode build; about 15 s. |
 | `probe` | What is actually on the page — buttons, links, text. Run this first when a selector fails, instead of guessing. |
 | `tuning` | More → Cards → Learning data, empty report and JSON export through the storage worker in a disposable profile. Use a verification-mode build. |
 | `leaving` | Leaving a text after 30 s of reading asks the session's questions in a sheet before going: ← Texts (answer kept, shown on Progress), a short visit leaves without asking, and back (popstate) asks too, Later going back. 390px screenshot in `/tmp/reader-leaving-light.png`. Verification-mode build; about 90 s. |

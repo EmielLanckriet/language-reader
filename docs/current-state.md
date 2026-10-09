@@ -1,7 +1,20 @@
 # Current state
 
-Updated 2026-10-08. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## A failed download says so (#28) — built, phone pending
+
+2026-10-09: a share whose yt-dlp fetched nothing stayed at `packing`, showed as "A new video" for
+ten minutes and vanished, and its cause closed with the Termux window. `termux-url-opener` now
+keeps yt-dlp's non-progress output in `download.log` (not packed into the bundle), and any exit
+without a bundle writes `{"stage": "failed", "reason": <last ERROR line>, "url": …}` and still waits
+for the service it hosts (the old `exit 1` skipped that). The reader service lists a failed job
+whatever its age, titled by the shared address when no title arrived, and does not hold the wake
+lock for it. New from Termux shows it as "Download failed. Share it to Termux again." with the
+reason and ✕. Validation: `test_service.py` runs the real opener with a stubbed yt-dlp (failed and
+packed), plus listing and the wake lock, red first, five mutations caught; browser
+`faileddownload` (new; fails with the failed branch removed); type check. Not yet on the phone.
 
 ## 10 s transcription windows (#30) — deployed and checked on the phone
 

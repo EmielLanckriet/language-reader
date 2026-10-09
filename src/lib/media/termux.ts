@@ -15,9 +15,11 @@ export interface TermuxJob {
 	/** False while Termux is still downloading; absent from services older than this field. */
 	ready?: boolean;
 	progress?: {
-		stage: 'starting' | 'downloading' | 'packing';
+		stage: 'starting' | 'downloading' | 'packing' | 'failed';
 		part?: 'video' | 'audio';
 		percent?: number;
+		/** A failed download's cause: yt-dlp's last ERROR line (issue #28). */
+		reason?: string;
 	};
 }
 

@@ -7,6 +7,7 @@
 #   <serve-root>/downloads/fixture-media/  bundle.tar (45 s clip + subtitles), meta.json, the .vtt
 #   <serve-root>/downloads/fixture-tracks-*/  spec 012 bundles with track.<lang>.vtt and tracks.json
 #   <serve-root>/downloads/fixture-video-*/   one video downloaded twice, for new subtitles (issue #9)
+#   <serve-root>/downloads/fixture-failed/ a download that fetched nothing (issue #28)
 #   <serve-root>/downloads/fixture-live/   bundle.tar (clip, no subtitles, and the transcribing.json
 #                                          an older Termux wrote: Reader transcribes it anyway)
 #
@@ -94,6 +95,12 @@ write('fixture-video-first', [track('track.zh-Hans.vtt', 'zh-Hans', 'Chinese (Si
 write('fixture-video-again', [track('track.zh.vtt', 'zh', 'Chinese', clean),
       track('track.zh-Hans.vtt', 'zh-Hans', 'Chinese (Simplified)', mixed)], 'Test clip, one video (again)', 'fixtureVideo1')
 EOF
+
+# Issue #28: a share whose yt-dlp fetched nothing, as termux-url-opener now leaves it.
+failed=$(job fixture-failed)
+echo '{"stage": "failed", "reason": "ERROR: [youtube] fixtureFailed: Video unavailable", "url": "https://www.youtube.com/watch?v=fixtureFailed"}' \
+	>"$failed/progress.json"
+echo 'ERROR: [youtube] fixtureFailed: Video unavailable' >"$failed/download.log"
 
 echo "service:     python3 scripts/termux/reader-service.py --root $root"
 echo "translator:  TRANSLATE_STUB=1 python3 scripts/termux/translate.py $media"

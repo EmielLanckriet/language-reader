@@ -27,6 +27,33 @@ work="$HOME/downloads/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$work"
 cd "$work"
 
+# A job that ends without a bundle says why (issue #28). Left at "packing", it showed in Reader for
+# ten minutes and then vanished, and its cause closed with this window: download.log keeps yt-dlp's
+# output, and the last ERROR line becomes the reason. Also waits for the service, as the end does.
+finish() {
+	status=$?
+	if [ ! -f bundle.tar ]; then
+		URL="$url" python3 - <<'PY' || true
+import json, os
+try:
+    state = json.load(open('progress.json'))
+except (OSError, ValueError):
+    state = {}
+lines = open('download.log', errors='replace').read().splitlines() if os.path.exists('download.log') else []
+errors = [line.strip() for line in lines if line.startswith('ERROR')]
+failed = {'stage': 'failed', 'reason': errors[-1] if errors else 'Nothing was downloaded.',
+          'url': os.environ['URL']}
+if state.get('title'):
+    failed['title'] = state['title']
+json.dump(failed, open('progress.json.part', 'w'), ensure_ascii=False)
+os.replace('progress.json.part', 'progress.json')
+PY
+	fi
+	wait
+	exit "$status"
+}
+trap finish EXIT
+
 # 480p keeps a 20-minute video around 100 MB. Subtitles in two passes (spec 012, research R1):
 # every human track in any language with the video, as track.<lang>.vtt; then automatic Chinese,
 # as track-auto.<lang>.vtt, only when no human Chinese arrived. --write-subs never asks for YouTube's
@@ -49,8 +76,9 @@ python3 "$(command -v yt-dlp)" \
 	--write-info-json --no-write-playlist-metafiles --no-playlist \
 	--write-thumbnail --convert-thumbnails jpg \
 	-o 'media.%(ext)s' \
-	"$url" | python3 -u -c '
+	"$url" 2>&1 | python3 -u -c '
 import json, os, re, sys
+log = open("download.log", "a")
 for line in sys.stdin:
     print(line, end="", flush=True)
     fields = line.rstrip("\n").split("\t")
@@ -60,11 +88,14 @@ for line in sys.stdin:
             json.dump({"stage": "downloading", "title": fields[0], "part": part,
                        "percent": float(percent.group())}, file, ensure_ascii=False)
         os.replace("progress.json.part", "progress.json")
+    else:
+        log.write(line)
+        log.flush()
 ' || echo "yt-dlp reported an error; packing whatever arrived."
 if ! ls track.zh*.vtt >/dev/null 2>&1; then
 	python3 "$(command -v yt-dlp)" --js-runtimes node --skip-download --no-playlist \
 		--write-auto-subs --sub-langs 'zh,zh-CN,zh-Hans,zh-SG,zh-TW,zh-Hant,zh-HK' --sub-format vtt \
-		--sleep-subtitles 2 --ignore-errors -o 'subtitle:track-auto.%(ext)s' "$url" ||
+		--sleep-subtitles 2 --ignore-errors -o 'subtitle:track-auto.%(ext)s' "$url" 2>&1 | tee -a download.log ||
 		echo "yt-dlp could not fetch automatic Chinese subtitles."
 fi
 printf '{"stage": "packing"}' >progress.json
@@ -102,7 +133,7 @@ fi
 # Written aside and renamed: the reader service lists a bundle as ready the moment it exists.
 part="../$(basename "$work").tar.part"
 rm -f progress.json
-tar cf "$part" ./* && mv "$part" bundle.tar
+tar cf "$part" --exclude=./download.log ./* && mv "$part" bundle.tar
 echo "Packed:"; tar tvf bundle.tar
 # Reader fetches the bundle from the reader service (ADR-0022); nothing is handed over here.
 echo

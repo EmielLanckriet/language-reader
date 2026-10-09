@@ -207,7 +207,14 @@
 		<ul class="library">
 			{#each fresh as job (job.job)}
 				<li>
-					{#if job.ready === false}
+					{#if job.progress?.stage === 'failed'}
+						{job.title}
+						<small>Download failed. Share it to Termux again.</small>
+						<small>{job.progress.reason}</small>
+						<button class="dismiss" aria-label="Don't offer this again" onclick={() => dismiss(job)}
+							>✕</button
+						>
+					{:else if job.ready === false}
 						<button onclick={() => (waitingFor = job.job)} disabled={waitingFor === job.job}>
 							{waitingFor === job.job ? 'Opens when ready' : 'Open'}
 						</button>
