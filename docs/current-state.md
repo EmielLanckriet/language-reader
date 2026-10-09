@@ -14,7 +14,7 @@ phone the same episodes went from 574 to 1043 and 1011 to 1361 characters; the o
 left are mostly spoken interjections (嗯 嘿 耶 哇), not scraps. Episodes 1–2 were deleted (history
 kept) and re-imported, so all four PAW Patrol episodes are under 10 s windows.
 
-## A sentence seen before counts less (`evidence-4`, `fit-2`, #6) — built, not yet on the phone
+## A sentence seen before counts less (`evidence-4`, `fit-2`, #6) — deployed and measured
 
 2026-10-08, the reader: a word understood in a sentence already read or watched may be remembered
 from the line, not understood in a new context. An exposure now carries `rewatchDays`, derived in
@@ -26,8 +26,9 @@ Stored `fit-1` sets keep their id and use the guesses; the Anki baseline's id ch
 memory, replay, fit and a storage test, red first; nine mutations each caught; 560 tests, type
 check, lint. Measured on simulated data (400 words, 677 rewatches): the earlier-period loss moves
 1.3 of 768 across `d` from 0 to 1, so the fit can barely tell it; expect `d` and `h` to stay near the
-guesses for months. Not yet measured: how many of the reader's exposures are rewatches, and how
-the due count moves when memory is recomputed.
+guesses for months. Measured on the reader's export (both rules, same 1,939 words): 3,591 of
+8,667 exposures are rewatches, 469 of 2,296 untapped Goods; 447 words' stability fell (median
+×0.89); known words 181 → 104; reviews due now (13) and within 7 days (53) unchanged.
 
 ## Anki words outside the 2,000 most common set aside — deployed and run on the phone
 

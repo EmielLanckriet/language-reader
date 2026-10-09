@@ -13,9 +13,7 @@ offered from an empty copy · #28 a failed download stays at "packing", then van
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
-Cards and memory: #6 weigh encounters in an
-already-watched video (built, phone check open) · #18 fit the evidence rule · #20 Anki reset and
-live recall.
+Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
 
 Library and content: #8 delete a video or text · #9 switch subtitle track after import · #10
 generated story with due words · #11 find YouTube videos by due and new words · #13 video
