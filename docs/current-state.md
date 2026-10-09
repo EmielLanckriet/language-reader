@@ -3,7 +3,7 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Continue a video where it stopped — built, browser checked
+## Continue a video where it stopped — deployed and phone checked
 
 2026-10-09, the reader: closing a video and opening it again started it from the beginning. The
 player only ever took a start time from `?t=` (a finished transcript). Now, without `?t=`, it starts
@@ -15,6 +15,7 @@ outlined Start from the beginning (`?t=0`) under it; Watch again once finished. 
 and `lastPlayed` tests red first, five mutations caught; 564 tests, type check, lint; browser
 `resume` (new; fails with the player's resume removed), `documentpage`, `newsubtitles`, `listened`,
 `leavingvideo` (the last two had waited for a video since #31 without pressing Play; they now do).
+Phone (build after `a642b4f`, 2026-10-09): the reader confirmed it works.
 
 ## A page for each video and text (#31) — deployed and phone checked
 
