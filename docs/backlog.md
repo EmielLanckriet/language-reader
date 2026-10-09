@@ -9,8 +9,7 @@ Entries newest first.
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy · #28 a failed download stays at "packing", then vanishes from New ·
-#30 transcription splits expressive speech into one-character lines.
+offered from an empty copy · #28 a failed download stays at "packing", then vanishes from New.
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
