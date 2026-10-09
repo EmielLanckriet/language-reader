@@ -40,6 +40,8 @@ describe('re-applying corrections', () => {
 		const words = () =>
 			repository.getDocument(id).tokens.map((t) => [...text].slice(t.start, t.end).join(''));
 		expect(words()).toEqual(['华', '崑智', '驾']);
+		// A second full pass, not the skip the catch-up marker would give (catch-up.test.ts).
+		run(db, 'DELETE FROM catch_up');
 		expect(repository.reapplyCorrections()).toBe(0);
 		expect(words()).toEqual(['华', '崑智', '驾']);
 	});

@@ -196,6 +196,9 @@ function engagementOf(detail: string): Engagement {
 	return { mode: mode ?? null, attentive: attentive ?? null };
 }
 
+/** Change it when `applyCorrections` changes what it makes, so every document is checked again. */
+const CORRECTIONS_PASS = 'corrections-1';
+
 const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn' AND session_id IS NOT NULL`;
 const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
  WHERE e.document_id=t.document_id AND e.from_offset<=t.start AND e.to_offset>=t.end
@@ -874,7 +877,9 @@ export class Repository {
 	 * before corrections applied in order (issue #2) hold the old rule's tokens. Background work, like
 	 * re-derivation: nothing for the reader to retry if it cannot write.
 	 */
-	reapplyCorrections(): number {
+	reapplyCorrections(): number | null {
+		const fingerprint = `${CORRECTIONS_PASS}|${this.libraryFingerprint()}`;
+		if (this.caughtUp('corrections', fingerprint)) return null;
 		const history = this.readCorrections();
 		const byLanguage = new Map<string, Rules>();
 		for (const { language } of history)
@@ -907,8 +912,41 @@ export class Repository {
 					rewritten++;
 				}
 			}
+			this.markCaughtUp('corrections', fingerprint);
 		});
 		return rewritten;
+	}
+
+	/**
+	 * What the catch-up passes read, in a few numbers: the corrections, and each document's analyzer,
+	 * upgrade progress and removal. Every write of tokens changes one of them.
+	 */
+	private libraryFingerprint(): string {
+		const [row] = queryRows(
+			this.db,
+			`SELECT (SELECT COUNT(*) || ':' || IFNULL(MAX(id), 0) FROM correction_event) AS corrections,
+              (SELECT group_concat(id || ':' || analyzer || ':' || analyzer_version || ':'
+                        || IFNULL(upgrade_analyzer, '') || ':' || IFNULL(upgrade_version, '') || ':'
+                        || IFNULL(upgraded_through, '') || ':' || IFNULL(removed_at, ''), ',')
+                 FROM (SELECT * FROM document ORDER BY id)) AS documents`
+		);
+		return `${row.corrections}|${row.documents ?? ''}`;
+	}
+
+	private caughtUp(pass: string, fingerprint: string): boolean {
+		return (
+			queryRows(this.db, 'SELECT 1 FROM catch_up WHERE name = ? AND fingerprint = ?', [
+				pass,
+				fingerprint
+			]).length > 0
+		);
+	}
+
+	private markCaughtUp(pass: string, fingerprint: string): void {
+		run(this.db, 'INSERT OR REPLACE INTO catch_up (name, fingerprint) VALUES (?, ?)', [
+			pass,
+			fingerprint
+		]);
 	}
 
 	private analyzedTokens(documentId: DocumentId): ResolvedToken[] {
@@ -1552,16 +1590,21 @@ export class Repository {
 	 * and shown until the sweep recomputes them, a batch at a time.
 	 */
 	staleMemory(limit: number): LexemeId[] {
+		const rule = ruleKey(this.currentParameters());
 		const stale = queryRows(
 			this.db,
 			'SELECT DISTINCT lexeme_id FROM memory WHERE rule != ? LIMIT ?',
-			[ruleKey(this.currentParameters()), limit]
+			[rule, limit]
 		).map((row) => Number(row.lexeme_id));
 		if (stale.length > 0) return stale;
 		// Words evidence-1 gave no memory and evidence-2 does: met untapped in an attentive session.
 		// An ignored word never gets a row, so it is left out, or the sweep would find it forever;
 		// so is a word met only under English that may have been shown (evidence-3 gives it nothing).
-		return queryRows(
+		// Every mark and attention answer recomputes its words, so only a new rule or new tokens can
+		// leave one without memory: 1.75 s on the phone otherwise, at every start (issue #1).
+		const fingerprint = `${rule}|${this.libraryFingerprint()}`;
+		if (this.caughtUp('memory', fingerprint)) return [];
+		const missing = queryRows(
 			this.db,
 			`SELECT lexeme_id FROM (${ATTENTIVELY_CREDITABLE})
         WHERE lexeme_id NOT IN (SELECT lexeme_id FROM memory)
@@ -1569,6 +1612,8 @@ export class Repository {
         LIMIT ?`,
 			[limit]
 		).map((row) => Number(row.lexeme_id));
+		if (missing.length === 0) this.markCaughtUp('memory', fingerprint);
+		return missing;
 	}
 
 	/** Recompute these words' memory: one batch of the sweep. */

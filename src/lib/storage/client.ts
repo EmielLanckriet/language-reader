@@ -61,6 +61,8 @@ export class RepositoryClient {
 		{ call: Call; resolve: (value: unknown) => void; reject: (error: unknown) => void }
 	>();
 	private nextId = 1;
+	/** When the last outstanding call was answered: what `whenQuiet` measures from. */
+	private quietSince = performance.now();
 	private readonly watchers = new Set<(state: Availability) => void>();
 
 	/**
@@ -121,6 +123,7 @@ export class RepositoryClient {
 			const waiting = this.pending.get(message.id);
 			if (!waiting) return;
 			this.pending.delete(message.id);
+			if (this.pending.size === 0) this.quietSince = performance.now();
 
 			if (message.kind === 'result') waiting.resolve(message.value);
 			else waiting.reject(rebuild(message.error));
@@ -184,6 +187,19 @@ export class RepositoryClient {
 	retry(): void {
 		if (this.availability.kind === 'refused') this.replace();
 		else this.worker.postMessage({ kind: 'retry' } satisfies ToWorker);
+	}
+
+	/**
+	 * Resolves once no call has been waiting for `quietMs`. The worker answers one call at a time, so
+	 * background work started earlier holds up every screen's own calls: the start-up catch-up kept
+	 * the library waiting 3 s on the phone (issue #1).
+	 */
+	async whenQuiet(quietMs: number): Promise<void> {
+		for (;;) {
+			const quietFor = this.pending.size === 0 ? performance.now() - this.quietSince : 0;
+			if (quietFor >= quietMs) return;
+			await new Promise((resolve) => setTimeout(resolve, Math.max(100, quietMs - quietFor)));
+		}
 	}
 
 	private call<T>(call: Call): Promise<T> {
@@ -333,7 +349,7 @@ export class RepositoryClient {
 	}
 
 	/** Documents whose words the corrections in force would change, rewritten; how many (issue #2). */
-	reapplyCorrections(): Promise<number> {
+	reapplyCorrections(): Promise<number | null> {
 		return this.call({ method: 'reapplyCorrections', args: [] });
 	}
 

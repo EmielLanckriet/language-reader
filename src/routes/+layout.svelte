@@ -55,8 +55,9 @@
 		// because it is about the library rather than about any screen — and starting it per screen
 		// would mean several sweeps competing for the same storage.
 		//
-		// Deliberately late and deliberately quiet. It waits for the first idle moment so it never
-		// competes with the work of actually opening the application, and it stops the moment the
+		// Deliberately late and deliberately quiet. It waits until the storage has answered the screen
+		// being opened (the first idle moment came before the library had even asked: issue #1), so it
+		// never competes with the work of actually opening the application, and it stops the moment the
 		// page stops being visible, because that is when this copy gives up the storage lease
 		// (FR-018, FR-019).
 		void startCatchUp();
@@ -65,10 +66,12 @@
 
 	async function startCatchUp() {
 		await whenIdle();
-		if (!browser || document.visibilityState !== 'visible') return;
+		if (!browser) return;
 
 		try {
 			const { repository } = await session();
+			await repository.whenQuiet(1000);
+			if (document.visibilityState !== 'visible') return;
 			// Corrections first: they move tokens, which the memory sweep then reads.
 			await repository.reapplyCorrections();
 			await repository.retireIgnored();
