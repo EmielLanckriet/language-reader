@@ -3,6 +3,21 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Library in 1.6 s instead of 4 s at start — deployed and phone checked
+
+Issue #1, second cause. Timed per storage call over CDP on the phone (three reloads): the library's
+4 ms `listDocuments` waited 3.1 s behind the start-up catch-up, which found nothing to do every
+time: `reapplyCorrections` 2.5 s, then `staleMemory`'s no-memory-yet query 1.75 s, which also held
+the library's shares until ~6.6 s. The catch-up started at the first idle moment, before the library
+had asked for anything. Each pass now keeps a fingerprint of what it reads (corrections; documents'
+analyzer, upgrade progress and removal; the evidence rule) in the derived `catch_up` table
+(migration 005) when it finds everything in order, and is skipped while it matches; the catch-up
+waits until the storage worker has been quiet for 1 s (`whenQuiet`). Validation: tests red first,
+five mutations caught; 566 tests, type check, lint; browser `boot`, `firstload`, `corrections`,
+`study`. Phone (build `1791552075933`): library list at 1.5–1.7 s (was 3.9–4.2 s), shares at ~2.5 s,
+the passes 13–24 ms each. Still open under #1: opening storage (~0.6 s) and `studyOverview`
+(~0.65 s) before anything shows, the shares' `wordLines` 0.4 s, `wordOccurrences` 0.26 s.
+
 ## Continue a video where it stopped — deployed and phone checked
 
 2026-10-09, the reader: closing a video and opening it again started it from the beginning. The
