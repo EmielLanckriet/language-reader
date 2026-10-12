@@ -14,7 +14,8 @@ offered from an empty copy · #27 Termux's wake lock all night ·
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
-Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
+Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall · #36 hardcore mode
+· #37 record whether a card's example sentence was played.
 
 Later, not worth it yet: #33 the player's words and pinyin in the background.
 
@@ -25,6 +26,20 @@ and background pass · #16 word senses in context.
 Tooling and checks: #12 report a problem or request a feature from inside the app · #17 Termux
 service dying · #23 emulator install test · #24 Termux install size · #25 store wipe cause · #34
 seven browser scenarios failing.
+
+## Hardcore mode: drill a fragment's words around watching it — #36
+
+2026-10-12, brainstormed with the reader: drill the new, due, not-yet-active and set-aside words of
+one fragment (by hand or cut by load) as cards with sentences from that content, with learning
+steps. Options chosen at the start: filters (occurrences, general frequency, coverage target) and
+steps (English preview, watch first, drill, watch after). Drill grades update memory, labelled
+hardcore; a word joins Cards only at FSRS stability ≥ N days (14 to start); a drilled line counts
+as seen for `evidence-4`. Words retired by hand stay out. Full list and open points in the issue.
+
+## Record whether a card's example sentence was played — #37
+
+2026-10-12, the reader: they often grade Hard when the example sentence was needed. Recording
+whether it was played before the grade would let the fit (#18) treat that success as helped.
 
 ## A layer over the screen; the lowest brightness is brighter — #35
 
