@@ -149,6 +149,8 @@ const READ_LINK = `[...document.querySelectorAll("a")].map((a) => a.getAttribute
 // Put first in a condition that waits for the player: an import or a library entry opens the
 // document's page, and this presses its Play.
 const PLAY = `if (location.pathname.includes('/document/')) { document.querySelector('a.play')?.click(); return null; }`;
+// The list is built only outside the stage (issue #1): scenarios reading it open the player there.
+const ALL_LINES = `localStorage.setItem('reader.stage', 'false'); return true;`;
 
 // Import a Termux job the way the reader does: open the library, find it under "New from Termux",
 // press Open. The reader service must be serving it (make-fixtures.sh).
@@ -176,10 +178,13 @@ const scenarios = {
 	// leaving the question imports nothing; the English switch changes only the English.
 	async tracks() {
 		let tab = await openTab('about:blank');
-		const linesShown = `[...document.querySelectorAll('.lines p')].length`;
+		// The Chinese (no pinyin) of the first lines, which are always built at the top of the list (issue #1: only
+		// the lines near the screen are, so a count would change with the English shown).
+		const linesShown = `JSON.stringify([...document.querySelectorAll('.lines p')].slice(0, 5).map((p) => [...p.querySelectorAll('.token')].map((t) => { const c = t.cloneNode(true); c.querySelectorAll('rt').forEach((r) => r.remove()); return c.textContent; }).join('')))`;
 		try {
 			// US1: no question, clean text.
 			await importFromTermux(tab, 'Test clip, clean and mixed tracks');
+			await tab.evaluate(ALL_LINES);
 			const clean = await until(
 				'the clean track to open without a question',
 				() =>
@@ -200,6 +205,7 @@ const scenarios = {
 
 			// US2: the question, with the defaults chosen; leaving it imports nothing.
 			await importFromTermux(tab, 'Test clip, human English');
+			await tab.evaluate(ALL_LINES);
 			// At phone width, where the sheet once overflowed sideways (A71, 2026-10-03).
 			await tab.send('Emulation.setDeviceMetricsOverride', {
 				width: 390,
@@ -926,6 +932,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			await until(
 				'the document to open',
 				() => tab.evaluate(`return !!document.querySelector('.lines p');`),
@@ -977,6 +984,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			const video = await until(
 				'the video document',
 				() =>
@@ -1094,7 +1102,7 @@ const scenarios = {
 					tab.evaluate(`
 						const line = document.querySelector('.media.stage .subtitles .chinese');
 						const english = document.querySelector('.media.stage .english-line');
-						return line && english ? { chinese: line.textContent, blurred: english.classList.contains('blurred'), listHidden: getComputedStyle(document.querySelector('.lines')).display === 'none' } : null;
+						return line && english ? { chinese: line.textContent, blurred: english.classList.contains('blurred'), listHidden: !document.querySelector('.lines') } : null;
 					`),
 				10000,
 				250
@@ -1476,6 +1484,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			await until(
 				'the document to open',
 				() => tab.evaluate(`return !!document.querySelector('.lines .reveal');`),
@@ -1604,6 +1613,7 @@ const scenarios = {
 		const count = `return document.querySelectorAll('.lines button.token').length;`;
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			await until(
 				'the long document',
 				async () => ((await tab.evaluate(count)) > 1000 ? true : null),
@@ -1881,6 +1891,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await importFromTermux(tab, 'Test clip without subtitles');
+			await tab.evaluate(ALL_LINES);
 			await until(
 				'the live page',
 				() => tab.evaluate(`return location.pathname.includes('/live/');`),
@@ -2159,13 +2170,16 @@ const scenarios = {
 			if (!items.length) return null;
 			return { entries: items.length, watched: items[0].querySelector('.watched')?.style.width ?? null, resume: document.querySelector('.continue-card')?.getAttribute('href') ?? null, offered: [...document.querySelectorAll('.fresh li')].filter((li) => li.textContent.includes('one video')).length };`;
 		const back = async () => {
-			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
+			await tab.evaluate(
+				`(document.querySelector('.back-to-videos') ?? document.querySelector('a.back')).click(); return true;`
+			);
 			await until('the library', () =>
 				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
 			);
 		};
 		try {
 			await importFromTermux(tab, 'Test clip, one video');
+			await tab.evaluate(ALL_LINES);
 			const first = await until('the first import', () => tab.evaluate(reading), 60000, 250);
 			await tab.evaluate(
 				`const v = document.querySelector('video'); v.muted = true; v.play(); return true;`
@@ -2316,7 +2330,9 @@ const scenarios = {
 					const plain = word.cloneNode(true); plain.querySelectorAll('rt').forEach((rt) => rt.remove()); return plain.textContent;
 				`)
 			);
-			await tab.evaluate(`document.querySelector('.back-to-videos').click(); return true;`);
+			await tab.evaluate(
+				`(document.querySelector('.back-to-videos') ?? document.querySelector('a.back')).click(); return true;`
+			);
 			await until('the library', () =>
 				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
 			);
@@ -2395,6 +2411,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			await until(
 				'the imported document to open',
 				() =>
@@ -2457,7 +2474,11 @@ const scenarios = {
 			await tab.evaluate(`
 				const player = document.querySelector('.player');
 				player.muted = true;
+				// ▸ is in the list, built only off the stage (issue #1): there and back again.
+				document.querySelector('[aria-label="All lines"]').click();
+				await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 				document.querySelectorAll('.seek')[3].click();
+				document.querySelector('.to-stage').click();
 				return true;
 			`);
 			const stopped = await until(
@@ -2515,6 +2536,7 @@ const scenarios = {
 			};`;
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			const before = await until(
 				'the lines',
 				async () => {
@@ -2569,6 +2591,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await importFromTermux(tab, 'Test clip, 45 s');
+			await tab.evaluate(ALL_LINES);
 			// A share imports by itself; nothing to press.
 			const started = Date.now();
 			const opened = await until(

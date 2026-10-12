@@ -14,7 +14,8 @@
 	import { lineAt, type Cue } from '$lib/media/subtitles';
 	import { landscapeWhileFullscreen } from '$lib/media/orientation';
 	import type { English } from '$lib/translation/lines';
-	import { untrack, type Snippet } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
+	import { lineWindow, offsetOf } from '$lib/media/line-window';
 	import { resolve } from '$app/paths';
 	import type { Recorder } from './recorder';
 
@@ -134,10 +135,82 @@
 		if (at === currentLine) return;
 		currentLine = at;
 		if (at >= 0) online?.(at);
-		if (!stage)
-			document
-				.getElementById(`line-${at}`)
-				?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+		if (showList) void scrollToLine(at, true);
+	}
+
+	/**
+	 * The list builds only the lines near the screen (issue #1: all 652 of a film took 1.3 s on the
+	 * phone, behind the stage too). Each line built is measured; the rest are guessed at the average.
+	 */
+	const BUFFER_PX = 800;
+	let list = $state<HTMLElement | null>(null);
+	let heights: (number | undefined)[] = [];
+	let measured = $state(0);
+	let viewTop = $state(0);
+	let viewHeight = $state(800);
+	const estimate = $derived.by(() => {
+		void measured;
+		const known = heights.filter((h): h is number => h !== undefined);
+		return known.length ? known.reduce((n, h) => n + h, 0) / known.length : 48;
+	});
+	const shown = $derived.by(() => {
+		void measured;
+		if (heights.length !== lines.length) heights = Array.from({ length: lines.length });
+		return lineWindow(heights, estimate, viewTop, viewHeight, BUFFER_PX);
+	});
+	const built = $derived(
+		Array.from({ length: shown.last - shown.first }, (_, k) => shown.first + k)
+	);
+
+	function measure(node: HTMLElement, line: number) {
+		const margin = parseFloat(getComputedStyle(node).marginBottom) || 0;
+		const note = () => {
+			const height = node.offsetHeight + margin;
+			if (heights[line] === height) return;
+			heights[line] = height;
+			measured++;
+		};
+		const observer = new ResizeObserver(note);
+		observer.observe(node);
+		return {
+			update(next: number) {
+				line = next;
+				note();
+			},
+			destroy: () => observer.disconnect()
+		};
+	}
+
+	$effect(() => {
+		if (!showList) return;
+		let frame = 0;
+		const look = () => {
+			frame = 0;
+			if (!list) return;
+			viewTop = -list.getBoundingClientRect().top;
+			viewHeight = window.innerHeight;
+		};
+		const soon = () => (frame ||= requestAnimationFrame(look));
+		look();
+		window.addEventListener('scroll', soon, { passive: true });
+		window.addEventListener('resize', soon);
+		return () => {
+			cancelAnimationFrame(frame);
+			window.removeEventListener('scroll', soon);
+			window.removeEventListener('resize', soon);
+		};
+	});
+
+	/** Bring line `at` to the middle of the screen, built first if it is far from what is built. */
+	async function scrollToLine(at: number, smooth: boolean) {
+		if (at < 0 || !list) return;
+		const near = document.getElementById(`line-${at}`);
+		if (near) return near.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
+		const top = list.getBoundingClientRect().top + window.scrollY;
+		window.scrollTo({ top: top + offsetOf(heights, estimate, at) - window.innerHeight / 2 });
+		viewTop = -list.getBoundingClientRect().top;
+		await tick();
+		document.getElementById(`line-${at}`)?.scrollIntoView({ block: 'center' });
 	}
 
 	/** The document's own line playing at `time`, for the recorder. */
@@ -295,6 +368,7 @@
 	 * above English blurred. The list is one tap away. Remembered on this device only.
 	 */
 	let stage = $state(readPreference('reader.stage', true));
+	const showList = $derived(!stage || isAudio);
 	let blurEnglish = $state(readPreference('reader.blurEnglish', true));
 	/** Stop at the end of every line, to repeat it or read it before going on. */
 	let pauseEachLine = $state(readPreference('reader.pauseEachLine', false));
@@ -390,6 +464,7 @@
 		keep('reader.stage', on);
 		recorder?.setting('stage', on);
 		if (!on && document.fullscreenElement) void document.exitFullscreen();
+		if (!on) void tick().then(() => scrollToLine(currentLine, false));
 	}
 
 	function toggleBlur() {
@@ -584,42 +659,47 @@
 {/if}
 
 <!-- No whitespace between words: this is Chinese, and the browser renders any gap the markup has. -->
-<div class="reading lines" class:hidden={stage && !isAudio} lang={language}>
-	{#each lines as line, i (i)}
-		<p id="line-{i}" class:current={i === currentLine}>
-			{#if cues[i]}<button class="seek" aria-label="Play from here" onclick={() => seek(i)}
-					>▸</button
-				>{/if}{#each line as word (word.key)}{#if word.isWord}<button
-						class="token {word.mark ?? 'state-none'}"
-						onclick={() => tap(i, word)}>{@render rubied(word)}</button
-					>{:else}<span class="token">{word.text}</span
-					>{/if}{/each}{#if translations[i] || (askable && cues[i])}<button
-					class="reveal"
-					aria-label="Show the English"
-					aria-pressed={showAll || revealed.includes(i)}
-					onclick={() => reveal(i)}>EN</button
-				>{/if}{#if showAll || revealed.includes(i)}{#if translations[i]}<span
-						class="english"
-						class:quick={translations[i]?.source === 'quick'}
-						title={translations[i]?.source === 'quick'
-							? 'Quick translation'
-							: translations[i]?.source === 'human'
-								? "From the video's English subtitles"
-								: undefined}
-						lang="en">{translations[i]?.text}</span
-					>{:else if askable && cues[i]}<span class="english pending">translating…</span
-					>{/if}{/if}{#if onjoin && i + 1 < cues.length}<button
-					class="join"
-					aria-label="Join this line with the next"
-					onclick={() => onjoin(i)}>⊕</button
-				>{/if}{#if joined[i]}<button
-					class="split"
-					aria-label="Split this sentence into its lines again"
-					onclick={() => onsplit?.(i)}>✂</button
-				>{/if}
-		</p>
-	{/each}
-</div>
+{#if showList}
+	<div class="reading lines" lang={language} bind:this={list}>
+		<div style:height="{shown.before}px"></div>
+		{#each built as i (i)}
+			{@const line = lines[i]}
+			<p id="line-{i}" class:current={i === currentLine} use:measure={i}>
+				{#if cues[i]}<button class="seek" aria-label="Play from here" onclick={() => seek(i)}
+						>▸</button
+					>{/if}{#each line as word (word.key)}{#if word.isWord}<button
+							class="token {word.mark ?? 'state-none'}"
+							onclick={() => tap(i, word)}>{@render rubied(word)}</button
+						>{:else}<span class="token">{word.text}</span
+						>{/if}{/each}{#if translations[i] || (askable && cues[i])}<button
+						class="reveal"
+						aria-label="Show the English"
+						aria-pressed={showAll || revealed.includes(i)}
+						onclick={() => reveal(i)}>EN</button
+					>{/if}{#if showAll || revealed.includes(i)}{#if translations[i]}<span
+							class="english"
+							class:quick={translations[i]?.source === 'quick'}
+							title={translations[i]?.source === 'quick'
+								? 'Quick translation'
+								: translations[i]?.source === 'human'
+									? "From the video's English subtitles"
+									: undefined}
+							lang="en">{translations[i]?.text}</span
+						>{:else if askable && cues[i]}<span class="english pending">translating…</span
+						>{/if}{/if}{#if onjoin && i + 1 < cues.length}<button
+						class="join"
+						aria-label="Join this line with the next"
+						onclick={() => onjoin(i)}>⊕</button
+					>{/if}{#if joined[i]}<button
+						class="split"
+						aria-label="Split this sentence into its lines again"
+						onclick={() => onsplit?.(i)}>✂</button
+					>{/if}
+			</p>
+		{/each}
+		<div style:height="{shown.after}px"></div>
+	</div>
+{/if}
 
 <style>
 	.hidden {
