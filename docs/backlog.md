@@ -8,8 +8,7 @@ Entries newest first.
 ## Index of open issues (2026-10-12)
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms · #19 4 s wait on a
-storage handover · #21 the installed app did not offer its update (fix deployed, phone check
-pending) · #35 a layer over the screen at night.
+storage handover · #35 a layer over the screen at night.
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
@@ -349,7 +348,7 @@ boot, is gone with it until Termux is opened again.
 end of every job and a service orphaned by its script, is fixed, and Reader's Start Termux restarts
 the service. Resuming a transcript from its last chunk is not.
 
-## The installed Chrome Reader did not offer its update — #21
+## The installed Chrome Reader did not offer its update — fixed (#21, closed)
 
 2026-09-26: a new build was waiting (its worker answered `which-version` with the new version) but
 no "A new version is ready" banner appeared, on reload either. It did appear in a Samsung Internet
@@ -358,7 +357,8 @@ tab. Moved over by hand with the worker's `skip-waiting` message.
 2026-10-12: a second cause. The installed app is resumed from its icon, not reopened, so no page
 loads and the browser never looks for a new worker: after a deploy, nothing was waiting 30 s after
 resuming. Fixed in `cbbb302` (`registration.update()` whenever the app comes back into view;
-browser scenario `resumed`). Still to see on the phone: a later deploy offered on resume.
+browser scenario `resumed`). Phone (build `1791799878585`, deploy `1791800362385`): resumed from
+its icon, a page loaded 500 s earlier offered the new version after about 10 s, without a reload.
 
 ## The library offers to restore an empty copy — built (#22, closed)
 

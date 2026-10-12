@@ -3,7 +3,7 @@
 Updated 2026-10-12. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Phone checks and small fixes of 2026-10-12 — deployed, partly phone checked
+## Phone checks and small fixes of 2026-10-12 — deployed and phone checked
 
 - **No empty copy sent or offered (#22):** a fresh or wiped library sent a copy 30 s after every
   start, which became Termux's newest and stood in front of the copy worth restoring. The app sends
@@ -24,7 +24,8 @@ This describes repository behavior and recorded results, not a fresh certificati
   resumed, not reopened, so no page loaded and the browser never checked; reproduced on the phone
   (resumed from its icon after a deploy: nothing waiting after 30 s). `UpdateOffer` calls
   `registration.update()` on `visibilitychange`. Browser scenario `resumed` red before, green after;
-  `update` still passes.
+  `update` still passes. Phone: after the next deploy, resumed from its icon, a page loaded 500 s
+  earlier offered the new version after about 10 s.
 - **Seven browser scenarios brought up to date (#34):** six expected behaviour from before #31/#32,
   `anki` an old CSS class (`recall-N` since spec 007). All seven pass; harness only.
 - **Measured on the phone:** the wake lock fix (#27) held overnight (no Termux wake lock in 13 h
