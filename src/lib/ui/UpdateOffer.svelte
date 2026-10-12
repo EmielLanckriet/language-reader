@@ -104,6 +104,14 @@
 			registration.addEventListener('updatefound', found);
 			found();
 
+			// An installed app on Android is brought back from the background rather than opened
+			// again, which loads no page, so the browser never looks for a new worker and a deploy
+			// stayed unoffered until the app was closed (issue #21). Ask each time it comes back.
+			const look = () => {
+				if (document.visibilityState === 'visible') registration.update().catch(() => {});
+			};
+			document.addEventListener('visibilitychange', look);
+
 			// The new worker has taken over. Reloading here rather than immediately after asking it
 			// to activate: until control actually changes, a reload would just re-run the old one.
 			//
@@ -127,6 +135,7 @@
 
 			stop = () => {
 				registration.removeEventListener('updatefound', found);
+				document.removeEventListener('visibilitychange', look);
 				navigator.serviceWorker.removeEventListener('controllerchange', took);
 			};
 		});

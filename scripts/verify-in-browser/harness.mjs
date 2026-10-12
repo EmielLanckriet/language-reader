@@ -1494,6 +1494,39 @@ const scenarios = {
 		}
 	},
 
+	// The installed app brought back from the background (issue #21): no page loads, so the browser
+	// never looks for a new worker and only the app can ask. Swap in UPDATE_TO as `update` does, then
+	// show the page again without reloading it: the old page must offer the new version.
+	async resumed() {
+		const { cpSync, readFileSync } = await import('node:fs');
+		if (!process.env.UPDATE_TO) throw new Error('set UPDATE_TO to a second build directory');
+		const tab = await openTab(`${appOrigin}${BASE}/`);
+		try {
+			await until(
+				'the first worker to control the page',
+				() => tab.evaluate(`return !!navigator.serviceWorker.controller;`),
+				30000
+			);
+			cpSync(process.env.UPDATE_TO, 'build', { recursive: true });
+			const to = JSON.parse(
+				readFileSync(`${process.env.UPDATE_TO}/_app/version.json`, 'utf8')
+			).version;
+			await tab.evaluate(`document.dispatchEvent(new Event('visibilitychange')); return true;`);
+			const offered = await until(
+				'the offer, without a reload',
+				() =>
+					tab.evaluate(
+						`return document.body.innerText.includes('A new version is ready') || null;`
+					),
+				30000,
+				500
+			).catch(() => false);
+			return { pass: !!offered, to };
+		} finally {
+			await tab.close();
+		}
+	},
+
 	// Quick English (ADR-0023): with no English from Termux at all, tapping a line's EN still shows
 	// English, from opus-mt running in the browser. Serve a fixture-media job that has no
 	// media.en.vtt (make-fixtures.sh, without running translate.py). The first run downloads the
