@@ -176,6 +176,47 @@ class HoldingTheWakeLock(unittest.TestCase):
         self.assertFalse(self.service.working(self.root))
 
 
+class OfferingTheLatestCopy(unittest.TestCase):
+    """GET /backup/latest is what the library offers to restore: never a copy with nothing earned in
+    it, which a fresh or wiped library would otherwise put in front of the copy worth having (#22)."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        service = load_service('unused')
+        service.Handler.root = self.root
+        self.server = service.http.server.ThreadingHTTPServer(('127.0.0.1', 0), service.Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.server.shutdown()
+
+    def write(self, created, **lists):
+        backups = os.path.join(self.root, 'backups')
+        os.makedirs(backups, exist_ok=True)
+        copy = {'createdAt': created, 'documents': [], 'events': [], 'states': [], 'sessions': [],
+                'encounters': [], 'corrections': [], **lists}
+        with open(os.path.join(backups, created + '.json'), 'w') as file:
+            json.dump(copy, file)
+
+    def latest(self):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1])
+        connection.request('GET', '/backup/latest')
+        response = connection.getresponse()
+        return response.status, response.read()
+
+    def test_skips_newer_copies_with_nothing_earned(self):
+        self.write('2026-10-01T10-00-00', documents=[{'id': 1}])
+        self.write('2026-10-02T10-00-00', states=[{'lexeme': 1}])
+        self.write('2026-10-03T10-00-00')
+        status, body = self.latest()
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)['createdAt'], '2026-10-02T10-00-00')
+
+    def test_has_none_when_every_copy_holds_nothing(self):
+        self.write('2026-10-03T10-00-00')
+        self.assertEqual(self.latest()[0], 404)
+
+
 class ListingAFailedDownload(unittest.TestCase):
     """Issue #28: a download that fetched nothing is listed as failed, not as "packing" for ten
     minutes and then nothing."""

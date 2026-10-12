@@ -107,6 +107,21 @@ export interface Copy extends CopyBody {
 	integrity: string;
 }
 
+/**
+ * A copy with nothing earned in it: what a fresh or wiped library exports. Sent, it would become
+ * Termux's newest copy, in front of the one worth restoring (issue #22).
+ */
+export function holdsNothing(body: CopyBody): boolean {
+	return (
+		body.documents.length === 0 &&
+		body.events.length === 0 &&
+		body.states.length === 0 &&
+		body.sessions.length === 0 &&
+		body.encounters.length === 0 &&
+		body.corrections.length === 0
+	);
+}
+
 /** Why a copy was refused; `check` names the failing rule for the reader and for diagnostics. */
 export class CopyRejected extends Error {
 	constructor(

@@ -8,7 +8,7 @@ import { session } from '$lib/storage/session';
 import { readTar } from '$lib/media/tar';
 import { isPlayable, isSubtitle, mediaFiles, replacesIn, saveMedia } from '$lib/media/store';
 import { version } from '$app/environment';
-import { open, seal, type CopyBody } from './format';
+import { holdsNothing, open, seal, type CopyBody } from './format';
 
 import { SERVICE } from '$lib/media/service-address';
 const LAST_SENT = 'reader.lastCopy';
@@ -23,10 +23,14 @@ async function reachable(): Promise<boolean> {
 	}
 }
 
-/** The reader's work now, sealed: the database's part from the worker, media subtitles from OPFS. */
-export async function makeCopy(): Promise<string> {
+/**
+ * The reader's work now, sealed: the database's part from the worker, media subtitles from OPFS.
+ * Null when the library holds nothing earned: such a copy is not worth sending (issue #22).
+ */
+export async function makeCopy(): Promise<string | null> {
 	const { repository } = await session();
 	const body = await repository.exportBody(version, new Date().toISOString());
+	if (holdsNothing(body)) return null;
 	for (const document of body.documents) {
 		const files = await mediaFiles(document.id);
 		const subtitles = files.find((file) => isSubtitle(file.name));

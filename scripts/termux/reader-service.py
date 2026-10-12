@@ -54,6 +54,16 @@ def summary(path):
     }
 
 
+EARNED = ('documents', 'events', 'states', 'sessions', 'encounters', 'corrections')
+
+
+def holds_something(data):
+    """A fresh or wiped library's copy has nothing earned; offered for restore, it would stand in
+    front of the copy worth having (issue #22)."""
+    copy = json.loads(data)
+    return any(copy.get(name) for name in EARNED)
+
+
 def prune(backups):
     """The newest 20, plus the newest of each of the last 30 days; nothing younger than 30 days is lost
     unless a newer copy of the same day exists."""
@@ -297,10 +307,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             names = sorted((n for n in os.listdir(self.backups()) if n.endswith('.json')), reverse=True)
             if path == '/backup':
                 return self.reply(200, [summary(os.path.join(self.backups(), n)) for n in names])
-            if not names:
+            data = None
+            for name in names:
+                with open(os.path.join(self.backups(), name), 'rb') as file:
+                    data = file.read()
+                if holds_something(data):
+                    break
+                data = None
+            if data is None:
                 return self.reply(404, {'error': 'no copy yet'})
-            with open(os.path.join(self.backups(), names[0]), 'rb') as file:
-                data = file.read()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(data)))

@@ -38,7 +38,10 @@ export function startCopying(): void {
 		sending = true;
 		try {
 			const since = unsentSince;
-			if (await send(await makeCopy())) unsentSince = unsentSince === since ? null : unsentSince;
+			// An empty library has nothing waiting to be copied, so it is not left looking stale.
+			const text = await makeCopy();
+			if (text === null || (await send(text)))
+				unsentSince = unsentSince === since ? null : unsentSince;
 		} catch {
 			// Not sent: stays unsent, and the safeguard notice turns stale after the bound.
 		} finally {
