@@ -7,10 +7,9 @@ Entries newest first.
 
 ## Index of open issues (2026-10-12)
 
-Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
-#19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy · #27 Termux's wake lock all night ·
-#35 a layer over the screen, the lowest brightness brighter.
+Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms · #19 4 s wait on a
+storage handover · #21 the installed app did not offer its update (fix deployed, phone check
+pending) · #35 a layer over the screen at night.
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
@@ -24,8 +23,7 @@ words · #13 video statistics (the document page, #31, is where they go) · #14 
 and background pass · #16 word senses in context.
 
 Tooling and checks: #12 report a problem or request a feature from inside the app · #17 Termux
-service dying · #23 emulator install test · #24 Termux install size · #25 store wipe cause · #34
-seven browser scenarios failing.
+service dying (fix deployed, watch) · #23 emulator install test · #24 Termux size.
 
 ## Hardcore mode: drill a fragment's words around watching it — #36
 
@@ -47,7 +45,13 @@ whether it was played before the grade would let the fit (#18) treat that succes
 2026-10-12, the reader: since using the app the screen seems to have a layer on top, most visible
 at night, where the lowest brightness is no longer dark. Reader cannot draw outside its page; the
 setup's Display over other apps for Termux (ADR-0020) is the first suspect, then a system setting
-(Extra dim, adaptive brightness). The adb checks are in the issue; not yet looked at on the phone.
+(Extra dim, adaptive brightness). The adb checks are in the issue.
+
+Checked 2026-10-12 in daytime: no overlay window, no accessibility service, Extra dim off,
+developer drawing options off, Twilight installed but stopped (overlay last used ~190 days ago),
+and the lowest backlight level the reader sets (2.0) unchanged since mid-September. The reader sees
+it only at night and in every app, so the suspect is Eye comfort shield, scheduled 21:00–07:00.
+Next: at night, turn it off from the quick panel and see whether the layer goes.
 
 ## Report a problem or request a feature from inside the app — #12
 
@@ -248,7 +252,7 @@ covariates: a source's difficulty, for reading evidence (a miss in fast accented
 and for picking clips easy first. Listening memory is already kept from lookups and from words
 heard with the text hidden, so the history will be there when the cards arrive.
 
-## Termux's service keeps dying: watch whether the process limit was it — #17
+## Termux's service keeps dying — cause found, fix deployed, watch — #17
 
 2026-09-28: Diagnostics recorded the reader service dying or restarting ten times from 2026-09-26
 evening to 2026-09-27 18:52, with Termux already exempt from battery optimisation. Suspected, not
@@ -260,6 +264,16 @@ restricted", so Android killed Reader as soon as it left the front: now `appops
 RUN_ANY_IN_BACKGROUND allow` and on the deviceidle exemption list. Samsung's own sleeping-apps
 list can still restrict it. Check the "What has happened before" count in a few days: if the
 service still dies, the phantom killer was not the cause.
+
+2026-10-12: it still died about daily (Diagnostics, 6–11 October). Android's exit records
+(`dumpsys activity exit-info com.termux`, which survive reboots) name the low-memory killer every
+time, with Termux in state `empty`: no session and no task, so no foreground service. Opening Termux
+started the service inside the terminal session (`.bashrc`, `nohup … &`), so it lasted as long as
+that session. Now `.bashrc` runs `reader-service-start`, which starts it as a task through
+`RUN_COMMAND`; with 0 sessions and 1 task Termux stays a foreground service (checked on the phone).
+Also: Samsung's `auto_disabler` had disabled Termux:Boot (`enabled=4`, never opened), so a reboot
+started nothing; opening it once re-enabled it, and Samsung may do it again. Watch the restart
+count for a week.
 
 ## Transcripts: phrases lost at 30 s chunk boundaries — superseded by spec 008
 
@@ -306,6 +320,10 @@ after its 4 s window, and the client replaces it; the fresh worker then opens at
 on the phone (after an update reload or a share opening a new page), and whether retrying inside
 the first worker could ever succeed, which would make the wait shorter than a replacement.
 
+2026-10-12, on the phone: opening the library again right after it loaded took 5.7 s three times
+out of three; after 15 s idle, 1.7 s. So it bites when a page opens within seconds of the previous
+one loading: Update now just after opening the app, a share opening a new page.
+
 ## Anki: a card reset keeps its last level; live recall — #20
 
 2026-09-26 (spec 006): a word reset or deleted in Anki keeps the level of its last import, since
@@ -337,10 +355,15 @@ the service. Resuming a transcript from its last chunk is not.
 no "A new version is ready" banner appeared, on reload either. It did appear in a Samsung Internet
 tab. Moved over by hand with the worker's `skip-waiting` message.
 
-## The library offers to restore an empty copy — #22
+2026-10-12: a second cause. The installed app is resumed from its icon, not reopened, so no page
+loads and the browser never looks for a new worker: after a deploy, nothing was waiting 30 s after
+resuming. Fixed in `cbbb302` (`registration.update()` whenever the app comes back into view;
+browser scenario `resumed`). Still to see on the phone: a later deploy offered on resume.
 
-"Your work can be restored … 0 documents and 0 marked words", from a copy a fresh browser tab had
-just sent. A copy with nothing in it should not be offered.
+## The library offers to restore an empty copy — built (#22, closed)
+
+Every start sent a copy after 30 s, an empty library's too. Since 2026-10-12 none is sent and the
+service's `/backup/latest` skips copies with nothing earned (current-state.md).
 
 ## Test install and share-into-the-app on the emulator — needs a Google sign-in — #23
 
@@ -352,14 +375,21 @@ Chrome's local-network permission prompt for 127.0.0.1:8765 (newer than the emul
 Start the emulator with a window (drop `-no-window`, see scripts/android-emulator/README.md) so the
 reader can sign in themselves.
 
-## Termux is 724 MB — #24
+## Termux's size — #24
 
-Mostly ffmpeg's dependencies (mesa, vulkan, X11 libraries, libllvm), which a downloader that only
+2026-10-12 on the phone: packages (`$PREFIX`) 627 MB, `~/.whisper` 1.1 GB (only the translation
+model, Qwen3-1.7B Q4), `~/.reader` 265 MB, downloads 3.5 GB, of which 25 imported or leftover jobs
+were removed (now 717 MB: three not yet imported, eight older jobs the service does not list).
+Earlier, 724 MB in all, mostly ffmpeg's dependencies (mesa, vulkan, X11 libraries, libllvm), which a downloader that only
 merges an mp4 and an m4a does not need. Already down from 1.2 GB by skipping recommended packages
 (which pulled in clang). Options if it matters: a smaller ffmpeg build, or asking YouTube for a
 format that needs no merging (lower quality at 480p).
 
-## The original store wipe: confirm the cause on the phone — #25
+## The original store wipe: confirm the cause on the phone — closed (#25)
+
+2026-10-12: the safeguard notice says "Installed: yes · Storage kept: yes", copies arrive daily,
+and the reboot check found Termux:Boot disabled by Samsung (#17). The original cause stays
+unconfirmed; a repeat is recoverable.
 
 Spec 005 is built (copies to Termux, restore, safeguard warnings), so a repeat is recoverable.
 The cause is still unconfirmed. The emulator showed the likeliest one: a home-screen **shortcut**

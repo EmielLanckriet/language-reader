@@ -1,7 +1,37 @@
 # Current state
 
-Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-12. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Phone checks and small fixes of 2026-10-12 — deployed, partly phone checked
+
+- **No empty copy sent or offered (#22):** a fresh or wiped library sent a copy 30 s after every
+  start, which became Termux's newest and stood in front of the copy worth restoring. The app sends
+  no copy with nothing earned in it (`holdsNothing`, `backup/format.ts`; it then counts as nothing
+  waiting), and the service's `/backup/latest` skips such copies. `empty.test.ts` and two service
+  tests red first, five mutations caught; 574 tests. Phone: service updated, `/backup/latest`
+  returns the real copy (32 documents, 2,127 words) in 1.2 s; none of the 32 stored copies was
+  empty.
+- **The reader service started as a Termux task from `.bashrc` too (#17):** Android's exit records
+  show every death of Termux was the low-memory killer while Termux had no session or task, so no
+  foreground service. Opening Termux started the service inside the terminal session, so it went
+  when the session closed. `reader-service-start` runs `reader-service-up` through `RUN_COMMAND`, as
+  Termux:Boot and Reader Start do. Phone: with 0 sessions and 1 task Termux stays a foreground
+  service and the service answers. Separately, Samsung's `auto_disabler` had disabled Termux:Boot
+  (never opened, so "unused"), so this morning's reboot started nothing; opening it once re-enabled
+  it.
+- **A new version looked for when the app comes back into view (#21):** the installed app is
+  resumed, not reopened, so no page loaded and the browser never checked; reproduced on the phone
+  (resumed from its icon after a deploy: nothing waiting after 30 s). `UpdateOffer` calls
+  `registration.update()` on `visibilitychange`. Browser scenario `resumed` red before, green after;
+  `update` still passes.
+- **Seven browser scenarios brought up to date (#34):** six expected behaviour from before #31/#32,
+  `anki` an old CSS class (`recall-N` since spec 007). All seven pass; harness only.
+- **Measured on the phone:** the wake lock fix (#27) held overnight (no Termux wake lock in 13 h
+  on battery, 6.5 h of deep sleep, ~2.2 %/h screen off against ~6 %/h); Reader is installed with
+  storage kept (#25); the storage handover wait (#19) happens on the phone, 5.7 s against 1.7 s,
+  when a page is opened within seconds of the previous one loading; Termux's packages take 627 MB
+  (#24), and 25 imported or leftover downloads were removed (3.5 GB → 717 MB).
 
 ## A video opens in 1 s instead of 2 s — deployed and phone checked
 
