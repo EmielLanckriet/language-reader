@@ -22,7 +22,8 @@ words · #13 video statistics (the document page, #31, is where they go) · #14 
 and background pass · #16 word senses in context.
 
 Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
-emulator install test · #24 Termux install size · #25 store wipe cause.
+emulator install test · #24 Termux install size · #25 store wipe cause · #34 seven browser
+scenarios failing.
 
 ## The player's words and pinyin in the background — not worth it yet — #33
 
