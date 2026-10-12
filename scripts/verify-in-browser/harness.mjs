@@ -809,6 +809,9 @@ const scenarios = {
 				`return document.querySelectorAll('.week-days .complete').length`
 			);
 			if (complete !== 1) throw new Error(`Expected one study day, got ${complete}`);
+			const streak = await tab.evaluate(`return document.querySelector('.streak')?.textContent`);
+			if (!/^\s*1\s+study day in your streak\s*$/.test(streak ?? ''))
+				throw new Error(`Expected a one-day streak, got ${JSON.stringify(streak)}`);
 			await tab.evaluate(
 				`[...document.querySelectorAll('.answer-options button')].find(b=>b.textContent.includes('every unknown')).click()`
 			);

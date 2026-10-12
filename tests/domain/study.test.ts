@@ -1,6 +1,6 @@
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { studyWeek } from '../../src/lib/domain/study';
+import { studyStreak, studyWeek } from '../../src/lib/domain/study';
 import { validateEncounter } from '../../src/lib/domain/encounter';
 
 it('awards each local day once, independent of grades and feedback', () => {
@@ -84,4 +84,60 @@ it('counts activity before the chosen hour toward the day before, by the local c
 	const monday = studyWeek([], 'Europe/Brussels', new Date('2026-10-05T01:00:00Z'), 4);
 	expect(monday.today).toBe('2026-10-04');
 	expect(monday.days[0].date).toBe('2026-09-28');
+});
+
+describe('the streak (#38)', () => {
+	const studied = (...dates: string[]) =>
+		dates.map((date) => ({
+			kind: 'study-time',
+			at: `${date}T10:00:00Z`,
+			detail: { durationMs: 60000 }
+		}));
+	// Weeks starting Monday 21 September, 28 September, 5 October; "now" is Thursday 15 October.
+	const week = (monday: string, count: number) =>
+		Array.from({ length: count }, (_, i) => {
+			const date = new Date(`${monday}T00:00:00Z`);
+			date.setUTCDate(date.getUTCDate() + i);
+			return date.toISOString().slice(0, 10);
+		});
+	const now = new Date('2026-10-15T12:00:00Z');
+	const streak = (dates: string[], at = now, hour = 0) =>
+		studyStreak(studied(...dates), 'Europe/Brussels', at, hour);
+
+	it('counts study days across weeks of five or more, and the running week', () => {
+		const dates = [
+			...week('2026-09-21', 5),
+			...week('2026-09-28', 7),
+			...week('2026-10-05', 6),
+			...week('2026-10-12', 2)
+		];
+		expect(streak(dates)).toBe(20);
+	});
+	it('lapses when a completed week ended under five, keeping the weeks after it', () => {
+		expect(
+			streak([...week('2026-09-28', 7), ...week('2026-10-05', 4), ...week('2026-10-12', 3)])
+		).toBe(3);
+		expect(
+			streak([
+				...week('2026-09-21', 4),
+				...week('2026-09-28', 0),
+				...week('2026-10-05', 5),
+				...week('2026-10-12', 1)
+			])
+		).toBe(6);
+	});
+	it('is never broken by the running week', () => {
+		expect(streak(week('2026-10-05', 5), new Date('2026-10-12T12:00:00Z'))).toBe(5);
+		expect(streak(week('2026-10-05', 5), new Date('2026-10-18T20:00:00Z'))).toBe(5);
+	});
+	it('places a week by the same day-end hour as the week card', () => {
+		// 03:30 Brussels on Monday 12 October is still Sunday 11 October when a day ends at 4,
+		// making the week before it a fifth day.
+		const events = [
+			...studied(...week('2026-10-05', 4)),
+			{ kind: 'study-time', at: '2026-10-12T01:30:00Z', detail: { durationMs: 60000 } }
+		];
+		expect(studyStreak(events, 'Europe/Brussels', now, 4)).toBe(5);
+		expect(studyStreak(events, 'Europe/Brussels', now, 0)).toBe(1);
+	});
 });

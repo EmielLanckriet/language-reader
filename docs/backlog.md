@@ -24,12 +24,13 @@ and background pass · #16 word senses in context · #38 a streak in study days.
 Tooling and checks: #12 report a problem or request a feature from inside the app · #17 Termux
 service dying (fix deployed, watch) · #23 emulator install test · #24 Termux size.
 
-## A streak in study days that lapses only on a week under 5 — #38
+## A streak in study days that lapses only on a week under 5 — built, deployed (#38)
 
 2026-10-12, the reader, after the first completed week: the week card resets every Monday and shows
 nothing of the weeks before. Decided: count study days (not calendar days); lapse only when a
 Monday–Sunday week ends under 5 study days, the running week never breaking it. Derived from
 history like the week card (ADR-0034 deferred streaks and rejected stored counters).
+Built 2026-10-12 (see current-state.md); close after a phone check.
 
 ## Hardcore mode: drill a fragment's words around watching it — #36
 

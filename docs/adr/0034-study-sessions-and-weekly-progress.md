@@ -15,3 +15,6 @@ time is not invented. Daily streak penalties and points are deferred.
 
 Rejected: persisting a modal pointer, focus-based points, inferred success-based rewards and
 separate mutable streak tables. They lose interruptions, bias learning evidence, or duplicate history.
+
+Amended 2026-10-12 (#38): a streak counts study days, derived from history like the week, and
+lapses only when a Monday–Sunday week ends under five. Daily penalties and points stay out.

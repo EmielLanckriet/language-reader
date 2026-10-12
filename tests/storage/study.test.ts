@@ -105,6 +105,32 @@ it('keeps feedback across reopen, appends corrections, excludes withdrawals and 
 	}
 });
 
+it('derives the streak from the whole history, not the last few days (#38)', async () => {
+	const db = await freshDatabase();
+	try {
+		const repo = new Repository(db);
+		const [id] = await buildHistory(repo, ['你好'], []);
+		const session = repo.startSession(id, 'reading');
+		// Five study days in the week of 21 September, three weeks before "now".
+		repo.recordEncounters(
+			session,
+			[21, 22, 23, 24, 25].map((day) => ({
+				kind: 'study-time',
+				at: `2026-09-${day}T10:00:00Z`,
+				detail: { durationMs: 60000 }
+			}))
+		);
+		const lapsed = repo.studyOverview('Europe/Brussels', new Date('2026-10-15T12:00:00Z'));
+		const kept = repo.studyOverview('Europe/Brussels', new Date('2026-10-01T12:00:00Z'));
+		expect([lapsed.streak, kept.streak]).toEqual([0, 5]);
+		// The streak comes from the same history as the week card: a withdrawal takes it back.
+		repo.withdrawSession(session, 'test');
+		expect(repo.studyOverview('Europe/Brussels', new Date('2026-10-01T12:00:00Z')).streak).toBe(0);
+	} finally {
+		db.close();
+	}
+});
+
 it('keeps how a session was taken in beside its lookup answer, changing neither memory nor its end', async () => {
 	const db = await freshDatabase();
 	try {

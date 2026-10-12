@@ -3,6 +3,19 @@
 Updated 2026-10-12. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## A streak in study days (#38) — deployed, not yet phone checked
+
+The week card shows "N study days in your streak" (hidden at 0): the study days of the running
+week plus those of each completed Monday–Sunday week before it with 5 or more, stopping at the first
+week under 5; the running week never breaks it (`studyStreak`, `domain/study.ts`, sharing day
+placement and the day-end hour with the week card). While a streak carried from earlier weeks can
+still be kept, it adds "· N more days by Sunday keep it going". Derived from history, so backups and
+withdrawals agree with it; `studyOverview` now reads all `study-time`/`review` encounters, not 9
+days. Day labels are cached per quarter hour (every offset is whole quarters): 50,000 clustered
+events take ~90 ms on the laptop (650 ms uncached). Five domain tests and one repository test red
+first, three mutations caught; 579 tests. Browser scenario `study` asserts the one-day streak; the
+"keep it going" line is checked by type and eye only, not in a browser.
+
 ## Phone checks and small fixes of 2026-10-12 — deployed and phone checked
 
 - **No empty copy sent or offered (#22):** a fresh or wiped library sent a copy 30 s after every

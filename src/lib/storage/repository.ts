@@ -33,6 +33,7 @@ import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain
 import { RULE, setAsideProvenance } from '../domain/memory';
 import {
 	FEEDBACK_AFTER_MS,
+	studyStreak,
 	studyWeek,
 	type StudyOverview,
 	type StudySession
@@ -1687,12 +1688,12 @@ export class Repository {
 
 	/** The latest sessions and what happened in them, newest first, for Diagnostics. */
 	studyOverview(timeZone: string, now = new Date(), dayEndHour = 0): StudyOverview {
-		const recent = queryRows(
+		// The whole history: the streak (#38) can reach back any number of weeks.
+		const history = queryRows(
 			this.db,
 			`SELECT kind, at, detail FROM encounter
-			WHERE kind IN ('study-time','review') AND at >= ?
-			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`,
-			[new Date(now.getTime() - 9 * 86400000).toISOString()]
+			WHERE kind IN ('study-time','review')
+			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`
 		).map((row) => ({
 			kind: String(row.kind),
 			at: String(row.at),
@@ -1727,7 +1728,8 @@ export class Repository {
 		}));
 		const resume = sessions.find((s) => s.available);
 		return {
-			week: studyWeek(recent, timeZone, now, dayEndHour),
+			week: studyWeek(history, timeZone, now, dayEndHour),
+			streak: studyStreak(history, timeZone, now, dayEndHour),
 			sessions,
 			resume: resume
 				? { documentId: resume.documentId, title: resume.title, modality: resume.modality }

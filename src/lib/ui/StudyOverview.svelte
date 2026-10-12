@@ -16,6 +16,13 @@
 	let saved = $state('');
 	let limit = $state(20);
 	let expanded = $state<number[]>([]);
+	/** Study days still needed this week to carry the streak on, when it comes from weeks before. */
+	const toKeep = $derived.by(() => {
+		if (!overview || overview.streak <= overview.week.completed) return 0;
+		const needed = overview.week.target - overview.week.completed;
+		const open = overview.week.days.filter((d) => d.date >= overview!.week.today && !d.done);
+		return needed > 0 && needed <= open.length ? needed : 0;
+	});
 	const pending = $derived(overview?.sessions.filter((s) => !s.answered) ?? []);
 	const selected = $derived(Number(page.url.searchParams.get('session')));
 	/** When a study day ends, on this device only (asked for 2026-10-04; 4 AM unless changed). */
@@ -156,6 +163,12 @@
 				</li>
 			{/each}
 		</ol>
+		{#if overview.streak}<p class="streak">
+				<strong>{overview.streak}</strong>
+				{overview.streak === 1 ? 'study day' : 'study days'} in your streak{#if toKeep}<span>
+						· {toKeep} more {toKeep === 1 ? 'day' : 'days'} by Sunday keep it going</span
+					>{/if}
+			</p>{/if}
 		<p class="week-note">
 			{overview.week.completed >= 5
 				? 'Your weekly goal is complete. Nicely done.'
@@ -193,8 +206,9 @@
 			</a>{/if}
 	{:else}
 		<p class="muted">
-			Aim for five days, with room for life. Missed days never erase your history. Time is an
-			activity estimate, not a focus score. All card answers count equally.
+			Aim for five days, with room for life. Missed days never erase your history. Your streak
+			counts study days and ends only when a week closes with fewer than five. Time is an activity
+			estimate, not a focus score. All card answers count equally.
 		</p>
 		{#if overview.sessions.some((s) => s.id === selected && s.ended)}<p
 				class="session-saved"
@@ -312,6 +326,16 @@
 	.today .day-mark {
 		outline: 2px solid var(--accent);
 		outline-offset: 3px;
+	}
+	.streak {
+		font-size: 0.9rem;
+		margin: 0.75rem 0 0;
+	}
+	.streak strong {
+		color: var(--accent);
+	}
+	.streak span {
+		color: var(--muted);
 	}
 	.week-note {
 		font-size: 0.82rem;
