@@ -152,6 +152,10 @@ const PLAY = `if (location.pathname.includes('/document/')) { document.querySele
 // The list is built only outside the stage (issue #1): scenarios reading it open the player there.
 const ALL_LINES = `localStorage.setItem('reader.stage', 'false'); return true;`;
 
+// Put first in a condition that waits to have left the player: after 10 s of playing, leaving asks
+// the session's questions in a sheet (#32), and this answers it with Later.
+const LATER = `const later = [...document.querySelectorAll('.leave-sheet button')].find((b) => b.textContent.trim() === 'Later'); if (later) { later.click(); return null; }`;
+
 // Import a Termux job the way the reader does: open the library, find it under "New from Termux",
 // press Open. The reader service must be serving it (make-fixtures.sh).
 async function importFromTermux(tab, title) {
@@ -935,7 +939,7 @@ const scenarios = {
 			await tab.evaluate(ALL_LINES);
 			await until(
 				'the document to open',
-				() => tab.evaluate(`return !!document.querySelector('.lines p');`),
+				() => tab.evaluate(`${PLAY} return document.querySelector('.lines p') ? true : null;`),
 				30000
 			);
 			const buttons = await until(
@@ -1036,23 +1040,28 @@ const scenarios = {
 				throw new Error(`${error.message}; ${JSON.stringify(notes)}`);
 			});
 			await tab.goto(video.replace(BASE, ''));
+			// Spec 007: a word with a memory, an imported Anki word included, is coloured by its recall
+			// band rather than by its Anki level. A token's text includes its pinyin (<rt>).
+			const plain = `const plain = (t) => { const c = t.cloneNode(true); c.querySelectorAll('rt').forEach((r) => r.remove()); return c.textContent; };`;
 			const shaded = await until(
-				'关税 in its Anki level',
+				'关税 coloured by recall',
 				() =>
 					tab.evaluate(
-						`return [...document.querySelectorAll('.lines .token.state-anki-mature')].map((t) => t.textContent).join(' ') || null;`
+						`${plain} return [...document.querySelectorAll('.lines .token')].filter((t) => plain(t) === '关税').map((t) => t.className).find((c) => /recall-[1-4]/.test(c)) ?? null;`
 					),
 				15000,
 				250
 			).catch(async (error) => {
 				const seen = await tab.evaluate(
-					`return { at: location.pathname, tokens: document.querySelectorAll('.token').length, 关税: [...document.querySelectorAll('.token')].filter((t) => t.textContent === '关税').map((t) => t.className + ' in ' + (t.closest('[class]')?.parentElement?.className ?? '')) };`
+					`${plain} return { at: location.pathname, tokens: document.querySelectorAll('.token').length, 关税: [...document.querySelectorAll('.token')].filter((t) => plain(t) === '关税').map((t) => t.className) };`
 				);
 				throw new Error(`${error.message}; ${JSON.stringify(seen)}`);
 			});
 			return {
 				pass:
-					/This sets 5 words/.test(preview) && /5 words set/.test(done) && shaded.includes('关税'),
+					/This sets 5 words/.test(preview) &&
+					/5 words set/.test(done) &&
+					/recall-[1-4]/.test(shaded),
 				preview,
 				done,
 				shaded
@@ -1183,6 +1192,15 @@ const scenarios = {
 			await press('Replay this line');
 			const again = await at();
 			await tab.evaluate(`document.querySelector('.english-line').click(); return true;`);
+			// Progress lists a session only after 10 s of playing (#32).
+			await tab.evaluate(`
+				const video = document.querySelector('video');
+				const from = video.currentTime;
+				await video.play();
+				await new Promise((r) => { const t = setInterval(() => { if (video.currentTime >= from + 11) { clearInterval(t); r(); } }, 100); });
+				video.pause();
+				return true;
+			`);
 			const buttons =
 				back.line !== start.line &&
 				back.time < start.time &&
@@ -1487,7 +1505,8 @@ const scenarios = {
 			await tab.evaluate(ALL_LINES);
 			await until(
 				'the document to open',
-				() => tab.evaluate(`return !!document.querySelector('.lines .reveal');`),
+				() =>
+					tab.evaluate(`${PLAY} return document.querySelector('.lines .reveal') ? true : null;`),
 				30000
 			);
 			const started = Date.now();
@@ -2055,7 +2074,7 @@ const scenarios = {
 				60000,
 				250
 			);
-			// Play 2 s → 34 s at double speed: past the 30 s that makes the question worth asking.
+			// Play 2 s → 34 s at double speed: 16 s, past the 10 s that makes the question worth asking.
 			await tab.evaluate(`
 				const video = document.querySelector('video');
 				video.muted = true;
@@ -2103,7 +2122,7 @@ const scenarios = {
 				return true;
 			`);
 			await until('leaving for the library', () =>
-				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+				tab.evaluate(`${LATER} return !location.pathname.includes('/read/') || null;`)
 			);
 			// Spec 010 moved the question from a sheet on leaving to the session's card on Progress.
 			await tab.goto('/progress');
@@ -2174,7 +2193,7 @@ const scenarios = {
 				`(document.querySelector('.back-to-videos') ?? document.querySelector('a.back')).click(); return true;`
 			);
 			await until('the library', () =>
-				tab.evaluate(`return !location.pathname.includes('/read/') || null;`)
+				tab.evaluate(`${LATER} return !location.pathname.includes('/read/') || null;`)
 			);
 		};
 		try {
@@ -2184,9 +2203,10 @@ const scenarios = {
 			await tab.evaluate(
 				`const v = document.querySelector('video'); v.muted = true; v.play(); return true;`
 			);
+			// Past 10 s: a shorter session is not listed (#32), and Continue watching comes from it.
 			await until(
-				'8 s played',
-				() => tab.evaluate(`return document.querySelector('video').currentTime > 8 || null;`),
+				'11 s played',
+				() => tab.evaluate(`return document.querySelector('video').currentTime > 11 || null;`),
 				30000,
 				250
 			);
@@ -2525,12 +2545,15 @@ const scenarios = {
 	// both lines' English, kept across a reload, and taken apart again with ✂.
 	async sentences() {
 		const tab = await openTab('about:blank');
-		const state = `
+		const state = `${PLAY}
 			const box = document.querySelector('.all-english input');
 			if (box && !box.checked) box.click();
 			const first = document.querySelector('#line-0');
+			// The list builds only the lines near the screen (#1): the count is in "N of M lines".
+			const total = /of (\\d+) lines/.exec(document.querySelector('.all-english small')?.textContent ?? '');
+			if (!total) return null;
 			return {
-				shown: document.querySelectorAll('.lines p').length,
+				shown: Number(total[1]),
 				chinese: [...(first?.querySelectorAll('.token') ?? [])].map((t) => t.textContent).join('').replace(/[^\\u4e00-\\u9fff]/g, ''),
 				split: !!first?.querySelector('.split')
 			};`;
