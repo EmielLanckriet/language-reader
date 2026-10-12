@@ -9,7 +9,8 @@ Entries newest first.
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
-offered from an empty copy · #27 Termux's wake lock all night.
+offered from an empty copy · #27 Termux's wake lock all night ·
+#35 a layer over the screen, the lowest brightness brighter.
 
 Important: #29 find which information predicts understanding, and which exposures help.
 
@@ -21,9 +22,22 @@ Library and content: #10 generated story with due words · #11 find YouTube vide
 words · #13 video statistics (the document page, #31, is where they go) · #14 transcription resume
 and background pass · #16 word senses in context.
 
-Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
-emulator install test · #24 Termux install size · #25 store wipe cause · #34 seven browser
-scenarios failing.
+Tooling and checks: #12 report a problem or request a feature from inside the app · #17 Termux
+service dying · #23 emulator install test · #24 Termux install size · #25 store wipe cause · #34
+seven browser scenarios failing.
+
+## A layer over the screen; the lowest brightness is brighter — #35
+
+2026-10-12, the reader: since using the app the screen seems to have a layer on top, most visible
+at night, where the lowest brightness is no longer dark. Reader cannot draw outside its page; the
+setup's Display over other apps for Termux (ADR-0020) is the first suspect, then a system setting
+(Extra dim, adaptive brightness). The adb checks are in the issue; not yet looked at on the phone.
+
+## Report a problem or request a feature from inside the app — #12
+
+2026-10-12, the reader: besides problems (with the document, line, word and build attached), the
+same action should file feature requests, where that state is mostly useless. A prefilled
+`issues/new` link puts the issue in the repo with no GitHub token in the app.
 
 ## The player's words and pinyin in the background — not worth it yet — #33
 
