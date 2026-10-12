@@ -3,6 +3,23 @@
 Updated 2026-10-09. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## A video opens in 1 s instead of 2 s — deployed and phone checked
+
+Issue #1, third cause. A CPU profile on the phone put 1.3 s of opening the player in building the
+All lines list: every line, word button and pinyin ruby (22,845 of the page's 22,944 elements for
+a 652-line film), hidden behind the stage. The reader (2026-10-12): only what is on screen plus a
+little buffer. The stage builds no list; the list builds the lines within 800 px of the screen,
+with spacers at their measured heights (`media/line-window.ts`), and following playback scrolls to
+a line not built yet by its computed offset. Validation: `lineWindow` properties red first, eight
+mutations caught; 571 tests, type check, lint; browser `media`, `stage`, `library`, `autostop`,
+`tracks`, `leavingvideo`, `resume`, `documentpage`, `leaving` on a synthetic clip. The list
+scenarios now open the player off the stage. `quick`, `sentences`, `translate`, `newsubtitles`,
+`listened`, `encounters` and `anki` failed identically before this change and still do. Phone
+(build `1791790009088`, the 652-line film at `?t=0`, nothing recorded): stage 0.92–1.07 s (was
+2.0–2.1 s) with 101 elements; list 0.94–1.10 s with 10 lines built; scrolled to the middle and the
+end, the built lines fill the screen. Still open: ~0.47 s computing every line's words and pinyin
+on open, though the stage shows one line.
+
 ## Feedback asked only after 10 s of activity (#32) — deployed and phone checked
 
 2026-10-09, the reader: a mere visit does not deserve a grade. Opening a video and leaving it put
