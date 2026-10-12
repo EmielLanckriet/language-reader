@@ -5,7 +5,7 @@ this file keeps the reasoning and measurements behind them. Each entry's heading
 When adding an entry, open its issue; when closing an issue, update or remove its entry here.
 Entries newest first.
 
-## Index of open issues (2026-10-09)
+## Index of open issues (2026-10-12)
 
 Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms ·
 #19 4 s wait on a storage handover · #21 Chrome Reader did not offer its update · #22 restore
@@ -15,12 +15,22 @@ Important: #29 find which information predicts understanding, and which exposure
 
 Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
 
+Later, not worth it yet: #33 the player's words and pinyin in the background.
+
 Library and content: #10 generated story with due words · #11 find YouTube videos by due and new
 words · #13 video statistics (the document page, #31, is where they go) · #14 transcription resume
 and background pass · #16 word senses in context.
 
 Tooling and checks: #12 flag a problem from inside the app · #17 Termux service dying · #23
 emulator install test · #24 Termux install size · #25 store wipe cause.
+
+## The player's words and pinyin in the background — not worth it yet — #33
+
+2026-10-12, after the video list was windowed (#1, current-state.md): opening a video takes about
+1 s on the phone, and ~0.47 s of it computes every line's words and pinyin, though the stage shows
+one line. The reader: worth a TODO, not the work for now. When picked up: confirm in a profile that
+the time is the lines and pinyin, then compute the shown lines first and the rest in the background,
+checking that pinyin read per chunk matches pinyin read from the whole text (#15).
 
 ## A page for each video before it plays — built (#31, closed)
 
