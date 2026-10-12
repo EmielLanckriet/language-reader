@@ -31,10 +31,11 @@ seven browser scenarios failing.
 
 2026-10-12, brainstormed with the reader: drill the new, due, not-yet-active and set-aside words of
 one fragment (by hand or cut by load) as cards with sentences from that content, with learning
-steps. Options chosen at the start: filters (occurrences, general frequency, coverage target) and
-steps (English preview, watch first, drill, watch after). Drill grades update memory, labelled
-hardcore; a word joins Cards only at FSRS stability ≥ N days (14 to start); a drilled line counts
-as seen for `evidence-4`. Words retired by hand stay out. Full list and open points in the issue.
+steps. Started from the document page; options chosen there: filters (occurrences, general
+frequency, coverage target), order (most frequent first or story order) and steps (English
+preview, watch first, drill, watch after). Drill grades update memory, labelled hardcore; a word
+joins Cards only at FSRS stability ≥ 14 days (each joining word adds ~1/N reviews a day; reasoning
+in the issue); a drilled line counts as seen for `evidence-4`. Words retired by hand stay out.
 
 ## Record whether a card's example sentence was played — #37
 
