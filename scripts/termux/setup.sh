@@ -33,27 +33,30 @@ curl -fsSL "$SOURCE/termux-url-opener" -o ~/bin/termux-url-opener
 curl -fsSL "$SOURCE/reader-service.py" -o ~/bin/reader-service.py
 curl -fsSL "$SOURCE/reader-service-up" -o ~/bin/reader-service-up
 chmod +x ~/bin/reader-service-up
+curl -fsSL "$SOURCE/reader-service-start" -o ~/bin/reader-service-start
+chmod +x ~/bin/reader-service-start
 curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 
 # The service that keeps copies of the reader's work, serves downloads, and takes Reader's
 # transcripts to translate (ADR-0020, ADR-0029). Termux:Boot
 # (F-Droid, next to Termux; open it once after installing) starts it at boot; opening Termux starts
-# it again if Android stopped it. The boot task runs the service in the foreground and so lasts as
+# it again if Android stopped it. Both run the service in the foreground of a task, which lasts as
 # long as it does: Termux keeps its foreground service only while a task or session runs, and a
-# service left behind by a task that ended was frozen or killed. No wake lock here: the service takes
-# it only while a download or translation runs (issue #27).
-START='curl -fs -m 2 http://127.0.0.1:8765/health >/dev/null || (nohup python3 ~/bin/reader-service.py >/dev/null 2>&1 &)'
+# service left behind by a task or session that ended was frozen or killed (issue #17). No wake lock
+# here: the service takes it only while a download or translation runs (issue #27).
 mkdir -p ~/.termux/boot
 printf '#!/data/data/com.termux/files/usr/bin/sh\nexec ~/bin/reader-service-up\n' >~/.termux/boot/reader-service
 chmod +x ~/.termux/boot/reader-service
-grep -q reader-service ~/.bashrc 2>/dev/null || printf '%s\n' "$START" >>~/.bashrc
-eval "$START"
+# Replaces the line an earlier setup wrote, which started the service in the session itself.
+sed -i '/reader-service/d' ~/.bashrc 2>/dev/null || true
+echo '~/bin/reader-service-start' >>~/.bashrc
 # Reader Start (android/reader-start) runs reader-service-up through Termux's RUN_COMMAND, which
 # Termux refuses unless this is set.
 mkdir -p ~/.termux
 grep -q '^allow-external-apps *= *true' ~/.termux/termux.properties 2>/dev/null ||
 	echo 'allow-external-apps = true' >>~/.termux/termux.properties
 termux-reload-settings 2>/dev/null || true
+~/bin/reader-service-start
 chmod +x ~/bin/termux-url-opener
 echo "Done. In YouTube: Share → Termux. For copies at boot, install Termux:Boot from F-Droid and open it once."
 echo "For Reader's Start Termux button: Android settings → Apps → Termux → Display over other apps → allow."
