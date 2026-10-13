@@ -3,7 +3,7 @@
 Updated 2026-10-13. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Hardcore mode (#36, spec 014) — built, not yet deployed or phone checked
+## Hardcore mode (#36, spec 014) — deployed, phone checked in the test reader
 
 A document's page offers **Hardcore**: a fragment (from the beginning, Continue, or chosen lines),
 optionally cut into parts of about N words, with any of four steps run per part in one order —
@@ -29,8 +29,20 @@ Validation: 629 tests, type check, lint; tests red first and mutation results in
 `specs/014-hardcore-drill/quickstart.md`. Browser `hardcore` (new) passes, with `media`,
 `autostop`, `leavingvideo`, `documentpage`, `stage`, `study`, `cardaudio`, `cardlayout`. `cards`
 fails identically before the change (it expects an Again card back within 20 minutes, predating
-no-steps); `resume` expects 9 s for a clip whose fixture copy here has a line at 11 s. Not yet on
-the phone: planning time for a film, the stop at a part's end, the one-time recompute.
+no-steps); `resume` expects 9 s for a clip whose fixture copy here has a line at 11 s.
+
+Phone, 2026-10-13, isolated test reader (`verify:isolated --phone`, the 45 s clip; never the daily
+reader): the setup page ready 186 ms after the tap (67 words, 3 parts of 21–23 at size 20); both
+watch steps stopped at 10.75–10.77 s for a part ending at 10.8 s, Back to the session asked
+"Before you go" (answered) and continued at the next step; 24 drill grades (one Again), 52 ms
+median and 107 ms worst from a grade to the next card; then part 2 offered; Cards showed 0 due
+and 0 new afterwards; Diagnostics showed the plan, steps, 24 labelled reviews and both
+`hardcore-watch` links; a backup restored on the device brought the session back whole. Found and
+fixed there: the English preview of a video never opened in the player had no English and showed
+"…" for ever; it now uses the quick translator for missing lines (with its download progress),
+and its effect no longer re-runs on each line it receives (which had kept stopping the
+translator). Not measured: a real film's planning time and the one-time memory recompute on the
+daily reader — the reader is now using it.
 
 ## A streak in study days (#38) — deployed, not yet phone checked
 

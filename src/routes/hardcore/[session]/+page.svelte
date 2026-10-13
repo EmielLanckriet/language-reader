@@ -13,7 +13,7 @@
 	import { afterGrade, nextStep, type StepRecord } from '$lib/domain/hardcore';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import { humanLines } from '$lib/media/translation';
-	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
+	import { quickTranslation, type QuickStatus } from '$lib/translation/quick';
 	import {
 		clock,
 		dayStart,
@@ -179,38 +179,41 @@
 		}
 	}
 
-	// --- English preview (FR-012): the video's own English, else the quick translator. ---
+	// --- English preview (FR-012): the video's own English, the quick translator for the rest. ---
 
 	let english = $state<(string | undefined)[]>([]);
-	let quick: QuickTranslation | undefined;
+	let quickStatus = $state<QuickStatus | undefined>();
 	$effect(() => {
 		if (current?.step !== 'preview' || !part) return;
 		const lines = Array.from(
 			{ length: part.lines[1] - part.lines[0] + 1 },
 			(_, i) => part.lines[0] + i
 		);
-		if (media) {
-			const all = englishFor(
-				media.cues.length,
-				llmByLine(media.cues, media.translation),
-				media.quick,
-				humanLines(media)
-			);
-			english = lines.map((line) => all[line]?.text);
-			return;
-		}
+		const own = media
+			? englishFor(
+					media.cues.length,
+					llmByLine(media.cues, media.translation),
+					media.quick,
+					humanLines(media)
+				)
+			: [];
+		const found = lines.map((line) => own[line]?.text);
+		english = found;
+		// A video never opened in the player has no English yet, and a text never has any. Decided
+		// from `found`: reading `english` here would make this effect re-run on every line it gets,
+		// stopping the translator each time.
+		if (found.every((line) => line !== undefined)) return;
 		const texts = lines.map(lineText);
-		english = [];
-		quick = quickTranslation(
+		const quick = quickTranslation(
 			() => texts,
 			(i) => english[i] !== undefined,
 			(i, found) => {
 				english[i] = found;
 			},
-			() => {}
+			(status) => (quickStatus = status)
 		);
 		quick.more();
-		return () => quick?.stop();
+		return () => quick.stop();
 	});
 
 	// --- The drill (FR-008–FR-010). ---
@@ -358,11 +361,12 @@
 		</p>
 
 		{#if current.step === 'preview'}
+			{#if quickStatus}<p class="note" role="status">{quickStatus.label}</p>{/if}
 			<ol class="preview">
 				{#each english as line, i (i)}
 					<li>
 						<p class="chinese" lang="zh-Hans">{lineText(part.lines[0] + i)}</p>
-						<p class="english" lang="en">{line ?? '…'}</p>
+						<p class="english" lang="en">{line ?? 'translating…'}</p>
 					</li>
 				{/each}
 			</ol>

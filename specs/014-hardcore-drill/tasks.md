@@ -93,7 +93,7 @@ Independent test: pass 7 of 20, leave, start the part again: 13 cards.
 - [x] T035 Run `npm run check`, `npm run lint`, the full `npx vitest run`; ask the test-auditor agent to audit tests/domain/hardcore.test.ts and the new storage tests for expected-value assertions on derived data
 - [x] T036 Measure on the laptop the setup page's planning time for the longest film fixture available (or a synthetic 650-line document); record it
 - [x] T037 Update docs/current-state.md (what was built, tests, mutations, scenarios) and docs/backlog.md (#36 entry: built, phone check pending)
-- [ ] T038 Deploy with `npm run build` and the usual deploy; on the phone: a cut-by-load session from Continue on a real film, 20-word parts, all steps; time planning, a 20-word drill (SC-4) and the stop at the part's end (SC-5); Cards shows none of the drilled new words due (SC-2); the "Before you go" sheet after each watch step; the one-time memory recompute finishes in the background; record results in docs/current-state.md and close #36 if all hold
+- [x] T038 Deploy with `npm run build` and the usual deploy; on the phone: a cut-by-load session from Continue on a real film, 20-word parts, all steps; time planning, a 20-word drill (SC-4) and the stop at the part's end (SC-5); Cards shows none of the drilled new words due (SC-2); the "Before you go" sheet after each watch step; the one-time memory recompute finishes in the background; record results in docs/current-state.md and close #36 if all hold
 
 ## Dependencies
 
