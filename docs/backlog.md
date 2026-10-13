@@ -42,6 +42,8 @@ preview, watch first, drill, watch after). Drill grades update memory, labelled 
 joins Cards only at FSRS stability ≥ 14 days (each joining word adds ~1/N reviews a day; reasoning
 in the issue); a drilled line counts as seen for `evidence-4`. Words retired by hand stay out.
 
+Built 2026-10-13 as spec 014 (see current-state.md, ADR-0041); close after the phone round.
+
 ## Record whether a card's example sentence was played — #37
 
 2026-10-12, the reader: they often grade Hard when the example sentence was needed. Recording

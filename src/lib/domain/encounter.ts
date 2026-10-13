@@ -31,9 +31,20 @@ export type EncounterKind =
 	/** The reader took the session back (ADR-0030): its encounters count for nothing. */
 	| 'withdrawn'
 	/** Not something the reader did: the parameters an Anki import brought, kept with the history. */
-	| 'anki-parameters';
+	| 'anki-parameters'
+	/** A hardcore session's options and parts, as chosen at its start (spec 014). */
+	| 'hardcore-plan'
+	/** A hardcore step's start or end. */
+	| 'hardcore-step'
+	/** In the player's own session: it was opened from this hardcore step. */
+	| 'hardcore-watch';
+
+export const HARDCORE_STEPS = ['preview', 'watch-first', 'drill', 'watch-after'] as const;
+export type HardcoreStep = (typeof HARDCORE_STEPS)[number];
 
 export type Modality = 'reading' | 'media';
+/** What a session row is of: a sitting with a text or a video, or a hardcore session (spec 014). */
+export type SessionKind = Modality | 'hardcore';
 export type Skill = 'reading' | 'listening';
 export type AttentionAnswer = 'all' | 'some' | 'none' | null;
 export interface Engagement {
@@ -132,6 +143,46 @@ export function validateEncounter(encounter: Encounter): void {
 			if (encounter.documentId !== undefined) needsRange();
 			if (detail.skill !== 'reading' && detail.skill !== 'listening') fail('names no skill');
 			if (![1, 2, 3, 4].includes(detail.grade as number)) fail('has no grade from 1 to 4');
+			if (detail.hardcore !== undefined) {
+				const { part } = detail.hardcore as { part?: unknown };
+				if (typeof part !== 'number') fail('from a drill names no part');
+				const line = detail.line as unknown;
+				if (
+					!Array.isArray(line) ||
+					line.length !== 2 ||
+					encounter.fromOffset === undefined ||
+					!(line[0] <= encounter.fromOffset && encounter.toOffset! <= line[1])
+				)
+					fail('from a drill has no line around its word');
+			}
+			break;
+		case 'hardcore-plan': {
+			const parts = detail.parts as { lines?: unknown; words?: unknown }[] | undefined;
+			if (!Array.isArray(parts) || parts.length === 0) fail('has no parts');
+			for (const { lines, words } of parts!) {
+				if (!Array.isArray(lines) || lines.length !== 2 || !(lines[0] <= lines[1]))
+					fail('has a part without its lines');
+				if (!Array.isArray(words) || !words.every(Number.isInteger))
+					fail('has a part without its words');
+			}
+			const steps = detail.steps as unknown[] | undefined;
+			if (
+				!Array.isArray(steps) ||
+				steps.length === 0 ||
+				!steps.every((step) => HARDCORE_STEPS.includes(step as HardcoreStep))
+			)
+				fail('has no steps the reader was offered');
+			break;
+		}
+		case 'hardcore-step':
+			if (typeof detail.part !== 'number') fail('names no part');
+			if (!HARDCORE_STEPS.includes(detail.step as HardcoreStep)) fail('names no step');
+			if (detail.at !== 'start' && detail.at !== 'end') fail('neither starts nor ends');
+			break;
+		case 'hardcore-watch':
+			if (typeof detail.session !== 'number') fail('names no hardcore session');
+			if (typeof detail.part !== 'number') fail('names no part');
+			if (!HARDCORE_STEPS.includes(detail.step as HardcoreStep)) fail('names no step');
 			break;
 		case 'anki-parameters': {
 			const weights = detail.weights;

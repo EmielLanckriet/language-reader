@@ -32,7 +32,13 @@
 	import { audioOnly } from '$lib/media/audio-track';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import SessionQuestions from '$lib/ui/SessionQuestions.svelte';
-	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
+	import {
+		HARDCORE_STEPS,
+		type AttentionAnswer,
+		type Engagement,
+		type Encounter,
+		type HardcoreStep
+	} from '$lib/domain/encounter';
 	import { FEEDBACK_AFTER_MS } from '$lib/domain/study';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { colourBand } from '$lib/domain/memory';
@@ -396,14 +402,48 @@
 			(await session()).repository.recordEncounters(id, encounters)
 	};
 
+	/**
+	 * Opened from a hardcore step (spec 014): play or show only the part, then go `back`. `back` is
+	 * only ever a path inside the app, so a crafted link cannot lead away from it.
+	 */
+	const hardcore = $derived.by(() => {
+		const params = page.url.searchParams;
+		const back = params.get('back');
+		const step = params.get('step')?.split('.');
+		const number = (name: string) => {
+			const value = params.get(name);
+			return value === null || !Number.isFinite(Number(value)) ? undefined : Number(value);
+		};
+		return {
+			back: back?.startsWith('/') && !back.startsWith('//') ? back : undefined,
+			until: number('until'),
+			from: number('from'),
+			to: number('to'),
+			englishShown: params.get('english') === 'shown',
+			link:
+				step?.length === 3 && HARDCORE_STEPS.includes(step[2] as HardcoreStep)
+					? { session: Number(step[0]), part: Number(step[1]), step: step[2] as HardcoreStep }
+					: undefined
+		};
+	});
+	/** A text part's range in code points, when only a part is shown. */
+	const shownRange = $derived.by(() => {
+		const { from, to } = hardcore;
+		if (from === undefined || to === undefined) return undefined;
+		const ranges = lineRangesOf(characters);
+		return ranges[from] && ranges[to] ? [ranges[from][0], ranges[to][1]] : undefined;
+	});
+
 	/** One recorder per opened document; replacing `document` after a mark does not restart it. */
 	$effect(() => {
 		const id = documentId;
 		const playable = Boolean(media?.media);
 		if (id === undefined || loading) return;
-		const made = untrack(
-			() => new Recorder(sink, id, playable ? 'media' : 'reading', lineRanges())
-		);
+		const made = untrack(() => {
+			const made = new Recorder(sink, id, playable ? 'media' : 'reading', lineRanges());
+			if (hardcore.link) made.linkHardcore(hardcore.link);
+			return made;
+		});
 		recorder = made;
 		return () => {
 			void made.close();
@@ -757,7 +797,10 @@
 				>{ch.c}<rt>{ch.py}</rt></ruby
 			>{:else}{ch.c}{/if}{/each}{/snippet}
 
-{#if media}
+{#if hardcore.back}
+	<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- back is resolved by its maker -->
+	<a class="back" href={hardcore.back}>← Back to the session</a>
+{:else if media}
 	<a class="back" href={resolve('/')}>← Videos</a>
 {:else}
 	<a class="back" href={resolve('/texts')}>← Texts</a>
@@ -821,6 +864,9 @@
 			title={document.title}
 			artist={typeof media.meta.uploader === 'string' ? media.meta.uploader : undefined}
 			{soundFile}
+			until={hardcore.until}
+			back={hardcore.back}
+			englishShown={hardcore.englishShown}
 			bind:player
 		>
 			{#snippet status()}
@@ -829,13 +875,17 @@
 		</MediaReader>
 	{:else}
 		<div class="reading" lang={document.language}>
-			{#each document.tokens as token (token.start)}{#if token.isWord}<button
+			{#each shownRange ? document.tokens.filter((t) => t.start >= shownRange[0] && t.end <= shownRange[1]) : document.tokens as token (token.start)}{#if token.isWord}<button
 						class="token {markOf(token)}"
 						data-start={token.start}
 						data-end={token.end}
 						onclick={() => open(token)}>{@render rubied(token)}</button
 					>{:else}<span class="token">{textOf(token)}</span>{/if}{/each}
 		</div>
+		{#if shownRange && hardcore.back}
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- back is resolved by its maker -->
+			<a class="done-reading" href={hardcore.back}>Done</a>
+		{/if}
 	{/if}
 
 	{#if chosen}
@@ -916,6 +966,18 @@
 {/if}
 
 <style>
+	.done-reading {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 48px;
+		margin: 1rem 0;
+		border-radius: 12px;
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 600;
+		text-decoration: none;
+	}
 	.leave-backdrop {
 		position: fixed;
 		inset: 0;

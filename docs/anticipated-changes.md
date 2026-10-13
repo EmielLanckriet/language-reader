@@ -78,6 +78,16 @@ of grades and lookup feedback. Review prompt identity remains covered by spec 00
 | Translations into languages other than English | Low | Cheap: track language is recorded | Record language codes only |
 | Remember a per-channel track preference | Medium | Cheap: uploader already in meta.json | Defer |
 
+## Hardcore mode additions (2026-10-13, spec 014)
+
+| Anticipated change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| Change the 14-day drilled-in threshold (7, 30) | High | Cheap: replayed from labelled reviews | `DRILLED_IN_DAYS` in the rule key ([ADR-0041](adr/0041-hardcore-drill-reviews.md)) |
+| Count Cards' example sentences as seen before, as drilled lines are | Medium | Cheap: reviews keep their range | Defer |
+| Turn word classes (new, due, not yet active, set aside) on and off | Medium | Cheap: derived filter | Defer |
+| A pre-reveal listening prompt on drill cards | Medium | Cheap while the shown line is recorded | Record `detail.line` now |
+| Drill across several documents (a series) | Low | Cheap: parts are derived, plans name their document | Ignore |
+
 ## Product Direction
 
 Stated 2026-09-02, and recorded here because nothing else in the repository carried it: **the

@@ -39,7 +39,14 @@ import {
 	type StudySession
 } from '../domain/study';
 import { projectStates, RETRACTED } from '../domain/state';
-import { MAX_RANGE, validateEncounter, type Encounter, type Modality } from '../domain/encounter';
+import {
+	MAX_RANGE,
+	validateEncounter,
+	type Encounter,
+	type Modality,
+	type SessionKind
+} from '../domain/encounter';
+import type { StepRecord } from '../domain/hardcore';
 import { checkedExample, type AnkiExample } from '../domain/card-examples';
 import type { FsrsParameters } from '../domain/anki';
 import {
@@ -611,6 +618,61 @@ export class Repository {
 		);
 	}
 
+	/** A hardcore session as recorded (spec 014): its document, plan and step records in order. */
+	hardcoreSession(sessionId: number): {
+		documentId: DocumentId;
+		plan: Record<string, unknown>;
+		steps: StepRecord[];
+	} {
+		const session = queryRows(this.db, 'SELECT document_id FROM session WHERE id = ?', [
+			sessionId
+		])[0];
+		if (!session) throw new StorageFailure(`There is no session ${sessionId}.`);
+		const rows = queryRows(
+			this.db,
+			`SELECT kind, detail FROM encounter
+        WHERE session_id = ? AND kind IN ('hardcore-plan', 'hardcore-step')
+        ORDER BY device_id, device_seq`,
+			[sessionId]
+		).map((row) => ({ kind: String(row.kind), detail: JSON.parse(String(row.detail)) }));
+		const plan = rows.find((row) => row.kind === 'hardcore-plan');
+		if (!plan) throw new StorageFailure(`Session ${sessionId} has no hardcore plan.`);
+		return {
+			documentId: Number(session.document_id),
+			plan: plan.detail,
+			steps: rows.filter((row) => row.kind === 'hardcore-step').map((row) => row.detail)
+		};
+	}
+
+	/** Words passed (graded Hard or better) in a drill since `since`, not taken back (FR-010). */
+	drilledSince(since: string): LexemeId[] {
+		return queryRows(
+			this.db,
+			`SELECT DISTINCT lexeme_id FROM encounter
+        WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL
+          AND json_extract(detail, '$.grade') >= 2 AND at >= ?
+          AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))
+        ORDER BY lexeme_id`,
+			[since]
+		).map((row) => Number(row.lexeme_id));
+	}
+
+	/** Each word's place in general Chinese frequency (ADR-0039); unlisted words are absent. */
+	frequencyRanks(lexemeIds: LexemeId[]): Map<LexemeId, number> {
+		const ranks = new Map<LexemeId, number>();
+		const unique = [...new Set(lexemeIds)];
+		if (unique.length === 0) return ranks;
+		for (const row of queryRows(
+			this.db,
+			`SELECT id, surface FROM lexeme WHERE id IN (${unique.map(() => '?').join(', ')})`,
+			unique
+		)) {
+			const rank = this.frequency.get(String(row.surface));
+			if (rank !== undefined) ranks.set(Number(row.id), rank);
+		}
+		return ranks;
+	}
+
 	/** How often each word occurs in each of these documents, for the library's shares. */
 	wordOccurrences(documentIds: DocumentId[]): Map<DocumentId, Map<LexemeId, number>> {
 		const found = new Map<DocumentId, Map<LexemeId, number>>();
@@ -1105,7 +1167,7 @@ export class Repository {
 	 * Begin a sitting with one document (spec 007). The session row is written once and never
 	 * changed: its end is its last encounter, and the attention answer is an encounter of its own.
 	 */
-	startSession(documentId: DocumentId, modality: Modality): number {
+	startSession(documentId: DocumentId, modality: SessionKind): number {
 		return transact(this.db, () => {
 			const deviceId = deviceIdOf(this.db);
 			run(
@@ -1476,8 +1538,20 @@ export class Repository {
 			[lexemeId]
 		);
 		const rows = all.filter((row) => row.withdrawn === 0);
+		// A line shown on a hardcore drill card was seen too (spec 014, FR-016), for every word on it:
+		// a sighting, never an exposure, since the drill's grade is its own evidence.
+		const drilled = queryRows(
+			this.db,
+			`SELECT e.session_id, e.document_id, e.at, t.start FROM token t
+       JOIN encounter e ON e.document_id = t.document_id AND e.kind = 'review'
+                       AND json_extract(e.detail, '$.hardcore') IS NOT NULL
+                       AND json_extract(e.detail, '$.line[0]') <= t.start
+                       AND json_extract(e.detail, '$.line[1]') >= t."end"
+       WHERE t.lexeme_id = ?`,
+			[lexemeId]
+		);
 		const viewings = new Map<string, { session: number; at: number }[]>();
-		for (const row of all) {
+		for (const row of [...all, ...drilled]) {
 			const occurrence = `${row.document_id} ${row.start}`;
 			viewings.set(occurrence, [
 				...(viewings.get(occurrence) ?? []),
@@ -2069,11 +2143,13 @@ export class Repository {
 		}
 		const midnight = new Date(now);
 		midnight.setHours(0, 0, 0, 0);
+		// A drill is no first review: the budget is for words starting on Cards (ADR-0041).
 		const firstReviewsToday = Number(
 			queryRows(
 				this.db,
 				`SELECT COUNT(*) AS n FROM (
-           SELECT MIN(at) AS first FROM encounter WHERE kind = 'review' GROUP BY lexeme_id
+           SELECT MIN(at) AS first FROM encounter
+            WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NULL GROUP BY lexeme_id
          ) WHERE first >= ?`,
 				[midnight.toISOString()]
 			)[0].n

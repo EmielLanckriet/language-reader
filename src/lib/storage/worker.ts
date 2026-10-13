@@ -21,7 +21,7 @@ import { Repository, type UpgradeBatch } from './repository';
 import { CopyRejected, type CopyBody } from '../backup/format';
 import { acquire, release } from './lease';
 import { next, acceptsWrites, type Availability, type Event } from './availability';
-import type { Encounter, Modality } from '../domain/encounter';
+import type { Encounter, SessionKind } from '../domain/encounter';
 import { clearDiagnostics, readDiagnostics, recordDiagnostic } from '../diagnostics/log';
 import type { DiagnosticKind } from '../diagnostics/log';
 import type { IngestedDocument } from '../content/types';
@@ -300,7 +300,13 @@ function run(request: Request): unknown {
 		case 'replaceDocument':
 			return repository.replaceDocument(request.args[0], request.args[1]);
 		case 'startSession':
-			return repository.startSession(request.args[0], request.args[1] as Modality);
+			return repository.startSession(request.args[0], request.args[1] as SessionKind);
+		case 'hardcoreSession':
+			return repository.hardcoreSession(request.args[0]);
+		case 'drilledSince':
+			return repository.drilledSince(request.args[0]);
+		case 'frequencyRanks':
+			return repository.frequencyRanks(request.args[0]);
 		case 'recordEncounters':
 			return repository.recordEncounters(request.args[0], request.args[1] as Encounter[]);
 		case 'staleMemory':

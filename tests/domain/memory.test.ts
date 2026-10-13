@@ -8,6 +8,8 @@ import {
 	setAsideProvenance,
 	recall,
 	colourBand,
+	ruleKey,
+	DRILLED_IN_DAYS,
 	type WordHistory,
 	type HistoryEvent,
 	type Exposure,
@@ -520,5 +522,130 @@ describe('a sentence seen before (issue #6)', () => {
 	it('does not make a word known: that takes two sessions in sentences not seen before', () => {
 		const h = history({ exposures: [seen(1, at(3)), rewatch(2, at(5), 2)], answers: allIn(1, 2) });
 		expect(memoryOf(h).reading?.known).toBeFalsy();
+	});
+});
+
+describe('a drill grade (spec 014, ADR-0041)', () => {
+	// Every drill grade is a review labelled hardcore: it shapes memory like any review, but the
+	// word joins Cards only once drilled in, its reading stability at 14 days from its first drill on.
+	const drill = (grade: number, when: string): HistoryEvent => ({
+		...ordered(when),
+		kind: 'review',
+		sessionId: 90,
+		modality: 'hardcore' as never,
+		detail: { skill: 'reading', grade, hardcore: { part: 0 }, line: [0, 10] }
+	});
+	const reading = (h: WordHistory) => memoryOf(h).reading!;
+	const allFrom = (first: number, count: number) =>
+		new Map(Array.from({ length: count }, (_, i) => [first + i, 'all' as const]));
+
+	it('gives a new word a memory but makes it no card', () => {
+		const m = reading(history({ events: [drill(GOOD, at(1))] }));
+		expect(m.stability).toBeGreaterThan(0);
+		expect(m.card).toBe(false);
+		expect(m.reviewed).toBe(false);
+		expect(isActive(m)).toBe(false);
+	});
+
+	it('leaves a tapped word a candidate', () => {
+		const m = reading(history({ events: [lookup(1, at(1)), drill(GOOD, at(1, 12))] }));
+		expect(m.card).toBe(true);
+		expect(m.reviewed).toBe(false);
+		expect(isActive(m)).toBe(false);
+	});
+
+	it('drills a word in the first time its stability reaches 14 days, for good', () => {
+		const h = history({ events: [drill(GOOD, at(1))] });
+		let day = 1;
+		let reached = false;
+		for (let i = 0; i < 8 && !reached; i++) {
+			const m = reading(h);
+			reached = m.stability >= DRILLED_IN_DAYS;
+			expect(m.reviewed).toBe(reached);
+			expect(m.card).toBe(reached);
+			if (reached) break;
+			day += Math.max(1, Math.round(m.stability));
+			h.events.push(drill(GOOD, at(day)));
+		}
+		expect(reached).toBe(true);
+		h.events.push(drill(AGAIN, at(day + 90)));
+		const forgotten = reading(h);
+		expect(forgotten.stability).toBeLessThan(DRILLED_IN_DAYS);
+		expect(forgotten.reviewed).toBe(true);
+		expect(isActive(forgotten)).toBe(true);
+	});
+
+	// A tap first, so the word cannot become known by reading instead (issue #5).
+	const readUntil14 = (withDrill: boolean) => {
+		const h = history({
+			events: [lookup(1, at(1)), ...(withDrill ? [drill(GOOD, at(1, 12))] : [])],
+			answers: allFrom(2, 40)
+		});
+		let day = 2;
+		let reached = false;
+		for (let session = 2; session < 40 && !reached; session++) {
+			const m = reading(h);
+			reached = m.stability >= DRILLED_IN_DAYS;
+			if (!reached) {
+				day += Math.max(1, Math.round(m.stability));
+				h.exposures.push(seen(session, at(day)));
+			}
+		}
+		expect(reached).toBe(true);
+		return reading(h);
+	};
+
+	it('drills a word in when reading after its first drill reaches 14 days', () => {
+		expect(readUntil14(true).reviewed).toBe(true);
+	});
+
+	it('does not make a card of a word read to 14 days without a drill', () => {
+		const m = readUntil14(false);
+		expect(m.reviewed).toBe(false);
+		expect(isActive(m)).toBe(false);
+	});
+
+	it('keeps a set-aside word aside until drilled in', () => {
+		const h = history({
+			marks: [seed(at(1)), mark('retired', setAsideProvenance(2000), at(5))],
+			events: [drill(AGAIN, at(9))]
+		});
+		expect(reading(h).setAside).toBe(true);
+		let day = 9;
+		for (let i = 0; i < 12 && reading(h).stability < DRILLED_IN_DAYS; i++) {
+			day += Math.max(1, Math.round(reading(h).stability));
+			h.events.push(drill(GOOD, at(day)));
+		}
+		expect(reading(h).stability).toBeGreaterThanOrEqual(DRILLED_IN_DAYS);
+		expect(reading(h).setAside).toBeUndefined();
+		expect(isActive(reading(h))).toBe(true);
+	});
+
+	it('never makes a card of a word retired by hand, however well drilled', () => {
+		const h = history({ marks: [mark('retired', 'manual', at(1))], events: [drill(GOOD, at(2))] });
+		let day = 2;
+		for (let i = 0; i < 8; i++) {
+			day += Math.max(1, Math.round(reading(h).stability));
+			h.events.push(drill(GOOD, at(day)));
+		}
+		expect(reading(h).stability).toBeGreaterThanOrEqual(DRILLED_IN_DAYS);
+		expect(reading(h).card).toBe(false);
+		expect(isActive(reading(h))).toBe(false);
+	});
+
+	it('schedules a due card from a drill grade as from a Cards grade', () => {
+		const drilled = reading(
+			history({ marks: [seed(at(1))], events: [review(GOOD, at(3)), drill(GOOD, at(20))] })
+		);
+		const carded = reading(
+			history({ marks: [seed(at(1))], events: [review(GOOD, at(3)), review(GOOD, at(20))] })
+		);
+		expect(drilled.due).toBe(carded.due);
+		expect(drilled.stability).toBe(carded.stability);
+		expect(drilled.reviewed).toBe(true);
+	});
+
+	it('names the threshold in the rule key, so changing it recomputes', () => {
+		expect(ruleKey()).toContain(`drill-${DRILLED_IN_DAYS}`);
 	});
 });

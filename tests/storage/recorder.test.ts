@@ -9,6 +9,31 @@ import { buildHistory } from '../backup/support';
 // and writes it once.
 
 describe('the recorder', () => {
+	it('links a player opened from a hardcore step to it, once, with its first writes', async () => {
+		const written: Parameters<Repository['recordEncounters']>[1] = [];
+		const sink = {
+			startSession: async () => 1,
+			recordEncounters: async (_s: number, batch: typeof written) => void written.push(...batch)
+		};
+		const recorder = new Recorder(sink, 7, 'media', [[0, 3]]);
+		recorder.linkHardcore({ session: 4, part: 1, step: 'watch-after' });
+		for (let ms = 0; ms <= 1000; ms += 250)
+			recorder.playing(0, { mediaMs: ms, speed: 1, textVisible: true });
+		await recorder.flush();
+		for (let ms = 1250; ms <= 2000; ms += 250)
+			recorder.playing(0, { mediaMs: ms, speed: 1, textVisible: true });
+		await recorder.close();
+		const links = written.filter((e) => e.kind === 'hardcore-watch');
+		expect(links).toEqual([
+			{
+				kind: 'hardcore-watch',
+				at: expect.any(String),
+				detail: { session: 4, part: 1, step: 'watch-after' }
+			}
+		]);
+		expect(written[0].kind).toBe('hardcore-watch');
+	});
+
 	it('writes where English was visible: the opening state first, and each reveal with its range', async () => {
 		const written: Parameters<Repository['recordEncounters']>[1] = [];
 		const sink = {

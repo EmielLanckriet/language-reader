@@ -33,7 +33,8 @@ import type {
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
 import type { DocumentId, HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
-import type { Encounter, Modality, Skill } from '../domain/encounter';
+import type { Encounter, SessionKind, Skill } from '../domain/encounter';
+import type { StepRecord } from '../domain/hardcore';
 import type { Memory } from '../domain/memory';
 import type { Part } from '../domain/corrections';
 import type { FsrsParameters } from '../domain/anki';
@@ -334,7 +335,7 @@ export class RepositoryClient {
 		return this.call({ method: 'exportBody', args: [app, createdAt] });
 	}
 
-	startSession(documentId: number, modality: Modality): Promise<number> {
+	startSession(documentId: number, modality: SessionKind): Promise<number> {
 		return this.call({ method: 'startSession', args: [documentId, modality] });
 	}
 
@@ -346,6 +347,20 @@ export class RepositoryClient {
 		return this.call<void>({ method: 'recordEncounters', args: [sessionId, encounters] }).then(
 			earned
 		);
+	}
+
+	hardcoreSession(
+		sessionId: number
+	): Promise<{ documentId: DocumentId; plan: Record<string, unknown>; steps: StepRecord[] }> {
+		return this.call({ method: 'hardcoreSession', args: [sessionId] });
+	}
+
+	drilledSince(since: string): Promise<LexemeId[]> {
+		return this.call({ method: 'drilledSince', args: [since] });
+	}
+
+	frequencyRanks(lexemeIds: LexemeId[]): Promise<Map<LexemeId, number>> {
+		return this.call({ method: 'frequencyRanks', args: [lexemeIds] });
 	}
 
 	/** Documents whose words the corrections in force would change, rewritten; how many (issue #2). */

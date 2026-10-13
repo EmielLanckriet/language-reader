@@ -23,8 +23,13 @@ import { RETRACTED } from './state';
 export const RULE = 'evidence-4';
 /** How due dates follow from a memory: part of what a stored memory was computed under. */
 const SCHEDULE = 'no-steps';
+/**
+ * A word met in a hardcore drill joins Cards once its reading stability reaches this many days
+ * (ADR-0041): it arrives already known, adding about 1/14 review a day.
+ */
+export const DRILLED_IN_DAYS = 14;
 /** Which words are active cards (issue #5): part of what a stored memory was computed under. */
-const ACTIVATION = 'known-2';
+const ACTIVATION = `known-2+drill-${DRILLED_IN_DAYS}`;
 /** Untapped attentive sessions that make a never-tapped word a known, active card (issue #5). */
 export const KNOWN_SESSIONS = 2;
 
@@ -87,6 +92,8 @@ export interface Evidence {
 	from?: 'tap' | 'seen';
 	/** A seen word in a sentence seen this many days before (Exposure.rewatchDays). */
 	rewatchDays?: number;
+	/** A grade from a hardcore drill (spec 014). */
+	hardcore?: true;
 }
 
 /**
@@ -152,6 +159,8 @@ export interface WordEvidence {
 	known: boolean;
 	/** Set aside (the reader, 2026-10-07): a candidate card, not due, until reviewed after the mark. */
 	setAside: boolean;
+	/** Retired by hand (ADR-0040): no drill makes a card of it. */
+	retired: boolean;
 	reading: SkillEvidence;
 	listening: SkillEvidence;
 }
@@ -198,6 +207,16 @@ function isTap(event: HistoryEvent): boolean {
 	return event.kind === 'lookup' || event.kind === 'check';
 }
 
+/** A grade from a hardcore drill: evidence like any review, but it makes no card (ADR-0041). */
+function isDrill(event: HistoryEvent): boolean {
+	return event.kind === 'review' && event.detail.hardcore !== undefined;
+}
+
+/** A review on Cards: the kind that makes a card and an active one (ADR-0039). */
+function isCardReview(event: HistoryEvent): boolean {
+	return event.kind === 'review' && !isDrill(event);
+}
+
 /** An exposure counts for listening only when the words were heard with the text hidden. */
 function skillOf(item: { modality?: Modality; textVisible?: boolean }): Skill {
 	return item.modality === 'media' && item.textVisible === false ? 'listening' : 'reading';
@@ -216,6 +235,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		card: false,
 		known: false,
 		setAside: false,
+		retired: false,
 		reading: { evidence: [] },
 		listening: { evidence: [] }
 	};
@@ -240,10 +260,11 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 	const found: WordEvidence = {
 		card:
 			seed !== undefined ||
-			events.some((event) => isTap(event) || event.kind === 'review') ||
+			events.some((event) => isTap(event) || isCardReview(event)) ||
 			marks.some((mark) => mark.asserted === 'learning'),
 		known: false,
 		setAside: false,
+		retired: false,
 		reading: { seed, evidence: [] },
 		listening: { evidence: [] }
 	};
@@ -278,7 +299,8 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			found[skill].evidence.push({
 				at: event.at,
 				rating: event.detail.grade as Grade,
-				review: { deviceId: event.deviceId, deviceSeq: event.deviceSeq }
+				review: { deviceId: event.deviceId, deviceSeq: event.deviceSeq },
+				...(isDrill(event) ? { hardcore: true as const } : {})
 			});
 		} else if (exposure) {
 			const skill = skillOf(exposure);
@@ -318,10 +340,11 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		const aside = last.provenance.startsWith(SET_ASIDE);
 		const reviewedSince = events.some(
 			(event) =>
-				event.kind === 'review' && event.detail.skill === 'reading' && byHistory(event, last) > 0
+				isCardReview(event) && event.detail.skill === 'reading' && byHistory(event, last) > 0
 		);
 		if (!aside) found.card = false;
 		else found.setAside = !reviewedSince;
+		found.retired = !aside;
 		found.known = false;
 	}
 	return found;
@@ -386,7 +409,8 @@ function fold(
 	skill: SkillEvidence,
 	observe:
 		((evidence: Evidence, card: Card | undefined, now: Date, dated: boolean) => void) | undefined,
-	rule: { strengths?: RuleStrengths; skill: Skill }
+	rule: { strengths?: RuleStrengths; skill: Skill },
+	applied?: (evidence: Evidence, card: Card) => void
 ): Card | undefined {
 	let card = skill.seed ? seededCard(f, skill.seed) : undefined;
 	let latest = card?.last_review?.getTime() ?? -Infinity;
@@ -413,6 +437,7 @@ function fold(
 		card.stability = adjusted;
 		card.due = dueAfter(f, now, card.stability);
 		dated = true;
+		applied?.(evidence, card);
 	}
 	return card;
 }
@@ -484,8 +509,17 @@ export function memoryOf(
 	const f = scheduler(parameters);
 	const memory: Partial<Record<Skill, Memory>> = {};
 	for (const skill of ['reading', 'listening'] as const) {
-		const card = fold(f, found[skill], undefined, { strengths, skill });
+		// Drilled in: from the first drill on, the first time the stability reaches the threshold,
+		// whatever brought it there, and for good (ADR-0041).
+		let drilling = false;
+		let drilledIn = false;
+		const card = fold(f, found[skill], undefined, { strengths, skill }, (evidence, after) => {
+			drilling ||= evidence.hardcore === true;
+			drilledIn ||= drilling && after.stability >= DRILLED_IN_DAYS;
+		});
 		if (!card) continue;
+		drilledIn &&= skill === 'reading' && !found.retired;
+		const isCard = skill === 'reading' && (found.card || drilledIn);
 		const seed = found[skill].seed;
 		memory[skill] = {
 			stability: card.stability,
@@ -495,12 +529,12 @@ export function memoryOf(
 			due: card.due.toISOString(),
 			reps: card.reps,
 			lapses: card.lapses,
-			card: skill === 'reading' && found.card,
-			...(skill === 'reading' && found.known && !found.card ? { known: true as const } : {}),
-			...(skill === 'reading' && found.setAside ? { setAside: true as const } : {}),
-			reviewed: history.events.some(
-				(event) => event.kind === 'review' && event.detail.skill === skill
-			),
+			card: isCard,
+			...(skill === 'reading' && found.known && !isCard ? { known: true as const } : {}),
+			...(skill === 'reading' && found.setAside && !drilledIn ? { setAside: true as const } : {}),
+			reviewed:
+				drilledIn ||
+				history.events.some((event) => isCardReview(event) && event.detail.skill === skill),
 			...(seed ? { seeded: seed.dateKnown ? 'anki' : 'anki-undated' } : {})
 		};
 	}

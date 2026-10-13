@@ -109,6 +109,9 @@
 			Start from the beginning
 		</a>
 	{/if}
+	<a class="play again" href={resolve('/document/[id]/hardcore', { id: String(summary.id) })}>
+		Hardcore: drill its words around watching it
+	</a>
 	<DocumentSettings document={summary} bind:media reopen="/document/[id]" />
 {/if}
 

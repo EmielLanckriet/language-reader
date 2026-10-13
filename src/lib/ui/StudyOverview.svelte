@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { DAY_END_HOURS, readDayEnd } from '$lib/ui/hardcore';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { session } from '$lib/storage/session';
@@ -25,19 +26,7 @@
 	});
 	const pending = $derived(overview?.sessions.filter((s) => !s.answered) ?? []);
 	const selected = $derived(Number(page.url.searchParams.get('session')));
-	/** When a study day ends, on this device only (asked for 2026-10-04; 4 AM unless changed). */
-	const DAY_END_HOURS = [0, 1, 2, 3, 4, 5, 6];
 	let dayEndHour = $state(readDayEnd());
-	function readDayEnd(): number {
-		try {
-			const kept = Number(localStorage.getItem('reader.dayEndHour'));
-			return localStorage.getItem('reader.dayEndHour') !== null && DAY_END_HOURS.includes(kept)
-				? kept
-				: 4;
-		} catch {
-			return 4;
-		}
-	}
 	function setDayEnd(hour: number) {
 		dayEndHour = hour;
 		try {

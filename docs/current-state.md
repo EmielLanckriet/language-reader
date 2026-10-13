@@ -1,7 +1,36 @@
 # Current state
 
-Updated 2026-10-12. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-13. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Hardcore mode (#36, spec 014) — built, not yet deployed or phone checked
+
+A document's page offers **Hardcore**: a fragment (from the beginning, Continue, or chosen lines),
+optionally cut into parts of about N words, with any of four steps run per part in one order —
+English preview, watch first, drill, watch after (one engine, not modes; spec 014). Words: new,
+due, not yet active (tapped or not) and set aside, never active-not-due or retired by hand;
+filters at least x times, among the y most common, a coverage target; most frequent first or story
+order (`src/lib/domain/hardcore.ts`). Options are chosen at every start. The drill shows Cards'
+faces (now `CardFace.svelte`, shared) with the part's own line and its audio; Again comes back 3
+cards later; words passed in a drill today are skipped. Watch steps open the player with `until`
+and `back` (it stops at the part's end and offers Back to the session; ← goes back too) or, for a
+text, only the part's lines with Done; leaving asks "Before you go" as usual.
+
+Earned data (ADR-0041, contract in the spec): a `hardcore` session holds a `hardcore-plan`,
+`hardcore-step` start/end records and the drill's `review`s labelled `hardcore` with the `line`
+shown; the player's session gets a `hardcore-watch` link. No migration. Memory: a drill grade is
+evidence and enters the fit, but makes no card, no active card and does not end set-aside; a word
+is **drilled in** (a reviewed card for good) the first time its reading stability reaches 14 days
+from its first drill on. Rule key `known-2+drill-14`: every memory is recomputed once in the
+background after the deploy. A drilled line counts as a sentence seen before for `evidence-4`;
+drill grades are not first reviews for the new-word budget.
+
+Validation: 629 tests, type check, lint; tests red first and mutation results in
+`specs/014-hardcore-drill/quickstart.md`. Browser `hardcore` (new) passes, with `media`,
+`autostop`, `leavingvideo`, `documentpage`, `stage`, `study`, `cardaudio`, `cardlayout`. `cards`
+fails identically before the change (it expects an Again card back within 20 minutes, predating
+no-steps); `resume` expects 9 s for a clip whose fixture copy here has a line at 11 s. Not yet on
+the phone: planning time for a film, the stop at a part's end, the one-time recompute.
 
 ## A streak in study days (#38) — deployed, not yet phone checked
 

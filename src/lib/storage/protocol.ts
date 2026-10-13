@@ -38,6 +38,9 @@ export type Call =
 	| { method: 'replaceDocument'; args: [number, number] }
 	| { method: 'startSession'; args: [number, string] }
 	| { method: 'recordEncounters'; args: [number, unknown[]] }
+	| { method: 'hardcoreSession'; args: [number] }
+	| { method: 'drilledSince'; args: [string] }
+	| { method: 'frequencyRanks'; args: [number[]] }
 	| { method: 'recentEncounters'; args: [] }
 	| { method: 'recordReview'; args: [number, number, unknown, string?] }
 	| { method: 'importCardExamples'; args: [unknown[]] }

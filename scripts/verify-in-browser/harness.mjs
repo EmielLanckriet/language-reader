@@ -2897,6 +2897,192 @@ const scenarios = {
 	// entry. Needs make-fixtures.sh's fixture-video-again on the service at port 18765.
 	// Continue where playback stopped, at the start of that line; within 30 s of the end, start over.
 	// make-fixtures.sh's 45 s clip (fixture-media, a line every 3 s) on port 18765; about 30 s.
+	// Spec 014: a hardcore session on lines 1–3 of the 45 s clip, every step, from the document
+	// page; the part stops at its end and comes back; a drill with one Again; the records as the
+	// contract says; a second session the same day finds those words already passed.
+	async hardcore() {
+		const tab = await openTab('about:blank');
+		const clickText = (selector, text) =>
+			tab.evaluate(`const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find((e) => e.textContent.trim().startsWith(${JSON.stringify(text)}));
+				if (!el || el.disabled) return null; el.click(); return true;`);
+		const onSession = () =>
+			until(
+				'the session page',
+				() =>
+					tab.evaluate(
+						`${LATER} return location.pathname.includes('/hardcore/') && !document.querySelector('.loading') ? (document.querySelector('.subtitle')?.textContent.trim() ?? document.querySelector('.done h2')?.textContent.trim() ?? null) : null;`
+					),
+				30000,
+				250
+			);
+		// Watch the part: play muted from where the player starts, until the part's end box.
+		const watchPart = async (label) => {
+			await until(`the ${label} button`, () => clickText('button', label), 20000, 250);
+			await until(
+				'the player at the part',
+				() =>
+					tab.evaluate(
+						`const v = document.querySelector('video'); if (!location.pathname.includes('/read/') || !v || v.readyState < 1 || v.seeking) return null; v.muted = true; v.play(); return true;`
+					),
+				30000,
+				250
+			);
+			const ended = await until(
+				'the end of the part',
+				() =>
+					tab.evaluate(`if (!document.querySelector('.part-ended')) return null;
+						const v = document.querySelector('video');
+						return { at: v.currentTime, until: Number(new URLSearchParams(location.search).get('until')), paused: v.paused };`),
+				40000,
+				100
+			);
+			await tab.evaluate(`document.querySelector('.part-back').click(); return true;`);
+			return ended;
+		};
+		try {
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the document page',
+				() =>
+					tab.evaluate(
+						`return location.pathname.includes('/document/') && document.querySelector('.shares') ? true : null;`
+					),
+				60000,
+				250
+			);
+			await clickText('a', 'Hardcore');
+			const setup = async (allSteps) => {
+				await until(
+					'the setup page',
+					() => tab.evaluate(`return document.querySelector('.summary') ? true : null;`),
+					30000,
+					250
+				);
+				await tab.evaluate(`
+					document.querySelector('input[value="range"]').click();
+					await new Promise((r) => setTimeout(r, 50));
+					const [from, to] = document.querySelectorAll('.range select');
+					from.value = '0'; from.dispatchEvent(new Event('change'));
+					to.value = '2'; to.dispatchEvent(new Event('change'));
+					if (!${allSteps}) for (const box of document.querySelectorAll('fieldset input[type=checkbox]'))
+						if (!box.parentElement.textContent.includes('Drill') && box.checked && !box.parentElement.textContent.includes('Cut')) box.click();
+					return true;`);
+				return until(
+					'the word count',
+					() =>
+						tab.evaluate(
+							`const m = document.querySelector('.summary')?.textContent.match(/(\\d+) words/); return m ? Number(m[1]) : null;`
+						),
+					10000,
+					100
+				);
+			};
+			const words = await setup(true);
+			await clickText('button', 'Start');
+			const steps = [await onSession()];
+			const previewLines = await until(
+				'the preview lines',
+				() =>
+					tab.evaluate(
+						`const n = document.querySelectorAll('.preview li').length; return n || null;`
+					),
+				10000,
+				100
+			);
+			await clickText('button', 'Done');
+			steps.push(await onSession());
+			const first = await watchPart('Watch');
+			steps.push(await onSession());
+			// The drill: Again once on the first card, Good on every card after.
+			let grades = 0;
+			let again = false;
+			for (let i = 0; i < 60; i++) {
+				const state = await until(
+					'a card or the next step',
+					() =>
+						tab.evaluate(`
+							if (document.querySelector('.card .reveal')) { document.querySelector('.card .reveal').click(); return null; }
+							if (document.querySelector('.card .grade') && !document.querySelector('.card .grade').disabled) return 'card';
+							return document.querySelector('.subtitle')?.textContent.includes('Drill') ? null : 'next';`),
+					20000,
+					100
+				);
+				if (state === 'next') break;
+				await clickText('.card .grade', again ? 'Good' : 'Again');
+				again = true;
+				grades++;
+				await new Promise((r) => setTimeout(r, 150));
+			}
+			steps.push(await onSession());
+			const after = await watchPart('Watch');
+			steps.push(await onSession());
+
+			await tab.goto('/diagnostics');
+			const sittings = await until(
+				'the recorded sessions',
+				() =>
+					tab.evaluate(`const s = [...document.querySelectorAll('details.sitting')];
+						return s.length >= 3 ? s.map((d) => ({ summary: d.querySelector('summary').textContent.replace(/\\s+/g, ' ').trim(), items: [...d.querySelectorAll('.encounters li')].map((li) => li.textContent.replace(/\\s+/g, ' ').trim()) })) : null;`),
+				20000,
+				250
+			);
+			const hardcoreSitting = sittings.find((s) => s.summary.includes('· hardcore ·'));
+			const reviews = hardcoreSitting?.items.filter((i) => i.startsWith('review')) ?? [];
+			const stepRecords = hardcoreSitting?.items.filter((i) => i.startsWith('hardcore-step')) ?? [];
+			const links = sittings.filter((s) => s.items.some((i) => i.startsWith('hardcore-watch')));
+
+			// The same lines again, today, drill only: every word was passed.
+			await tab.goto('/');
+			await until(
+				'the library entry',
+				() =>
+					tab.evaluate(`const a = [...document.querySelectorAll('.library.collection a')].find((a) => a.textContent.includes('45 s'));
+					if (!a) return null; a.click(); return true;`),
+				20000,
+				250
+			);
+			await until('the Hardcore link', () => clickText('a', 'Hardcore'), 20000, 250);
+			await setup(false);
+			await clickText('button', 'Start');
+			const second = await until(
+				'the second drill',
+				() =>
+					tab.evaluate(
+						`return location.pathname.includes('/hardcore/') && document.body.textContent.includes('No words left to drill') ? true : null;`
+					),
+				20000,
+				250
+			);
+			const near = (ended) => ended.paused && Math.abs(ended.at - ended.until) < 0.5;
+			return {
+				pass:
+					words > 0 &&
+					previewLines === 3 &&
+					near(first) &&
+					near(after) &&
+					grades === words + 1 &&
+					reviews.length === grades &&
+					reviews.every((r) => r.includes('"hardcore"') && r.includes('"line"')) &&
+					stepRecords.length === 8 &&
+					links.length === 2 &&
+					second === true &&
+					steps.at(-1) === 'Session done.',
+				words,
+				previewLines,
+				steps,
+				first,
+				after,
+				grades,
+				reviews: reviews.length,
+				stepRecords: stepRecords.length,
+				links: links.length,
+				second
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async resume() {
 		const tab = await openTab('about:blank');
 		const pageInfo = `if (!location.pathname.includes('/document/') || !document.querySelector('.shares')) return null;

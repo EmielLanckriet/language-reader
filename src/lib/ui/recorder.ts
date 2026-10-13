@@ -11,6 +11,7 @@ import {
 	MAX_RANGE,
 	type AttentionAnswer,
 	type Encounter,
+	type HardcoreStep,
 	type Modality
 } from '$lib/domain/encounter';
 
@@ -247,6 +248,11 @@ export class Recorder {
 	/** A setting as the session opened, written with its first batch: opening alone writes nothing. */
 	noteAtStart(name: string, value: unknown): void {
 		this.opening.push({ kind: 'setting', at: this.stamp(), detail: { name, value } });
+	}
+
+	/** Opened from a hardcore step (spec 014): the session says so with its first writes. */
+	linkHardcore(link: { session: number; part: number; step: HardcoreStep }): void {
+		this.opening.push({ kind: 'hardcore-watch', at: this.stamp(), detail: { ...link } });
 	}
 
 	setting(name: string, value: unknown): void {

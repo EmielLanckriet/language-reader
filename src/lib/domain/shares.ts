@@ -24,7 +24,8 @@ type Kind = keyof Shares;
 const KNOWN_MARKS = new Set(['known', 'anki-mature', 'anki-long-term']);
 const NO_MARK = new Set(['ignored', '(none)']);
 
-function kindOf(
+/** How the library's shares count a word: what hardcore's coverage target counts as known too. */
+export function kindOf(
 	state: string | undefined,
 	reading: Memory | undefined,
 	now: Date,

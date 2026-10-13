@@ -37,8 +37,31 @@ const valid: Encounter[] = [
 	{ kind: 'engagement', at, detail: { mode: null, attentive: 'partly' } },
 	{ kind: 'review', at, ...word, detail: { skill: 'reading', grade: 3 } },
 	{ kind: 'review', at, lexemeId: 7, detail: { skill: 'reading', grade: 3 } },
-	{ kind: 'something-a-later-build-writes', at }
+	{ kind: 'something-a-later-build-writes', at },
+	// Hardcore mode (spec 014, contracts/hardcore-records.md).
+	{ kind: 'hardcore-plan', at, detail: plan() },
+	{ kind: 'hardcore-step', at, detail: { part: 0, step: 'drill', at: 'start' } },
+	{ kind: 'hardcore-step', at, detail: { part: 2, step: 'watch-after', at: 'end' } },
+	{ kind: 'hardcore-watch', at, detail: { session: 4, part: 0, step: 'watch-first' } },
+	{ kind: 'review', at, ...word, detail: drilled() }
 ];
+
+function plan(change: Record<string, unknown> = {}) {
+	return {
+		start: 'beginning',
+		fragment: [0, 9],
+		cut: null,
+		steps: ['preview', 'watch-first', 'drill', 'watch-after'],
+		filters: {},
+		order: 'frequency',
+		parts: [{ lines: [0, 9], words: [7, 8] }],
+		...change
+	};
+}
+
+function drilled(change: Record<string, unknown> = {}) {
+	return { skill: 'reading', grade: 3, hardcore: { part: 0 }, line: [0, 10], ...change };
+}
 
 const invalid: [string, Encounter][] = [
 	[
@@ -88,7 +111,43 @@ const invalid: [string, Encounter][] = [
 		'text visibility that is not a yes or no',
 		{ kind: 'lookup', at, ...word, textVisible: 2 as unknown as boolean }
 	],
-	['no moment', { kind: 'lookup', ...word } as unknown as Encounter]
+	['no moment', { kind: 'lookup', ...word } as unknown as Encounter],
+	['a plan without parts', { kind: 'hardcore-plan', at, detail: plan({ parts: [] }) }],
+	[
+		'a plan part ending before it starts',
+		{ kind: 'hardcore-plan', at, detail: plan({ parts: [{ lines: [5, 2], words: [] }] }) }
+	],
+	[
+		'a plan part whose words are not ids',
+		{ kind: 'hardcore-plan', at, detail: plan({ parts: [{ lines: [0, 2], words: ['好'] }] }) }
+	],
+	['a plan without steps', { kind: 'hardcore-plan', at, detail: plan({ steps: [] }) }],
+	['a plan with an unknown step', { kind: 'hardcore-plan', at, detail: plan({ steps: ['nap'] }) }],
+	['a step of no part', { kind: 'hardcore-step', at, detail: { step: 'drill', at: 'start' } }],
+	[
+		'a step not offered',
+		{ kind: 'hardcore-step', at, detail: { part: 0, step: 'nap', at: 'start' } }
+	],
+	[
+		'a step neither starting nor ending',
+		{ kind: 'hardcore-step', at, detail: { part: 0, step: 'drill', at: 'middle' } }
+	],
+	[
+		'a watch link without its session',
+		{ kind: 'hardcore-watch', at, detail: { part: 0, step: 'watch-first' } }
+	],
+	[
+		'a drill review without its part',
+		{ kind: 'review', at, ...word, detail: drilled({ hardcore: {} }) }
+	],
+	[
+		'a drill review without its line',
+		{ kind: 'review', at, ...word, detail: drilled({ line: undefined }) }
+	],
+	[
+		'a drill review whose line misses the word',
+		{ kind: 'review', at, ...word, detail: drilled({ line: [4, 10] }) }
+	]
 ];
 
 describe('validating an encounter', () => {

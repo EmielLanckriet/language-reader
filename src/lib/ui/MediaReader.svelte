@@ -44,10 +44,19 @@
 		title,
 		artist,
 		soundFile,
+		until,
+		back,
+		englishShown = false,
 		player = $bindable(null)
 	}: {
 		file: File;
 		cues: Cue[];
+		/** Playing a part from a hardcore step (spec 014): stop here, in seconds, and offer `back`. */
+		until?: number;
+		/** Where the ← and the end of the part go back to; the library without it. */
+		back?: string;
+		/** English shown from the start, for this visit only (hardcore's English preview). */
+		englishShown?: boolean;
 		/**
 		 * The document's own lines, when `cues` shows some of them as one (a clause the subtitles cut):
 		 * what the recorder counts in, since the offsets it writes are theirs.
@@ -128,6 +137,10 @@
 		const media = active();
 		if (!media) return;
 		const time = media.currentTime;
+		if (until !== undefined && !media.paused && time >= until - 0.05) {
+			media.pause();
+			partEnded = true;
+		}
 		if (!media.paused) recorder?.playing(sourceLineAt(time), moment());
 		// The screen is locked: no animation frames, so watchLineEnd cannot stop at a line's end.
 		if (away) checkLineEnd(media);
@@ -369,7 +382,17 @@
 	 */
 	let stage = $state(readPreference('reader.stage', true));
 	const showList = $derived(!stage || isAudio);
-	let blurEnglish = $state(readPreference('reader.blurEnglish', true));
+	// svelte-ignore state_referenced_locally
+	let blurEnglish = $state(englishShown ? false : readPreference('reader.blurEnglish', true));
+	/** The hardcore part has played to its end (spec 014). */
+	let partEnded = $state(false);
+	function playPartAgain() {
+		const media = active();
+		if (!media) return;
+		partEnded = false;
+		media.currentTime = startAt;
+		void media.play();
+	}
 	/** Stop at the end of every line, to repeat it or read it before going on. */
 	let pauseEachLine = $state(readPreference('reader.pauseEachLine', false));
 	const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
@@ -520,6 +543,15 @@
 					>{ch.c}<rt>{ch.py}</rt></ruby
 				>{:else}{ch.c}{/if}{/each}{:else}{word.text}{/if}{/snippet}
 
+{#if partEnded}
+	<div class="part-ended" role="status">
+		<p>End of the part.</p>
+		<button onclick={playPartAgain}>Again</button>
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- back is resolved by its maker -->
+		{#if back}<a class="part-back" href={back}>Back to the session</a>{/if}
+	</div>
+{/if}
+
 {#if url}
 	{#if isAudio}
 		<audio
@@ -574,7 +606,8 @@
 				<div class="bar" class:hidden={bare}>
 					<!-- The stage covers the page, its back link too: without this, a video had no way out
 					     but Android's back gesture. -->
-					<a class="back-to-videos" href={resolve('/')} aria-label="Back to videos">←</a>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- back is resolved by its maker -->
+					<a class="back-to-videos" href={back ?? resolve('/')} aria-label="Back">←</a>
 					<button onclick={() => setStage(false)} aria-label="All lines">☰</button>
 					<button onclick={toggleBlur} aria-pressed={!blurEnglish}
 						>{blurEnglish ? 'English blurred' : 'English shown'}</button
@@ -702,6 +735,43 @@
 {/if}
 
 <style>
+	.part-ended {
+		position: fixed;
+		left: 1rem;
+		right: 1rem;
+		bottom: calc(1rem + env(safe-area-inset-bottom));
+		max-width: 30rem;
+		margin: 0 auto;
+		z-index: 60;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.8rem 1rem;
+		border-radius: 14px;
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);
+	}
+	.part-ended p {
+		margin: 0;
+		flex: 1 1 100%;
+		font-weight: 600;
+	}
+	.part-ended button,
+	.part-back {
+		min-height: 44px;
+		display: inline-flex;
+		align-items: center;
+		padding: 0 1rem;
+		border-radius: 10px;
+	}
+	.part-back {
+		background: var(--accent);
+		color: var(--on-accent);
+		text-decoration: none;
+		font-weight: 600;
+	}
 	.hidden {
 		display: none;
 	}
