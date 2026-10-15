@@ -212,6 +212,14 @@ function engagementOf(detail: string): Engagement {
 /** Change it when `applyCorrections` changes what it makes, so every document is checked again. */
 const CORRECTIONS_PASS = 'corrections-1';
 
+/** What the words of one run (a dataset, a memory recompute) share; documents and sessions do not
+ * change during one. */
+interface HistoryRun {
+	lines: Map<DocumentId, [number, number][]>;
+	help: Map<number, Help>;
+}
+const newRun = (): HistoryRun => ({ lines: new Map(), help: new Map() });
+
 const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn' AND session_id IS NOT NULL`;
 const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
  WHERE e.document_id=t.document_id AND e.from_offset<=t.start AND e.to_offset>=t.end
@@ -1305,13 +1313,22 @@ export class Repository {
 		return touched;
 	}
 
-	/** Where English was shown in each session of these exposure rows (helped.ts). */
-	private englishShown(rows: Row[]): Map<number, Help> {
+	/**
+	 * Where English was shown in each session of these exposure rows (helped.ts). `shared` carries
+	 * the answers across the words of one run: every word re-read its whole document and sessions
+	 * (half of Learning data's remaining time, measured 2026-10-15).
+	 */
+	private englishShown(rows: Row[], shared: HistoryRun): Map<number, Help> {
 		const help = new Map<number, Help>();
-		const lines = new Map<number, [number, number][]>();
+		const lines = shared.lines;
 		for (const row of rows) {
 			const session = Number(row.session_id);
 			if (help.has(session)) continue;
+			const known = shared.help.get(session);
+			if (known) {
+				help.set(session, known);
+				continue;
+			}
 			const documentId = Number(row.document_id);
 			if (!lines.has(documentId)) {
 				const raw = queryRows(this.db, 'SELECT raw_content FROM document WHERE id = ?', [
@@ -1331,6 +1348,7 @@ export class Repository {
 				detail: JSON.parse(String(encounter.detail))
 			}));
 			help.set(session, helpOf(shown, lines.get(documentId)!));
+			shared.help.set(session, help.get(session)!);
 		}
 		return help;
 	}
@@ -1454,6 +1472,7 @@ export class Repository {
 	tuningDataset(): TuningDataset {
 		// Every word with an outcome to score (spec 013): a review, a tap, or a reading in a session
 		// answered "every unknown word". Words met only otherwise could not be scored.
+		const shared = newRun();
 		const words = queryRows(
 			this.db,
 			`SELECT lexeme_id FROM encounter
@@ -1463,7 +1482,7 @@ export class Repository {
 			ORDER BY lexeme_id`
 		).map((row) => {
 			const id = Number(row.lexeme_id);
-			const history = this.wordHistory(id);
+			const history = this.wordHistory(id, shared);
 			return { id, history: { ...history, answers: [...history.answers] } };
 		});
 		return {
@@ -1483,7 +1502,7 @@ export class Repository {
 	}
 
 	/** Everything in the history that bears on one word (contracts/evidence-rule.md). */
-	private wordHistory(lexemeId: LexemeId): WordHistory {
+	private wordHistory(lexemeId: LexemeId, shared: HistoryRun = newRun()): WordHistory {
 		const ordered = (row: Row) => ({
 			deviceId: String(row.device_id),
 			deviceSeq: Number(row.device_seq),
@@ -1539,14 +1558,18 @@ export class Repository {
 		);
 		const rows = all.filter((row) => row.withdrawn === 0);
 		// A line shown on a hardcore drill card was seen too (spec 014, FR-016), for every word on it:
-		// a sighting, never an exposure, since the drill's grade is its own evidence.
+		// a sighting, never an exposure, since the drill's grade is its own evidence. The few drill
+		// reviews first, then this word's tokens: joined the other way round, SQLite walked every
+		// review's document tokens for each word (80 s of Learning data's 90 s on the reader's
+		// history, measured 2026-10-15; 0.9 s this way, same rows).
 		const drilled = queryRows(
 			this.db,
-			`SELECT e.session_id, e.document_id, e.at, t.start FROM token t
-       JOIN encounter e ON e.document_id = t.document_id AND e.kind = 'review'
-                       AND json_extract(e.detail, '$.hardcore') IS NOT NULL
-                       AND json_extract(e.detail, '$.line[0]') <= t.start
-                       AND json_extract(e.detail, '$.line[1]') >= t."end"
+			`WITH drill AS MATERIALIZED (
+         SELECT session_id, document_id, at,
+                json_extract(detail, '$.line[0]') AS first, json_extract(detail, '$.line[1]') AS last
+         FROM encounter WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
+       SELECT d.session_id, d.document_id, d.at, t.start FROM drill d
+       JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t."end" <= d.last
        WHERE t.lexeme_id = ?`,
 			[lexemeId]
 		);
@@ -1567,7 +1590,7 @@ export class Repository {
 			if (before.length === 0) return undefined;
 			return (at - Math.max(...before.map((v) => v.at))) / 86_400_000;
 		};
-		const helpIn = this.englishShown(rows);
+		const helpIn = this.englishShown(rows, shared);
 		const grouped = new Map<string, Exposure>();
 		for (const row of rows) {
 			const key = `${row.session_id} ${row.text_visible} ${row.device_id}`;
@@ -1615,9 +1638,10 @@ export class Repository {
 	private recomputeMemory(lexemeIds: Iterable<LexemeId>): void {
 		const { parameters, strengths } = this.inForce();
 		const rule = ruleKey(parameters);
+		const shared = newRun();
 		for (const lexemeId of lexemeIds) {
 			run(this.db, 'DELETE FROM memory WHERE lexeme_id = ?', [lexemeId]);
-			const memory = memoryOf(this.wordHistory(lexemeId), parameters, strengths);
+			const memory = memoryOf(this.wordHistory(lexemeId, shared), parameters, strengths);
 			for (const [skill, m] of Object.entries(memory) as [Skill, Memory][]) {
 				run(
 					this.db,

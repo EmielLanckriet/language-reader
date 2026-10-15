@@ -93,8 +93,11 @@ it('dates an exposure from a drill card that showed its line, and from nothing e
 		const [first, second] = exposures(kan.lexemeId!);
 		expect(first).toBeCloseTo(1 / 24, 6);
 		expect(second).toBeUndefined();
-		// The drill itself is no exposure of 我: only the watching an hour later is.
+		// The drill itself is no exposure of 我: only the watching an hour later is. Both ends of the
+		// drilled line count as seen: 我 starts it, 书 ends it.
 		expect(exposures(tokens[0].lexemeId!)).toHaveLength(1);
+		expect(exposures(tokens[0].lexemeId!)[0]).toBeCloseTo(1 / 24, 6);
+		expect(exposures(tokens[2].lexemeId!)[0]).toBeCloseTo(1 / 24, 6);
 	} finally {
 		db.close();
 	}

@@ -3,6 +3,25 @@
 Updated 2026-10-15. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Learning data and memory recompute 18× faster — fix deployed
+
+2026-10-15, phone: Learning data took 214 s to open (17 s on 2026-10-07). A CPU profile of the
+storage worker put 210 s in `wordHistory`'s queries. Reproduced on the laptop from the reader's
+backup (restored in memory, documents tokenised greedily over its lexemes: 108,516 tokens, 1,946
+words): `tuningDataset` 90 s. Two causes, both per word:
+
+- The drill-sighting query (#36, 2026-10-13) started from every review and walked its document's
+  tokens before filtering by word: 80 s. Now the drill reviews are materialized first and only this
+  word's tokens joined: 0.9 s, the same rows for every word (416).
+- `englishShown` re-read the whole document and each session's translations for every word: 4.8 s.
+  One run (a dataset, a memory recompute) now shares them: the dataset byte for byte identical.
+
+`tuningDataset` 90 s → 4.9 s on the laptop; the memory recompute after re-tokenising 137 s → 36 s,
+so everyday background recomputes gain too. Of the rest, 2.6 s is the exposure query, already on
+indexes; an index on (document_id, kind, from_offset) saved 6 % and is not worth a migration. The
+drill test now pins both ends of a drilled line (two boundary mutations caught; they were not
+before); 639 tests.
+
 ## Fit works again after a hardcore drill — fix deployed
 
 2026-10-15, phone: Fit on this device failed at once with "Invalid modality.": a drill's reviews
