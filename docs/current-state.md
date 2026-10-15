@@ -12,6 +12,8 @@ and the changes load without waiting for it. Fit on this device and Export are e
 and wait for the fresh data if pressed early ("Preparing your learning data…"). Browser `tuning`
 (its rule expectation updated to `evidence-4`) and `fithere` pass; `parameters` fails identically
 without this change ("timed out waiting for the fitted set in force"), not investigated.
+Phone (build `1792079644239`, daily Reader): first visit, nothing kept, report in 15.3 s; second
+visit, the kept report in 0.1 s and the fresh one 14.1 s later.
 
 ## Learning data and memory recompute 18× faster — fix deployed
 
