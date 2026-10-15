@@ -3,6 +3,16 @@
 Updated 2026-10-15. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Learning data opens with the last report — deployed
+
+The reader, 2026-10-15: 16 s is fine for a fit, not for opening the page. Learning data now shows
+the last visit's report at once ("From …; bringing it up to date…"), kept in `localStorage`
+(`ui/kept-report.ts`, 2.6 KB, shape-versioned) and replaced when the fresh one is ready; In force
+and the changes load without waiting for it. Fit on this device and Export are enabled at once
+and wait for the fresh data if pressed early ("Preparing your learning data…"). Browser `tuning`
+(its rule expectation updated to `evidence-4`) and `fithere` pass; `parameters` fails identically
+without this change ("timed out waiting for the fitted set in force"), not investigated.
+
 ## Learning data and memory recompute 18× faster — fix deployed
 
 2026-10-15, phone: Learning data took 214 s to open (17 s on 2026-10-07). A CPU profile of the

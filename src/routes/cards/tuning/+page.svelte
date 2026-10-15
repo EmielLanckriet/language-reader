@@ -6,11 +6,20 @@
 	import { fitOnThisDevice } from '$lib/fit-run';
 	import { sweepStaleMemory } from '$lib/storage/sweep';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import { keepReport, keptReport } from '$lib/ui/kept-report';
 
-	let analysis = $state<{ data: TuningDataset; report: TuningReport } | null>(null);
+	type Analysis = { data: TuningDataset; report: TuningReport };
+	let analysis = $state<Analysis | null>(null);
+	/** The fresh analysis being built; Fit and Export wait for it. */
+	let loading: Promise<void> | null = null;
 	let problem = $state<unknown>(null);
 	let busy = $state(false);
-	const report = $derived(analysis?.report);
+	/** The last visit's report, shown until the fresh one replaces it. */
+	const kept = keptReport();
+	const report = $derived(analysis?.report ?? kept?.report);
+	const keptAt = kept
+		? new Date(kept.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+		: '';
 	const percent = (n: number | null) => (n === null ? '—' : `${(n * 100).toFixed(1)}%`);
 	const reasons: Record<string, string> = {
 		'no-prior-memory': 'No earlier memory to predict from',
@@ -67,14 +76,32 @@
 		}
 	}
 
+	/** The analysis, waiting for the one being built if there is none yet. */
+	async function ready(): Promise<Analysis> {
+		if (!analysis) await load();
+		if (!analysis) throw problem ?? new Error('The learning data could not be read.');
+		return analysis;
+	}
+
 	/** A fit running here: its progress, and how to stop it (spec 013 Story 4). */
 	let fitting = $state<{ done: number; total: number; cancel: () => void } | null>(null);
+	let preparing = $state(false);
 	async function fitHere() {
-		if (!analysis || fitting) return;
+		if (fitting || preparing) return;
 		parameterProblem = null;
 		parameterNote = '';
 		imported = null;
-		const run = fitOnThisDevice($state.snapshot(analysis.data), (done, total) => {
+		let data: TuningDataset;
+		preparing = true;
+		try {
+			data = (await ready()).data;
+		} catch (error) {
+			parameterProblem = error;
+			return;
+		} finally {
+			preparing = false;
+		}
+		const run = fitOnThisDevice($state.snapshot(data), (done, total) => {
 			if (fitting) fitting = { ...fitting, done, total };
 		});
 		fitting = { done: 0, total: 1, cancel: run.cancel };
@@ -114,29 +141,42 @@
 		}
 	}
 
-	async function load() {
-		if (busy) return;
-		busy = true;
-		problem = null;
-		try {
-			const { repository } = await session();
-			analysis = await repository.tuningAnalysis();
-			await loadParameters();
-		} catch (error) {
-			problem = error;
-		} finally {
-			busy = false;
-		}
+	function load(): Promise<void> {
+		loading ??= (async () => {
+			busy = true;
+			problem = null;
+			try {
+				const { repository } = await session();
+				analysis = await repository.tuningAnalysis();
+				keepReport($state.snapshot(analysis.report) as TuningReport);
+			} catch (error) {
+				problem = error;
+			} finally {
+				loading = null;
+				busy = false;
+			}
+		})();
+		return loading;
 	}
 	$effect(() => {
-		// Initial load has no reactive dependencies; busy belongs only to manual refreshes.
-		void Promise.resolve().then(load);
+		// Initial load has no reactive dependencies; busy belongs only to manual refreshes. The
+		// parameters are quick: they need not wait for the report.
+		void Promise.resolve().then(() => {
+			loadParameters().catch((error) => (parameterProblem = error));
+			return load();
+		});
 	});
 
-	function download() {
-		if (!analysis) return;
+	async function download() {
+		let data: TuningDataset;
+		try {
+			data = (await ready()).data;
+		} catch (error) {
+			problem = error;
+			return;
+		}
 		const url = URL.createObjectURL(
-			new Blob([JSON.stringify(analysis.data, null, 2)], { type: 'application/json' })
+			new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
 		);
 		const link = document.createElement('a');
 		link.href = url;
@@ -164,6 +204,9 @@
 {:else if !report}
 	<p role="status">Reading your learning history…</p>
 {:else}
+	{#if !analysis && kept}
+		<p role="status" class="muted">From {keptAt}; bringing it up to date…</p>
+	{/if}
 	<section aria-label="Review evidence">
 		<h2>Collecting evidence</h2>
 		<p>
@@ -237,7 +280,9 @@
 			learning activity and local word identifiers, without document text or media. Nothing is
 			uploaded and your schedule stays unchanged.
 		</p>
-		<button onclick={download}>Export learning data</button>
+		<button onclick={download}
+			>{busy && !analysis ? 'Export when ready' : 'Export learning data'}</button
+		>
 		<button onclick={load} disabled={busy}>{busy ? 'Refreshing…' : 'Refresh report'}</button>
 	</section>
 {/if}
@@ -266,13 +311,15 @@
 		writes. Its verdict says whether it predicted your later reading better, with enough data, and your
 		card answers no worse; you can apply it either way, and return to your current set at any time.
 	</p>
-	{#if fitting}
+	{#if preparing}
+		<p role="status">Preparing your learning data…</p>
+	{:else if fitting}
 		<p role="status">
 			Fitting on this device… {Math.round((100 * fitting.done) / fitting.total)}%
 			<button class="secondary" onclick={() => fitting?.cancel()}>Cancel</button>
 		</p>
 	{:else}
-		<button class="secondary" onclick={fitHere} disabled={!analysis}>Fit on this device</button>
+		<button class="secondary" onclick={fitHere}>Fit on this device</button>
 		<p class="muted">
 			Takes about a minute on the phone (35 s measured for 13,500 events); it stops if you leave the
 			app, and after five minutes.

@@ -912,7 +912,7 @@ const scenarios = {
 			const data = await tab.evaluate('return JSON.parse(await window.tuningExport)');
 			const pass =
 				data.format === 2 &&
-				data.rule === 'evidence-3' &&
+				data.rule === 'evidence-4' &&
 				data.scheduler === 'ts-fsrs@5.4.2' &&
 				data.words.length === 0;
 			return {
