@@ -10,8 +10,12 @@ the last visit's report at once ("From …; bringing it up to date…"), kept in
 (`ui/kept-report.ts`, 2.6 KB, shape-versioned) and replaced when the fresh one is ready; In force
 and the changes load without waiting for it. Fit on this device and Export are enabled at once
 and wait for the fresh data if pressed early ("Preparing your learning data…"). Browser `tuning`
-(its rule expectation updated to `evidence-4`) and `fithere` pass; `parameters` fails identically
-without this change ("timed out waiting for the fitted set in force"), not investigated.
+(its rule expectation updated to `evidence-4`) and `fithere` pass. `parameters` had failed since
+#6: its fixture sets name `ec0e6825`, a fresh profile's `fit-1` baseline, which `fit-2` made
+`21f5b1c4`; it now compares them with the id the page shows in force. It also showed a real bug:
+until the set in force had loaded, Apply was offered for any imported set, and applying a
+mismatched one failed as "a bug". Apply now waits for it ("Checking it against the set in force…").
+`parameters`, `tuning` and `fithere` pass.
 Phone (build `1792079644239`, daily Reader): first visit, nothing kept, report in 15.3 s; second
 visit, the kept report in 0.1 s and the fresh one 14.1 s later.
 

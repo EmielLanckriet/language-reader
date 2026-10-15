@@ -47,6 +47,8 @@
 	/**
 	 * Why Apply is not offered for the imported set, or null when it is (FR-012). A set that did not
 	 * predict better can still be applied (the reader, 2026-10-07); its verdict is shown beside it.
+	 * Nothing is offered until the set in force is known: before, any set was, and applying a
+	 * mismatched one failed as "a bug" (found 2026-10-15).
 	 */
 	const refusal = $derived.by(() => {
 		if (!imported || !inForce) return null;
@@ -341,7 +343,9 @@
 				? ` (${reading.count} later observations while reading, log loss ${reading.difference > 0 ? '+' : ''}${reading.difference.toFixed(3)} per observation)`
 				: ''}
 		<p>Set {imported.id}: {imported.report?.why ?? 'no report'}{detail}.</p>
-		{#if refusal}
+		{#if !inForce}
+			<p role="status">Checking it against the set in force…</p>
+		{:else if refusal}
 			<p role="status">{refusal}</p>
 		{:else}
 			<button

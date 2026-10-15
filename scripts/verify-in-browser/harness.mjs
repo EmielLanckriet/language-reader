@@ -1545,6 +1545,14 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		try {
 			await tab.goto('/cards/tuning');
+			// The fixtures were fitted against a fresh profile's defaults, whose id changes with the
+			// model (fit-2 since issue #6); compare them with whatever set is in force here.
+			const inForce = await until('the set in force', () =>
+				tab.evaluate(
+					`return document.body.innerText.match(/In force: your Anki weights[^(]*\\((\\w{8})\\)/)?.[1] ?? null;`
+				)
+			);
+			const against = (text) => JSON.stringify({ ...JSON.parse(text), comparedWith: inForce });
 			const choose = (text) =>
 				tab.evaluate(`
 					const input = document.querySelector('input[aria-label="Fitted set"]');
@@ -1555,13 +1563,13 @@ const scenarios = {
 					input.dispatchEvent(new Event('change', { bubbles: true }));
 					return true;
 				`);
-			await until('the import field', () => choose(fixture('fitted-set-refused.json')));
+			await until('the import field', () => choose(against(fixture('fitted-set-refused.json'))));
 			const refused = await until('the verdict with Apply anyway', () =>
 				tab.evaluate(
 					`const labels = [...document.querySelectorAll('button')].map((b) => b.textContent.trim()); return document.body.innerText.includes(': did not predict better') && labels.includes('Apply anyway') && !labels.includes('Apply this set') || null;`
 				)
 			);
-			await choose(fixture('fitted-set.json'));
+			await choose(against(fixture('fitted-set.json')));
 			await until('Apply offered', () =>
 				tab.evaluate(
 					`const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Apply this set'); if (!b) return null; b.click(); return true;`
