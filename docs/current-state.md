@@ -27,7 +27,10 @@ stage bar). Opening it from the reader pauses the video and saves the session fi
 (`Recorder.settled`, bounded at 3 s), so the report has the position and every event up to it;
 event offsets count from the first event, since the session row is written after it. Browser:
 `reportvideo` (the ☰ setting recorded just before opening is in the report and the video is
-paused; without the save on opening it fails). Not phone checked.
+paused; without the save on opening it fails). Phone (build `1792071926570`, daily Reader,
+document 36 resumed at 279.6 s, 15 s muted): covered on the stage, reachable after ☰; opening it
+paused at 295.6 s, and the report had the position and all 14 events up to the ☰ setting, from
++0.0 s, no Chinese. Left with Later.
 
 ## Hardcore mode (#36, spec 014) — deployed, phone checked in the test reader
 
