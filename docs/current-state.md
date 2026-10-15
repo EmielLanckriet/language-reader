@@ -20,7 +20,8 @@ words): `tuningDataset` 90 s. Two causes, both per word:
 so everyday background recomputes gain too. Of the rest, 2.6 s is the exposure query, already on
 indexes; an index on (document_id, kind, from_offset) saved 6 % and is not worth a migration. The
 drill test now pins both ends of a drilled line (two boundary mutations caught; they were not
-before); 639 tests.
+before); 639 tests. Phone (build `1792079046171`, daily Reader): Learning data ready in 16.0 s
+(was 214 s), the same figures (2,191 words; later period 163 card answers and 250 in context).
 
 ## Fit works again after a hardcore drill — fix deployed
 
