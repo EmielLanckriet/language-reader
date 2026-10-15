@@ -10,6 +10,15 @@
 	import { resolve } from '$app/paths';
 	import { readNewCards, keepNewCards } from '$lib/ui/new-cards';
 	import { replacements } from '$lib/media/store';
+	import ReportDialog from '$lib/ui/ReportDialog.svelte';
+	import { readToken, keepToken, REPOSITORY } from '$lib/report/report';
+
+	let githubToken = $state(readToken() ?? '');
+	let tokenKept = $state(!!readToken());
+	function saveToken() {
+		keepToken(githubToken.trim() || null);
+		tokenKept = !!readToken();
+	}
 
 	// Cards settings (moved off the Cards page). The waiting count needs today's queue, so it is
 	// only asked for when the group is opened.
@@ -353,7 +362,9 @@
 </script>
 
 <h1>More</h1>
-<p class="subtitle">Settings and records for this device. Nothing here is sent anywhere.</p>
+<p class="subtitle">
+	Settings and records for this device. Nothing here is sent anywhere unless you send a report.
+</p>
 
 <details class="group">
 	<summary>
@@ -627,9 +638,35 @@
 <details class="group">
 	<summary>
 		<span class="title">Troubleshooting</span>
-		<small>Version · Recent sessions · Failure record</small>
+		<small>Report a problem · Version · Recent sessions · Failure record</small>
 	</summary>
 	<dl class="facts">
+		<dt>Report a problem or idea</dt>
+		<dd>
+			Opens a GitHub issue with how the app is running, which you see before it is sent.
+			<br />
+			<ReportDialog />
+			<br />
+			<small>
+				{tokenKept ? 'A GitHub token is kept on this device.' : 'Needs a GitHub token first:'}
+				a fine-grained token for {REPOSITORY} only, with Issues: Read and write, made at
+				<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- an outside address -->
+				<a
+					href="https://github.com/settings/personal-access-tokens/new"
+					target="_blank"
+					rel="noreferrer">github.com/settings/personal-access-tokens</a
+				>.
+			</small>
+			<br />
+			<input
+				type="password"
+				bind:value={githubToken}
+				aria-label="GitHub token"
+				autocomplete="off"
+			/>
+			<button class="secondary" onclick={saveToken}>{githubToken.trim() ? 'Keep' : 'Remove'}</button
+			>
+		</dd>
 		<dt>Version</dt>
 		<dd>
 			<!--

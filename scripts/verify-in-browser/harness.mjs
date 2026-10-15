@@ -932,6 +932,112 @@ const scenarios = {
 			await tab.close();
 		}
 	},
+	// More → Troubleshooting → Report: without a token Send is refused; with a deliberately invalid
+	// one the real request reaches api.github.com through cross-origin isolation and comes back 401,
+	// shown as such. No issue can be created. 390px screenshot in /tmp/reader-report.png.
+	async report() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		const REPORT = `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Report a problem or idea')`;
+		const DIALOG = `document.querySelector('dialog.report')`;
+		const type = (selector, value) =>
+			`const el = ${selector}; el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', { bubbles: true }));`;
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await tab.goto('/diagnostics');
+			await until('report button', () => tab.evaluate(`return !!${REPORT}`));
+			await tab.evaluate(
+				`document.querySelectorAll('details.group').forEach(g => g.open = g.innerText.includes('Troubleshooting'))`
+			);
+			await tab.evaluate(`${REPORT}.click()`);
+			const withoutToken = await until('dialog without a token', () =>
+				tab.evaluate(
+					`const d = ${DIALOG}; return d.open && d.innerText.includes('No GitHub token') && { sendDisabled: d.querySelector('button[type=submit]').disabled }`
+				)
+			);
+			await tab.evaluate(`${DIALOG}.close()`);
+
+			await tab.evaluate(
+				`${type(`document.querySelector('input[aria-label="GitHub token"]')`, 'github_pat_invalid_for_verification')}`
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Keep').click()`
+			);
+			await tab.evaluate(`${REPORT}.click()`);
+			const preview = await until('gathered state', () =>
+				tab.evaluate(
+					`const d = ${DIALOG}; return d.querySelectorAll('details').length >= 2 && [...d.querySelectorAll('pre')].map(p => p.textContent).join('\\n')`
+				)
+			);
+			await tab.evaluate(
+				`${type(`${DIALOG}.querySelector('form > label input')`, 'Verification report')}`
+			);
+			await tab.evaluate(`${DIALOG}.querySelector('button[type=submit]').click()`);
+			const problem = await until(
+				'GitHub to answer',
+				() => tab.evaluate(`return ${DIALOG}.querySelector('[role=alert]')?.textContent`),
+				30000
+			);
+			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-report.png', Buffer.from(shot.data, 'base64'));
+			const width = await tab.evaluate(
+				`const r = ${DIALOG}.getBoundingClientRect(); return { left: r.left, right: r.right, viewport: innerWidth }`
+			);
+
+			// From the reader: the screen says which document and where, never what it says.
+			await tab.goto('/add');
+			await until('textarea', () => tab.evaluate('return !!document.querySelector("textarea")'));
+			await tab.evaluate(
+				`${type(`document.querySelector('textarea')`, '我在中国学习中文。他骑自行车去上班。')}`
+			);
+			await until('save enabled', () => tab.evaluate(`return ${SAVE_BUTTON}?.disabled === false;`));
+			await tab.evaluate(`${SAVE_BUTTON}.click()`);
+			const link = await until('document listed', () =>
+				tab.evaluate(`return ${READ_LINK} ?? null;`)
+			);
+			await tab.send('Page.navigate', { url: `${appOrigin}${link}` });
+			await until('reader rendered', () =>
+				tab.evaluate('return document.querySelectorAll(".reading button.token").length > 0')
+			);
+			await tab.evaluate(`${REPORT}.click()`);
+			const reader = await until('reader state', () =>
+				tab.evaluate(
+					`const d = ${DIALOG}; return d.querySelectorAll('details').length >= 2 && [...d.querySelectorAll('pre')].map(p => p.textContent).join('\\n')`
+				)
+			);
+			const readerScreen = reader.slice(reader.indexOf('Route:'));
+			return {
+				pass:
+					/Document: \d+\nKind: text\nWords: \d+\nScrolled: \d+ px/.test(readerScreen) &&
+					!/[一-鿿]/.test(reader) &&
+					withoutToken.sendDisabled &&
+					preview.includes('Build:') &&
+					preview.includes('Route: /language-reader/diagnostics') &&
+					preview.includes('Storage: holding') &&
+					problem.includes('did not accept the token') &&
+					width.left >= 0 &&
+					width.right <= width.viewport,
+				withoutToken,
+				problem,
+				width,
+				readerScreen: readerScreen.slice(0, 300),
+				preview: preview.slice(0, 1500)
+			};
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	// English for each line arrives from Termux and is revealed on tap. Plumbing only: run
 	// translate.py with TRANSLATE_STUB=1 on the fixture-media job (make-fixtures.sh), so each line
 	// reads "EN: <the Chinese>", and the reader service on 127.0.0.1:8765.

@@ -8,6 +8,7 @@
 	import StateMenu from '$lib/ui/StateMenu.svelte';
 	import StartTermux from '$lib/ui/StartTermux.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import ReportDialog from '$lib/ui/ReportDialog.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
 	import type { StoredDocument } from '$lib/storage/repository';
 	import type { LexemeId, Token, WordState } from '$lib/domain/types';
@@ -783,6 +784,18 @@
 		await readMemory(lexemesIn(document));
 	}
 
+	/** For a report: where in the document, never what it says. */
+	function reportedScreen(): Record<string, string> {
+		const shown: Record<string, string> = {
+			Document: page.params.id ?? '?',
+			Kind: media ? (media.media ? 'video or audio' : 'video, file not on this device') : 'text',
+			Words: String(document?.tokens.length ?? 0)
+		};
+		if (player) shown.Position = `${player.currentTime.toFixed(1)} s at ${player.playbackRate}×`;
+		else shown.Scrolled = `${Math.round(scrollY)} px`;
+		return shown;
+	}
+
 	/** The state name, or null where the reader has never judged this word (FR-006b). */
 	function stateOf(token: Token): string | null {
 		if (token.lexemeId === undefined) return null;
@@ -816,6 +829,7 @@
 		<button class="secondary" onclick={finishSession} disabled={finishing || !recorder}
 			>{finishing ? 'Saving session…' : 'Finish session'}</button
 		>
+		<ReportDialog screen={reportedScreen} />
 		{#if finishProblem}<ErrorNotice error={finishProblem} onretry={finishSession} />{/if}
 	</div>
 	<!-- The version is a fingerprint of the analyzer's own behaviour, not a number anyone chose
