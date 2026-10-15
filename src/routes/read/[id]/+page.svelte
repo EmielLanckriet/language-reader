@@ -829,7 +829,10 @@
 		<button class="secondary" onclick={finishSession} disabled={finishing || !recorder}
 			>{finishing ? 'Saving session…' : 'Finish session'}</button
 		>
-		<ReportDialog screen={reportedScreen} />
+		<ReportDialog
+			screen={reportedScreen}
+			beforeopen={() => (player?.pause(), recorder?.settled())}
+		/>
 		{#if finishProblem}<ErrorNotice error={finishProblem} onretry={finishSession} />{/if}
 	</div>
 	<!-- The version is a fingerprint of the analyzer's own behaviour, not a number anyone chose

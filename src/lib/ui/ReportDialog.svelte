@@ -14,7 +14,14 @@
 		type Section
 	} from '$lib/report/report';
 
-	let { screen }: { screen?: () => Record<string, string> } = $props();
+	let {
+		screen,
+		beforeopen
+	}: {
+		screen?: () => Record<string, string>;
+		/** Run before the state is read: the reader pauses and saves what it recorded. */
+		beforeopen?: () => Promise<unknown> | void;
+	} = $props();
 
 	let dialog = $state<HTMLDialogElement>();
 	let draft = $state<ReportDraft>({
@@ -100,6 +107,8 @@
 		outcome = null;
 		gathered = null;
 		dialog?.showModal();
+		// Bounded: a save waits for the storage lease, and a report is most wanted when it is stuck.
+		await within(Promise.resolve(beforeopen?.())).catch(() => {});
 		gathered = await gather();
 	}
 

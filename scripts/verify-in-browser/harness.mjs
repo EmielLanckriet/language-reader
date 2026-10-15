@@ -1038,6 +1038,95 @@ const scenarios = {
 			await tab.close();
 		}
 	},
+	// Reporting while a video plays: the button can be hit in the list (not on the stage), opening
+	// it pauses the video and saves the session first, so the report has the position and every
+	// event up to it, timed from the first. Needs make-fixtures.sh's 45 s clip on port 18765 and a
+	// verification-mode build.
+	async reportvideo() {
+		const tab = await openTab('about:blank');
+		const REPORT = `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Report a problem or idea')`;
+		const DIALOG = `document.querySelector('dialog.report')`;
+		const reachable = `const b = ${REPORT}; if (!b) return 'absent'; b.scrollIntoView({ block: 'center' });
+			const r = b.getBoundingClientRect(); if (!r.width) return 'not rendered';
+			const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+			return hit === b || b.contains(hit) ? 'reachable' : 'covered by ' + (hit ? hit.tagName + '.' + hit.className : 'nothing');`;
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await importFromTermux(tab, 'Test clip, 45 s');
+			await until(
+				'the player',
+				() =>
+					tab.evaluate(
+						`${PLAY} const v = document.querySelector('video'); if (!location.pathname.includes('/read/') || !v || v.readyState < 1) return null; v.muted = true; v.play(); window.playSince = Date.now(); return true;`
+					),
+				30000,
+				250
+			);
+			await until(
+				'12 s of playing',
+				() => tab.evaluate(`return Date.now() - window.playSince >= 12000`),
+				20000,
+				250
+			);
+			const onStage = await tab.evaluate(reachable);
+			await tab.evaluate(`document.querySelector('button[aria-label="All lines"]').click()`);
+			const inList = await until('the list', () =>
+				tab.evaluate(
+					`return document.querySelector('.media.stage') ? null : (() => { ${reachable} })()`
+				)
+			);
+			const before = await tab.evaluate(
+				`const v = document.querySelector('video'); return { at: v.currentTime, paused: v.paused }`
+			);
+			await tab.evaluate(`${REPORT}.click()`);
+			const sections = await until('gathered state', () =>
+				tab.evaluate(
+					`const d = ${DIALOG}; return d.open && d.querySelectorAll('pre').length >= 3 && [...d.querySelectorAll('pre')].map(p => p.textContent)`
+				)
+			);
+			const openedAt = Date.now();
+			await until('3 s with the dialog open', async () => Date.now() - openedAt >= 3000, 5000, 250);
+			const after = await tab.evaluate(
+				`const v = document.querySelector('video'); return { at: v.currentTime, paused: v.paused }`
+			);
+			const all = sections.join('\n');
+			const session = sections.find((s) => /^media, started /.test(s)) ?? '';
+			const startedAt = Date.parse(session.match(/started (\S+),/)?.[1] ?? '');
+			// ☰ recorded a setting just before Report: only a save on opening puts it in the report.
+			const settings = session.split('\n').filter((line) => line.endsWith(' · setting')).length;
+			return {
+				pass:
+					inList === 'reachable' &&
+					/Kind: video or audio\n/.test(all) &&
+					/Position: \d+\.\d s at 1×/.test(all) &&
+					Date.now() - startedAt < 60_000 &&
+					after.paused &&
+					settings === 3 &&
+					session.split('\n')[1]?.startsWith('+0.0 s') &&
+					!session.includes('+-'),
+				settings,
+				onStage,
+				inList,
+				before,
+				after,
+				screen: sections.find((s) => s.startsWith('Route:')),
+				session
+			};
+		} catch (error) {
+			return {
+				pass: false,
+				error: error.message,
+				page: await tab.evaluate('return document.body.innerText')
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	// English for each line arrives from Termux and is revealed on tap. Plumbing only: run
 	// translate.py with TRANSLATE_STUB=1 on the fixture-media job (make-fixtures.sh), so each line
 	// reads "EN: <the Chinese>", and the reader service on 127.0.0.1:8765.

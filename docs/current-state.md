@@ -22,6 +22,13 @@ session's 100 events (kinds and timings, no Chinese); an invalid token's send sh
 and the token was removed after. With the reader's real token: issue #39 created from the phone
 (label `bug`, 4,097 characters, no Chinese), then closed.
 
+During a video: the stage covers the button, so it is reached after ☰ (deliberately not on the
+stage bar). Opening it from the reader pauses the video and saves the session first
+(`Recorder.settled`, bounded at 3 s), so the report has the position and every event up to it;
+event offsets count from the first event, since the session row is written after it. Browser:
+`reportvideo` (the ☰ setting recorded just before opening is in the report and the video is
+paused; without the save on opening it fails). Not phone checked.
+
 ## Hardcore mode (#36, spec 014) — deployed, phone checked in the test reader
 
 A document's page offers **Hardcore**: a fragment (from the beginning, Continue, or chosen lines),

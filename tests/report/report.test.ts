@@ -69,7 +69,19 @@ describe('issueFrom', () => {
 		expect(body.length).toBeLessThanOrEqual(BODY_LIMIT);
 		expect(body).toContain(description);
 		// One long section must not crowd out the others.
-		expect(body).toContain('+5.0 s · lookup');
+		expect(body).toContain('+0.0 s · lookup');
+	});
+
+	// A session's row is written at the first save, after its first events: timing from it gave
+	// negative offsets.
+	it('times events from the first one, not from when the session was saved', () => {
+		const saved = { ...state.session!, startedAt: '2026-10-15T08:00:10.000Z' };
+		const { body } = issueFrom(
+			{ kind: 'problem', title: 't', description: 'd', include: all },
+			{ ...state, session: saved }
+		);
+		expect(body).toContain('+0.0 s · lookup');
+		expect(body).toContain('+4.0 s · pause');
 	});
 
 	it('labels problems as bugs and ideas as enhancements', () => {

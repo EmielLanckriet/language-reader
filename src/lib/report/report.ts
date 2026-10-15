@@ -69,7 +69,8 @@ function table(rows: Record<string, string>): string {
 
 /** Kinds and timings only: the word looked up and the event's detail say what was read. */
 function sessionText(session: RecentSession): string {
-	const start = Date.parse(session.startedAt);
+	// The session's row is written at the first save, after its first events.
+	const start = Math.min(...session.encounters.map((e) => Date.parse(e.at)));
 	const shown = session.encounters.slice(-80);
 	const lines = shown.map((e) => {
 		const parts = [`+${((Date.parse(e.at) - start) / 1000).toFixed(1)} s`, e.kind];

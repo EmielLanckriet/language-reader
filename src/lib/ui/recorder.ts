@@ -379,6 +379,11 @@ export class Recorder {
 			window.removeEventListener('visibilitychange', this.onHide, true);
 			window.removeEventListener('pagehide', this.onLeave, true);
 		}
+		await this.settled();
+	}
+
+	/** Everything recorded so far written: a flush already running took only what came before it. */
+	async settled(): Promise<void> {
 		await this.flush();
 		if (this.buffer.length > 0) await this.flush();
 	}
