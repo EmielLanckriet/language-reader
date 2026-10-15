@@ -3,7 +3,7 @@
 Updated 2026-10-15. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Report a problem or idea — deployed, not phone checked
+## Report a problem or idea — deployed, phone checked without a real token
 
 **Report a problem or idea** (More → Troubleshooting, and beside Finish session in the reader and
 player) opens a dialog: Problem or Idea, a title, a description, and the app's state in four
@@ -15,8 +15,11 @@ mutations). Send posts the issue through GitHub's API, labelled `bug` or `enhanc
 fine-grained token (Issues: Read and write on this repository) kept in `localStorage` from the
 same Troubleshooting entry, so it works when the database is refused. Bodies are cut per section
 to stay under GitHub's 65,536 characters. Browser: `report` scenario (an invalid token's real
-request reaches GitHub from the isolated page and its 401 is shown; no issue created). Not yet
-checked: a real token and issue from the phone.
+request reaches GitHub from the isolated page and its 401 is shown; no issue created). Phone (A71,
+build `1792069854879`, daily Reader): the dialog gathered installed, cross-origin isolated, storage
+holding, persistent storage granted, bert-ws-zh, five Termux failure records and the latest media
+session's 100 events (kinds and timings, no Chinese); an invalid token's send showed GitHub's 401,
+and the token was removed after. Not yet checked: a real token and issue.
 
 ## Hardcore mode (#36, spec 014) — deployed, phone checked in the test reader
 
