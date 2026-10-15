@@ -1,6 +1,6 @@
 import { clipParameters, default_w } from 'ts-fsrs';
 import type { FsrsParameters } from './anki';
-import type { AttentionAnswer } from './encounter';
+import type { AttentionAnswer, SessionKind } from './encounter';
 import { RULE, reviewPredictions, type ReviewPrediction, type WordHistory } from './memory';
 import type { ParameterSet } from './fit';
 
@@ -59,6 +59,9 @@ export function validateCandidate(value: unknown): number[] {
 	return [...weights];
 }
 
+/** Every session kind a history can carry; a drill's reviews come from `hardcore` (spec 014). */
+const MODALITIES: string[] = ['reading', 'media', 'hardcore'] satisfies SessionKind[];
+
 /** Validate a portable file before letting it influence an evaluation. No coercion or repair. */
 export function validateDataset(value: unknown): asserts value is TuningDataset {
 	const data = object(value);
@@ -99,11 +102,7 @@ export function validateDataset(value: unknown): asserts value is TuningDataset 
 				if (positions.has(position)) throw new Error('Duplicate history position.');
 				positions.add(position);
 				if (event.sessionId !== undefined) integer(event.sessionId);
-				if (
-					event.modality !== undefined &&
-					event.modality !== 'reading' &&
-					event.modality !== 'media'
-				)
+				if (event.modality !== undefined && !MODALITIES.includes(event.modality as string))
 					throw new Error('Invalid modality.');
 				if (event.textVisible !== undefined && typeof event.textVisible !== 'boolean')
 					throw new Error('Invalid text visibility.');

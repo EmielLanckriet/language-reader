@@ -3,6 +3,17 @@
 Updated 2026-10-15. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Fit works again after a hardcore drill — fix deployed
+
+2026-10-15, phone: Fit on this device failed at once with "Invalid modality.": a drill's reviews
+carry their session's kind, `hardcore`, which the learning data's validation (`validateDataset`)
+did not accept, so any history with a drill could not be fitted on the phone or the laptop. It now
+accepts every session kind, and word history types its modality as `SessionKind` instead of casting.
+Validation: a storage test exports a history with a drill and runs it through `fitDataset`, red
+first with the phone's error and red again with the fix reverted; 639 tests. Also on the phone:
+Learning data took 213 s to load (17 s on 2026-10-07), not yet profiled; the streak's "keep it
+going" line (#38) showed correct figures but no space before "·", fixed.
+
 ## Predicted comprehension on each video and text (#13) — built, not yet phone checked
 
 The figures line under each library entry and on a document's page starts with "~N% understood":

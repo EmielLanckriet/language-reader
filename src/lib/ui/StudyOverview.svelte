@@ -155,7 +155,7 @@
 		{#if overview.streak}<p class="streak">
 				<strong>{overview.streak}</strong>
 				{overview.streak === 1 ? 'study day' : 'study days'} in your streak{#if toKeep}<span>
-						· {toKeep} more {toKeep === 1 ? 'day' : 'days'} by Sunday keep it going</span
+						&nbsp;· {toKeep} more {toKeep === 1 ? 'day' : 'days'} by Sunday keep it going</span
 					>{/if}
 			</p>{/if}
 		<p class="week-note">

@@ -3,6 +3,8 @@ import { Repository } from '../../src/lib/storage/repository';
 import { freshDatabase } from './support';
 import { buildHistory } from '../backup/support';
 import { open, seal } from '../../src/lib/backup/format';
+import { validateDataset } from '../../src/lib/domain/tuning';
+import { fitDataset } from '../../src/lib/domain/fit';
 
 // Hardcore mode's records through storage (spec 014, ADR-0041).
 
@@ -69,6 +71,16 @@ describe('the new-word budget (FR-015)', () => {
 		expect(repository.cardsToday(1).queue.fresh).toEqual([wo]);
 		repository.recordReview(kan, 3, { documentId: first, fromOffset: 1, toOffset: 2 });
 		expect(repository.cardsToday(1).queue.fresh).toEqual([]);
+	});
+});
+
+describe('a drill in the learning data', () => {
+	it('is accepted by the fit, from its hardcore session', async () => {
+		const { repository, first, kan } = await library();
+		drill(repository, first, kan, daysAgo(1));
+		const data = JSON.parse(JSON.stringify(repository.tuningDataset()));
+		expect(() => validateDataset(data)).not.toThrow();
+		expect(() => fitDataset(data, { iterations: 2, gammas: [1] })).not.toThrow();
 	});
 });
 

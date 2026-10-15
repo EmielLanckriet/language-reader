@@ -17,7 +17,7 @@ import {
 	type Grade
 } from 'ts-fsrs';
 import { ankiSeedOf, isFromAnki, type AnkiSeed, type FsrsParameters } from './anki';
-import type { AttentionAnswer, Modality, Skill } from './encounter';
+import type { AttentionAnswer, SessionKind, Skill } from './encounter';
 import { RETRACTED } from './state';
 
 export const RULE = 'evidence-4';
@@ -50,7 +50,8 @@ export interface Mark extends Ordered {
 export interface HistoryEvent extends Ordered {
 	kind: string;
 	sessionId?: number;
-	modality?: Modality;
+	/** The session's kind: a drill's review comes from a `hardcore` session (spec 014). */
+	modality?: SessionKind;
 	textVisible?: boolean;
 	detail: Record<string, unknown>;
 }
@@ -58,7 +59,7 @@ export interface HistoryEvent extends Ordered {
 /** A read or played stretch that covered one of this word's tokens. */
 export interface Exposure extends Ordered {
 	sessionId: number;
-	modality: Modality;
+	modality: SessionKind;
 	textVisible?: boolean;
 	/** Every occurrence the stretch covered was under shown English (helped.ts). */
 	helped?: boolean;
@@ -218,7 +219,7 @@ function isCardReview(event: HistoryEvent): boolean {
 }
 
 /** An exposure counts for listening only when the words were heard with the text hidden. */
-function skillOf(item: { modality?: Modality; textVisible?: boolean }): Skill {
+function skillOf(item: { modality?: SessionKind; textVisible?: boolean }): Skill {
 	return item.modality === 'media' && item.textVisible === false ? 'listening' : 'reading';
 }
 

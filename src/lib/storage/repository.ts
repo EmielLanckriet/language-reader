@@ -43,7 +43,6 @@ import {
 	MAX_RANGE,
 	validateEncounter,
 	type Encounter,
-	type Modality,
 	type SessionKind
 } from '../domain/encounter';
 import type { StepRecord } from '../domain/hardcore';
@@ -1502,7 +1501,7 @@ export class Repository {
 		}));
 		const optional = (row: Row) => ({
 			...(row.session_id === null ? {} : { sessionId: Number(row.session_id) }),
-			...(row.modality === null ? {} : { modality: String(row.modality) as Modality }),
+			...(row.modality === null ? {} : { modality: String(row.modality) as SessionKind }),
 			...(row.text_visible === null ? {} : { textVisible: row.text_visible === 1 })
 		});
 		const events: HistoryEvent[] = queryRows(
