@@ -14,7 +14,19 @@ first with the phone's error and red again with the fix reverted; 639 tests. Als
 Learning data took 213 s to load (17 s on 2026-10-07), not yet profiled; the streak's "keep it
 going" line (#38) showed correct figures but no space before "·", fixed.
 
-## Predicted comprehension on each video and text (#13) — built, not yet phone checked
+After the fix (build `1792076099676`, daily Reader): Fit on this device took 13 s; set 41e69b6d
+"did not predict better". The same export fitted on the laptop (9 s, set a1b54faf; ids differ by
+platform): 2,184 words, earlier 234 card answers and 1,418 in-context outcomes, later 163 and 250.
+Later period, fitted against the set in force (28717ef9): in context −0.0046 log loss per outcome
+(95 % interval −0.010 to +0.002), cards −0.0048 (−0.013 to +0.004), so no verdict of better; in
+context observed 91.2 %, predicted 92.4 % in force, 93.5 % fitted; cards observed 85.3 %, predicted
+84.1 % and 85.0 %. Fitted values against the set in force: seenReading 1.12 → 1.34, tapStability
+1.03 → 1.05, rewatch discount 0.5 → 0.36 (half-life 14 days unchanged), falseSuccess 0.075 → 0,
+falseFailure 0.045 → 0.034. Not applied: the set in force is already close to calibrated.
+#13's headline was seen on the phone: 24 entries, comprehensible-input videos 85–94 %, native
+content 57–83 %.
+
+## Predicted comprehension on each video and text (#13) — deployed and phone checked
 
 The figures line under each library entry and on a document's page starts with "~N% understood":
 each running word's chance of being understood in context today, averaged over occurrences
