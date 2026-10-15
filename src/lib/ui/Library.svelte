@@ -7,8 +7,7 @@
 	import ErrorNotice from './ErrorNotice.svelte';
 	import DocumentCard from './DocumentCard.svelte';
 	import { describeError } from '$lib/diagnostics/describe';
-	import { englishTitles, progressOf, sharesOf, thumbnailOf } from '$lib/media/cover';
-	import type { Shares, WordCounts } from '$lib/domain/shares';
+	import { englishTitles, progressOf, sharesOf, thumbnailOf, type Figures } from '$lib/media/cover';
 
 	/** Videos or pasted texts: a video is a document with media beside it (ADR-0018). */
 	let {
@@ -26,7 +25,7 @@
 	let total = $state(0);
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
-	let shares = $state<Map<number, { shares: Shares; counts: WordCounts }>>(new Map());
+	let shares = $state<Map<number, Figures>>(new Map());
 	let english = $state<Record<number, string>>({});
 	let pictures = $state<Record<number, string>>({});
 	let progress = $state<Map<number, number>>(new Map());
@@ -125,6 +124,7 @@
 						watched={progress.get(document.id)}
 						share={shares.get(document.id)?.shares}
 						counts={shares.get(document.id)?.counts}
+						understood={shares.get(document.id)?.understood}
 					/>
 				</a>
 			</li>

@@ -4,8 +4,14 @@
 	import { session } from '$lib/storage/session';
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
-	import { englishTitles, progressOf, resumeOf, sharesOf, thumbnailOf } from '$lib/media/cover';
-	import type { Shares, WordCounts } from '$lib/domain/shares';
+	import {
+		englishTitles,
+		progressOf,
+		resumeOf,
+		sharesOf,
+		thumbnailOf,
+		type Figures
+	} from '$lib/media/cover';
 	import DocumentCard from '$lib/ui/DocumentCard.svelte';
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
@@ -18,7 +24,7 @@
 	let media = $state<StoredMedia | null>(null);
 	let loading = $state(true);
 	let problem = $state<unknown>(null);
-	let figures = $state<{ shares: Shares; counts: WordCounts } | undefined>();
+	let figures = $state<Figures | undefined>();
 	let watched = $state<number | undefined>();
 	/** Where Continue watching starts, in seconds; 0 when never played or finished. */
 	let resume = $state(0);
@@ -96,6 +102,7 @@
 				{watched}
 				share={figures?.shares}
 				counts={figures?.counts}
+				understood={figures?.understood}
 			/>
 		</div>
 	</div>

@@ -129,7 +129,9 @@ cards: brainstorm first" below.
 
 ## Video statistics from FSRS: due words that come up, recurring words — built — #13
 
-Built 2026-10-04 (current-state.md); the open questions below remain.
+Built 2026-10-04 (current-state.md). 2026-10-15, the reader decided the open questions: a
+"~N% understood" headline from the fitted in-context prediction (new words 0), coloured with the
+four recall bands; shown in the library and on the document page. Built the same day.
 
 2026-10-04, brainstorm with the reader. Each video shows, next to the learning count it has now:
 

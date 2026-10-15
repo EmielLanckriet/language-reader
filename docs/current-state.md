@@ -3,6 +3,20 @@
 Updated 2026-10-15. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Predicted comprehension on each video and text (#13) — built, not yet phone checked
+
+The figures line under each library entry and on a document's page starts with "~N% understood":
+each running word's chance of being understood in context today, averaged over occurrences
+(`understood`, `domain/shares.ts`). Recall goes through the set in force's in-context noise,
+`falseSuccess + (1 − falseSuccess − falseFailure) · recall`, as the fit scores in-context outcomes;
+the Anki baseline has no noise, so until a fitted set is applied it is plain reading recall. New
+words count 0, ignored words are left out, a word with no memory but an old known mark counts 1.
+Coloured by the band of the figure shown (≥95 % known green, 85 % amber, 70 % red, below dark
+red); placement settled as both the library and the document page (#31). Validation: three domain
+tests (five mutations each caught) and one repository test that `getMemory` hands on an applied
+set's noise (mutation caught); 638 tests, type check, lint; browser `study` passes and shows
+"~0% understood · 8 new words" at 390 px.
+
 ## Report a problem or idea — deployed and phone checked
 
 **Report a problem or idea** (More → Troubleshooting, and beside Finish session in the reader and

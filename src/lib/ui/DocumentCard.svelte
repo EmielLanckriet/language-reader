@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { DocumentSummary } from '$lib/storage/repository';
 	import type { Shares, WordCounts } from '$lib/domain/shares';
+	import { recallBand } from '$lib/domain/memory';
 
 	/** A document's picture, titles and figures: a library row, and the head of its own page (#31). */
 	let {
@@ -10,7 +11,8 @@
 		english,
 		watched,
 		share,
-		counts
+		counts,
+		understood
 	}: {
 		document: DocumentSummary;
 		video: boolean;
@@ -20,9 +22,15 @@
 		watched?: number;
 		share?: Shares;
 		counts?: WordCounts;
+		/** Predicted comprehension, 0–1 (#13). */
+		understood?: number;
 	} = $props();
 
 	const percent = (part: number) => `${Math.round(part * 100)}%`;
+	// Coloured by the band of the figure shown, so "~95%" never wears the 85–95 % colour.
+	const band = $derived(
+		understood === undefined ? undefined : recallBand(Math.round(understood * 100) / 100)
+	);
 </script>
 
 {#if video}
@@ -61,13 +69,17 @@
 			<span class="fresh" style:width={percent(share.fresh)}></span>
 		</span>
 	{/if}
-	{#if counts && (counts.due > 0 || counts.fresh > 0)}
+	{#if understood !== undefined || (counts && (counts.due > 0 || counts.fresh > 0))}
 		<span class="meta counts">
-			{#if counts.due > 0}
+			{#if understood !== undefined}
+				<span class="understood band-{band}">~{percent(understood)} understood</span>
+				{#if counts && (counts.due > 0 || counts.fresh > 0)}·{/if}
+			{/if}
+			{#if counts && counts.due > 0}
 				<span class="due">{counts.due} due come up ({counts.dueOccurrences}×)</span>
 			{/if}
-			{#if counts.due > 0 && counts.fresh > 0}·{/if}
-			{#if counts.fresh > 0}
+			{#if counts && counts.due > 0 && counts.fresh > 0}·{/if}
+			{#if counts && counts.fresh > 0}
 				{counts.fresh} new {counts.fresh === 1 ? 'word' : 'words'}{#if counts.freshRecurring > 0}, {counts.freshRecurring}
 					recur{/if}
 			{/if}

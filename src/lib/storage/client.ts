@@ -38,11 +38,14 @@ import type { StepRecord } from '../domain/hardcore';
 import type { Memory } from '../domain/memory';
 import type { Part } from '../domain/corrections';
 import type { FsrsParameters } from '../domain/anki';
+import type { Noise } from '../domain/shares';
 
 /** Words' memory per skill, and the parameters their recall is computed with. */
 export interface WordMemory {
 	memory: Map<LexemeId, Partial<Record<Skill, Memory>>>;
 	parameters?: FsrsParameters;
+	/** The set in force's in-context noise; none under the Anki weights. */
+	noise?: Noise;
 }
 import type { Diagnostic, DiagnosticKind } from '../diagnostics/log';
 import { explain, type Availability, type Explanation } from './availability';

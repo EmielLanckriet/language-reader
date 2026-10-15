@@ -258,6 +258,28 @@ textarea {
 	font-weight: 600;
 }
 
+/* Predicted comprehension (#13), in the four recall bands: reading research puts comfortable reading
+   at 95–98 % of words known. */
+.library .meta .understood {
+	font-weight: 600;
+}
+
+.library .meta .understood.band-1 {
+	color: var(--known);
+}
+
+.library .meta .understood.band-2 {
+	color: var(--learning);
+}
+
+.library .meta .understood.band-3 {
+	color: var(--unknown);
+}
+
+.library .meta .understood.band-4 {
+	color: var(--danger);
+}
+
 /* How much of the text is known, learning and new: one thin bar, in the reading page's colours. */
 .library .shares {
 	display: flex;

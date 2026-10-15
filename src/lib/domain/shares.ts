@@ -7,7 +7,7 @@
  * strongest colours (colourBand). A word with no memory falls back on the reader's marks, and on
  * Anki's levels from an import.
  */
-import { colourBand, type Memory } from './memory';
+import { colourBand, recall, type Memory } from './memory';
 import { isActive } from './queue';
 import type { Skill } from './encounter';
 import type { FsrsParameters } from './anki';
@@ -75,6 +75,44 @@ export function wordCounts(
 		}
 	}
 	return counts;
+}
+
+/** The in-force set's in-context noise (spec 013); the Anki baseline has none. */
+export interface Noise {
+	falseSuccess: number;
+	falseFailure: number;
+}
+
+/**
+ * Predicted comprehension (#13): the chance of understanding each running word in context today,
+ * averaged over occurrences. Recall goes through the set's noise as the fit scores in-context
+ * outcomes, so a fitted set's correction of an overconfident rule shows here too. New words count
+ * 0, and a word with no memory but a known mark (an old one) 1, as the shares bar counts it.
+ */
+export function understood(
+	occurrences: Map<LexemeId, number>,
+	states: Map<LexemeId, WordState>,
+	memory: Map<LexemeId, Partial<Record<Skill, Memory>>>,
+	now: Date,
+	parameters?: FsrsParameters,
+	noise: Noise = { falseSuccess: 0, falseFailure: 0 }
+): number | undefined {
+	let sum = 0;
+	let total = 0;
+	for (const [lexeme, n] of occurrences) {
+		const reading = memory.get(lexeme)?.reading;
+		const kind = kindOf(states.get(lexeme)?.state, reading, now, parameters);
+		if (kind === 'ignored') continue;
+		const chance = reading
+			? noise.falseSuccess +
+				(1 - noise.falseSuccess - noise.falseFailure) * recall(reading, now, parameters)
+			: kind === 'known'
+				? 1
+				: 0;
+		sum += n * chance;
+		total += n;
+	}
+	return total === 0 ? undefined : sum / total;
 }
 
 /** Fractions summing to 1, or undefined for a document with no counted words. */

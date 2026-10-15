@@ -92,6 +92,13 @@ describe('a fitted set', () => {
 		).toEqual([{ n: 2 }]);
 	});
 
+	it("hands its in-context noise to the library's comprehension figure (#13)", async () => {
+		const { repository } = await reader();
+		expect(repository.getMemory([]).noise).toEqual({ falseSuccess: 0, falseFailure: 0 });
+		repository.applyParameters(fitted(repository.parametersInForce().id));
+		expect(repository.getMemory([]).noise).toEqual({ falseSuccess: 0.1, falseFailure: 0.05 });
+	});
+
 	it('is refused unless fitted against the set in force, unaltered', async () => {
 		const { repository } = await reader();
 		const inForce = repository.parametersInForce().id;

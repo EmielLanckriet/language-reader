@@ -3,7 +3,13 @@
  * the reader knows. All derived (ADR-0003), made once and kept beside the video.
  */
 import { session } from '$lib/storage/session';
-import { textShares, wordCounts, type Shares, type WordCounts } from '$lib/domain/shares';
+import {
+	textShares,
+	understood,
+	wordCounts,
+	type Shares,
+	type WordCounts
+} from '$lib/domain/shares';
 import { quickTranslation, quickTranslatorPresent } from '$lib/translation/quick';
 import type { DocumentId } from '$lib/domain/types';
 import { resumeAt, type Cue } from './subtitles';
@@ -178,10 +184,15 @@ export async function resumeOf(id: DocumentId, cues: readonly Cue[]): Promise<nu
 	return resumeAt(latest.toMs, await durationOf(id), cues);
 }
 
+/** A document's figures: shares, word counts, and predicted comprehension (#13). */
+export interface Figures {
+	shares: Shares;
+	counts: WordCounts;
+	understood?: number;
+}
+
 /** Each document's shares of known, learning and new words, and its word counts, as of now. */
-export async function sharesOf(
-	ids: DocumentId[]
-): Promise<Map<DocumentId, { shares: Shares; counts: WordCounts }>> {
+export async function sharesOf(ids: DocumentId[]): Promise<Map<DocumentId, Figures>> {
 	const { repository } = await session();
 	const [occurrences, lines] = await Promise.all([
 		repository.wordOccurrences(ids),
@@ -193,7 +204,7 @@ export async function sharesOf(
 		repository.getMemory(lexemes)
 	]);
 	const now = new Date();
-	const found = new Map<DocumentId, { shares: Shares; counts: WordCounts }>();
+	const found = new Map<DocumentId, Figures>();
 	for (const [id, words] of occurrences) {
 		const shares = textShares(words, states, memory.memory, now, memory.parameters);
 		if (!shares) continue;
@@ -205,7 +216,8 @@ export async function sharesOf(
 			now,
 			memory.parameters
 		);
-		found.set(id, { shares, counts });
+		const share = understood(words, states, memory.memory, now, memory.parameters, memory.noise);
+		found.set(id, { shares, counts, understood: share });
 	}
 	return found;
 }

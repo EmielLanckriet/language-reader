@@ -47,6 +47,7 @@ import {
 	type SessionKind
 } from '../domain/encounter';
 import type { StepRecord } from '../domain/hardcore';
+import type { Noise } from '../domain/shares';
 import { checkedExample, type AnkiExample } from '../domain/card-examples';
 import type { FsrsParameters } from '../domain/anki';
 import {
@@ -2176,6 +2177,8 @@ export class Repository {
 	getMemory(lexemeIds: LexemeId[]): {
 		memory: Map<LexemeId, Partial<Record<Skill, Memory>>>;
 		parameters?: FsrsParameters;
+		/** The set in force's in-context noise; none under the Anki weights. */
+		noise: Noise;
 	} {
 		const memory = new Map<LexemeId, Partial<Record<Skill, Memory>>>();
 		const unique = [...new Set(lexemeIds)];
@@ -2192,7 +2195,11 @@ export class Repository {
 				memory.set(id, skills);
 			}
 		}
-		return { memory, parameters: this.currentParameters() };
+		const { set, parameters } = this.inForce();
+		const noise = set
+			? { falseSuccess: set.falseSuccess, falseFailure: set.falseFailure }
+			: { falseSuccess: 0, falseFailure: 0 };
+		return { memory, parameters, noise };
 	}
 
 	/**
