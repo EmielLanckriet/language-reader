@@ -14,4 +14,12 @@ describe('readings', () => {
 		expect(readings[codePointsOf(text).indexOf('看')]).toBe('kàn');
 		expect(readings[codePointsOf(text).indexOf('😀')]).toBe('');
 	});
+
+	it('read common heteronyms by the phrase table, still one reading per code point', async () => {
+		const text = '他长得很高，我得去还钱，慢慢地走。';
+		const readings = await readingsOf(text);
+		const at = (index: number) => readings[index];
+		expect(readings).toHaveLength(codePointsOf(text).length);
+		expect([at(1), at(7), at(9), at(14)]).toEqual(['zhǎng', 'děi', 'huán', 'de']);
+	});
 });
