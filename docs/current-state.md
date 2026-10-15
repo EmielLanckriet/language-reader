@@ -15,7 +15,10 @@ and wait for the fresh data if pressed early ("Preparing your learning data…")
 `21f5b1c4`; it now compares them with the id the page shows in force. It also showed a real bug:
 until the set in force had loaded, Apply was offered for any imported set, and applying a
 mismatched one failed as "a bug". Apply now waits for it ("Checking it against the set in force…").
-`parameters`, `tuning` and `fithere` pass.
+`parameters`, `tuning` and `fithere` pass. Phone (build `1792080007855`, daily Reader, nothing
+applied): a set imported 0.1 s after opening showed "Checking it against the set in force…" at
+109 ms; In force appeared at 1,282 ms and Apply anyway 1 ms after (before, Apply was offered for
+those 1.2 s); the same set marked as fitted against another set was refused, no Apply, no "bug".
 Phone (build `1792079644239`, daily Reader): first visit, nothing kept, report in 15.3 s; second
 visit, the kept report in 0.1 s and the fresh one 14.1 s later.
 
