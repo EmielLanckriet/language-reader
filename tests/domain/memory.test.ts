@@ -9,7 +9,7 @@ import {
 	recall,
 	colourBand,
 	ruleKey,
-	DRILLED_IN_DAYS,
+	ACTIVE_AT_DAYS,
 	type WordHistory,
 	type HistoryEvent,
 	type Exposure,
@@ -73,8 +73,8 @@ const mark = (asserted: string, provenance = 'manual', when = at(1)): Mark => ({
 	asserted,
 	provenance
 });
-const seed = (when = at(1)) =>
-	mark('anki-mature', `anki 2026-09-27T20:00:00Z s=40 d=5 r=${when} decay=0.2641`, when);
+const seed = (when = at(1), stability = 40) =>
+	mark('anki-mature', `anki 2026-09-27T20:00:00Z s=${stability} d=5 r=${when} decay=0.2641`, when);
 
 function history(parts: Partial<WordHistory>): WordHistory {
 	return { marks: [], events: [], exposures: [], answers: new Map(), ...parts };
@@ -232,7 +232,8 @@ describe('evidence-1', () => {
 	// The reader, 2026-10-07: Anki words outside the most common are set aside, a retire that lets
 	// the word compete for a new-card slot again, and be due again once reviewed in Reader.
 	it('keeps a set-aside word a candidate, not due, until a review after the mark', () => {
-		const h = history({ marks: [seed(at(1))], events: [review(GOOD, at(2))] });
+		// Under 14 days: one past it is an active card at once (ADR-0041, amended for issue #42).
+		const h = history({ marks: [seed(at(1), 2)], events: [review(GOOD, at(2))] });
 		const before = memoryOf(h).reading!;
 		h.marks.push(mark('retired', setAsideProvenance(2000), at(5)));
 		const aside = memoryOf(h).reading!;
@@ -527,7 +528,7 @@ describe('a sentence seen before (issue #6)', () => {
 
 describe('a drill grade (spec 014, ADR-0041)', () => {
 	// Every drill grade is a review labelled hardcore: it shapes memory like any review, but the
-	// word joins Cards only once drilled in, its reading stability at 14 days from its first drill on.
+	// word joins Cards only once its reading stability reaches 14 days, whatever brought it there.
 	const drill = (grade: number, when: string): HistoryEvent => ({
 		...ordered(when),
 		kind: 'review',
@@ -560,7 +561,7 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 		let reached = false;
 		for (let i = 0; i < 8 && !reached; i++) {
 			const m = reading(h);
-			reached = m.stability >= DRILLED_IN_DAYS;
+			reached = m.stability >= ACTIVE_AT_DAYS;
 			expect(m.reviewed).toBe(reached);
 			expect(m.card).toBe(reached);
 			if (reached) break;
@@ -570,7 +571,7 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 		expect(reached).toBe(true);
 		h.events.push(drill(AGAIN, at(day + 90)));
 		const forgotten = reading(h);
-		expect(forgotten.stability).toBeLessThan(DRILLED_IN_DAYS);
+		expect(forgotten.stability).toBeLessThan(ACTIVE_AT_DAYS);
 		expect(forgotten.reviewed).toBe(true);
 		expect(isActive(forgotten)).toBe(true);
 	});
@@ -585,7 +586,7 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 		let reached = false;
 		for (let session = 2; session < 40 && !reached; session++) {
 			const m = reading(h);
-			reached = m.stability >= DRILLED_IN_DAYS;
+			reached = m.stability >= ACTIVE_AT_DAYS;
 			if (!reached) {
 				day += Math.max(1, Math.round(m.stability));
 				h.exposures.push(seen(session, at(day)));
@@ -595,28 +596,36 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 		return reading(h);
 	};
 
-	it('drills a word in when reading after its first drill reaches 14 days', () => {
+	it('makes a card of a word when reading after its first drill reaches 14 days', () => {
 		expect(readUntil14(true).reviewed).toBe(true);
 	});
 
-	it('does not make a card of a word read to 14 days without a drill', () => {
+	// One rule for every word off the queue (issue #42 follow-up): reading alone is enough.
+	it('makes a card of a word read to 14 days without a drill', () => {
 		const m = readUntil14(false);
-		expect(m.reviewed).toBe(false);
-		expect(isActive(m)).toBe(false);
+		expect(m.reviewed).toBe(true);
+		expect(isActive(m)).toBe(true);
 	});
 
-	it('keeps a set-aside word aside until drilled in', () => {
+	it('makes a set-aside word whose Anki memory is past 14 days an active card at once', () => {
+		const h = history({ marks: [seed(at(1)), mark('retired', setAsideProvenance(2000), at(5))] });
+		expect(reading(h).setAside).toBeUndefined();
+		expect(isActive(reading(h))).toBe(true);
+	});
+
+	it('keeps a set-aside word under 14 days aside until its stability reaches 14', () => {
 		const h = history({
-			marks: [seed(at(1)), mark('retired', setAsideProvenance(2000), at(5))],
+			marks: [seed(at(1), 5), mark('retired', setAsideProvenance(2000), at(5))],
 			events: [drill(AGAIN, at(9))]
 		});
 		expect(reading(h).setAside).toBe(true);
+		expect(isActive(reading(h))).toBe(false);
 		let day = 9;
-		for (let i = 0; i < 12 && reading(h).stability < DRILLED_IN_DAYS; i++) {
+		for (let i = 0; i < 12 && reading(h).stability < ACTIVE_AT_DAYS; i++) {
 			day += Math.max(1, Math.round(reading(h).stability));
 			h.events.push(drill(GOOD, at(day)));
 		}
-		expect(reading(h).stability).toBeGreaterThanOrEqual(DRILLED_IN_DAYS);
+		expect(reading(h).stability).toBeGreaterThanOrEqual(ACTIVE_AT_DAYS);
 		expect(reading(h).setAside).toBeUndefined();
 		expect(isActive(reading(h))).toBe(true);
 	});
@@ -628,7 +637,7 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 			day += Math.max(1, Math.round(reading(h).stability));
 			h.events.push(drill(GOOD, at(day)));
 		}
-		expect(reading(h).stability).toBeGreaterThanOrEqual(DRILLED_IN_DAYS);
+		expect(reading(h).stability).toBeGreaterThanOrEqual(ACTIVE_AT_DAYS);
 		expect(reading(h).card).toBe(false);
 		expect(isActive(reading(h))).toBe(false);
 	});
@@ -646,6 +655,6 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 	});
 
 	it('names the threshold in the rule key, so changing it recomputes', () => {
-		expect(ruleKey()).toContain(`drill-${DRILLED_IN_DAYS}`);
+		expect(ruleKey()).toContain(`stable-${ACTIVE_AT_DAYS}`);
 	});
 });

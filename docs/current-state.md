@@ -3,7 +3,7 @@
 Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Hardcore no longer drills set-aside words known in Anki (#42) — deployed and phone checked
+## Anki words are not special: one 14-day rule, and hardcore drills only due ones (#42) — deployed
 
 On the Vietnam video (document 40, 2026-10-16) a drill offered 味道, 水果, 冷, 舒服 and six more:
 Anki words with stabilities of 440–1,311 days, set aside on 2026-10-07 as outside the 2,000 most
@@ -16,6 +16,14 @@ result; 657 tests, type check, lint. Phone (build `1792189278255`, daily Reader,
 drill started): the Vietnam video now offers 57 words; the same plan had 102 at 20:19, of which 14
 passed tonight are skipped today, so 31 fewer. Only the count is shown, so not attributed per word;
 a set-aside word whose memory is due (青, s = 11 d, last reviewed 2026-09-21) still qualifies.
+
+Then, asked what set aside means, the reader: treat those words like any word off the queue. Any
+word not active and not retired by hand is now an active card for good the first time its reading
+stability reaches 14 days, its Anki seed's included (ADR-0041 amendment; rule key
+`known-2+stable-14`, so every memory is recomputed once). On the copy: 954 of 1,001 set-aside words
+become active, due cards 74 → 297, which the reader accepted at once; 47 under 14 days stay set
+aside; no other word is past 14 days by reading alone yet. Tests red first and caught two mutations
+(no seed check; drill-only); 658 tests, type check, lint. Not yet seen on the phone.
 
 ## Spoken stories (spec 018) — deployed and phone checked
 

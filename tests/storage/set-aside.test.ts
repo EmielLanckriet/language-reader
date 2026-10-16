@@ -10,10 +10,15 @@ import { buildHistory } from '../backup/support';
 // due again once reviewed in Reader. Anki example sentences do not count as coming up.
 
 const fixture = parseAnkiExport(readFileSync('tests/fixtures/anki/anki-words-v2.json', 'utf8'));
-// The test analyzer splits by character, so the Anki words are single characters here.
+// The test analyzer splits by character, so the Anki words are single characters here. All but 我
+// under 14 days: one past it is an active card at once (ADR-0041, amended for issue #42).
 const anki = {
 	...fixture,
-	words: ['我', '书', '好', '看', '你'].map((word, i) => ({ ...fixture.words[i % 2], word }))
+	words: ['我', '书', '好', '看', '你'].map((word, i) => ({
+		...fixture.words[i % 2],
+		word,
+		...(word === '我' ? {} : { stability: 10 })
+	}))
 };
 const FAR = new Date('2030-01-01T00:00:00Z');
 

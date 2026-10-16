@@ -38,3 +38,17 @@ fit (the reader: FSRS should know); checking the threshold only right after a dr
 reading should carry a drilled word too); a `memory.card` code for drilled-in words (no behaviour
 differs from a reviewed card); counting Cards' example sentences as seen before too (not asked
 for; a one-line change if wanted).
+
+## Amendment 2026-10-17: one 14-day rule for every word off the queue (issue #42)
+
+The reader, after a drill offered set-aside Anki words known for years: "Anki words aren't special
+cases, they just have a longer and imported history." Any word not active and not retired by hand
+becomes an active card for good the first time its reading stability reaches 14 days, whatever
+brought it there — its Anki seed itself, Cards, reading, watching or a drill; "from its first
+hardcore review on" is gone. `DRILLED_IN_DAYS` becomes `ACTIVE_AT_DAYS`; `ACTIVATION` becomes
+`known-2+stable-14`, so every memory is recomputed once.
+
+Measured on the phone's copy of 2026-10-16 (default parameters): 954 of 1,001 set-aside words
+become active, 223 of them due at once (74 due before, 297 after); 47 stay set aside; no other word
+is past 14 days by reading alone yet. The reader accepted the due cards at once rather than
+spreading them or raising the threshold. A set-aside word under 14 days keeps ADR-0040's amendment.

@@ -24,12 +24,13 @@ export const RULE = 'evidence-4';
 /** How due dates follow from a memory: part of what a stored memory was computed under. */
 const SCHEDULE = 'no-steps';
 /**
- * A word met in a hardcore drill joins Cards once its reading stability reaches this many days
- * (ADR-0041): it arrives already known, adding about 1/14 review a day.
+ * A word off the queue joins Cards once its reading stability reaches this many days, whatever
+ * brought it there — an Anki seed, reading, a drill (ADR-0041, amended for issue #42): it arrives
+ * already known, adding about 1/14 review a day.
  */
-export const DRILLED_IN_DAYS = 14;
+export const ACTIVE_AT_DAYS = 14;
 /** Which words are active cards (issue #5): part of what a stored memory was computed under. */
-const ACTIVATION = `known-2+drill-${DRILLED_IN_DAYS}`;
+const ACTIVATION = `known-2+stable-${ACTIVE_AT_DAYS}`;
 /** Untapped attentive sessions that make a never-tapped word a known, active card (issue #5). */
 export const KNOWN_SESSIONS = 2;
 
@@ -510,17 +511,15 @@ export function memoryOf(
 	const f = scheduler(parameters);
 	const memory: Partial<Record<Skill, Memory>> = {};
 	for (const skill of ['reading', 'listening'] as const) {
-		// Drilled in: from the first drill on, the first time the stability reaches the threshold,
-		// whatever brought it there, and for good (ADR-0041).
-		let drilling = false;
-		let drilledIn = false;
-		const card = fold(f, found[skill], undefined, { strengths, skill }, (evidence, after) => {
-			drilling ||= evidence.hardcore === true;
-			drilledIn ||= drilling && after.stability >= DRILLED_IN_DAYS;
+		// Stable: the first time the stability reaches the threshold, the seed's own included, and
+		// for good (ADR-0041, amended for issue #42).
+		let stable = (found[skill].seed?.stability ?? 0) >= ACTIVE_AT_DAYS;
+		const card = fold(f, found[skill], undefined, { strengths, skill }, (_, after) => {
+			stable ||= after.stability >= ACTIVE_AT_DAYS;
 		});
 		if (!card) continue;
-		drilledIn &&= skill === 'reading' && !found.retired;
-		const isCard = skill === 'reading' && (found.card || drilledIn);
+		stable &&= skill === 'reading' && !found.retired;
+		const isCard = skill === 'reading' && (found.card || stable);
 		const seed = found[skill].seed;
 		memory[skill] = {
 			stability: card.stability,
@@ -532,9 +531,9 @@ export function memoryOf(
 			lapses: card.lapses,
 			card: isCard,
 			...(skill === 'reading' && found.known && !isCard ? { known: true as const } : {}),
-			...(skill === 'reading' && found.setAside && !drilledIn ? { setAside: true as const } : {}),
+			...(skill === 'reading' && found.setAside && !stable ? { setAside: true as const } : {}),
 			reviewed:
-				drilledIn ||
+				stable ||
 				history.events.some((event) => isCardReview(event) && event.detail.skill === skill),
 			...(seed ? { seeded: seed.dateKnown ? 'anki' : 'anki-undated' } : {})
 		};

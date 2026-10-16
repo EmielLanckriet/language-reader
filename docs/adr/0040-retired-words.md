@@ -36,3 +36,7 @@ daily budget; a Reader review after the mark makes it an ordinary card again, st
 Anki memory. `setAsideAnki(top, dryRun)` marks every word whose current mark is an Anki level and
 whose rank is not below `top`; an Anki re-import keeps these marks (the reader's own), and Undo or
 any later mark ends them. This revises ADR-0039's "seeded words stay active".
+
+Revised 2026-10-17 (ADR-0041's amendment, issue #42): a set-aside word whose reading stability is
+14 days or more, its Anki seed's included, is an active card like any other; set aside now holds
+only the words under 14 days, until their stability reaches it or a Reader review ends the mark.

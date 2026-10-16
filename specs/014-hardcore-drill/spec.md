@@ -19,7 +19,7 @@ reasoning behind the 14-day threshold. Started from the document page (#31).
 ### Session 2026-10-13 (raised in planning)
 
 - Q: Leaving a watch step after 10 s: ask "Before you go" as the player does? → A: Yes, after every watch step, as for any watching.
-- Q: When is the 14-day stability checked? → A: After every piece of evidence from the word's first hardcore review on, so reading and watching can carry a drilled word there too.
+- Q: When is the 14-day stability checked? → A: After every piece of evidence from the word's first hardcore review on, so reading and watching can carry a drilled word there too. (Amended 2026-10-17, issue #42: for every word off the queue, from its Anki seed on; see FR-014.)
 
 ## One engine, not modes
 
@@ -160,9 +160,10 @@ Acceptance: after passing 7 of 20 words and leaving, starting that part again dr
   history, so the fit sees how recently the word was met.
 - **FR-014** A hardcore review does not by itself make a word active (unlike an ordinary review,
   ADR-0039) and does not end a set-aside mark (unlike ADR-0040's amendment). A word that was not
-  active becomes active the first time its reading stability is at least 14 days at any point from
-  its first hardcore review on (after a drill, a reading or a watching alike); it then stays active
-  for good (unless retired), whatever its stability does later.
+  active becomes active the first time its reading stability is at least 14 days (after a drill, a
+  reading, a watching or its Anki seed alike); it then stays active for good (unless retired by
+  hand), whatever its stability does later. Amended 2026-10-17 (issue #42, ADR-0041 amendment):
+  before, only from its first hardcore review on.
 - **FR-015** A drill does not change whether a word is a new-word candidate, and hardcore reviews
   do not count against the daily new-word budget.
 - **FR-016** A line shown on a drill card counts as a line seen before for `evidence-4`'s discount
