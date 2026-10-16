@@ -47,6 +47,7 @@ nothing that reads ranges generically should take a plan for a viewing.
 ```
 
 Same as a Cards review except `hardcore` and `line`, and the hardcore session as its session.
+Since 2026-10-16 both also carry `sentenceShown` and `heard` (ADR-0042, #37).
 Every grade is one record, repeats after Again included.
 
 ## `hardcore-watch` (in the player's own session)

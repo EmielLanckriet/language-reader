@@ -428,10 +428,37 @@ const scenarios = {
 					`return !!document.querySelector('.empty')&&window.__cardAudio.every(a=>a.paused)`
 				)
 			);
+			// #37: the review records what the card gave before the grade; both recordings were
+			// played after Show answer. Read back through the export, as the fit would see it.
+			await tab.goto('/cards/tuning');
+			await until('export offered', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some(b => b.textContent === 'Export learning data')`
+				)
+			);
+			await tab.evaluate(`
+				const original = URL.createObjectURL;
+				URL.createObjectURL = function(blob) {
+					window.tuningExport = blob.text();
+					return original.call(URL, blob);
+				};
+				[...document.querySelectorAll('button')].find(b => b.textContent === 'Export learning data').click();
+			`);
+			await until('export made', () => tab.evaluate('return !!window.tuningExport'));
+			const exported = await tab.evaluate('return JSON.parse(await window.tuningExport)');
+			const reviews = exported.words.flatMap((w) =>
+				w.history.events.filter((e) => e.kind === 'review').map((e) => e.detail)
+			);
+			const help = reviews.map(({ sentenceShown, heard }) => ({ sentenceShown, heard }));
+			const helpRecorded =
+				JSON.stringify(help) ===
+				JSON.stringify([{ sentenceShown: true, heard: { sentence: 'back', word: 'back' } }]);
 			return {
-				pass: result.english === 'We study Chinese.' && result.width <= result.viewport,
+				pass:
+					result.english === 'We study Chinese.' && result.width <= result.viewport && helpRecorded,
 				...result,
-				gradeStoppedPlayback: true
+				gradeStoppedPlayback: true,
+				help
 			};
 		} finally {
 			await tab.close();

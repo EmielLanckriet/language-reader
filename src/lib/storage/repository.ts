@@ -46,6 +46,7 @@ import {
 	type SessionKind
 } from '../domain/encounter';
 import type { StepRecord } from '../domain/hardcore';
+import type { CardHelp } from '../domain/card-help';
 import type { Noise } from '../domain/shares';
 import { checkedExample, type AnkiExample } from '../domain/card-examples';
 import type { FsrsParameters } from '../domain/anki';
@@ -1250,14 +1251,16 @@ export class Repository {
 
 	/**
 	 * Record a flashcard grade (FR-007) and recompute the word's memory with it. `shown` is the
-	 * sentence the card showed, so a later review can show another.
+	 * sentence the card showed, so a later review can show another; `help` what else the card gave
+	 * before the grade (#37, ADR-0042), recorded but not used by memory.
 	 */
 	recordReview(
 		lexemeId: LexemeId,
 		grade: number,
 		shown: Occurrence | undefined,
 		at: string = new Date().toISOString(),
-		exampleKey?: string
+		exampleKey?: string,
+		help?: CardHelp
 	): void {
 		transact(this.db, () => {
 			this.appendEncounter(null, {
@@ -1267,7 +1270,7 @@ export class Repository {
 				...(shown
 					? { documentId: shown.documentId, fromOffset: shown.fromOffset, toOffset: shown.toOffset }
 					: {}),
-				detail: { skill: 'reading', grade, ...(exampleKey ? { exampleKey } : {}) }
+				detail: { skill: 'reading', grade, ...(exampleKey ? { exampleKey } : {}), ...help }
 			});
 			this.recomputeMemory([lexemeId]);
 		});

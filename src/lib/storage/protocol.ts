@@ -6,6 +6,7 @@
  */
 
 import type { Availability } from './availability';
+import type { CardHelp } from '../domain/card-help';
 
 /** Methods the worker will run on the repository, named rather than sent as functions. */
 export type Call =
@@ -42,7 +43,7 @@ export type Call =
 	| { method: 'drilledSince'; args: [string] }
 	| { method: 'frequencyRanks'; args: [number[]] }
 	| { method: 'recentEncounters'; args: [] }
-	| { method: 'recordReview'; args: [number, number, unknown, string?] }
+	| { method: 'recordReview'; args: [number, number, unknown, string?, CardHelp?] }
 	| { method: 'importCardExamples'; args: [unknown[]] }
 	| { method: 'cardSentence'; args: [number] }
 	| { method: 'cardsToday'; args: [number] }

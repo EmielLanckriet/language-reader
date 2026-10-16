@@ -24,6 +24,7 @@
 	} from '$lib/ui/hardcore';
 	import CardFace from '$lib/ui/CardFace.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import type { CardHelp } from '$lib/domain/card-help';
 
 	/**
 	 * A hardcore session (spec 014): each part runs the chosen steps in order. Where the reader is
@@ -251,7 +252,7 @@
 		return undefined;
 	});
 
-	async function grade(value: 1 | 2 | 3 | 4) {
+	async function grade(value: 1 | 2 | 3 | 4, _shown: unknown, help: CardHelp) {
 		if (!card || !current || !document || busy) return;
 		busy = true;
 		try {
@@ -268,7 +269,8 @@
 						skill: 'reading',
 						grade: value,
 						hardcore: { part: current.part },
-						line: card.range
+						line: card.range,
+						...help
 					}
 				}
 			]);

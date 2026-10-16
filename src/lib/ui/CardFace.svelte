@@ -10,11 +10,13 @@
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { CardSentence } from '$lib/storage/repository';
+	import { heardOn, type CardHelp } from '$lib/domain/card-help';
 
 	/**
 	 * One reading card, both faces (spec 007; shared by Cards and hardcore drills, spec 014). Mounted
 	 * once per showing: a card shown again starts on its front. The grade is the caller's to record,
-	 * with the sentence as shown, which the audio's timing may have widened to the whole line.
+	 * with the sentence as shown, which the audio's timing may have widened to the whole line, and
+	 * what else the card gave before it (#37).
 	 */
 	let {
 		lexemeId,
@@ -29,7 +31,7 @@
 		word: string;
 		sentence?: CardSentence;
 		busy?: boolean;
-		ongrade: (value: 1 | 2 | 3 | 4, shown?: CardSentence) => void;
+		ongrade: (value: 1 | 2 | 3 | 4, shown: CardSentence | undefined, help: CardHelp) => void;
 		onretire: () => void;
 		notice?: Snippet;
 	} = $props();
@@ -40,6 +42,7 @@
 	// svelte-ignore state_referenced_locally
 	let english = $state<string | undefined>(sentence?.translation);
 	let revealed = $state(false);
+	let heard: CardHelp['heard'] = {};
 	let audio: CardAudio | undefined;
 	let playing = $state(false);
 	let audioProblem = $state('');
@@ -67,10 +70,13 @@
 	});
 	function playSentence() {
 		audioProblem = '';
-		if (sentenceClip) audio?.play(sentenceClip.file, sentenceClip.start, sentenceClip.end);
+		if (!sentenceClip) return;
+		heard = heardOn(heard, 'sentence', revealed);
+		audio?.play(sentenceClip.file, sentenceClip.start, sentenceClip.end);
 	}
 	function playWord() {
 		audioProblem = '';
+		heard = heardOn(heard, 'word', revealed);
 		if (wordClip) audio?.play(wordClip);
 		else audio?.speak(word);
 	}
@@ -151,7 +157,7 @@
 
 	function grade(value: 1 | 2 | 3 | 4) {
 		audio?.stop();
-		ongrade(value, shown);
+		ongrade(value, shown, { sentenceShown: shown !== undefined, heard });
 	}
 
 	function retire() {

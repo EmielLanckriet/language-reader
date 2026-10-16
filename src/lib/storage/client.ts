@@ -35,6 +35,7 @@ import type { IngestedDocument } from '../content/types';
 import type { DocumentId, HistoryEntry, LexemeId, Occurrence, WordState } from '../domain/types';
 import type { Encounter, SessionKind, Skill } from '../domain/encounter';
 import type { StepRecord } from '../domain/hardcore';
+import type { CardHelp } from '../domain/card-help';
 import type { Memory } from '../domain/memory';
 import type { Part } from '../domain/corrections';
 import type { FsrsParameters } from '../domain/anki';
@@ -394,11 +395,12 @@ export class RepositoryClient {
 		lexemeId: LexemeId,
 		grade: number,
 		shown?: Occurrence,
-		exampleKey?: string
+		exampleKey?: string,
+		help?: CardHelp
 	): Promise<void> {
 		return this.call<void>({
 			method: 'recordReview',
-			args: [lexemeId, grade, shown, exampleKey]
+			args: [lexemeId, grade, shown, exampleKey, help]
 		}).then(earned);
 	}
 

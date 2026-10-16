@@ -325,7 +325,8 @@ function run(request: Request): unknown {
 				request.args[1],
 				request.args[2] as Occurrence,
 				undefined,
-				request.args[3]
+				request.args[3],
+				request.args[4]
 			);
 		case 'importCardExamples':
 			return repository.importCardExamples(request.args[0]);

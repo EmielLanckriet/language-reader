@@ -6,6 +6,7 @@
 	import type { CardSentence, CardsToday } from '$lib/storage/repository';
 	import { RETRACTED } from '$lib/domain/state';
 	import { readNewCards } from '$lib/ui/new-cards';
+	import type { CardHelp } from '$lib/domain/card-help';
 
 	/**
 	 * Reviewing in the Reader (spec 007, US3): today's due cards, then new ones from what the reader
@@ -59,7 +60,7 @@
 		showing++;
 	}
 
-	async function grade(value: 1 | 2 | 3 | 4, sentence?: CardSentence) {
+	async function grade(value: 1 | 2 | 3 | 4, sentence: CardSentence | undefined, help: CardHelp) {
 		if (!current || grading) return;
 		grading = true;
 		try {
@@ -72,7 +73,7 @@
 							toOffset: sentence.from + sentence.wordTo
 						}
 					: undefined;
-			await repository.recordReview(current.lexemeId, value, shown, sentence?.sourceKey);
+			await repository.recordReview(current.lexemeId, value, shown, sentence?.sourceKey, help);
 			reviewed++;
 			retiredLast = null;
 			await next();
