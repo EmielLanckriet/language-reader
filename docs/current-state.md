@@ -3,6 +3,24 @@
 Updated 2026-10-16. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Stories with your due words (#10, spec 016) — deployed, phone check pending
+
+Texts → **A story**: Reader picks up to 10 due words and 300 known ones (its own `isDueWord` and
+`kindOf`, most frequent in the library first), asks for an everyday story free to leave out due
+words that don't fit, scores each draft as Find videos does, and asks for a rewrite naming the
+never-met words (at most twice), keeping the best. The story is shown with its figures; **Read it**
+saves an ordinary text ("Story · <date>"), Discard keeps nothing. Drafts go through the Termux
+service's `/generate` job: the laptop's writer (`scripts/story-writer/`, Qwen3-4B, port 8766 over
+`adb reverse`, or a Wi-Fi address in `~/.reader/laptop.json`) when it answers within 3 s, else the
+phone's Qwen3-1.7B through `story.py` under translate.py's model budget, thinking off (on, it spent
+its answer reasoning in English). Laptop measurements (research R1): 4B 86–94 % known, 1.7B 82–92 %.
+
+Validation: draft loop and word choice tests, three service tests (stub, fake laptop), browser
+`story`; the real story.py on the laptop with the 1.7B (11 s, two threads) and the real laptop
+writer through the service (11 s, "laptop"). **Not yet on the phone**: the phone was disconnected
+before Termux's `reader-service.py`, `story.py` and `translate.py` could be updated (commit
+`7e885b7`).
+
 ## Find videos (#11, spec 015) — deployed and phone checked
 
 The library's Videos heading links to **Find videos**: a YouTube search through the Termux service
