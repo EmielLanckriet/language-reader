@@ -3,6 +3,23 @@
 Updated 2026-10-16. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Spoken stories (spec 018) — deployed and phone checked
+
+A shown story's **Listen to it** sends its sentences to the Termux service (`POST /speak`):
+`speak.py` speaks them with **MeloTTS** (the reader's choice by ear among four measured voices,
+`scripts/measure/tts/compare.py`) through a static sherpa-onnx build with a small C program that
+loads the model once and prints each sentence's times (`scripts/termux/tts/`, release
+`tools-tts-1.13.8`), under the translation model's lock and after Reader's transcription; ffmpeg
+build 2 (release `tools-ffmpeg-8.1.3-2`) encodes AAC; the times become `media.zh.vtt`; the bundle
+appears like a download, which the page imports and opens, so the story plays like a video, one
+cue per sentence, with English from translate.py. `setup.sh` installs the speaker and voice (~200 MB).
+
+Phone (build `1792161587859`, Termux scripts at `4b30aa3`, laptop writer over USB): a 315-character
+story written on the laptop in ~2 min, then spoken on the phone in 80 s (15 sentences), imported
+and opened as document 41 (460 KB of AAC; not played, so no session). Earlier on the phone: 59 s to
+speak a 41 s story, 375 MB peak; SenseVoice mishears 6 % of its characters. Lesson for scripts:
+ffmpeg reads keyboard commands from stdin, so `-nostdin`; it ate two piped install scripts.
+
 ## Following without the picture, and tap reasons (#29, ADR-0043) — deployed
 
 After "Only listened", the session questions ask "Could you follow it without the picture?" (kept as
