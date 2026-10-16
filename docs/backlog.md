@@ -5,24 +5,23 @@ this file keeps the reasoning and measurements behind them. Each entry's heading
 When adding an entry, open its issue; when closing an issue, update or remove its entry here.
 Entries newest first.
 
-## Index of open issues (2026-10-12)
+## Index of open issues (2026-10-16)
 
-Bugs: #1 the app is slow (cold start, library) · #15 pinyin of heteronyms · #19 4 s wait on a
-storage handover · #35 a layer over the screen at night.
+Bugs: #1 the app is slow (cold start, library; the attention answer halved) · #19 storage
+handover wait (fix deployed, watch on the phone).
 
-Important: #29 find which information predicts understanding, and which exposures help.
+Important: #29 find which information predicts understanding, and which exposures help (first
+analysis done; needs weeks of data).
 
-Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall · #36 hardcore mode
-· #37 record whether a card's example sentence was played.
+Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
 
 Later, not worth it yet: #33 the player's words and pinyin in the background.
 
-Library and content: #10 generated story with due words · #11 find YouTube videos by due and new
-words · #13 video statistics (the document page, #31, is where they go) · #14 transcription resume
-and background pass · #16 word senses in context · #38 a streak in study days.
+Library and content, measured and waiting on a decision: #10 generated story with due words ·
+#11 find YouTube videos by due and new words · #14 a second transcription pass (resume is exact
+now) · #16 word senses in context (the 8B laptop model, not the phone's).
 
-Tooling and checks: #12 report a problem or request a feature from inside the app · #17 Termux
-service dying (fix deployed, watch) · #23 emulator install test · #24 Termux size.
+Tooling and checks: #17 Termux service dying (watch to 10-19).
 
 ## A streak in study days that lapses only on a week under 5 — built, deployed (#38)
 

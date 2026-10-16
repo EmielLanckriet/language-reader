@@ -1,7 +1,42 @@
 # Current state
 
-Updated 2026-10-15. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-16. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Night of 2026-10-16: eight issues worked unattended — deployed
+
+Details and measurements are in each issue; one line each here.
+
+- **Pinyin heteronyms (#15, closed):** a phrase table in front of pinyin-pro
+  (`analyzer/pinyin-phrases.ts`). Everyday sentences 22 → 29 of 30, a new both-readings set
+  92 → 118 of 129, CPP 9,282 → 9,283 of 10,254 with none broken. 说服 stays shuō.
+- **Storage handover (#19, open):** sqlite-wasm caches a failed pool install, so the lease's
+  retries could never succeed. With `forceReinitIfPreviouslyFailed` a retry succeeds ~175 ms
+  later in Chrome. A failed install's cleanup (`removeVfs`) **deletes the database directory**
+  (reproduced when nothing held the files at that moment), so the storage worker now refuses to
+  remove the pool's directories (`storage/pool-guard.ts`). That cleanup is a candidate for #25's
+  wipe, not a confirmed cause. On the phone the 4 s wait did not reproduce on the old build; one
+  load of 16 took 5.4 s on the new one, cause unknown.
+- **What a card gave before its grade (#37, closed, ADR-0042):** reviews record `sentenceShown`
+  and `heard` (which recordings were played, front or back). Earned data, not used by memory,
+  exported for the fit.
+- **Attention answer and history twice as fast (#1, open):** the exposure query is bounded by each
+  document's longest read/played range instead of 1,000 code points (same rows for all 5,720
+  words), and drill sightings are found once a run. Laptop, the reader's backup: a median answer
+  1.37 → 0.66 s. Phone: Learning data's fresh report 16–18 s → 10 s.
+- **Termux size (#24, closed):** an 8 MB ffmpeg build (`scripts/termux/build-ffmpeg.sh`, release
+  `tools-ffmpeg-8.1.3`) replaced Termux's package and its 81 dependencies. Termux's packages went
+  628 → 251 MB, with byte-identical merges and thumbnails. `setup.sh` installs it.
+- **Exact transcript resume (#14, open for the second pass):** a decoder per window, started 8
+  frames early (`speech/audio.ts`). Resumed windows are bit-identical to uninterrupted ones, in
+  desktop Chrome and in the phone's Chrome. The shifted second pass (17.3 → 15.4% character
+  errors) awaits a decision. The browser `live` scenario fails here before and after.
+- **Emulator install (#23, closed):** Reader is a real WebAPK there, with local-network access
+  granted. **Overlay at night (#35, closed):** no app, overlay or setting explained it.
+- **Measured, not built:** #16 (Qwen3-1.7B ~83% sense picks, below the 85% bar; 8B ~95%), #10
+  (stories best 94.2% known, stiff), #11 (videos best 94.1% known), #29 (FSRS calibrated; misses at
+  first meetings and context count; no evidence yet for bike listening). #17: no service death
+  since 10-13; watch to 10-19.
 
 ## Learning data opens with the last report — deployed
 
