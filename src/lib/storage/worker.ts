@@ -279,6 +279,8 @@ function run(request: Request): unknown {
 			return repository.getStates(request.args[0]);
 		case 'wordsByForm':
 			return repository.wordsByForm(request.args[0], request.args[1]);
+		case 'vocabulary':
+			return repository.vocabulary();
 		case 'readHistory':
 			return repository.readHistory();
 		case 'replaceTokens':

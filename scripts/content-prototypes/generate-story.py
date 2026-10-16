@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import random
+import re
 import subprocess
 import sys
 import time
@@ -117,14 +118,17 @@ def pick_due(due: list[dict], n: int, seed: int) -> list[str]:
     return pool[:n]
 
 
+NO_THINK = False  # Qwen3's hybrid models (the phone's 1.7B) think aloud unless told not to
+
+
 def chat(llm, prompt: str, history: list | None = None, temperature=0.7, max_tokens=700):
     messages = [{"role": "system", "content": SYSTEM}] + (history or []) + [
-        {"role": "user", "content": prompt}]
+        {"role": "user", "content": prompt + (" /no_think" if NO_THINK else "")}]
     t0 = time.perf_counter()
     out = llm.create_chat_completion(messages=messages, temperature=temperature,
                                      top_p=0.8, max_tokens=max_tokens)
     seconds = time.perf_counter() - t0
-    text = out["choices"][0]["message"]["content"].strip()
+    text = re.sub(r"<think>.*?</think>", "", out["choices"][0]["message"]["content"], flags=re.S).strip()
     usage = out.get("usage", {})
     return text, seconds, usage, messages + [{"role": "assistant", "content": text}]
 
@@ -147,6 +151,7 @@ def main():
     ap.add_argument("--length", type=int, default=300)
     ap.add_argument("--choose-from", type=int, default=20, help="due words offered to 'choose'")
     ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--no-think", action="store_true", help="Qwen3 hybrid models: answer without thinking")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
@@ -158,6 +163,8 @@ def main():
 
     from llama_cpp import Llama
     t0 = time.perf_counter()
+    global NO_THINK
+    NO_THINK = args.no_think
     llm = Llama(model_path=args.model, n_ctx=8192, n_threads=args.threads, verbose=False)
     load_s = time.perf_counter() - t0
     print(f"model loaded in {load_s:.1f} s", file=sys.stderr)

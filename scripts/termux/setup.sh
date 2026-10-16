@@ -45,6 +45,8 @@ chmod +x ~/bin/reader-service-up
 curl -fsSL "$SOURCE/reader-service-start" -o ~/bin/reader-service-start
 chmod +x ~/bin/reader-service-start
 curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
+# Stories (spec 016): a draft on the phone when the laptop's writer is not reachable.
+curl -fsSL "$SOURCE/story.py" -o ~/bin/story.py
 
 # The service that keeps copies of the reader's work, serves downloads, and takes Reader's
 # transcripts to translate (ADR-0020, ADR-0029). Termux:Boot

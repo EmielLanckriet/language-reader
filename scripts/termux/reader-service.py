@@ -21,6 +21,8 @@ import tempfile
 import threading
 import time
 import urllib.parse
+import urllib.request
+import uuid
 
 VERSION = 1
 # When this process started, so Reader can tell a restart (Android killed Termux) from a long run.
@@ -106,6 +108,82 @@ def subtitles(video):
         return 200, {'state': 'no-chinese'}
     finally:
         shutil.rmtree(folder, ignore_errors=True)
+
+
+# Stories (spec 016): drafts are written by the laptop's writer when it answers, else by story.py.
+STORY = os.environ.get('READER_STORY', os.path.expanduser('~/bin/story.py'))
+LAPTOP = 'http://127.0.0.1:8766'  # the laptop over USB, after `adb reverse tcp:8766 tcp:8766`
+GENERATIONS = {}
+GENERATIONS_LOCK = threading.Lock()
+
+
+def laptop_urls(root):
+    """Where the laptop's writer may be: over USB, then the Wi-Fi address saved in laptop.json."""
+    if os.environ.get('READER_LAPTOP_URLS'):
+        return os.environ['READER_LAPTOP_URLS'].split(',')
+    urls = [LAPTOP]
+    try:
+        with open(os.path.join(root, 'laptop.json'), encoding='utf-8') as file:
+            saved = json.load(file).get('url')
+        if saved:
+            urls.append(saved.rstrip('/'))
+    except (OSError, ValueError):
+        pass
+    return urls
+
+
+def answers(url):
+    try:
+        with urllib.request.urlopen(f'{url}/health', timeout=3):
+            return True
+    except Exception:
+        return False
+
+
+def generate(job, body, root):
+    def state(**fields):
+        with GENERATIONS_LOCK:
+            GENERATIONS[job].update(fields)
+
+    started = time.monotonic()
+    for url in laptop_urls(root):
+        if not answers(url):
+            continue
+        state(state='writing', where='laptop')
+        try:
+            request = urllib.request.Request(f'{url}/generate', data=json.dumps(body).encode('utf-8'),
+                                             headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(request, timeout=900) as response:
+                text = json.load(response)['text']
+            return state(state='done', text=text, seconds=round(time.monotonic() - started))
+        except Exception:
+            continue  # the laptop went away mid-draft: the phone writes it instead
+    state(state='waiting', where='phone')
+    try:
+        child = subprocess.Popen([sys.executable, STORY], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True)
+        child.stdin.write(json.dumps(body))
+        child.stdin.close()
+        for line in child.stderr:
+            if line.strip() == 'writing':
+                state(state='writing')
+        text = child.stdout.read().strip()
+        if child.wait() != 0 or not text:
+            return state(state='failed', error='The phone could not write the story.')
+        state(state='done', text=text, seconds=round(time.monotonic() - started))
+    except OSError as error:
+        state(state='failed', error=str(error))
+
+
+def start_generation(body, root):
+    job = uuid.uuid4().hex[:12]
+    with GENERATIONS_LOCK:
+        # An hour is longer than any story takes; older answers are of no use to anyone.
+        for old in [k for k, v in GENERATIONS.items() if time.time() - v['created'] > 3600]:
+            del GENERATIONS[old]
+        GENERATIONS[job] = {'state': 'waiting', 'where': 'phone', 'created': time.time()}
+    threading.Thread(target=generate, args=(job, body, root), daemon=True).start()
+    return job
 
 
 def start_download(url):
@@ -386,6 +464,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.reply(204)
 
     def do_POST(self):
+        if self.path.split('?')[0] == '/generate':
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
+                assert isinstance(body.get('messages'), list) and body['messages']
+            except (ValueError, AssertionError, AttributeError):
+                return self.reply(400, {'error': 'expected {"messages": [...]}'})
+            return self.reply(202, {'job': start_generation(body, self.root)})
         if self.path.split('?')[0] != '/download':
             return self.reply(404)
         try:
@@ -406,6 +491,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self.reply(400, {'error': 'no query'})
             count = min(20, max(1, int((query.get('n') or ['15'])[0])))
             return self.reply(*search(words, count))
+        if path.startswith('/generate/'):
+            with GENERATIONS_LOCK:
+                found = dict(GENERATIONS.get(path[len('/generate/'):], {}))
+            if not found:
+                return self.reply(404, {'error': 'no such story'})
+            found.pop('created', None)
+            return self.reply(200, found)
         if path == '/subtitles':
             video = (query.get('id') or [''])[0]
             if not video or not all(c.isalnum() or c in '-_' for c in video):

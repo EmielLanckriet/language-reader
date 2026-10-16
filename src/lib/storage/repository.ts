@@ -2067,6 +2067,20 @@ export class Repository {
 		return found;
 	}
 
+	/**
+	 * Words with a mark or a reading memory, and how often each occurs in the library: what a story
+	 * may ask for (spec 016). Read only.
+	 */
+	vocabulary(): { id: LexemeId; form: string; count: number }[] {
+		return queryRows(
+			this.db,
+			`SELECT l.id, l.surface, (SELECT count(*) FROM token t WHERE t.lexeme_id = l.id) AS n
+       FROM lexeme l
+       WHERE l.id IN (SELECT lexeme_id FROM memory WHERE skill = 'reading'
+                      UNION SELECT lexeme_id FROM status_event)`
+		).map((row) => ({ id: Number(row.id), form: String(row.surface), count: Number(row.n) }));
+	}
+
 	getStates(lexemeIds: LexemeId[]): Map<LexemeId, WordState> {
 		if (lexemeIds.length === 0) return new Map();
 

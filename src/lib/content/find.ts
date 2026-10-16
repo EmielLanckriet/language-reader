@@ -42,6 +42,8 @@ export interface Score {
 	due: string[];
 	/** Distinct words never met: no mark, memory, review or encounter covering them. */
 	neverMet: number;
+	/** Those words, by written form, most frequent in the text first. */
+	neverMetWords: string[];
 	understood: number | undefined;
 }
 
@@ -62,14 +64,15 @@ export async function scoreText(
 	const occurrences = new Map<LexemeId, number>();
 	const formOf = new Map<LexemeId, string>();
 	let placeholder = 0;
-	let neverMet = 0;
+	const unmet: string[] = [];
 	for (const form of forms) {
 		const word = found.get(form);
 		const id = word?.id ?? --placeholder;
 		occurrences.set(id, byForm.get(form)!);
 		formOf.set(id, form);
-		if (!word?.met) neverMet++;
+		if (!word?.met) unmet.push(form);
 	}
+	const neverMetWords = unmet.sort((a, b) => byForm.get(b)! - byForm.get(a)!);
 	const known = [...occurrences.keys()].filter((id) => id > 0);
 	const [states, memory] = await Promise.all([store.getStates(known), store.getMemory(known)]);
 	const due = [...occurrences]
@@ -81,7 +84,8 @@ export async function scoreText(
 	return {
 		known: textShares(occurrences, states, memory.memory, now, memory.parameters)?.known,
 		due,
-		neverMet,
+		neverMet: neverMetWords.length,
+		neverMetWords,
 		understood: understood(occurrences, states, memory.memory, now, memory.parameters, memory.noise)
 	};
 }

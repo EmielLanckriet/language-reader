@@ -273,6 +273,11 @@ export class RepositoryClient {
 		return this.call({ method: 'wordsByForm', args: [language, forms] });
 	}
 
+	/** Words with a mark or a reading memory, with their library counts: read only (spec 016). */
+	vocabulary(): Promise<{ id: LexemeId; form: string; count: number }[]> {
+		return this.call({ method: 'vocabulary', args: [] });
+	}
+
 	getStates(lexemeIds: LexemeId[]): Promise<Map<LexemeId, WordState>> {
 		// A Map survives structuredClone intact, so it arrives as a Map rather than as an object.
 		return this.call({ method: 'getStates', args: [lexemeIds] });

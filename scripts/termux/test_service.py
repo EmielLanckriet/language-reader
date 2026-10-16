@@ -5,6 +5,7 @@ translation: sent again while that runs, it does not start a second.
 """
 
 import http.client
+import http.server
 import importlib.util
 import json
 import os
@@ -363,6 +364,82 @@ class FindingVideos(unittest.TestCase):
             time.sleep(0.1)
         with open(opened) as file:
             self.assertEqual(file.read().split(), [url])
+
+
+
+class WritingStories(unittest.TestCase):
+    """Stories (spec 016, contracts/service.md): /generate tries the laptop's writer, else the
+    phone's story.py, as a job Reader polls."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        os.environ['STORY_STUB'] = '1'
+        os.environ['READER_STORY'] = os.path.join(HERE, 'story.py')
+        os.environ['READER_LAPTOP_URLS'] = 'http://127.0.0.1:9'  # nothing listens there
+        service = load_service(os.path.join(self.root, 'no-translate.py'))
+        service.Handler.root = self.root
+        self.server = service.http.server.ThreadingHTTPServer(('127.0.0.1', 0), service.Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        for name in ('STORY_STUB', 'READER_STORY', 'READER_LAPTOP_URLS'):
+            os.environ.pop(name, None)
+
+    def request(self, method, path, body=None):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1], timeout=30)
+        connection.request(method, path, body=None if body is None else json.dumps(body))
+        response = connection.getresponse()
+        data = response.read()
+        return response.status, json.loads(data) if data else None
+
+    def finished(self, job):
+        for _ in range(100):
+            status, state = self.request('GET', f'/generate/{job}')
+            if state['state'] in ('done', 'failed'):
+                return state
+            time.sleep(0.1)
+        self.fail('the job did not finish')
+
+    BODY = {'messages': [{'role': 'system', 'content': 'x'}, {'role': 'user', 'content': '写一个故事'}],
+            'max_tokens': 50, 'temperature': 0.7}
+
+    def test_the_phone_writes_when_the_laptop_does_not_answer(self):
+        status, started = self.request('POST', '/generate', self.BODY)
+        self.assertEqual(status, 202)
+        state = self.finished(started['job'])
+        self.assertEqual((state['state'], state['where']), ('done', 'phone'))
+        self.assertIn('市场', state['text'])
+
+    def test_the_laptop_writes_when_it_answers(self):
+        class Laptop(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'{}')
+
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+                answer = json.dumps({'text': '笔记本写的：' + body['messages'][-1]['content']}).encode()
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(answer)))
+                self.end_headers()
+                self.wfile.write(answer)
+
+        laptop = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Laptop)
+        threading.Thread(target=laptop.serve_forever, daemon=True).start()
+        os.environ['READER_LAPTOP_URLS'] = f'http://127.0.0.1:9,http://127.0.0.1:{laptop.server_address[1]}'
+        try:
+            state = self.finished(self.request('POST', '/generate', self.BODY)[1]['job'])
+        finally:
+            laptop.shutdown()
+        self.assertEqual((state['state'], state['where'], state['text']), ('done', 'laptop', '笔记本写的：写一个故事'))
+
+    def test_an_unknown_job(self):
+        self.assertEqual(self.request('GET', '/generate/nothing')[0], 404)
 
 
 if __name__ == '__main__':

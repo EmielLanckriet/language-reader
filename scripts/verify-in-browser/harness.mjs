@@ -3115,6 +3115,102 @@ const scenarios = {
 		}
 	},
 
+	// Stories (spec 016). Needs the reader service on port 18765 started with STORY_STUB=1,
+	// READER_STORY=scripts/termux/story.py and READER_LAPTOP_URLS=http://127.0.0.1:9 (no laptop), and a
+	// verification-mode build. A story is written on the phone, shown with its figures; Discard keeps
+	// nothing; Read it saves one text titled "Story · <date>" and opens it.
+	async story() {
+		const tab = await openTab('about:blank');
+		const exported = async () => {
+			await tab.goto('/cards/tuning');
+			await until('the export', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some((b) => b.textContent === 'Export learning data')`
+				)
+			);
+			await tab.evaluate(`
+				window.tuningExport = null;
+				const original = URL.createObjectURL;
+				URL.createObjectURL = function (blob) { window.tuningExport = blob.text(); return original.call(URL, blob); };
+				[...document.querySelectorAll('button')].find((b) => b.textContent === 'Export learning data').click();
+				return true;`);
+			await until('the exported data', () => tab.evaluate('return !!window.tuningExport'));
+			return JSON.stringify(
+				(await tab.evaluate('return JSON.parse(await window.tuningExport)')).words
+			);
+		};
+		const texts = async () => {
+			await tab.goto('/texts');
+			return until('the texts list', () =>
+				tab.evaluate(
+					`return document.querySelector('h1') ? { n: document.querySelectorAll('.library a, .library li').length } : null`
+				)
+			);
+		};
+		const ask = async () => {
+			await tab.goto('/story');
+			await until('the story button', () =>
+				tab.evaluate(
+					`const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Write me a story'); if (!b) return null; b.click(); return true;`
+				)
+			);
+			return until(
+				'a story',
+				() =>
+					tab.evaluate(`
+						const story = document.querySelector('article.story');
+						return story ? { text: story.textContent, figures: document.querySelector('.figures').textContent.replace(/\\s+/g, ' ').trim() } : null;`),
+				60000,
+				250
+			);
+		};
+		try {
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+			await tab.goto('/');
+			const before = await exported();
+			const textsBefore = await texts();
+			const first = await ask();
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Discard').click(); return true;`
+			);
+			const afterDiscard = await exported();
+			const textsAfterDiscard = await texts();
+			const second = await ask();
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Read it').click(); return true;`
+			);
+			const opened = await until('the story opened', () =>
+				tab.evaluate(
+					`return location.pathname.includes('/read/') && document.querySelector('.reading') ? { path: location.pathname, text: document.querySelector('.reading').textContent.replace(/\\s+/g, '') } : null`
+				)
+			);
+			const title = await (async () => {
+				await tab.goto('/texts');
+				return until('the saved story in Texts', () =>
+					tab.evaluate(
+						`return [...document.querySelectorAll('a')].map((a) => a.textContent).find((t) => t.includes('Story ·')) ?? null`
+					)
+				);
+			})();
+			return {
+				pass:
+					first.text.includes('市场') &&
+					first.figures.includes('on the phone') &&
+					before === afterDiscard &&
+					textsBefore.n === textsAfterDiscard.n &&
+					opened.text.includes('市场') &&
+					!!title,
+				first,
+				second: second.figures,
+				discardKeptNothing: before === afterDiscard && textsBefore.n === textsAfterDiscard.n,
+				opened: opened.path,
+				title
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async model() {
 		const tab = await openTab('about:blank');
 		const console_ = [];

@@ -111,9 +111,9 @@ def reader_busy():
         return False
 
 
-def run_model(command):
+def run_model(command, seconds=180):
     """Stop an in-flight model if Reader starts work, memory collapses, or it stalls."""
-    deadline = time.monotonic() + 180
+    deadline = time.monotonic() + seconds
     child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
         while True:

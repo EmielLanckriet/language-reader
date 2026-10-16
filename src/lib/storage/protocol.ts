@@ -16,6 +16,7 @@ export type Call =
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'wordsByForm'; args: [string, string[]] }
+	| { method: 'vocabulary'; args: [] }
 	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'tuningAnalysis'; args: [] }
 	| { method: 'parametersInForce'; args: [] }
