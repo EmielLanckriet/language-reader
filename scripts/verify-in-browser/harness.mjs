@@ -3128,7 +3128,8 @@ const scenarios = {
 	// READER_STORY=scripts/termux/story.py, READER_LAPTOP_URLS=http://127.0.0.1:9 (no laptop),
 	// SPEAK_STUB=1 and READER_SPEAK=scripts/termux/speak.py (ffmpeg on PATH), and a
 	// verification-mode build. A third story is spoken and must open as audio. A story is written on the phone, shown with its figures; Discard keeps
-	// nothing; Read it saves one text titled "Story · <date>" and opens it.
+	// nothing; Save and read saves one text titled "Story · <date>" and opens it. A story shown and
+	// left is still there on coming back, until it is saved or discarded.
 	async story() {
 		const tab = await openTab('about:blank');
 		const exported = async () => {
@@ -3180,14 +3181,26 @@ const scenarios = {
 			const before = await exported();
 			const textsBefore = await texts();
 			const first = await ask();
+			// Left and come back to: still there, not saved anywhere yet.
+			await tab.goto('/texts');
+			await tab.goto('/story');
+			const kept = await until('the unsaved story kept', () =>
+				tab.evaluate(`return document.querySelector('article.story')?.textContent ?? null`)
+			);
 			await tab.evaluate(
 				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Discard').click(); return true;`
+			);
+			await tab.goto('/story');
+			const keptAfterDiscard = await until('the story page after Discard', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Write me a story') ? { story: !!document.querySelector('article.story') } : null`
+				)
 			);
 			const afterDiscard = await exported();
 			const textsAfterDiscard = await texts();
 			const second = await ask();
 			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Read it').click(); return true;`
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save and read').click(); return true;`
 			);
 			const opened = await until('the story opened', () =>
 				tab.evaluate(
@@ -3197,7 +3210,7 @@ const scenarios = {
 			// Spec 018: the third story spoken (SPEAK_STUB), imported and opened as audio with its lines.
 			const third = await ask();
 			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Listen to it').click(); return true;`
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Save and listen').click(); return true;`
 			);
 			const spoken = await (async () => {
 				try {
@@ -3239,6 +3252,8 @@ const scenarios = {
 				pass:
 					first.text.includes('市场') &&
 					first.figures.includes('on the phone') &&
+					kept === first.text &&
+					!keptAfterDiscard.story &&
 					before === afterDiscard &&
 					textsBefore.n === textsAfterDiscard.n &&
 					opened.text.includes('市场') &&
@@ -3247,6 +3262,8 @@ const scenarios = {
 					player.duration > 0,
 				first,
 				second: second.figures,
+				keptOnReturn: kept === first.text,
+				goneAfterDiscard: !keptAfterDiscard.story,
 				discardKeptNothing: before === afterDiscard && textsBefore.n === textsAfterDiscard.n,
 				opened: opened.path,
 				title,

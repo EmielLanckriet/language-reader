@@ -44,7 +44,27 @@
 	let topic = $state(initial.topic);
 	let writing = $state(false);
 	let status = $state('');
-	let story = $state<Draft | null>(null);
+	/**
+	 * The story shown, kept on this phone until it is saved, discarded or replaced: leaving the page
+	 * used to lose it (the reader, 2026-10-16).
+	 */
+	const UNSAVED = 'reader.story.unsaved';
+	function unsaved(): Draft | null {
+		try {
+			return JSON.parse(localStorage.getItem(UNSAVED) ?? 'null');
+		} catch {
+			return null;
+		}
+	}
+	function keepUnsaved(draft: Draft | null) {
+		try {
+			if (draft) localStorage.setItem(UNSAVED, JSON.stringify(draft));
+			else localStorage.removeItem(UNSAVED);
+		} catch {
+			// Kept only as a convenience; the story is still on screen.
+		}
+	}
+	let story = $state<Draft | null>(unsaved());
 	let problem = $state<unknown>(null);
 	let unreachable = $state(false);
 	let saving = $state(false);
@@ -129,7 +149,10 @@
 				{ write: (messages) => write(messages, mine, ++draft) },
 				(text) => scoreText(text, analyzer, repository)
 			);
-			if (mine === run) story = result;
+			if (mine === run) {
+				story = result;
+				keepUnsaved(result);
+			}
 		} catch (error) {
 			if (mine === run && !(error instanceof Error && error.message === 'stopped')) problem = error;
 		} finally {
@@ -169,6 +192,7 @@
 				if (found.ready) {
 					speaking = 'Opening it…';
 					const imported = await importJob(found);
+					keepUnsaved(null);
 					if ('documentId' in imported)
 						await goto(resolve('/document/[id]', { id: String(imported.documentId) }));
 					return;
@@ -200,6 +224,7 @@
 				tokens,
 				stampOf(fallbackAnalyzer)
 			);
+			keepUnsaved(null);
 			await goto(resolve('/read/[id]', { id: String(id) }));
 		} catch (error) {
 			problem = error;
@@ -212,6 +237,7 @@
 		cancel();
 		run++;
 		story = null;
+		keepUnsaved(null);
 		writing = false;
 	}
 </script>
@@ -263,9 +289,14 @@
 		· written {story.where === 'laptop' ? 'on the laptop' : 'on the phone'}, {story.drafts}
 		{story.drafts === 1 ? 'draft' : 'drafts'}
 	</p>
+	<p class="unsaved">
+		Not saved yet. <strong>Save and read</strong> keeps it in Texts;
+		<strong>Save and listen</strong> has it read aloud and keeps it under Videos.
+	</p>
 	<div class="actions">
-		<button class="primary" onclick={readIt} disabled={saving || !!speaking}>Read it</button>
-		<button class="primary" onclick={listen} disabled={saving || !!speaking}>Listen to it</button>
+		<button class="primary" onclick={readIt} disabled={saving || !!speaking}>Save and read</button>
+		<button class="primary" onclick={listen} disabled={saving || !!speaking}>Save and listen</button
+		>
 		<button onclick={start} disabled={saving || !!speaking}>Another</button>
 		<button onclick={discard} disabled={saving || !!speaking}>Discard</button>
 	</div>
@@ -294,6 +325,11 @@
 	.figures {
 		font-size: 0.9rem;
 		color: var(--muted);
+	}
+	.unsaved {
+		font-size: 0.9rem;
+		color: var(--muted);
+		margin-bottom: 0.25rem;
 	}
 	.actions {
 		display: flex;
