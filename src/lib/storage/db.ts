@@ -17,6 +17,7 @@ import sqlite3InitModule, {
 	type SqlValue
 } from '@sqlite.org/sqlite-wasm';
 
+import { guardPoolDirectory } from './pool-guard';
 import initialSql from './migrations/001-initial.sql?raw';
 import partialUpgradeSql from './migrations/002-partial-upgrade.sql?raw';
 import encountersSql from './migrations/003-encounters.sql?raw';
@@ -139,15 +140,23 @@ function alreadyApplied(db: Database, version: number): boolean {
  * exists.
  *
  * `installOpfsSAHPoolVfs` returns the *same* promise for a given name however often it is called,
- * so reacquiring after a pause is `unpauseVfs()` rather than a second installation.
+ * so reacquiring after a pause is `unpauseVfs()` rather than a second installation. That includes
+ * a *failed* promise: without `forceReinitIfPreviouslyFailed`, every retry in lease.ts got the
+ * first refusal back at once, so a page opened while the previous one still held the files waited
+ * the full 4 s for a fresh worker (#19). With it, a retry succeeds about 175 ms later in Chrome.
+ * Each failed install runs the library's cleanup, which would delete the database: hence the guard.
  *
  * Throws if the pool cannot be taken. There is deliberately **no in-memory fallback**: slice 0 had
  * one, and an application that quietly writes somewhere it will never read from is worse than one
  * that says it cannot write (FR-012).
  */
 export async function openPool(): Promise<SAHPoolUtil> {
+	guardPoolDirectory();
 	const sqlite = await loadSqlite();
-	const pool: SAHPoolUtil = await sqlite.installOpfsSAHPoolVfs({});
+	// The library reads this option but its types omit it; a variable naming the default pool
+	// passes the type check that a literal with an unknown key would not.
+	const options = { name: 'opfs-sahpool', forceReinitIfPreviouslyFailed: true };
+	const pool: SAHPoolUtil = await sqlite.installOpfsSAHPoolVfs(options);
 	if (pool.isPaused()) await pool.unpauseVfs();
 	return pool;
 }

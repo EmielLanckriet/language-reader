@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8" /><title>sahpool failed install</title>
+<pre id="out"></pre>
+<script type="module">
+	// Does a failed opfs-sahpool install delete the pool's files? See README.md.
+	const guard = new URLSearchParams(location.search).has('guard');
+	const log = (line) => (document.getElementById('out').textContent += line + '\n');
+	function run(step) {
+		return new Promise((resolve) => {
+			const worker = new Worker(`./worker.mjs?step=${step}${guard ? '&guard' : ''}`, {
+				type: 'module'
+			});
+			worker.onmessage = (e) => {
+				worker.terminate();
+				resolve(e.data);
+			};
+			worker.onerror = (e) => {
+				worker.terminate();
+				resolve('worker error: ' + e.message);
+			};
+		});
+	}
+	const root = await navigator.storage.getDirectory();
+	for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
+	log('create: ' + (await run('create')));
+	log('failed install: ' + (await run('fail')));
+	log('reopen: ' + (await run('reopen')));
+	window.done = document.getElementById('out').textContent;
+</script>

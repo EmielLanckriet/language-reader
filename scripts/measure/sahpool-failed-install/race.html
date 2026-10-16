@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8" /><title>sahpool natural race</title>
+<pre id="out"></pre>
+<script type="module">
+	// The natural race, no injection: worker A holds the pool, worker B installs, A lets go after
+	// a random delay. Counts how often B's failed install leaves an empty database. See README.md.
+	const params = new URLSearchParams(location.search);
+	const guard = params.has('guard');
+	const trials = Number(params.get('trials') ?? 30);
+	const log = (line) => (document.getElementById('out').textContent += line + '\n');
+	function start(step) {
+		const flags = `${guard ? '&guard' : ''}${params.has('retry') ? '&retry' : ''}${params.has('cached') ? '&cached' : ''}`;
+		const worker = new Worker(`./race-worker.mjs?step=${step}${flags}`, { type: 'module' });
+		const next = () => new Promise((resolve) => (worker.onmessage = (e) => resolve(e.data)));
+		return { worker, next };
+	}
+	const tally = {};
+	const root = await navigator.storage.getDirectory();
+	for (let t = 0; t < trials; t++) {
+		for await (const [name] of root.entries()) await root.removeEntry(name, { recursive: true });
+		const a = start('hold');
+		await a.next();
+		const delay = Math.random() * Number(params.get('max') ?? 60);
+		const b = start('install');
+		await b.next(); // module loaded, waiting
+		const bDone = b.next();
+		b.worker.postMessage('go');
+		await new Promise((r) => setTimeout(r, delay));
+		a.worker.postMessage('release');
+		await a.next();
+		a.worker.terminate();
+		const installed = await bDone;
+		b.worker.terminate();
+		const c = start('count');
+		const rows = await c.next();
+		c.worker.terminate();
+		const key = `${installed.replace(/, \d+ ms/, '')} -> ${rows}`;
+		const ms = installed.match(/(\d+) ms/);
+		if (ms) (window.waits ??= []).push(Number(ms[1]));
+		tally[key] = (tally[key] ?? 0) + 1;
+	}
+	for (const [k, n] of Object.entries(tally)) log(`${n}× ${k}`);
+	if (window.waits) log(`retry waits (ms): ${window.waits.sort((a, b) => a - b).join(' ')}`);
+	window.done = document.getElementById('out').textContent;
+</script>
