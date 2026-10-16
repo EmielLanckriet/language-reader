@@ -12,7 +12,7 @@ issue #29's analysis. Tests red first; browser `listened` and `leavingvideo` pas
 scoped to their questions, since "Partly" is offered twice). Browser `sheet` fails on the code
 before this too (a missing element to scroll to).
 
-## Stories with your due words (#10, spec 016) — deployed, phone check pending
+## Stories with your due words (#10, spec 016) — deployed and phone checked
 
 Texts → **A story**: Reader picks up to 10 due words and 300 known ones (its own `isDueWord` and
 `kindOf`, most frequent in the library first), asks for an everyday story free to leave out due
@@ -26,9 +26,11 @@ its answer reasoning in English). Laptop measurements (research R1): 4B 86–94 
 
 Validation: draft loop and word choice tests, three service tests (stub, fake laptop), browser
 `story`; the real story.py on the laptop with the 1.7B (11 s, two threads) and the real laptop
-writer through the service (11 s, "laptop"). **Not yet on the phone**: the phone was disconnected
-before Termux's `reader-service.py`, `story.py` and `translate.py` could be updated (commit
-`7e885b7`).
+writer through the service (11 s, "laptop"). Phone (build `1792154879372`, Termux scripts at
+`3cd96e6`, no laptop): a story in 485 s, three drafts (144 s, then ~2.5 min each), 88.5 % known, 9
+never met, **no due words** (the 1.7B left them all out, as the prompt allows). The first attempt
+waited for ever: translate.py's budget needs 2 GB free and the phone had 1.93 GB; story.py now says
+what it waits for, gives up after 3 minutes with the reason, and Stop or leaving cancels the job.
 
 ## Find videos (#11, spec 015) — deployed and phone checked
 
