@@ -218,6 +218,10 @@ const CORRECTIONS_PASS = 'corrections-1';
 interface HistoryRun {
 	lines: Map<DocumentId, [number, number][]>;
 	help: Map<number, Help>;
+	/** How far before a token a read or played range can start, per document: see `reach`. */
+	reach?: string;
+	/** Each word's drill sightings, for every word at once: see `drillSightings`. */
+	drilled?: Map<LexemeId, Row[]>;
 }
 const newRun = (): HistoryRun => ({ lines: new Map(), help: new Map() });
 
@@ -1552,7 +1556,7 @@ export class Repository {
               e.session_id IN (${WITHDRAWN}) AS withdrawn
        FROM token t
        JOIN encounter e ON e.document_id = t.document_id
-                       AND e.from_offset < t.end AND e.from_offset > t.start - ${MAX_RANGE}
+                       AND e.from_offset < t.end AND e.from_offset > t.start - ${this.reach(shared)}
                        AND e.to_offset > t.start AND e.kind IN ('read', 'played')
        JOIN session s ON s.id = e.session_id
        WHERE t.lexeme_id = ?
@@ -1560,22 +1564,7 @@ export class Repository {
 			[lexemeId]
 		);
 		const rows = all.filter((row) => row.withdrawn === 0);
-		// A line shown on a hardcore drill card was seen too (spec 014, FR-016), for every word on it:
-		// a sighting, never an exposure, since the drill's grade is its own evidence. The few drill
-		// reviews first, then this word's tokens: joined the other way round, SQLite walked every
-		// review's document tokens for each word (80 s of Learning data's 90 s on the reader's
-		// history, measured 2026-10-15; 0.9 s this way, same rows).
-		const drilled = queryRows(
-			this.db,
-			`WITH drill AS MATERIALIZED (
-         SELECT session_id, document_id, at,
-                json_extract(detail, '$.line[0]') AS first, json_extract(detail, '$.line[1]') AS last
-         FROM encounter WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
-       SELECT d.session_id, d.document_id, d.at, t.start FROM drill d
-       JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t."end" <= d.last
-       WHERE t.lexeme_id = ?`,
-			[lexemeId]
-		);
+		const drilled = this.drillSightings(shared).get(lexemeId) ?? [];
 		const viewings = new Map<string, { session: number; at: number }[]>();
 		for (const row of [...all, ...drilled]) {
 			const occurrence = `${row.document_id} ${row.start}`;
@@ -1635,6 +1624,60 @@ export class Repository {
 				answers.set(Number(row.session_id), JSON.parse(String(row.detail)).answer);
 		}
 		return { marks, events, exposures, answers };
+	}
+
+	/**
+	 * The bound on how far before a token a read or played range covering it can start: each
+	 * document's longest such range, as a SQL expression on `t.document_id`.
+	 *
+	 * MAX_RANGE (1,000 code points) was the bound, so each of a word's tokens visited every range
+	 * starting up to 1,000 code points earlier: in a video, every line of the last few minutes in
+	 * every session. A video's ranges are lines (22 to 231 code points in the reader's library), and
+	 * a range covering the token ends after it, so it starts no earlier than its own length before
+	 * it: the same rows. Measured 2026-10-16 on the reader's backup (#1): every one of 5,720 words
+	 * had identical rows, and answering a median session went from 1.4 s to 0.7 s on the laptop. A
+	 * document with no such range when the run began keeps MAX_RANGE.
+	 */
+	private reach(shared: HistoryRun): string {
+		if (shared.reach === undefined) {
+			const spans = queryRows(
+				this.db,
+				`SELECT document_id, MAX(to_offset - from_offset) AS span FROM encounter
+         WHERE kind IN ('read', 'played') AND document_id IS NOT NULL GROUP BY document_id`
+			);
+			shared.reach =
+				spans.length === 0
+					? String(MAX_RANGE)
+					: `(CASE t.document_id ${spans.map((row) => `WHEN ${Number(row.document_id)} THEN ${Number(row.span)}`).join(' ')} ELSE ${MAX_RANGE} END)`;
+		}
+		return shared.reach;
+	}
+
+	/**
+	 * A line shown on a hardcore drill card was seen too (spec 014, FR-016), for every word on it: a
+	 * sighting, never an exposure, since the drill's grade is its own evidence. Found for every word
+	 * at once, once a run: per word it cost 1.1 ms (0.24 s of answering a 219-word session,
+	 * 2026-10-16). The few drill reviews first, then their lines' tokens: joined the other way round,
+	 * SQLite walked every review's document tokens (80 s of Learning data's 90 s, 2026-10-15).
+	 */
+	private drillSightings(shared: HistoryRun): Map<LexemeId, Row[]> {
+		if (shared.drilled === undefined) {
+			shared.drilled = new Map();
+			for (const row of queryRows(
+				this.db,
+				`WITH drill AS MATERIALIZED (
+           SELECT session_id, document_id, at,
+                  json_extract(detail, '$.line[0]') AS first, json_extract(detail, '$.line[1]') AS last
+           FROM encounter WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
+         SELECT t.lexeme_id, d.session_id, d.document_id, d.at, t.start FROM drill d
+         JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t."end" <= d.last
+         WHERE t.lexeme_id IS NOT NULL`
+			)) {
+				const id = Number(row.lexeme_id);
+				shared.drilled.set(id, [...(shared.drilled.get(id) ?? []), row]);
+			}
+		}
+		return shared.drilled;
 	}
 
 	/** Recompute these words' memory rows from their history, under the current rule (R6). */
