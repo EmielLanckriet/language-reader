@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
-	import { activeAnalyzer } from '$lib/analyzer/active';
+	import { activeAnalyzer, fallbackAnalyzer } from '$lib/analyzer/active';
 	import {
 		arrange,
 		download,
@@ -43,6 +43,7 @@
 	let percent = $state<number>(stored(BAR_KEY, 90));
 	let candidates = $state<Candidate[]>([]);
 	let searching = $state(false);
+	let refining = $state(false);
 	let problem = $state<'unreachable' | 'rate-limited' | 'failed' | null>(null);
 	let message = $state<string | undefined>();
 	/** Videos already in the library or under New from Termux, and those just handed to Termux. */
@@ -75,9 +76,45 @@
 		}
 		if (!found.value) return update(candidate.id, { state: 'no-chinese' });
 		const { repository } = await session();
-		const score = await scoreText(found.value.text, await activeAnalyzer(), repository);
+		// The dictionary first, in milliseconds; the model, if the library uses it, afterwards.
+		const score = await scoreText(found.value.text, fallbackAnalyzer, repository);
 		if (mine !== run) return;
-		update(candidate.id, { state: 'scored', automatic: found.value.automatic, score });
+		const rough = (await activeAnalyzer()) !== fallbackAnalyzer;
+		update(candidate.id, {
+			state: 'scored',
+			automatic: found.value.automatic,
+			score,
+			rough,
+			text: found.value.text
+		});
+	}
+
+	/** The library's model over the rough ones, best placed first, once every fetch is done. */
+	async function refine(mine: number) {
+		const analyzer = await activeAnalyzer();
+		if (analyzer === fallbackAnalyzer) return;
+		const { repository } = await session();
+		refining = true;
+		try {
+			await refineAll(analyzer, repository, mine);
+		} finally {
+			refining = false;
+		}
+	}
+
+	async function refineAll(
+		analyzer: Awaited<ReturnType<typeof activeAnalyzer>>,
+		repository: Parameters<typeof scoreText>[2],
+		mine: number
+	) {
+		for (;;) {
+			const { fits, below } = arrange(candidates, percent / 100);
+			const next = [...fits, ...below].find((c) => c.rough && c.text);
+			if (!next || mine !== run) return;
+			const score = await scoreText(next.text!, analyzer, repository);
+			if (mine !== run) return;
+			update(next.id, { score, rough: false });
+		}
 	}
 
 	async function find(words = query) {
@@ -115,6 +152,7 @@
 				if (mine !== run || problem === 'unreachable') break;
 				await fetchAndScore(candidate, mine);
 			}
+			if (mine === run) void refine(mine);
 		} finally {
 			if (mine === run) searching = false;
 		}
@@ -194,7 +232,9 @@
 		</div>
 		{#if candidate.score}
 			<div class="figures">
-				<strong>{Math.round((candidate.score.known ?? 0) * 1000) / 10} % known</strong>
+				<strong
+					>{candidate.rough ? '≈ ' : ''}{Math.round((candidate.score.known ?? 0) * 1000) / 10} % known</strong
+				>
 				· {candidate.score.neverMet} never met
 				{#if candidate.score.due.length > 0}
 					· due: <span lang="zh-Hans">{candidate.score.due.join(' ')}</span>
@@ -225,6 +265,12 @@
 	</li>
 {/snippet}
 
+{#if refining}
+	<p class="meta" role="status">
+		≈ figures are the dictionary's quick count; your library's word splitter is refining them, best
+		first (about a minute and a half each).
+	</p>
+{/if}
 {#if candidates.length > 0}
 	<section aria-label="Videos that fit">
 		<h2>Known at least {percent} % ({groups.fits.length})</h2>

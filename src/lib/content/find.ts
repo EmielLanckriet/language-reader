@@ -96,6 +96,14 @@ export interface Candidate {
 	state: 'fetching' | 'scored' | 'no-chinese' | 'rate-limited' | 'failed';
 	automatic?: boolean;
 	score?: Score;
+	/**
+	 * Scored by the dictionary while the library's model has yet to score it (research R7): the
+	 * model takes about 100 s for a 20-minute video on the phone, the dictionary milliseconds, and
+	 * reads 2-10 points lower.
+	 */
+	rough?: boolean;
+	/** The subtitle text scored, kept for the model's pass. */
+	text?: string;
 	problem?: string;
 }
 

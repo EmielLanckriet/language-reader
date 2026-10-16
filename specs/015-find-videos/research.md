@@ -52,3 +52,18 @@ for jobs in progress or ready.
 
 **Decision**: the bar and the last five queries in `localStorage`: per-device conveniences, never
 needed elsewhere, safe to lose.
+
+## R7. Rough first, the model after (measured on the phone, 2026-10-16)
+
+**Decision**: score each candidate with the dictionary the moment its subtitles arrive, shown with
+"≈"; once every fetch is done, re-score with the library's model, best placed first, replacing the
+rough figures.
+
+**Rationale**: on the phone a 20-minute candidate took about 2 minutes: its subtitles 16 s, the
+rest the model. A CPU profile of the page over 60 s of scoring was 59.95 s in `ort-runtime.wasm`.
+Scored by the model directly, the first result came after 155 s and fifteen would take about half
+an hour (SC-001 asks for 60 s and 8 minutes). The dictionary reads 1.7–10.6 points lower
+(prototype), so its figures are marked rough until the model's replace them (Principle VIII).
+
+**Alternatives**: the dictionary only (figures disagree with the library's); the model in a worker
+(no faster, only kinder to the page; a larger change, left for later).
