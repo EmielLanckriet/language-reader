@@ -44,6 +44,16 @@ export function chooseWords(
 	return { due, known };
 }
 
+/**
+ * A story's lines for speaking (spec 018): one per sentence, each with its closing punctuation and
+ * quotes, so a cue is a sentence and the player steps through it sentence by sentence.
+ */
+export function storyLines(text: string): string[] {
+	return (text.match(/[^。！？!?\n]+[。！？!?]*[”』」]?/gu) ?? [])
+		.map((line) => line.trim())
+		.filter((line) => /\p{Script=Han}/u.test(line));
+}
+
 export interface Message {
 	role: 'system' | 'user' | 'assistant';
 	content: string;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chooseWords, writeStory, type Draft } from '../../src/lib/content/story';
+import { chooseWords, storyLines, writeStory, type Draft } from '../../src/lib/content/story';
 import type { Score } from '../../src/lib/content/find';
 import type { Memory } from '../../src/lib/domain/memory';
 import { State } from 'ts-fsrs';
@@ -100,5 +100,19 @@ describe('the draft loop', () => {
 		expect(calls).toBe(1);
 		expect(story.text).toBe('好');
 		expect(story.where).toBe('laptop');
+	});
+});
+
+describe('a story spoken', () => {
+	it('is one line per sentence, its punctuation and closing quote kept, nothing lost', () => {
+		const text = '我昨天去超市。她问：“你买什么？”我说：“青菜！”\n\n后来我们回家了';
+		const lines = storyLines(text);
+		expect(lines).toEqual([
+			'我昨天去超市。',
+			'她问：“你买什么？”',
+			'我说：“青菜！”',
+			'后来我们回家了'
+		]);
+		expect(lines.join('')).toBe(text.replace(/\s/g, ''));
 	});
 });

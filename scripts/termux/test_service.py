@@ -469,5 +469,53 @@ class WritingStories(unittest.TestCase):
             os.environ['STORY_STUB'] = '1'
 
 
+
+class SpeakingStories(unittest.TestCase):
+    """Spoken stories (spec 018): POST /speak packs the story as a download Reader imports."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.root, 'downloads'))
+        os.environ.update({'SPEAK_STUB': '1', 'READER_SPEAK': os.path.join(HERE, 'speak.py'),
+                           'READER_MODEL_LOCK': os.path.join(self.root, 'model.lock'),
+                           'READER_BUSY': os.path.join(self.root, 'busy')})
+        service = load_service(os.path.join(self.root, 'no-translate.py'))
+        service.Handler.root = self.root
+        self.server = service.http.server.ThreadingHTTPServer(('127.0.0.1', 0), service.Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        for name in ('SPEAK_STUB', 'READER_SPEAK', 'READER_MODEL_LOCK', 'READER_BUSY'):
+            os.environ.pop(name, None)
+
+    def request(self, method, path, body=None):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1], timeout=30)
+        connection.request(method, path, body=None if body is None else json.dumps(body))
+        response = connection.getresponse()
+        data = response.read()
+        return response.status, json.loads(data) if data else None
+
+    def test_a_story_becomes_a_download_with_timed_lines(self):
+        lines = ['我们去市场。', '妈妈买了青菜。', '我很高兴。']
+        status, started = self.request('POST', '/speak', {'title': 'Story · test', 'lines': lines})
+        self.assertEqual(status, 202)
+        for _ in range(100):
+            jobs = self.request('GET', '/downloads')[1]
+            job = next((j for j in jobs if j['job'] == started['job']), None)
+            if job and job.get('ready'):
+                break
+            time.sleep(0.1)
+        self.assertEqual((job['title'], job['ready']), ('Story · test', True))
+        with tarfile.open(os.path.join(self.root, 'downloads', started['job'], 'bundle.tar')) as tar:
+            self.assertEqual(sorted(tar.getnames()), ['media.m4a', 'media.zh.vtt', 'meta.json'])
+            vtt = tar.extractfile('media.zh.vtt').read().decode('utf-8')
+        self.assertEqual([line for line in vtt.splitlines() if line in lines], lines)
+        self.assertEqual(vtt.count(' --> '), 3)
+
+    def test_nothing_to_speak_is_refused(self):
+        self.assertEqual(self.request('POST', '/speak', {'title': 'x', 'lines': []})[0], 400)
+
+
 if __name__ == '__main__':
     unittest.main()

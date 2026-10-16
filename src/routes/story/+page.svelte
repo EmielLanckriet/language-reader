@@ -7,7 +7,14 @@
 	import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 	import { pasteSource } from '$lib/content/paste';
 	import { scoreText } from '$lib/content/find';
-	import { chooseWords, writeStory, type Draft, type Message } from '$lib/content/story';
+	import {
+		chooseWords,
+		storyLines,
+		writeStory,
+		type Draft,
+		type Message
+	} from '$lib/content/story';
+	import { downloadState, importJob, newFromTermux } from '$lib/media/termux';
 	import { SERVICE } from '$lib/media/service-address';
 	import StartTermux from '$lib/ui/StartTermux.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
@@ -130,6 +137,55 @@
 		}
 	}
 
+	/**
+	 * The story spoken on the phone (spec 018): Termux makes it a download, imported here as soon as
+	 * it is ready and opened like a video. Leaving the page leaves it under New from Termux.
+	 */
+	let speaking = $state('');
+	async function listen() {
+		if (!story) return;
+		const title = `Story · ${new Date().toLocaleDateString()}`;
+		const lines = storyLines(story.text);
+		problem = null;
+		speaking = 'Asking Termux to speak it…';
+		try {
+			const started = await fetch(`${SERVICE}/speak`, {
+				method: 'POST',
+				body: JSON.stringify({ title, lines })
+			}).catch(() => null);
+			if (!started?.ok) {
+				unreachable = !started;
+				throw new Error('Termux could not start speaking the story.');
+			}
+			const { job } = await started.json();
+			for (;;) {
+				await sleep(2000);
+				const jobs = await newFromTermux();
+				if (jobs === 'unreachable') throw new Error('Termux stopped answering.');
+				const found = jobs.find((j) => j.job === job);
+				if (!found) continue;
+				if (found.progress?.stage === 'failed')
+					throw new Error(found.progress.reason ?? 'The story could not be spoken.');
+				if (found.ready) {
+					speaking = 'Opening it…';
+					const imported = await importJob(found);
+					if ('documentId' in imported)
+						await goto(resolve('/document/[id]', { id: String(imported.documentId) }));
+					return;
+				}
+				const state = downloadState(found);
+				speaking =
+					state.fraction === undefined
+						? state.label
+						: `${state.label} ${Math.round(state.fraction * 100)} %`;
+			}
+		} catch (error) {
+			problem = error;
+		} finally {
+			speaking = '';
+		}
+	}
+
 	async function readIt() {
 		if (!story) return;
 		saving = true;
@@ -208,10 +264,12 @@
 		{story.drafts === 1 ? 'draft' : 'drafts'}
 	</p>
 	<div class="actions">
-		<button class="primary" onclick={readIt} disabled={saving}>Read it</button>
-		<button onclick={start} disabled={saving}>Another</button>
-		<button onclick={discard} disabled={saving}>Discard</button>
+		<button class="primary" onclick={readIt} disabled={saving || !!speaking}>Read it</button>
+		<button class="primary" onclick={listen} disabled={saving || !!speaking}>Listen to it</button>
+		<button onclick={start} disabled={saving || !!speaking}>Another</button>
+		<button onclick={discard} disabled={saving || !!speaking}>Discard</button>
 	</div>
+	{#if speaking}<p role="status">{speaking}</p>{/if}
 {/if}
 
 <style>

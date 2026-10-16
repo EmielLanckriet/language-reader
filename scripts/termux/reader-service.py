@@ -242,6 +242,25 @@ def start_generation(body, root):
     return job
 
 
+# Spoken stories (spec 018): speak.py makes a download of the story, which Reader then imports.
+SPEAK = os.environ.get('READER_SPEAK', os.path.expanduser('~/bin/speak.py'))
+
+
+def start_speaking(body, root):
+    """A job folder beside the downloads, so the story shows under New from Termux as it is made."""
+    job = time.strftime('%Y%m%d-%H%M%S') + '-story'
+    folder = os.path.join(root, 'downloads', job)
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, 'progress.json'), 'w', encoding='utf-8') as file:
+        json.dump({'stage': 'speaking', 'title': body['title'], 'percent': 0}, file, ensure_ascii=False)
+    child = subprocess.Popen([sys.executable, SPEAK, folder], stdin=subprocess.PIPE,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True,
+                             start_new_session=True)
+    child.stdin.write(json.dumps(body, ensure_ascii=False))
+    child.stdin.close()
+    return job
+
+
 def start_download(url):
     """As a share to Termux does: the opener downloads, packs, and the job shows in /downloads."""
     subprocess.Popen(['bash', OPENER, url], start_new_session=True,
@@ -526,6 +545,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return self.reply(404, {'error': 'no such story'})
 
     def do_POST(self):
+        if self.path.split('?')[0] == '/speak':
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
+                assert isinstance(body.get('title'), str) and body['title']
+                assert isinstance(body.get('lines'), list) and any(isinstance(l, str) and l.strip() for l in body['lines'])
+            except (ValueError, AssertionError, AttributeError):
+                return self.reply(400, {'error': 'expected {"title": "...", "lines": ["...", ...]}'})
+            return self.reply(202, {'job': start_speaking(body, self.root)})
         if self.path.split('?')[0] == '/generate':
             try:
                 body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))

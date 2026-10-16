@@ -15,7 +15,8 @@ export interface TermuxJob {
 	/** False while Termux is still downloading; absent from services older than this field. */
 	ready?: boolean;
 	progress?: {
-		stage: 'starting' | 'downloading' | 'packing' | 'failed';
+		/** speaking and waiting: a spoken story (spec 018), made by speak.py rather than downloaded. */
+		stage: 'starting' | 'downloading' | 'packing' | 'failed' | 'speaking' | 'waiting';
 		part?: 'video' | 'audio';
 		percent?: number;
 		/** A failed download's cause: yt-dlp's last ERROR line (issue #28). */
@@ -32,6 +33,9 @@ export function downloadState(job: TermuxJob): { label: string; fraction?: numbe
 			fraction: progress.percent / 100
 		};
 	if (progress?.stage === 'packing') return { label: 'Almost ready…' };
+	if (progress?.stage === 'speaking')
+		return { label: 'Speaking the story…', fraction: (progress.percent ?? 0) / 100 };
+	if (progress?.stage === 'waiting') return { label: 'Waiting for the phone’s model…' };
 	return { label: 'Starting the download…' };
 }
 

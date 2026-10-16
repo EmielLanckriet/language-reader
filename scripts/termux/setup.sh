@@ -10,7 +10,7 @@ pkg install -y --no-install-recommends python nodejs curl
 # A small ffmpeg from this repository's release (scripts/termux/build-ffmpeg.sh): yt-dlp needs it
 # only to merge video and audio and to convert the thumbnail, and Termux's package brought 395 MB
 # of graphics libraries for that (#24). Termux's own one replaces it if `pkg install ffmpeg` runs.
-FFMPEG_RELEASE="${FFMPEG_RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-ffmpeg-8.1.3}"
+FFMPEG_RELEASE="${FFMPEG_RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-ffmpeg-8.1.3-2}"
 case "$(uname -m)" in x86_64) arch=x86_64 ;; *) arch=arm64 ;; esac
 for tool in ffmpeg ffprobe; do
 	curl -fsSL "$FFMPEG_RELEASE/$tool-$arch" -o "$PREFIX/bin/$tool"
@@ -47,6 +47,15 @@ chmod +x ~/bin/reader-service-start
 curl -fsSL "$SOURCE/translate.py" -o ~/bin/translate.py
 # Stories (spec 016): a draft on the phone when the laptop's writer is not reachable.
 curl -fsSL "$SOURCE/story.py" -o ~/bin/story.py
+# Spoken stories (spec 018): speak.py makes a story a download, read aloud by MeloTTS through a
+# static sherpa-onnx build (scripts/termux/tts/build-tts.sh), about 200 MB with the voice.
+curl -fsSL "$SOURCE/speak.py" -o ~/bin/speak.py
+TTS_RELEASE="${TTS_RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-tts-1.13.8}"
+if [ "$(uname -m)" = aarch64 ]; then
+	mkdir -p ~/opt/tts/melo
+	curl -fsSL "$TTS_RELEASE/speak-arm64" -o ~/opt/tts/speak && chmod +x ~/opt/tts/speak
+	[ -f ~/opt/tts/melo/model.onnx ] || curl -fsSL "$TTS_RELEASE/melo-zh-en.tar" | tar xf - -C ~/opt/tts/melo
+fi
 
 # The service that keeps copies of the reader's work, serves downloads, and takes Reader's
 # transcripts to translate (ADR-0020, ADR-0029). Termux:Boot

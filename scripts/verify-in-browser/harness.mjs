@@ -3124,9 +3124,10 @@ const scenarios = {
 		}
 	},
 
-	// Stories (spec 016). Needs the reader service on port 18765 started with STORY_STUB=1,
-	// READER_STORY=scripts/termux/story.py and READER_LAPTOP_URLS=http://127.0.0.1:9 (no laptop), and a
-	// verification-mode build. A story is written on the phone, shown with its figures; Discard keeps
+	// Stories (spec 016, 018). Needs the reader service on port 18765 started with STORY_STUB=1,
+	// READER_STORY=scripts/termux/story.py, READER_LAPTOP_URLS=http://127.0.0.1:9 (no laptop),
+	// SPEAK_STUB=1 and READER_SPEAK=scripts/termux/speak.py (ffmpeg on PATH), and a
+	// verification-mode build. A third story is spoken and must open as audio. A story is written on the phone, shown with its figures; Discard keeps
 	// nothing; Read it saves one text titled "Story · <date>" and opens it.
 	async story() {
 		const tab = await openTab('about:blank');
@@ -3193,6 +3194,39 @@ const scenarios = {
 					`return location.pathname.includes('/read/') && document.querySelector('.reading') ? { path: location.pathname, text: document.querySelector('.reading').textContent.replace(/\\s+/g, '') } : null`
 				)
 			);
+			// Spec 018: the third story spoken (SPEAK_STUB), imported and opened as audio with its lines.
+			const third = await ask();
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Listen to it').click(); return true;`
+			);
+			const spoken = await (async () => {
+				try {
+					return await until(
+						'the spoken story opened',
+						() =>
+							tab.evaluate(
+								`return location.pathname.includes('/document/') && document.body.innerText.includes('Story ·') ? { path: location.pathname } : null`
+							),
+						60000,
+						250
+					);
+				} catch (error) {
+					const page = await tab.evaluate(
+						`return location.pathname + ' | ' + document.body.innerText.slice(0, 400)`
+					);
+					throw new Error(`${error.message}; page: ${page}`, { cause: error });
+				}
+			})();
+			await tab.evaluate(`document.querySelector('a.play')?.click(); return true;`);
+			const player = await until(
+				'its player and lines',
+				() =>
+					tab.evaluate(
+						`const p = document.querySelector('.player'); return p && p.duration > 0 ? { duration: p.duration, lines: ${JSON.stringify('')} + document.body.innerText.includes('市场') } : null`
+					),
+				60000,
+				250
+			);
 			const title = await (async () => {
 				await tab.goto('/texts');
 				return until('the saved story in Texts', () =>
@@ -3208,12 +3242,15 @@ const scenarios = {
 					before === afterDiscard &&
 					textsBefore.n === textsAfterDiscard.n &&
 					opened.text.includes('市场') &&
-					!!title,
+					!!title &&
+					third.text.includes('市场') &&
+					player.duration > 0,
 				first,
 				second: second.figures,
 				discardKeptNothing: before === afterDiscard && textsBefore.n === textsAfterDiscard.n,
 				opened: opened.path,
-				title
+				title,
+				spoken: { ...spoken, ...player }
 			};
 		} finally {
 			await tab.close();
