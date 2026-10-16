@@ -28,6 +28,8 @@ version.
   (decoded audio as raw 44.1 kHz stereo float32 from `ffmpeg -f f32le -ac 2`), and
   `pair-check.mjs` for the control: two ffmpeg resamplers against each other (spec 008 R4).
 
+Issue #14 (bit-exact resume, a second pass, Qwen3-ASR, kernels): see `issue14/README.md`.
+
 ## Phone (Chrome, over USB)
 
 1. Cut the interview into 30 s chunks `s0.wav`… in an audio directory.
