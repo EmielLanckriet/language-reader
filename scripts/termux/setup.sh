@@ -6,7 +6,16 @@ set -euo pipefail
 SOURCE="${SOURCE:-https://raw.githubusercontent.com/EmielLanckriet/language-reader/main/scripts/termux}"
 pkg upgrade -y -o Dpkg::Options::=--force-confnew
 # Without recommends: python-pip and nodejs recommend clang, which took the install to 1.2 GB.
-pkg install -y --no-install-recommends python ffmpeg nodejs curl
+pkg install -y --no-install-recommends python nodejs curl
+# A small ffmpeg from this repository's release (scripts/termux/build-ffmpeg.sh): yt-dlp needs it
+# only to merge video and audio and to convert the thumbnail, and Termux's package brought 395 MB
+# of graphics libraries for that (#24). Termux's own one replaces it if `pkg install ffmpeg` runs.
+FFMPEG_RELEASE="${FFMPEG_RELEASE:-https://github.com/EmielLanckriet/language-reader/releases/download/tools-ffmpeg-8.1.3}"
+case "$(uname -m)" in x86_64) arch=x86_64 ;; *) arch=arm64 ;; esac
+for tool in ffmpeg ffprobe; do
+	curl -fsSL "$FFMPEG_RELEASE/$tool-$arch" -o "$PREFIX/bin/$tool"
+	chmod +x "$PREFIX/bin/$tool"
+done
 # yt-dlp's own single-file release, so no pip; `yt-dlp -U` updates it when YouTube breaks it.
 curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "$PREFIX/bin/yt-dlp"
 chmod +x "$PREFIX/bin/yt-dlp"
