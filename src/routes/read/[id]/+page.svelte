@@ -19,6 +19,7 @@
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
 	import { resumeOf } from '$lib/media/cover';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
+	import { lazyLines, lineFirsts, type Lines } from '$lib/ui/lazy-lines';
 	import Progress from '$lib/ui/Progress.svelte';
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
 	import { findVideo } from '$lib/backup/destination';
@@ -211,23 +212,30 @@
 	 */
 	let startAt = $state(0);
 
-	/** Line i of a media document is cue i, so tokens are grouped by the line they start on. */
-	const lines = $derived.by(() => {
-		if (!media || !document) return [];
-		const grouped: LineWord[][] = [[]];
-		let line = 0;
-		let offset = 0;
-		for (const token of document.tokens) {
-			while (offset < token.start) if (characters[offset++] === '\n') grouped[++line] = [];
-			grouped[line].push({
+	/** Where each line's tokens start: line i of a media document is cue i. */
+	const firsts = $derived.by(() =>
+		media && document ? lineFirsts(document.tokens, characters) : [0]
+	);
+	/**
+	 * Each line's words, built when shown (#33). Reading the pinyin, the states and the memory here
+	 * starts a fresh set when any of them changes, so a shown line is rebuilt with it.
+	 */
+	const lines = $derived.by((): Lines<LineWord[]> => {
+		void readings;
+		void states;
+		void memory;
+		void now;
+		const tokens = document?.tokens ?? [];
+		const bounds = firsts;
+		return lazyLines(bounds.length - 1, (i) =>
+			tokens.slice(bounds[i], bounds[i + 1]).map((token) => ({
 				key: token.start,
 				text: textOf(token).replace(/\n/g, ''),
 				chars: charsOf(token.start, token.end),
 				isWord: token.isWord,
 				mark: markOf(token)
-			});
-		}
-		return grouped;
+			}))
+		);
 	});
 
 	/**
@@ -266,7 +274,16 @@
 				.join('')
 		}));
 	});
-	const shownLines = $derived(clauses.map(([first, last]) => lines.slice(first, last + 1).flat()));
+	const shownLines = $derived.by(() => {
+		const source = lines;
+		const runs = clauses;
+		return lazyLines(runs.length, (i) => {
+			const [first, last] = runs[i];
+			const words: LineWord[] = [];
+			for (let line = first; line <= last; line++) words.push(...(source.at(line) ?? []));
+			return words;
+		});
+	});
 	const shownEnglish = $derived(
 		clauses.map(([first, last]): English | undefined => {
 			const parts = english.slice(first, last + 1);

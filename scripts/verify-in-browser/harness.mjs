@@ -2915,6 +2915,54 @@ const scenarios = {
 		}
 	},
 
+	// Issue #33, a measurement: opening the player on a document with a film's 659 subtitle lines
+	// (make one with make-fixtures.sh's clip and any long Chinese .vtt, titled "Test film lines,
+	// 659 cues"), the CPU slowed 4x to stand in for the phone. Times navigation to a settled player,
+	// on the stage and in the list, three times each.
+	async playeropen() {
+		const tab = await openTab('about:blank');
+		try {
+			await importFromTermux(tab, 'Test film lines, 659 cues');
+			const path = await until(
+				'the imported document',
+				() =>
+					tab.evaluate(
+						`return ['/document/', '/read/'].some((p) => location.pathname.includes(p)) ? location.pathname : null`
+					),
+				120000,
+				250
+			);
+			const id = path.match(/\d+/)[0];
+			await tab.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+			const times = { stage: [], list: [] };
+			for (const view of ['stage', 'list']) {
+				for (let run = 0; run < 3; run++) {
+					await tab.evaluate(
+						`localStorage.setItem('reader.stage', '${view === 'stage'}'); return true;`
+					);
+					const started = Date.now();
+					await tab.goto(`/read/${id}?t=0`);
+					await until(
+						'a settled player',
+						() =>
+							tab.evaluate(`
+								const settled = document.querySelector('.player') && !/Opening|Loading|Reading…/.test(document.body.innerText);
+								return settled && (${view === 'stage'} || document.querySelector('.lines p .token')) ? true : null;
+							`),
+						60000,
+						25
+					);
+					times[view].push(Date.now() - started);
+				}
+			}
+			await tab.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+			const lines = await tab.evaluate(`return document.querySelectorAll('.lines p').length`);
+			return { pass: true, msToSettled: times, linesBuilt: lines };
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async model() {
 		const tab = await openTab('about:blank');
 		const console_ = [];

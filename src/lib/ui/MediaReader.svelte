@@ -18,6 +18,7 @@
 	import { lineWindow, offsetOf } from '$lib/media/line-window';
 	import { resolve } from '$app/paths';
 	import type { Recorder } from './recorder';
+	import type { Lines } from './lazy-lines';
 
 	/**
 	 * A player with its subtitle lines underneath: the current line follows playback, ▸ seeks to a
@@ -62,7 +63,7 @@
 		 * what the recorder counts in, since the offsets it writes are theirs.
 		 */
 		sourceCues?: Cue[];
-		lines: LineWord[][];
+		lines: Lines<LineWord[]>;
 		language?: string;
 		startAt?: number;
 		/** English for line i, from whichever translator has it best (ADR-0023); revealed per line. */
@@ -615,10 +616,10 @@
 					<button onclick={toggleFullscreen} aria-label="Full screen">⛶</button>
 					<button onclick={() => (bare = true)} aria-label="Hide the buttons">✕</button>
 				</div>
-				{#if currentLine >= 0 && lines[currentLine]}
+				{#if currentLine >= 0 && lines.at(currentLine)}
 					<div class="subtitles">
 						<p class="chinese" lang={language}>
-							{#each lines[currentLine] as word (word.key)}{#if word.isWord}<button
+							{#each lines.at(currentLine) ?? [] as word (word.key)}{#if word.isWord}<button
 										class="token {word.mark ?? 'state-none'}"
 										onclick={() => tap(currentLine, word)}>{@render rubied(word)}</button
 									>{:else}<span class="token">{word.text}</span>{/if}{/each}
@@ -696,7 +697,7 @@
 	<div class="reading lines" lang={language} bind:this={list}>
 		<div style:height="{shown.before}px"></div>
 		{#each built as i (i)}
-			{@const line = lines[i]}
+			{@const line = lines.at(i)}
 			<p id="line-{i}" class:current={i === currentLine} use:measure={i}>
 				{#if cues[i]}<button class="seek" aria-label="Play from here" onclick={() => seek(i)}
 						>▸</button
