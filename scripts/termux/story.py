@@ -6,14 +6,17 @@
 The reader service runs this when the laptop's writer does not answer. Qwen3-1.7B, the model
 translate.py already has, through translate.py's own budget: one model at a time across stories
 and translations, waiting while Reader transcribes or memory is short. Thinking is switched off
-(/no_think): left on, the 1.7B spent its answer reasoning in English (research R1). Prints
-"waiting" then "writing" on stderr, and the draft on stdout. STORY_STUB=1 answers a fixed story.
+(/no_think): left on, the 1.7B spent its answer reasoning in English (research R1). Tells the service
+on stderr what it waits for ("waiting model", then translate.py's own memory or Reader messages) and
+"writing" once it runs; the draft goes to stdout. STORY_STUB=1 answers a fixed story; STORY_STUB=
+wait-memory waits for memory for ever, as on a phone short of it.
 """
 import contextlib
 import importlib.util
 import json
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -30,15 +33,20 @@ def prompt(messages):
 
 def main():
     request = json.load(sys.stdin)
+    if os.environ.get('STORY_STUB') == 'wait-memory':
+        print('waiting model', file=sys.stderr, flush=True)
+        print('waiting for sufficient measurable free memory', file=sys.stderr, flush=True)
+        while True:
+            time.sleep(1)
     if os.environ.get('STORY_STUB') == '1':
-        print('waiting', file=sys.stderr, flush=True)
+        print('waiting model', file=sys.stderr, flush=True)
         print('writing', file=sys.stderr, flush=True)
         print('今天我和妈妈去市场买菜。妈妈说：“我们买一点青菜吧。”')
         return
     spec = importlib.util.spec_from_file_location('translate', os.path.join(HERE, 'translate.py'))
     translate = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(translate)
-    print('waiting', file=sys.stderr, flush=True)
+    print('waiting model', file=sys.stderr, flush=True)
     # translate.py tells its own waits on stdout, which here carries the story.
     with contextlib.redirect_stdout(sys.stderr), translate.model_budget():
         print('writing', file=sys.stderr, flush=True)

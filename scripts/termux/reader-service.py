@@ -115,6 +115,22 @@ STORY = os.environ.get('READER_STORY', os.path.expanduser('~/bin/story.py'))
 LAPTOP = 'http://127.0.0.1:8766'  # the laptop over USB, after `adb reverse tcp:8766 tcp:8766`
 GENERATIONS = {}
 GENERATIONS_LOCK = threading.Lock()
+# How long a draft may wait for free memory or for Reader's transcription before it gives up and says
+# why; the model held by a translation may take longer, since that ends by itself.
+STORY_WAIT_MODEL = 600
+
+
+def story_wait():
+    return float(os.environ.get('READER_STORY_WAIT_SECONDS', '180'))
+# story.py's stderr, and translate.py's own messages it passes on: what the draft waits for.
+WAITING = {'waiting model': 'model', 'waiting for sufficient measurable free memory': 'memory',
+           'waiting while Reader transcribes': 'reader'}
+GAVE_UP = {
+    'memory': 'The phone is short of memory (a story needs 2 GB free). Close other apps, or start '
+              "the laptop's story writer, then try again.",
+    'reader': 'Reader is transcribing a video, which goes first. Try again when it has finished.',
+    'model': "A translation kept the phone's model busy. Try again in a few minutes.",
+}
 
 
 def laptop_urls(root):
@@ -161,18 +177,58 @@ def generate(job, body, root):
     state(state='waiting', where='phone')
     try:
         child = subprocess.Popen([sys.executable, STORY], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True)
-        child.stdin.write(json.dumps(body))
-        child.stdin.close()
-        for line in child.stderr:
-            if line.strip() == 'writing':
-                state(state='writing')
-        text = child.stdout.read().strip()
-        if child.wait() != 0 or not text:
-            return state(state='failed', error='The phone could not write the story.')
-        state(state='done', text=text, seconds=round(time.monotonic() - started))
+                                 stderr=subprocess.PIPE, text=True, start_new_session=True)
     except OSError as error:
-        state(state='failed', error=str(error))
+        return state(state='failed', error=str(error))
+    with GENERATIONS_LOCK:
+        GENERATIONS[job]['_child'] = child
+    child.stdin.write(json.dumps(body))
+    child.stdin.close()
+    waits = {'since': time.monotonic(), 'for': None}
+
+    def watch():
+        """Gives up a wait that lasts too long, with its reason, rather than wait for ever."""
+        while child.poll() is None:
+            reason = waits['for']
+            limit = STORY_WAIT_MODEL if reason == 'model' else story_wait()
+            if reason and time.monotonic() - waits['since'] > limit:
+                waits['gave up'] = reason
+                child.kill()
+                return
+            time.sleep(0.2)
+
+    threading.Thread(target=watch, daemon=True).start()
+    for line in child.stderr:
+        line = line.strip()
+        if line == 'writing':
+            waits['for'] = None
+            state(state='writing', waitingFor=None)
+        elif line in WAITING:
+            waits.update({'since': time.monotonic(), 'for': WAITING[line]})
+            state(state='waiting', waitingFor=WAITING[line])
+    text = child.stdout.read().strip()
+    code = child.wait()
+    with GENERATIONS_LOCK:
+        if GENERATIONS[job].get('state') == 'cancelled':
+            return None
+    if 'gave up' in waits:
+        return state(state='failed', error=GAVE_UP[waits['gave up']])
+    if code != 0 or not text:
+        return state(state='failed', error='The phone could not write the story.')
+    return state(state='done', text=text, seconds=round(time.monotonic() - started))
+
+
+def cancel_generation(job):
+    """The reader stopped or left: a draft nobody will read is not written."""
+    with GENERATIONS_LOCK:
+        found = GENERATIONS.get(job)
+        if not found:
+            return False
+        found['state'] = 'cancelled'
+        child = found.get('_child')
+    if child and child.poll() is None:
+        child.kill()
+    return True
 
 
 def start_generation(body, root):
@@ -323,7 +379,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Private-Network', 'true')
-        self.send_header('Access-Control-Allow-Methods', 'GET, PUT, POST')
+        self.send_header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
@@ -463,6 +519,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         prune(self.backups())
         self.reply(204)
 
+    def do_DELETE(self):
+        path = self.path.split('?')[0]
+        if path.startswith('/generate/') and cancel_generation(path[len('/generate/'):]):
+            return self.reply(200, {})
+        return self.reply(404, {'error': 'no such story'})
+
     def do_POST(self):
         if self.path.split('?')[0] == '/generate':
             try:
@@ -496,8 +558,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 found = dict(GENERATIONS.get(path[len('/generate/'):], {}))
             if not found:
                 return self.reply(404, {'error': 'no such story'})
-            found.pop('created', None)
-            return self.reply(200, found)
+            return self.reply(200, {k: v for k, v in found.items() if k != 'created' and not k.startswith('_')})
         if path == '/subtitles':
             video = (query.get('id') or [''])[0]
             if not video or not all(c.isalnum() or c in '-_' for c in video):

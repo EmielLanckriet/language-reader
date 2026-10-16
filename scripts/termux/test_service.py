@@ -442,5 +442,32 @@ class WritingStories(unittest.TestCase):
         self.assertEqual(self.request('GET', '/generate/nothing')[0], 404)
 
 
+    def test_a_long_wait_for_memory_fails_with_its_reason(self):
+        os.environ['STORY_STUB'] = 'wait-memory'
+        os.environ['READER_STORY_WAIT_SECONDS'] = '1'
+        try:
+            state = self.finished(self.request('POST', '/generate', self.BODY)[1]['job'])
+        finally:
+            os.environ['STORY_STUB'] = '1'
+            os.environ.pop('READER_STORY_WAIT_SECONDS', None)
+        self.assertEqual(state['state'], 'failed')
+        self.assertIn('memory', state['error'])
+
+    def test_waiting_says_why_and_a_cancelled_story_stops(self):
+        os.environ['STORY_STUB'] = 'wait-memory'
+        try:
+            job = self.request('POST', '/generate', self.BODY)[1]['job']
+            for _ in range(50):
+                state = self.request('GET', f'/generate/{job}')[1]
+                if state.get('waitingFor'):
+                    break
+                time.sleep(0.1)
+            self.assertEqual((state['state'], state['waitingFor']), ('waiting', 'memory'))
+            self.assertEqual(self.request('DELETE', f'/generate/{job}')[0], 200)
+            self.assertEqual(self.request('GET', f'/generate/{job}')[1]['state'], 'cancelled')
+        finally:
+            os.environ['STORY_STUB'] = '1'
+
+
 if __name__ == '__main__':
     unittest.main()

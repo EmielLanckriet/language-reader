@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onDestroy } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { session } from '$lib/storage/session';
 	import { activeAnalyzer, fallbackAnalyzer } from '$lib/analyzer/active';
@@ -41,6 +42,20 @@
 	let unreachable = $state(false);
 	let saving = $state(false);
 	let run = 0;
+	/** The draft being written in Termux, so stopping or leaving cancels it there too. */
+	let job: string | undefined;
+
+	const WAITING: Record<string, string> = {
+		model: "Waiting for the phone's model (a translation is using it)…",
+		memory: 'Waiting for free memory on the phone (a story needs 2 GB)…',
+		reader: 'Waiting while Reader transcribes a video…'
+	};
+
+	function cancel() {
+		if (job) void fetch(`${SERVICE}/generate/${job}`, { method: 'DELETE' }).catch(() => {});
+		job = undefined;
+	}
+	onDestroy(cancel);
 
 	function remember() {
 		try {
@@ -62,7 +77,7 @@
 			unreachable = !started;
 			throw new Error('Termux could not start writing the story.');
 		}
-		const { job } = await started.json();
+		job = (await started.json()).job;
 		for (;;) {
 			if (mine !== run) throw new Error('stopped');
 			await sleep(2000);
@@ -70,11 +85,15 @@
 			const place = state.where === 'laptop' ? 'on the laptop' : 'on the phone';
 			const which = draft === 1 ? 'first draft' : `rewrite ${draft - 1}`;
 			if (state.state === 'waiting')
-				status = `Waiting for the phone's model (a translation is using it)…`;
+				status = WAITING[state.waitingFor] ?? 'Starting the phone’s model…';
 			else if (state.state === 'writing') status = `Writing the ${which} ${place}…`;
-			else if (state.state === 'done')
+			else if (state.state === 'done') {
+				job = undefined;
 				return { text: String(state.text), where: state.where as 'laptop' | 'phone' };
-			else throw new Error(state.error ?? 'The story could not be written.');
+			} else {
+				job = undefined;
+				throw new Error(state.error ?? 'The story could not be written.');
+			}
 		}
 	}
 
@@ -134,6 +153,7 @@
 	}
 
 	function discard() {
+		cancel();
 		run++;
 		story = null;
 		writing = false;
