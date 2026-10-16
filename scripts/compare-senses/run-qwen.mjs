@@ -1,5 +1,6 @@
 // Usage: node scripts/compare-senses/run-qwen.mjs <llama-server-binary> <model.gguf> <out.json>
-//        [--name label] [--variants forced,none,meta] [--trim] [--sentence-first]
+//        [--name label] [--variants forced,none,meta] [--trim] [--sentence-first] [--items items.json] [--rounds 2]
+// --items reads another item file (default: items.json beside this script); --rounds sets the rounds per variant.
 // --sentence-first puts the unmarked sentence at the start of the prompt and keeps llama.cpp's prompt cache,
 // so consecutive words from one sentence reuse its prefix; items are then ordered by sentence.
 // One forward pass per item: the probability of each option letter as the first answer token,
@@ -22,7 +23,9 @@ const name = arg('--name', 'qwen3-1.7b-q4');
 const variantList = arg('--variants', VARIANTS.join(',')).split(',');
 const trim = flag('--trim');
 const sentenceFirst = flag('--sentence-first');
-const items = JSON.parse(readFileSync(new URL('./items.json', import.meta.url), 'utf8'));
+const itemsPath = arg('--items', new URL('./items.json', import.meta.url));
+const rounds_ = Number(arg('--rounds', 2));
+const items = JSON.parse(readFileSync(itemsPath, 'utf8'));
 if (sentenceFirst) items.sort((a, b) => a.source.localeCompare(b.source));
 const port = 18000 + Math.floor(Math.random() * 1000);
 const base = `http://127.0.0.1:${port}`;
@@ -67,7 +70,7 @@ try {
 	const variants = {};
 	for (const variant of variantList) {
 		const rounds = [];
-		for (let round = 0; round < 2; round++) {
+		for (let round = 0; round < rounds_; round++) {
 			const rows = [];
 			for (const item of items) {
 				const q = question(item, variant, { trim });

@@ -55,3 +55,18 @@ Zero-shot bi-encoders (bge-m3, multilingual-e5-small; forced variant only): `pyt
 Three variants share the items. **forced** offers only the senses. **none** adds "none of the listed senses fits". **meta** also adds "not a whole word here" and, for multi-character words, "its characters' meanings combined". An item with no acceptable answer in a variant (for example a name fragment under forced choice) is run but not scored.
 
 The sentences are the 16 joined groups from `scripts/compare-translators/corpus.json`: two topics, with ASR errors kept. 42 items is far too few for a precise accuracy; it can show gross failure modes and speed. Laptop timings with other load present; no phone, browser or battery measurement is claimed.
+
+## One video's words (2026-10-16)
+
+The issue #16 measurement on one library video. Its inputs and outputs hold the reader's library and learning state, so they stay outside the repository (`$OUT` below); only the scripts are here. Hold one lock around every model process (`flock $LOCK ...`) when other jobs share the laptop.
+
+```bash
+node scripts/compare-senses/bert-segment.mjs backup.json $OUT/tokens.json        # shipped BERT tagger + the reader's corrections
+python3 -I scripts/compare-senses/video-scope.py backup.json $OUT/tokens.json <document id> $OUT/scope.json
+python3 -c "import json; json.dump(json.load(open('$OUT/scope.json'))['items'], open('$OUT/items.json', 'w'), ensure_ascii=False)"
+node scripts/compare-senses/run-qwen.mjs $BENCH/llama-b11374/llama-server $MODEL $OUT/run.json --variants forced --rounds 1 --items $OUT/items.json [--trim] [--name label]
+node scripts/compare-senses/run-gloss.mjs $BENCH/llama-b11374/llama-server $MODEL $OUT/items.json $OUT/gloss.json --name label
+python3 -I scripts/compare-senses/score-video.py $OUT/items.json $OUT/gold.json $OUT/run*.json
+```
+
+`video-scope.py` states its definitions of new, hard and missing in its header. `run-gloss.mjs` asks for a short free gloss for words with no CC-CEDICT entry. `score-video.py` adds the first sense the word sheet shows (`gloss.ts` `ranked()`, without the in-context reading) as a baseline. The 8B model was `unsloth/Qwen3-8B-GGUF` `Qwen3-8B-Q4_K_M.gguf` (5,027,784,512 bytes, sha256 `120307ba529eb2439d6c430d94104dabd578497bc7bfe7e322b5d9933b449bd4`).

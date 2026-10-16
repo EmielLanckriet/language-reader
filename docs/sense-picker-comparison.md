@@ -83,3 +83,81 @@ bge-m3 reading the word's own vector gets more than halfway from the first-sense
 2. **A Qwen forced-choice sense ranking is worth a bounded prototype as an optional, slower annotation**, alongside the existing dictionary popup. It reuses the downloaded translation model, and could order senses or highlight the likely one while still showing the rest. Do not show its pick as authoritative, and do not offer it a "none" option.
 3. **Before that, measure on the phone and with reviewed labels.** 1.5 s per word on the laptop says nothing certain about the Samsung A71. Thermal validation of the phone remains open, so this should wait for it. A larger, reviewed item set is needed before quoting an accuracy.
 4. **Detect segmentation errors and dictionary gaps another way**, for example from segmenter disagreement or from the absence of a dictionary entry, rather than by asking this model.
+
+## One video's words, Qwen3-1.7B against Qwen3-8B
+
+Measured 2026-10-16 for [#16](https://github.com/EmielLanckriet/language-reader/issues/16). **On the reader's scope in one native video, Qwen3-1.7B picked an acceptable sense for 40 of 45 hand-labelled words. That is 3 more than the sense the word sheet already shows first, and the whole-scope estimate is about 83% (85% with trimmed options), so it does not clearly reach 85%. Qwen3-8B got 44 of 45, about 95% over the whole scope, at roughly 5 s per word and 8 GB of memory on the laptop.** Neither model's "misheard" suggestion is usable. No production behavior changed and the phone was not used.
+
+### Question and method
+
+The video is 探访草原深处，我们拍到了…… (影视飓风, 712 s, Tibetan Gansu, unscripted speech with professional subtitles), imported 2026-10-03 after a week of reading. It was segmented as the phone does: the shipped BERT tagger (the segmenter harness's mirror of it) plus the reader's 22 corrections. These tokens matched 280 of the reader's 313 taps in this document. The rest were taps made before or during corrections, such as 乾崑智. The CC-CEDICT longest-match segmenter matched only 220.
+
+The scope is the reader's own (2026-09-28): words new or hard at import, plus every word missing from CC-CEDICT, once per word per document. Here, at the import time:
+
+- **new**: no mark, no lookup, check, review or Anki example, and never inside a played range of another document;
+- **hard**: looked up at least once, or graded Again in a review;
+- **missing**: no CC-CEDICT headword equal to the word.
+
+334 of the 629 distinct words are in scope: 94 with one sense, 173 with two or more, 67 missing. "New" includes common words such as 这些 and 有点 that the reader never marked or played before this video. Nothing in the data says they are known. Each word's context is its subtitle line with one line either side.
+
+Options are the CC-CEDICT senses in file order, split at `/`, as in the comparison above and as the issue proposes. The word sheet shows the same senses grouped by entry. Prompt, `Answer:` prefill and letter probabilities are unchanged, forced choice only. 45 of the 173 multi-sense words were drawn at random (seed 16). **Claude labelled them before seeing any output; the reader has not reviewed them.** Gold sets are permissive where CC-CEDICT splits one meaning across near-synonyms. 29 of the 45 are "non-trivial": the gold set leaves out at least one real sense.
+
+For the 67 missing words there is nothing to choose from. Each model wrote a gloss of at most 40 tokens, greedy. It was asked to name the intended word if the text looked misheard. 20 of these glosses were judged by hand.
+
+Candidates: Qwen3-1.7B Q4_K_M (the same file as above, same sha256), plain and with `--trim`; Qwen3-8B Q4_K_M (`unsloth/Qwen3-8B-GGUF`, 5.0 GB). Both ran on llama.cpp b11374 with 4 threads, one round, no prompt cache. Other jobs shared the laptop, with a load average of 4–5 and 6–8 during the trimmed run. Timings are therefore pessimistic.
+
+### Results
+
+| 45 labelled words | Qwen3-1.7B | 1.7B, trimmed | Qwen3-8B | First sense the sheet shows | First listed sense | Chance |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| all | 40 | 41 | **44** | 37 | 34 | 26.0 |
+| non-trivial (29) | 25 | 25 | **28** | 22 | 20 | 12.5 |
+
+"First sense the sheet shows" applies `gloss.ts` `ranked()` without the in-context reading. With the reading, it might do slightly better.
+
+On 45 items the 95% intervals are wide: 40/45 is 77–95%, 41/45 is 79–97%, and 44/45 is 88–100%. To use the rest of the scope, every unlabelled word where the two models disagreed (52, excluding 诶, whose options are all variant lines) was judged by hand. 1.7B's pick was acceptable in 30 and 8B's in 47. Where they agreed (75 words), the pick was counted right at the labelled rate (28 of 29 agreed picks right). One known exception is 打 in 打篮球, which both read as "to hit". **Whole-scope estimates for the 172 scorable multi-sense words: 1.7B about 83%, 1.7B trimmed about 85%, 8B about 95%.**
+
+| | Qwen3-1.7B | Qwen3-8B |
+| --- | --- | --- |
+| Forced choice, median / 95th percentile per word | 1,146 / 2,185 ms (trimmed 986 / 1,710) | 5,063 / 10,253 ms |
+| Gloss for a missing word, median / 95th percentile | 2,519 / 3,011 ms | 9,403 / 12,096 ms |
+| Model load | 2.6 s | 10.2 s |
+| Peak process memory (RSS) | 4,332 MiB | 8,006 MiB (glosses 8,402) |
+| One video like this (173 choices + 67 glosses) | about 6 min | about 25 min |
+| Mean top probability, right / wrong | 0.93 / 0.98 | 0.94 / 0.99 |
+
+1.7B's peak RSS is higher than the 3,039 MiB measured on 2026-10-03 with the same file and binary. The cause was not investigated; memory was under pressure from other jobs.
+
+| 20 missing words, gloss usable | Qwen3-1.7B | Qwen3-8B |
+| --- | ---: | ---: |
+| usable meaning in context | 15 | 18 |
+| claims "misheard or mistyped", all 67 words | 33 | 51 |
+
+### Observations
+
+**The 1.7B model's gain over the sheet is small, and its errors are the kind a reader notices.** It picked 手 "convenient" for 洗个手, 投 "to throw oneself into (a river)" for a basketball shot, 新年 as its classifier line, 的 as a nominaliser in 去到的地方, 什么 "something" in 是什么意思, 名 "name" in 一名阿姨, and 睡 "to lie down". The sheet's current ordering already avoids several of these. Trimming non-meaning lines (`variant of`, `CL:`) fixed 新年, 佛 in the pun 佛BA, 帮, and 打 in 打篮球. It did not fix the rest.
+
+**8B errs mostly where CC-CEDICT has no fitting sense.** Examples are 三分 (three-pointer), 半 in 半个月 and 那么 in 睡那么香. Its other misses were 中 as "China" in 藏语中 and 驾 as "ride". Both models read 得了 in 洗个手得了 as de2 liao3 "possible" rather than "and be done with it". On 5 of 173 prompts, 8B put under half its probability on the option letters. Its picks there were still sensible.
+
+**Probabilities still do not separate right from wrong** for either model, as above.
+
+**Missing words in this video are rarely errors.** By hand, the 67 missing words break down as:
+
+- 15 verb-plus-complement or verb-plus-给 forms (做出来, 转发给, 准备好);
+- 12 names, brands and titles (阿维塔, 洛克, 样片 as in 样片日记);
+- 10 rare words, slang, puns and idioms (单押, 诳球 for 诳语, 闲庭信步);
+- 8 common combinations (很多, 来说, 像是);
+- 7 Tibetan or regional terms (煨桑, 隆达, 藏袍);
+- 7 reduplications or A-not-A forms;
+- 5 numbers;
+- 3 segmentation errors (乾崑智, 驾给, 撒隆达).
+
+None is a misheard subtitle, so this video does not test the 新资 case. Both models gloss ordinary compositional forms well. Neither explained 隆达 (prayer flags) or the segmentation error 驾给 (智驾|给). 1.7B read 四五 as "forty-five".
+
+**The "misheard" suggestion is harmful as asked.** It fired on half (1.7B) and three quarters (8B) of the missing words in a video with none. 8B's "intended" words would mislead: 插箭节 → 插秧节, 牦牛奶 → 黄油牛奶, 完代 (a name) → 完蛋, 诳球 → 诓骗.
+
+### Recommendation
+
+1. **Do not build the 1.7B picker into translate.py on this evidence.** It falls short of the reader's 85% bar on the scope (about 83%, 85% trimmed, interval on the sample 77–95%). It adds about 3 correct words in 45 over what the sheet already shows. If it is built later, use trimmed options and show the pick as an ordering, not as the answer.
+2. **Qwen3-8B is accurate enough for a background laptop pass** (ADR-0023): about 95% on the scope, about 25 minutes per video of this size on 4 threads. It needs 8 GB, so one model at a time. Its glosses for missing words are usable (18 of 20) if marked as guesses. Drop the "intended word" request, or keep it out of the sheet, until it is measured on a video with real recognition errors.
+3. **Before quoting either figure as settled:** the reader reviews these 45 labels, and a second video with real recognition errors (the 上海 street interview) tests the misheard case.
