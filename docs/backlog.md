@@ -17,9 +17,8 @@ Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
 
 Later, not worth it yet: #33 the player's words and pinyin in the background.
 
-Library and content, measured and waiting on a decision: #10 generated story with due words ·
-#11 find YouTube videos by due and new words · #14 a second transcription pass (resume is exact
-now) · #16 word senses in context (the 8B laptop model, not the phone's).
+Library and content: #10 generated story with due words (being built: phone, laptop when online)
+· #16 word senses in context (parked).
 
 Tooling and checks: #17 Termux service dying (watch to 10-19).
 

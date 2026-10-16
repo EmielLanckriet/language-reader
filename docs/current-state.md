@@ -3,6 +3,24 @@
 Updated 2026-10-16. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Find videos (#11, spec 015) — deployed and phone checked
+
+The library's Videos heading links to **Find videos**: a YouTube search through the Termux service
+(new `GET /search`, `GET /subtitles`, `POST /download`; one yt-dlp at a time, 429 reported as
+rate-limited), each result's Chinese subtitles chosen as import chooses them and scored as the
+library scores a document **without saving it** (`content/find.ts`, `wordsByForm` read-only):
+known share, the due words themselves, never-met words. Results are grouped by a known-share bar
+(90 % by default, 70–99, remembered): at or above it by due words then fewest never met, below it
+folded, no Chinese apart. Download hands the address to `termux-url-opener` as a share does.
+Figures come first from the dictionary (≈), then the library's model re-scores them, best placed
+first (research R7: the model took ~100 s a candidate on the phone, 59.95 of 60 profiled seconds).
+
+Validation: scoring property test (unsaved = saved, history untouched), six service tests with a
+stub yt-dlp, browser `findvideos` (stubbed). Phone (build `1792142815376`, daily Reader, service
+script updated by commit hash and restarted through Reader Start): "Chinese comprehensible input
+intermediate" — 15 results, the first figures after 18 s, all fetched after 183 s (subtitles ~16 s
+each), the first refined after 311 s (≈ 89 → 93.4 % known). Nothing downloaded on the phone.
+
 ## Night of 2026-10-16: eight issues worked unattended — deployed
 
 Details and measurements are in each issue; one line each here.

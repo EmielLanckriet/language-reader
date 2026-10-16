@@ -34,5 +34,5 @@
 
 ## Phase 4: Ship
 
-- [ ] T010 Lint, type check, all tests; deploy; update the phone's reader-service.py; phone check
+- [x] T010 Lint, type check, all tests; deploy; update the phone's reader-service.py; phone check
       (quickstart §3); docs (current-state, backlog, issue #11).
