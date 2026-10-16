@@ -15,6 +15,7 @@ export type Call =
 	| { method: 'saveDocument'; args: [unknown, unknown, unknown] }
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
+	| { method: 'wordsByForm'; args: [string, string[]] }
 	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'tuningAnalysis'; args: [] }
 	| { method: 'parametersInForce'; args: [] }

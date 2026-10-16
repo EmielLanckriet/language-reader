@@ -2963,6 +2963,158 @@ const scenarios = {
 		}
 	},
 
+	// Find videos (spec 015, quickstart §2). Needs the reader service on port 18765 started with
+	// READER_YTDLP=scripts/verify-in-browser/ytdlp-stub.py, READER_OPENER=…/opener-stub.sh,
+	// READER_ROOT=<its root> and YTDLP_STUB_LOG=<a file>, and a verification-mode build. The stub's
+	// first video's words come in as mature Anki words; then a search must stream
+	// four results into their groups, the bar must re-sort without asking yt-dlp again, Download must
+	// start a job, and the learning data must be the same before and after.
+	async findvideos() {
+		const tab = await openTab('about:blank');
+		const { readFileSync, existsSync } = await import('node:fs');
+		const stubCalls = () =>
+			existsSync(process.env.YTDLP_STUB_LOG ?? '')
+				? readFileSync(process.env.YTDLP_STUB_LOG, 'utf8').trim().split('\n').filter(Boolean).length
+				: 0;
+		const setValue = (selector, prototype, value) => `
+			const field = document.querySelector(${JSON.stringify(selector)});
+			Object.getOwnPropertyDescriptor(${prototype}.prototype, 'value').set.call(field, ${JSON.stringify(value)});
+			field.dispatchEvent(new Event('input', { bubbles: true }));
+			return true;`;
+		const exported = async () => {
+			await tab.goto('/cards/tuning');
+			await until('the export', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some((b) => b.textContent === 'Export learning data')`
+				)
+			);
+			await tab.evaluate(`
+				window.tuningExport = null;
+				const original = URL.createObjectURL;
+				URL.createObjectURL = function (blob) { window.tuningExport = blob.text(); return original.call(URL, blob); };
+				[...document.querySelectorAll('button')].find((b) => b.textContent === 'Export learning data').click();
+				return true;`);
+			await until('the exported data', () => tab.evaluate('return !!window.tuningExport'));
+			return JSON.stringify(
+				(await tab.evaluate('return JSON.parse(await window.tuningExport)')).words
+			);
+		};
+		try {
+			await tab.send('Storage.clearDataForOrigin', { origin: appOrigin, storageTypes: 'all' });
+			// Known words come from an Anki import: the word sheet only retires words now (ADR-0040).
+			await tab.goto('/diagnostics');
+			await until('Anki import', () =>
+				tab.evaluate(`return !!document.querySelector('input[aria-label="Anki export"]')`)
+			);
+			const known = ['我们', '一起', '看书', '你', '看', '我'].map((word) => ({
+				word,
+				level: 'mature',
+				stability: 200,
+				type: 2,
+				lapses: 0,
+				suspended: false,
+				difficulty: 5,
+				lastReview: new Date(Date.now() - 86_400_000).toISOString()
+			}));
+			await tab.evaluate(`
+				const payload = { format: 2, profile: 'Verification', collectionModified: '2020-01-01T00:00:00Z', exportedAt: '2020-01-01T00:00:00Z', words: ${JSON.stringify(known)} };
+				const input = document.querySelector('input[aria-label="Anki export"]');
+				const transfer = new DataTransfer();
+				transfer.items.add(new File([JSON.stringify(payload)], 'words.json'));
+				input.files = transfer.files;
+				input.dispatchEvent(new Event('change', { bubbles: true }));
+				return true;`);
+			await until('the import preview', () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Import')`
+				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Import').click(); return true;`
+			);
+			await until('the seed imported', () =>
+				tab.evaluate(`return document.body.textContent.includes('Imported:')`)
+			);
+			const before = await exported();
+
+			await tab.goto('/find');
+			await until('the search box', () =>
+				tab.evaluate('return !!document.querySelector("input[type=search]")')
+			);
+			await tab.evaluate(setValue('input[type=search]', 'HTMLInputElement', '书'));
+			const started = Date.now();
+			await tab.evaluate(
+				`document.querySelector('form.search button[type=submit]').click(); return true;`
+			);
+			const firstScoredMs = await until(
+				'a first scored result',
+				() => tab.evaluate(`return document.body.innerText.includes('% known') ? true : null`),
+				60000,
+				50
+			).then(() => Date.now() - started);
+			await until(
+				'every result settled',
+				() =>
+					tab.evaluate(
+						`return !document.body.innerText.includes('Fetching its subtitles') && !document.body.innerText.includes('Searching YouTube') ? true : null`
+					),
+				60000,
+				100
+			);
+			const groups = async () =>
+				tab.evaluate(`
+					document.querySelectorAll('details').forEach((d) => (d.open = true));
+					const titles = (root) => root ? [...root.querySelectorAll('.result .title')].map((t) => t.textContent) : [];
+					const details = (word) => [...document.querySelectorAll('details')].find((d) => d.querySelector('summary').textContent.includes(word));
+					return {
+						heading: document.querySelector('section h2')?.textContent,
+						fits: titles(document.querySelector('section[aria-label="Videos that fit"]')),
+						pending: titles(document.querySelector('section[aria-label="Still to score"]')),
+						below: titles(details('Below')),
+						noChinese: titles(details('No Chinese')),
+						tryAgain: document.body.innerText.includes('Try again'),
+						figures: [...document.querySelectorAll('.figures')].map((f) => f.textContent.replace(/\\s+/g, ' ').trim())
+					};`);
+			const first = await groups();
+			const callsBefore = stubCalls();
+			await tab.evaluate(setValue('input[type=range]', 'HTMLInputElement', '70'));
+			const lowered = await groups();
+			const callsAfter = stubCalls();
+
+			await tab.evaluate(`
+				const result = [...document.querySelectorAll('.result')].find((r) => r.textContent.includes('你好朋友'));
+				[...result.querySelectorAll('button')].find((b) => b.textContent === 'Download').click();
+				return true;`);
+			const job = await until('the download job', async () => {
+				const response = await fetch('http://127.0.0.1:18765/downloads').catch(() => null);
+				const jobs = response?.ok ? await response.json() : [];
+				return jobs.find((j) => (j.progress?.url ?? j.title ?? '').includes('vidAuto')) ?? null;
+			});
+			const after = await exported();
+			return {
+				pass:
+					first.fits.length === 1 &&
+					first.fits[0] === '我们一起看书' &&
+					first.below.includes('你好朋友') &&
+					first.noChinese.includes('English only') &&
+					first.pending.includes('太多请求') &&
+					first.tryAgain &&
+					lowered.heading?.includes('70 %') &&
+					callsAfter === callsBefore &&
+					!!job &&
+					before === after,
+				firstScoredMs,
+				first,
+				lowered: { heading: lowered.heading, fits: lowered.fits, below: lowered.below },
+				stubCalls: callsAfter,
+				job: job?.job,
+				historyUnchanged: before === after
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async model() {
 		const tab = await openTab('about:blank');
 		const console_ = [];

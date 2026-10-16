@@ -2036,6 +2036,37 @@ export class Repository {
 	}
 
 	/** The current state of each of these words, omitting any the reader never judged (FR-006b). */
+	/**
+	 * The words of these written forms that exist, and whether each was ever met: marked, given a
+	 * memory, reviewed, or inside a read, played, lookup or check range (spec 015, Find videos). Read
+	 * only: a candidate video is scored without becoming a document.
+	 */
+	wordsByForm(language: string, forms: string[]): Map<string, { id: LexemeId; met: boolean }> {
+		const found = new Map<string, { id: LexemeId; met: boolean }>();
+		const unique = [...new Set(forms)];
+		if (unique.length === 0) return found;
+		const rows = queryRows(
+			this.db,
+			`SELECT id, surface FROM lexeme WHERE language = ? AND surface IN (${unique.map(() => '?').join(', ')})`,
+			[language, ...unique]
+		);
+		if (rows.length === 0) return found;
+		const ids = rows.map((row) => Number(row.id));
+		const list = ids.join(', ');
+		const met = new Set(
+			queryRows(
+				this.db,
+				`SELECT lexeme_id FROM (${ENCOUNTERED_WORDS}) WHERE lexeme_id IN (${list})
+         UNION SELECT lexeme_id FROM status_event WHERE lexeme_id IN (${list})
+         UNION SELECT lexeme_id FROM memory WHERE lexeme_id IN (${list})
+         UNION SELECT lexeme_id FROM encounter WHERE kind = 'review' AND lexeme_id IN (${list})`
+			).map((row) => Number(row.lexeme_id))
+		);
+		for (const row of rows)
+			found.set(String(row.surface), { id: Number(row.id), met: met.has(Number(row.id)) });
+		return found;
+	}
+
 	getStates(lexemeIds: LexemeId[]): Map<LexemeId, WordState> {
 		if (lexemeIds.length === 0) return new Map();
 

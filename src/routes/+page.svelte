@@ -175,7 +175,10 @@
 	<a class="add-link" href={resolve('/add')}>＋ Add</a>
 </div>
 <StudyOverview />
-<div class="section-heading"><h2>Videos</h2></div>
+<div class="section-heading">
+	<h2>Videos</h2>
+	<a class="add-link" href={resolve('/find')}>Find videos</a>
+</div>
 
 {#if transcribing.length > 0}
 	<section class="fresh" aria-label="Being transcribed">

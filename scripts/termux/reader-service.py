@@ -17,8 +17,10 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import urllib.parse
 
 VERSION = 1
 # When this process started, so Reader can tell a restart (Android killed Termux) from a long run.
@@ -26,6 +28,90 @@ STARTED = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 KEEP_RECENT = 20
 KEEP_DAYS = 30
 TRANSLATE = os.environ.get('READER_TRANSLATE', os.path.expanduser('~/bin/translate.py'))
+# Find videos (spec 015): yt-dlp for search and subtitles, the opener for a chosen video's download.
+YTDLP = os.environ.get('READER_YTDLP') or shutil.which('yt-dlp') or 'yt-dlp'
+OPENER = os.environ.get('READER_OPENER', os.path.expanduser('~/bin/termux-url-opener'))
+# The automatic Chinese the opener asks for when no human Chinese track exists: never a translation.
+AUTO_CHINESE = 'zh,zh-CN,zh-Hans,zh-SG,zh-TW,zh-Hant,zh-HK'
+# One yt-dlp at a time: polite to YouTube, and the phone has two fast cores.
+YTDLP_LOCK = threading.Lock()
+
+
+def ytdlp(*args, timeout=300):
+    """Run yt-dlp through python3, as the opener does: its zipapp's env shebang fails from a task."""
+    with YTDLP_LOCK:
+        return subprocess.run([sys.executable, YTDLP, '--js-runtimes', 'node', *args],
+                              capture_output=True, text=True, timeout=timeout)
+
+
+def refused(result):
+    return 'HTTP Error 429' in result.stderr
+
+
+def search(query, count):
+    result = ytdlp('--flat-playlist', '-j', f'ytsearch{count}:{query}')
+    if refused(result):
+        return 429, {'state': 'rate-limited'}
+    found = []
+    for line in result.stdout.splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        found.append({'id': entry['id'], 'url': f"https://www.youtube.com/watch?v={entry['id']}",
+                      'title': entry.get('title') or '', 'channel': entry.get('channel') or entry.get('uploader') or '',
+                      'duration': entry.get('duration')})
+    if not found and result.returncode != 0:
+        return 502, {'error': (result.stderr.strip().splitlines() or ['yt-dlp failed'])[-1]}
+    return 200, found
+
+
+def subtitles(video):
+    """Chinese tracks only, by the opener's rule: human ones, else automatic Chinese."""
+    url = f'https://www.youtube.com/watch?v={video}'
+    folder = tempfile.mkdtemp(prefix='find-')
+    try:
+        common = ('--skip-download', '--no-playlist', '--sub-format', 'vtt', '--sleep-requests', '1',
+                  '--sleep-subtitles', '1', '-P', folder)
+        first = ytdlp(*common, '--write-subs', '--write-info-json', '--sub-langs', 'zh.*',
+                      '-o', 'subtitle:track.%(ext)s', '-o', 'media.%(ext)s', url)
+        if refused(first):
+            return 429, {'state': 'rate-limited'}
+        kind, prefix = 'human', 'track.'
+        if not any(n.startswith('track.zh') for n in os.listdir(folder)):
+            second = ytdlp(*common, '--write-auto-subs', '--sub-langs', AUTO_CHINESE,
+                           '-o', 'subtitle:track-auto.%(ext)s', url)
+            if refused(second):
+                return 429, {'state': 'rate-limited'}
+            kind, prefix = 'automatic', 'track-auto.'
+        try:
+            with open(os.path.join(folder, 'media.info.json'), encoding='utf-8') as file:
+                info = json.load(file)
+        except (OSError, ValueError):
+            info = {}
+        listed = info.get('subtitles' if kind == 'human' else 'automatic_captions', {})
+        tracks = []
+        for name in sorted(os.listdir(folder)):
+            if not (name.startswith(prefix + 'zh') and name.endswith('.vtt')):
+                continue
+            lang = name[len(prefix):-len('.vtt')]
+            with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as file:
+                text = file.read()
+            tracks.append({'lang': lang, 'name': (listed.get(lang) or [{}])[0].get('name') or '',
+                           'kind': kind, 'text': text})
+        if tracks:
+            return 200, {'state': 'ok', 'tracks': tracks}
+        if first.returncode != 0 and not info:
+            return 502, {'error': (first.stderr.strip().splitlines() or ['yt-dlp failed'])[-1]}
+        return 200, {'state': 'no-chinese'}
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def start_download(url):
+    """As a share to Termux does: the opener downloads, packs, and the job shows in /downloads."""
+    subprocess.Popen(['bash', OPENER, url], start_new_session=True,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def canonical(value):
@@ -159,7 +245,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Private-Network', 'true')
-        self.send_header('Access-Control-Allow-Methods', 'GET, PUT')
+        self.send_header('Access-Control-Allow-Methods', 'GET, PUT, POST')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
@@ -299,8 +385,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         prune(self.backups())
         self.reply(204)
 
+    def do_POST(self):
+        if self.path.split('?')[0] != '/download':
+            return self.reply(404)
+        try:
+            url = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0)))).get('url', '')
+        except (ValueError, AttributeError):
+            return self.reply(400, {'error': 'not JSON'})
+        if not isinstance(url, str) or not url.startswith(('https://www.youtube.com/watch?v=', 'https://youtu.be/')):
+            return self.reply(400, {'error': 'not a YouTube video address'})
+        start_download(url)
+        return self.reply(202, {})
+
     def do_GET(self):
         path = self.path.split('?')[0]
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        if path == '/search':
+            words = (query.get('q') or [''])[0].strip()
+            if not words:
+                return self.reply(400, {'error': 'no query'})
+            count = min(20, max(1, int((query.get('n') or ['15'])[0])))
+            return self.reply(*search(words, count))
+        if path == '/subtitles':
+            video = (query.get('id') or [''])[0]
+            if not video or not all(c.isalnum() or c in '-_' for c in video):
+                return self.reply(400, {'error': 'not a video id'})
+            return self.reply(*subtitles(video))
         if path == '/health':
             return self.reply(200, {'version': VERSION, 'started': STARTED})
         if path in ('/backup', '/backup/latest'):

@@ -277,6 +277,8 @@ function run(request: Request): unknown {
 			return repository.withdrawDocument(request.args[0], request.args[1]);
 		case 'getStates':
 			return repository.getStates(request.args[0]);
+		case 'wordsByForm':
+			return repository.wordsByForm(request.args[0], request.args[1]);
 		case 'readHistory':
 			return repository.readHistory();
 		case 'replaceTokens':

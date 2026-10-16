@@ -52,6 +52,17 @@ export interface WordCounts {
 
 const RECURRING_LINES = 3;
 
+/** Due as the library and Cards count it: an active card whose reading recall is due now. */
+export function isDueWord(
+	state: string | undefined,
+	reading: Memory | undefined,
+	now: Date,
+	parameters?: FsrsParameters
+): boolean {
+	if (!reading || kindOf(state, reading, now, parameters) === 'ignored') return false;
+	return isActive(reading) && Date.parse(reading.due) <= now.getTime();
+}
+
 export function wordCounts(
 	occurrences: Map<LexemeId, number>,
 	lines: Map<LexemeId, number>,
@@ -65,7 +76,7 @@ export function wordCounts(
 		const reading = memory.get(lexeme)?.reading;
 		const kind = kindOf(states.get(lexeme)?.state, reading, now, parameters);
 		if (kind === 'ignored') continue;
-		if (reading && isActive(reading) && Date.parse(reading.due) <= now.getTime()) {
+		if (isDueWord(states.get(lexeme)?.state, reading, now, parameters)) {
 			counts.due++;
 			counts.dueOccurrences += n;
 		}

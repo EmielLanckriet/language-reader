@@ -288,5 +288,82 @@ class RunningTheUrlOpener(unittest.TestCase):
         self.assertNotIn('download:', log)
 
 
+
+class FindingVideos(unittest.TestCase):
+    """Find videos (spec 015, contracts/service.md): search, one video's Chinese subtitles, and a
+    download started as a share would, with yt-dlp and the opener replaced by stubs."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.log = os.path.join(self.root, 'ytdlp.log')
+        os.environ['YTDLP_STUB_LOG'] = self.log
+        os.environ['READER_YTDLP'] = os.path.join(HERE, '..', 'verify-in-browser', 'ytdlp-stub.py')
+        opener = os.path.join(self.root, 'opener-stub.sh')
+        with open(opener, 'w') as file:
+            file.write('#!/bin/sh\necho "$1" >> "$(dirname "$0")/opened"\n')
+        os.chmod(opener, 0o755)
+        os.environ['READER_OPENER'] = opener
+        service = load_service(os.path.join(self.root, 'no-translate.py'))
+        service.Handler.root = self.root
+        self.server = service.http.server.ThreadingHTTPServer(('127.0.0.1', 0), service.Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        for name in ('YTDLP_STUB_LOG', 'READER_YTDLP', 'READER_OPENER'):
+            os.environ.pop(name, None)
+
+    def request(self, method, path, body=None):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1], timeout=30)
+        connection.request(method, path, body=None if body is None else json.dumps(body))
+        response = connection.getresponse()
+        data = response.read()
+        return response.status, json.loads(data) if data else None
+
+    def test_search_lists_results_in_order(self):
+        status, found = self.request('GET', '/search?q=%E4%B9%A6')
+        self.assertEqual(status, 200)
+        self.assertEqual([r['id'] for r in found], ['vidHuman', 'vidAuto', 'vidNone', 'vidLimited'])
+        self.assertEqual(found[0]['url'], 'https://www.youtube.com/watch?v=vidHuman')
+        self.assertEqual((found[0]['channel'], found[0]['duration']), ('书频道', 300))
+        with open(self.log) as log:
+            self.assertIn('ytsearch15:书', json.loads(log.readline()))
+
+    def test_subtitles_human_chinese_only_without_a_second_pass(self):
+        status, found = self.request('GET', '/subtitles?id=vidHuman')
+        self.assertEqual(status, 200)
+        self.assertEqual(found['state'], 'ok')
+        self.assertEqual([(t['lang'], t['kind'], t['name']) for t in found['tracks']],
+                         [('zh-CN', 'human', 'Chinese (China)')])
+        self.assertIn('我们一起看书', found['tracks'][0]['text'])
+        with open(self.log) as log:
+            calls = [json.loads(line) for line in log]
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn('--write-auto-subs', calls[0])
+
+    def test_subtitles_automatic_only_when_no_human_chinese(self):
+        status, found = self.request('GET', '/subtitles?id=vidAuto')
+        self.assertEqual((status, found['state']), (200, 'ok'))
+        self.assertEqual([(t['lang'], t['kind']) for t in found['tracks']], [('zh', 'automatic')])
+
+    def test_no_chinese(self):
+        self.assertEqual(self.request('GET', '/subtitles?id=vidNone'), (200, {'state': 'no-chinese'}))
+
+    def test_rate_limit_is_its_own_state(self):
+        self.assertEqual(self.request('GET', '/subtitles?id=vidLimited'), (429, {'state': 'rate-limited'}))
+
+    def test_download_starts_the_opener_with_a_youtube_address_only(self):
+        url = 'https://www.youtube.com/watch?v=vidHuman'
+        self.assertEqual(self.request('POST', '/download', {'url': url})[0], 202)
+        self.assertEqual(self.request('POST', '/download', {'url': 'https://example.com/x'})[0], 400)
+        opened = os.path.join(self.root, 'opened')
+        for _ in range(50):
+            if os.path.exists(opened):
+                break
+            time.sleep(0.1)
+        with open(opened) as file:
+            self.assertEqual(file.read().split(), [url])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -265,6 +265,14 @@ export class RepositoryClient {
 		);
 	}
 
+	/** Words by written form, and whether each was met: read only (spec 015). */
+	wordsByForm(
+		language: string,
+		forms: string[]
+	): Promise<Map<string, { id: LexemeId; met: boolean }>> {
+		return this.call({ method: 'wordsByForm', args: [language, forms] });
+	}
+
 	getStates(lexemeIds: LexemeId[]): Promise<Map<LexemeId, WordState>> {
 		// A Map survives structuredClone intact, so it arrives as a Map rather than as an object.
 		return this.call({ method: 'getStates', args: [lexemeIds] });
