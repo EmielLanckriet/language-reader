@@ -122,8 +122,10 @@ Acceptance: after passing 7 of 20 words and leaving, starting that part again dr
 - **FR-004** The drillable words of a fragment are its Chinese words (lexemes, not punctuation,
   Latin text or numbers) that are new (no memory yet), due active cards, not yet active (every word
   with memory that is not an active card, tapped or not: tapped candidates and words met only
-  untapped alike), or set aside (ADR-0040 amendment). Excluded: active cards not due, and words
-  retired by hand.
+  untapped alike). Excluded: active cards not due, and words retired by hand. A set-aside word
+  (ADR-0040 amendment) is classed like an active card: drillable when its memory, Anki history
+  included, is due, excluded otherwise (issue #42; amended 2026-10-17: before, every set-aside word
+  was drillable, so a word known for years in Anki was drilled as if new).
 - **FR-005** Filters, each optional and combinable: at least x occurrences in the fragment; rank
   among the y most common words in general Chinese (the frequency list of ADR-0039); coverage
   target z%: walking the drillable words most frequent in the fragment first, keep adding words until

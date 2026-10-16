@@ -12,7 +12,7 @@ import { kindOf } from './shares';
 import type { LexemeId, Token, WordState } from './types';
 
 /** How a word stands for a drill (FR-004); `excluded` is an active card not due, or retired by hand. */
-export type WordClass = 'new' | 'due' | 'not-active' | 'set-aside' | 'excluded';
+export type WordClass = 'new' | 'due' | 'not-active' | 'excluded';
 
 export interface FragmentWord {
 	lexemeId: LexemeId;
@@ -54,8 +54,9 @@ export interface StepRecord {
 }
 
 /**
- * How a word stands for a drill (FR-004): new, due, not yet active (tapped or not), set aside, or
- * excluded — an active card not due, a word retired by hand, or one ignored.
+ * How a word stands for a drill (FR-004): new, due, not yet active (tapped or not), or excluded —
+ * an active card not due, a word retired by hand, or one ignored. A set-aside word is judged by its
+ * Anki memory like any reviewed card (issue #42): set aside keeps it off Cards, not out of a drill.
  */
 export function classify(
 	state: WordState | undefined,
@@ -67,8 +68,8 @@ export function classify(
 	const of = (wordClass: WordClass) => ({ class: wordClass, known });
 	if (state?.state === 'ignored') return of('excluded');
 	if (!reading) return of(state?.state === 'retired' ? 'excluded' : 'new');
-	if (reading.setAside) return of('set-aside');
-	if (isActive(reading)) return of(Date.parse(reading.due) <= now.getTime() ? 'due' : 'excluded');
+	if (reading.setAside || isActive(reading))
+		return of(Date.parse(reading.due) <= now.getTime() ? 'due' : 'excluded');
 	if (state?.state === 'retired') return of('excluded');
 	return of('not-active');
 }

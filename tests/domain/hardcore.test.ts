@@ -81,7 +81,7 @@ describe('the next step', () => {
 });
 
 // A document as lines of tokens: a number is a word's lexeme, 0 a punctuation mark.
-const CLASSES: WordClass[] = ['new', 'due', 'not-active', 'set-aside', 'excluded'];
+const CLASSES: WordClass[] = ['new', 'due', 'not-active', 'excluded'];
 const documentArb = fc.record({
 	lines: fc.array(fc.array(fc.integer({ min: 0, max: 12 }), { maxLength: 8, size: 'max' }), {
 		minLength: 1,
@@ -224,13 +224,21 @@ describe('which words a drill takes (FR-004)', () => {
 			marks: [{ ...o(at(2)), asserted: 'retired', provenance: 'manual' }]
 		});
 		expect(classify(state('retired'), retired, now).class).toBe('excluded');
-		const aside = reading({
-			events: [review(at(1))],
-			marks: [{ ...o(at(2)), asserted: 'retired', provenance: setAsideProvenance(2000) }]
-		});
-		expect(classify(state('retired', setAsideProvenance(2000)), aside, now).class).toBe(
-			'set-aside'
-		);
+		// Set aside (issue #42): an Anki word, judged by its imported memory like any reviewed card.
+		const aside = (stability: number) =>
+			reading({
+				marks: [
+					{
+						...o(at(1)),
+						asserted: 'anki-long-term',
+						provenance: `anki ${at(1)} s=${stability} d=5 r=2026-08-18T14:55:21Z decay=0.264`
+					},
+					{ ...o(at(2)), asserted: 'retired', provenance: setAsideProvenance(2000) }
+				]
+			});
+		const asideState = state('retired', setAsideProvenance(2000));
+		expect(classify(asideState, aside(1310.8), now).class).toBe('excluded');
+		expect(classify(asideState, aside(2), now).class).toBe('due');
 		expect(classify(state('ignored'), undefined, now).class).toBe('excluded');
 	});
 });
