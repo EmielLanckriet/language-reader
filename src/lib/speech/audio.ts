@@ -7,9 +7,14 @@
  * laptop's to 142 dB after resampling. Decoded ahead only as far as the next window needs, so an
  * hour of video is never held decoded at once.
  *
- * The decoder runs forward without seeking: each AAC frame's output depends on the frame before
- * it, so starting mid-file would change the samples at the start. Windows are consecutive, and a
- * resumed transcript starts two frames early and discards them.
+ * Every window has its own decoder, started PREROLL frames early (#14). AAC's noise substitution
+ * carries a random seed from frame to frame, so a decoder started mid-file never produces the
+ * samples one started at frame 0 does, however early it starts (measured 2026-10-16: 2 to 2,048
+ * frames of pre-roll still left hundreds of samples different at 30 to 90 minutes). One decoder
+ * for the whole file made a resumed transcript differ from an uninterrupted one; a decoder per
+ * window makes them the same computation. The words moved only at near ties: 17.8% character
+ * errors against 18.3% on six film excerpts (scripts/measure/sensevoice/issue14). Eight frames,
+ * since Android's AAC decoder (FDK) still settles after two.
  */
 import type { Sample } from 'mp4box';
 import { downmix, Resampler, SPEECH_RATE } from './resample';
@@ -17,37 +22,21 @@ import { downmix, Resampler, SPEECH_RATE } from './resample';
 const SLICE = 4 * 1024 * 1024;
 /** Output samples per AAC-LC frame. */
 const FRAME = 1024;
+/** Frames decoded and discarded before each window, so the decoder has settled by its start. */
+const PREROLL = 8;
 
 export type AudioProblem = 'no audio track' | 'codec not supported';
 
 export class SpeechAudio {
-	private readonly decoder: AudioDecoder;
-	private next = 0; // the next compressed sample to decode
-	private decoded = 0; // input samples decoded so far, counted from the first frame decoded
-	private started = 0; // input sample at which decoding started
-	// Decoded mono input from `base`: whole buffer plus parts not yet joined, so that decoding a
-	// window appends ~1,300 frames without copying the growing buffer each time.
-	private buffer = new Float32Array(0);
-	private parts: Float32Array[] = [];
-	private base = 0;
-	private waiting: (() => void) | undefined;
-	private failure: Error | undefined;
+	private active: AudioDecoder | undefined;
 	readonly resampler: Resampler;
 
 	private constructor(
 		private readonly samples: Sample[],
 		private readonly timescale: number,
-		config: AudioDecoderConfig
+		private readonly config: AudioDecoderConfig
 	) {
 		this.resampler = new Resampler(config.sampleRate, samples.length * FRAME);
-		this.decoder = new AudioDecoder({
-			output: (data) => this.take(data),
-			error: (e) => {
-				this.failure = e instanceof Error ? e : new Error(String(e));
-				this.waiting?.();
-			}
-		});
-		this.decoder.configure(config);
 	}
 
 	/** The audio of `video`, or why it cannot be had. */
@@ -96,95 +85,74 @@ export class SpeechAudio {
 		return this.resampler.outputLength / SPEECH_RATE;
 	}
 
-	/** 16 kHz mono audio for [from, to) seconds. Calls must move forward through the recording. */
+	/** 16 kHz mono audio for [from, to) seconds, the same whichever windows came before. */
 	async window(from: number, to: number): Promise<Float32Array> {
 		const out0 = Math.round(from * SPEECH_RATE);
 		const out1 = Math.min(Math.round(to * SPEECH_RATE), this.resampler.outputLength);
 		const [lo, hi] = this.resampler.inputFor(out0, out1);
-		if (this.next === 0 && this.decoded === 0 && lo > 0) this.startAt(lo);
-		await this.decodeThrough(hi);
-		this.join();
-		this.dropBefore(lo);
-		return this.resampler.range(this.buffer, this.base, out0, out1);
+		const first = Math.max(0, Math.floor(lo / FRAME) - PREROLL);
+		// Two frames past the end, since a decoder can hold a frame back until it sees the next.
+		const last = Math.min(this.samples.length, Math.ceil(hi / FRAME) + 2);
+		const decoded = await this.decode(first, last);
+		return this.resampler.range(decoded, first * FRAME, out0, out1);
 	}
 
 	close(): void {
-		if (this.decoder.state !== 'closed') this.decoder.close();
+		if (this.active && this.active.state !== 'closed') this.active.close();
 	}
 
-	/** Resuming: start two frames before `input`, so the decoder has settled by then. */
-	private startAt(input: number): void {
-		this.next = Math.max(0, Math.floor(input / FRAME) - 2);
-		this.started = this.base = this.next * FRAME;
-	}
-
-	private async decodeThrough(input: number): Promise<void> {
-		while (this.started + this.decoded < input) {
-			if (this.failure) throw this.failure;
-			if (this.next < this.samples.length) {
-				// Two frames ahead of what is needed, since the decoder holds a frame back.
-				const want = Math.min(this.samples.length, Math.ceil(input / FRAME) + 2);
-				for (; this.next < want; this.next++) this.feed(this.samples[this.next]);
-				if (this.next === this.samples.length) await this.decoder.flush();
-			}
-			if (this.started + this.decoded < input) {
-				if (this.next >= this.samples.length && this.decoder.decodeQueueSize === 0) return;
-				await new Promise<void>((resolve) => (this.waiting = resolve));
-			}
+	/** Frames [first, last) decoded by a decoder of their own, as mono input samples. */
+	private async decode(first: number, last: number): Promise<Float32Array> {
+		const parts: Float32Array[] = [];
+		let failure: Error | undefined;
+		const decoder = new AudioDecoder({
+			output: (data) => {
+				// The recording's length was taken as samples x 1024, which is AAC-LC; HE-AAC gives 2048.
+				if (data.numberOfFrames !== FRAME && last < this.samples.length)
+					failure ??= new Error('codec not supported');
+				parts.push(mono(data));
+			},
+			error: (e) => (failure ??= e instanceof Error ? e : new Error(String(e)))
+		});
+		this.active = decoder;
+		try {
+			decoder.configure(this.config);
+			for (let i = first; i < last; i++) decoder.decode(this.chunk(this.samples[i]));
+			await decoder.flush();
+		} catch (error) {
+			throw failure ?? error;
+		} finally {
+			if (decoder.state !== 'closed') decoder.close();
 		}
-	}
-
-	private feed(sample: Sample): void {
-		this.decoder.decode(
-			new EncodedAudioChunk({
-				type: 'key',
-				timestamp: Math.round((sample.cts * 1e6) / this.timescale),
-				duration: Math.round((sample.duration * 1e6) / this.timescale),
-				data: sample.data!
-			})
-		);
-	}
-
-	private take(data: AudioData): void {
-		// The recording's length was taken as samples x 1024, which is AAC-LC; HE-AAC gives 2048.
-		if (data.numberOfFrames !== FRAME && this.next < this.samples.length) {
-			this.failure = new Error('codec not supported');
-		}
-		const channels: Float32Array[] = [];
-		for (let c = 0; c < data.numberOfChannels; c++) {
-			const plane = new Float32Array(data.numberOfFrames);
-			data.copyTo(plane, { planeIndex: c, format: 'f32-planar' });
-			channels.push(plane);
-		}
-		data.close();
-		const mono = downmix(channels);
-		this.parts.push(mono);
-		this.decoded += mono.length;
-		const resolve = this.waiting;
-		this.waiting = undefined;
-		resolve?.();
-	}
-
-	private join(): void {
-		if (this.parts.length === 0) return;
-		const joined = new Float32Array(
-			this.buffer.length + this.parts.reduce((n, p) => n + p.length, 0)
-		);
-		joined.set(this.buffer);
-		let at = this.buffer.length;
-		for (const p of this.parts) {
+		if (failure) throw failure;
+		const joined = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+		let at = 0;
+		for (const p of parts) {
 			joined.set(p, at);
 			at += p.length;
 		}
-		this.buffer = joined;
-		this.parts = [];
+		return joined;
 	}
 
-	private dropBefore(input: number): void {
-		if (input <= this.base) return;
-		this.buffer = this.buffer.slice(input - this.base);
-		this.base = input;
+	private chunk(sample: Sample): EncodedAudioChunk {
+		return new EncodedAudioChunk({
+			type: 'key',
+			timestamp: Math.round((sample.cts * 1e6) / this.timescale),
+			duration: Math.round((sample.duration * 1e6) / this.timescale),
+			data: sample.data!
+		});
 	}
+}
+
+function mono(data: AudioData): Float32Array {
+	const channels: Float32Array[] = [];
+	for (let c = 0; c < data.numberOfChannels; c++) {
+		const plane = new Float32Array(data.numberOfFrames);
+		data.copyTo(plane, { planeIndex: c, format: 'f32-planar' });
+		channels.push(plane);
+	}
+	data.close();
+	return downmix(channels);
 }
 
 /** The AudioSpecificConfig inside the track's esds box: what the decoder needs to read raw AAC. */
