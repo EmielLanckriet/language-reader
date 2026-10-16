@@ -3,7 +3,7 @@
 Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Anki words are not special: one 14-day rule, and hardcore drills only due ones (#42) — deployed
+## Anki words are not special: one 14-day rule, and hardcore drills only due ones (#42) — deployed and phone checked
 
 On the Vietnam video (document 40, 2026-10-16) a drill offered 味道, 水果, 冷, 舒服 and six more:
 Anki words with stabilities of 440–1,311 days, set aside on 2026-10-07 as outside the 2,000 most
@@ -23,7 +23,13 @@ stability reaches 14 days, its Anki seed's included (ADR-0041 amendment; rule ke
 `known-2+stable-14`, so every memory is recomputed once). On the copy: 954 of 1,001 set-aside words
 become active, due cards 74 → 297, which the reader accepted at once; 47 under 14 days stay set
 aside; no other word is past 14 days by reading alone yet. Tests red first and caught two mutations
-(no seed check; drill-only); 658 tests, type check, lint. Not yet seen on the phone.
+(no seed check; drill-only); 658 tests, type check, lint. Phone (build `1792190277417`, daily
+Reader): the renderer crashed ("Aw, Snap!") about a minute after opening Cards on the new build,
+during the recompute; cause not found (the page had run since 19:11, and 11.6 MB had been pulled
+through it over DevTools that evening). After Reload, Cards read 9 due, then 211 due · 10 new
+steadily from 00:48 to 00:59, heap 8–13 MB, no further crash. Cards counts only words met in the
+library (`ENCOUNTERED_WORDS`): the copy restored on the laptop gave 284 (61 under the old rule,
+against 9 on the phone), so a laptop restore does not reproduce the phone's Cards counts.
 
 ## Spoken stories (spec 018) — deployed and phone checked
 
