@@ -3,6 +3,15 @@
 Updated 2026-10-16. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Following without the picture, and tap reasons (#29, ADR-0043) — deployed
+
+After "Only listened", the session questions ask "Could you follow it without the picture?" (kept as
+`followable` in the engagement record); the word sheet offers why a word was tapped (`reason` on the
+lookup: unknown, sense, split, misheard, subtitles). Optional, validated, read by nothing yet; for
+issue #29's analysis. Tests red first; browser `listened` and `leavingvideo` pass (answers now
+scoped to their questions, since "Partly" is offered twice). Browser `sheet` fails on the code
+before this too (a missing element to scroll to).
+
 ## Stories with your due words (#10, spec 016) — deployed, phone check pending
 
 Texts → **A story**: Reader picks up to 10 due words and 300 known ones (its own `isDueWord` and
