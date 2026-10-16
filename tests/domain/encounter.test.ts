@@ -9,6 +9,10 @@ const word = { lexemeId: 7, documentId: 1, fromOffset: 3, toOffset: 5 };
 
 const valid: Encounter[] = [
 	{ kind: 'lookup', at, ...word },
+	// Spec 017, ADR-0043: why the word was tapped, and whether a listened video could be followed.
+	{ kind: 'lookup', at, ...word, detail: { reason: 'sense' } },
+	{ kind: 'engagement', at, detail: { mode: 'listened', attentive: 'yes', followable: 'partly' } },
+	{ kind: 'engagement', at, detail: { mode: 'listened', attentive: null, followable: null } },
 	{ kind: 'check', at, ...word },
 	{ kind: 'read', at, documentId: 1, fromOffset: 0, toOffset: 40 },
 	{
@@ -88,6 +92,11 @@ const invalid: [string, Encounter][] = [
 		{ kind: 'review', at, lexemeId: 7, documentId: 1, detail: { skill: 'reading', grade: 3 } }
 	],
 	['an attention answer not offered', { kind: 'attention', at, detail: { answer: 'mostly' } }],
+	['a tap reason not offered', { kind: 'lookup', at, ...word, detail: { reason: 'bored' } }],
+	[
+		'a follow answer not offered',
+		{ kind: 'engagement', at, detail: { mode: 'listened', attentive: 'yes', followable: 'maybe' } }
+	],
 	['an attention without an answer field', { kind: 'attention', at, detail: {} }],
 	[
 		'an engagement mode not offered',

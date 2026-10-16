@@ -12,7 +12,8 @@ import {
 	type AttentionAnswer,
 	type Encounter,
 	type HardcoreStep,
-	type Modality
+	type Modality,
+	type TapReason
 } from '$lib/domain/encounter';
 
 export interface EncounterSink {
@@ -290,8 +291,11 @@ export class Recorder {
 		this.open = { word, moment, at: this.stamp() };
 	}
 
-	/** The sheet closed: a lookup, whatever was done in it. `chose` is a state the reader picked. */
-	closed(outcome: { chose?: string } = {}): void {
+	/**
+	 * The sheet closed: a lookup, whatever was done in it. `chose` is a state the reader picked,
+	 * `reason` why they tapped, when they said (ADR-0043).
+	 */
+	closed(outcome: { chose?: string; reason?: TapReason } = {}): void {
 		this.settle(outcome);
 	}
 
@@ -395,12 +399,13 @@ export class Recorder {
 		return this.session;
 	}
 
-	private settle(outcome: { chose?: string } = {}): void {
+	private settle(outcome: { chose?: string; reason?: TapReason } = {}): void {
 		const open = this.open;
 		if (!open) return;
 		this.open = undefined;
 		const detail: Record<string, unknown> = {};
 		if (outcome.chose) detail.chose = outcome.chose;
+		if (outcome.reason) detail.reason = outcome.reason;
 		this.buffer.push({
 			kind: 'lookup',
 			at: open.at,

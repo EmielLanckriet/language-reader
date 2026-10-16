@@ -4,7 +4,7 @@
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { recall, type Memory } from '$lib/domain/memory';
 	import type { FsrsParameters } from '$lib/domain/anki';
-	import type { Skill } from '$lib/domain/encounter';
+	import type { Skill, TapReason } from '$lib/domain/encounter';
 
 	/**
 	 * The menu a tap opens (FR-006).
@@ -29,7 +29,8 @@
 		readings,
 		joinRefused,
 		onjoin,
-		onsplit
+		onsplit,
+		reasons = false
 	}: {
 		word: string;
 		sentence?: string;
@@ -38,13 +39,13 @@
 		current: string | null;
 		/** How the current state was acquired: shown when it came from Anki (FR-012). */
 		provenance?: string;
-		onchoose: (state: string) => void;
+		onchoose: (state: string, reason?: TapReason) => void;
 		/** The reader only checked a word they knew: a check, not a lookup (spec 007). */
 		/** The tap was a mistake: close without it counting (spec 013). */
 		onundo?: () => void;
 		/** The sentence's translation was opened: its words were helped (2026-10-04). */
 		ontranslate?: () => void;
-		onclose: () => void;
+		onclose: (reason?: TapReason) => void;
 		/** The word's memory per skill (spec 007, FR-018), shown in plain words. */
 		memory?: Partial<Record<Skill, Memory>>;
 		parameters?: FsrsParameters;
@@ -55,7 +56,18 @@
 		/** Correcting the segmentation (spec 004); absent where there is nothing stored to correct. */
 		onjoin?: () => void;
 		onsplit?: (at: number) => void;
+		/** Offer why the word was tapped (ADR-0043): where the tap is recorded as a lookup. */
+		reasons?: boolean;
 	} = $props();
+
+	const REASONS: { value: TapReason; label: string }[] = [
+		{ value: 'unknown', label: 'Didn’t know it' },
+		{ value: 'sense', label: 'Checking the meaning here' },
+		{ value: 'split', label: 'Wrongly split' },
+		{ value: 'misheard', label: 'Misheard' },
+		{ value: 'subtitles', label: 'Subtitles wrong' }
+	];
+	let reason = $state<TapReason | undefined>();
 
 	/**
 	 * Only Retire is offered (the reader, 2026-10-06: the four choices are not needed, and ignoring
@@ -119,13 +131,14 @@
 
 <svelte:window
 	onkeydown={(event) => {
-		if (event.key === 'Escape') onclose();
+		if (event.key === 'Escape') onclose(reason);
 	}}
 />
 
 <!-- Clicking the backdrop dismisses. The button is the accessible way to do the same thing. -->
 <div class="backdrop">
-	<button class="dismiss" onclick={onclose} aria-label="Close without marking"></button>
+	<button class="dismiss" onclick={() => onclose(reason)} aria-label="Close without marking"
+	></button>
 
 	<div class="sheet" role="dialog" aria-modal="true" aria-label="Mark {word}">
 		<!-- Compact on purpose: in full screen the phone is in landscape, about 380 px tall, and a
@@ -151,7 +164,9 @@
 					<p class="muted">{error.message}</p>
 				{/await}
 			</div>
-			<button class="icon close" onclick={onclose} aria-label="Cancel" title="Close">✕</button>
+			<button class="icon close" onclick={() => onclose(reason)} aria-label="Cancel" title="Close"
+				>✕</button
+			>
 		</div>
 
 		{#if remembered}
@@ -166,11 +181,23 @@
 				class="choice"
 				class:chosen={retired}
 				aria-pressed={retired}
-				onclick={() => onchoose(retired ? RETRACTED : 'retired')}
+				onclick={() => onchoose(retired ? RETRACTED : 'retired', reason)}
 			>
 				{retired ? 'Retired ✓ · tap to undo' : 'Retire'}
 				<small>remembered, never a card</small>
 			</button>
+			{#if reasons}
+				<p class="muted small">Why did you tap? (optional)</p>
+				<div class="reasons">
+					{#each REASONS as option (option.value)}<button
+							class="chip"
+							class:chosen={reason === option.value}
+							aria-pressed={reason === option.value}
+							onclick={() => (reason = reason === option.value ? undefined : option.value)}
+							>{option.label}</button
+						>{/each}
+				</div>
+			{/if}
 		{:else}
 			<p class="muted small">You can mark words once the transcript is complete.</p>
 		{/if}
@@ -218,6 +245,20 @@
 </div>
 
 <style>
+	.reasons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin-bottom: 0.5rem;
+	}
+	.reasons .chip {
+		font-size: 0.85rem;
+		padding: 0.25rem 0.6rem;
+	}
+	.reasons .chosen {
+		border-color: var(--accent);
+		background: var(--accent-soft);
+	}
 	.backdrop {
 		position: fixed;
 		inset: 0;

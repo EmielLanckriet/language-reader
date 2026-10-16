@@ -39,7 +39,8 @@
 		type AttentionAnswer,
 		type Engagement,
 		type Encounter,
-		type HardcoreStep
+		type HardcoreStep,
+		type TapReason
 	} from '$lib/domain/encounter';
 	import { FEEDBACK_AFTER_MS } from '$lib/domain/study';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
@@ -671,8 +672,8 @@
 	}
 
 	/** The reader has finished with the menu, so a refresh that was waiting for them can happen. */
-	function menuClosed() {
-		recorder?.closed();
+	function menuClosed(reason?: TapReason) {
+		recorder?.closed({ reason });
 		void afterSheet();
 		chosen = null;
 		if (refreshWhenFree) void showLatestWords();
@@ -684,10 +685,10 @@
 			.filter((id): id is LexemeId => id !== undefined);
 	}
 
-	async function choose(state: string) {
+	async function choose(state: string, reason?: TapReason) {
 		const token = chosen;
 		if (token?.lexemeId === undefined || !document) return;
-		recorder?.closed({ chose: state });
+		recorder?.closed({ chose: state, reason });
 		chosen = null;
 		try {
 			const { repository } = await session();
@@ -958,6 +959,7 @@
 			ontranslate={() =>
 				recorder?.translation(undefined, 'google-translate', sentenceRange(chosen!))}
 			onclose={menuClosed}
+			reasons={recorder !== undefined}
 		/>
 	{/if}
 

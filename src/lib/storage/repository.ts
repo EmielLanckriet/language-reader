@@ -206,8 +206,8 @@ import { ankiImportOf, isFromAnki, planImport, type AnkiExport } from '../domain
  */
 /** Checked when written, but a restored copy is not, so a missing field reads as not answered. */
 function engagementOf(detail: string): Engagement {
-	const { mode, attentive } = JSON.parse(detail);
-	return { mode: mode ?? null, attentive: attentive ?? null };
+	const { mode, attentive, followable } = JSON.parse(detail);
+	return { mode: mode ?? null, attentive: attentive ?? null, followable: followable ?? null };
 }
 
 /** Change it when `applyCorrections` changes what it makes, so every document is checked again. */

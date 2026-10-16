@@ -50,7 +50,13 @@ export type AttentionAnswer = 'all' | 'some' | 'none' | null;
 export interface Engagement {
 	mode: 'watched' | 'listened' | null;
 	attentive: 'yes' | 'partly' | 'no' | null;
+	/** After "Only listened": could the video be followed without the picture (ADR-0043)? */
+	followable?: 'yes' | 'partly' | 'no' | null;
 }
+
+/** Why a word was tapped, when the reader says (ADR-0043): kept on its lookup, used by nothing yet. */
+export const TAP_REASONS = ['unknown', 'sense', 'split', 'misheard', 'subtitles'] as const;
+export type TapReason = (typeof TAP_REASONS)[number];
 
 export interface Encounter {
 	kind: EncounterKind | string;
@@ -116,6 +122,10 @@ export function validateEncounter(encounter: Encounter): void {
 				fail('has no duration between 0 and 60000 ms');
 			break;
 		case 'lookup':
+			needsWord();
+			if (detail.reason !== undefined && !TAP_REASONS.includes(detail.reason as TapReason))
+				fail('has a reason the reader was not offered');
+			break;
 		case 'check':
 		case 'tap-undone':
 			needsWord();
@@ -218,6 +228,11 @@ export function validateEncounter(encounter: Encounter): void {
 				!ENGAGEMENT_ATTENTION.includes(detail.attentive as string | null)
 			)
 				fail('has no attentiveness the reader was offered');
+			if (
+				'followable' in detail &&
+				!ENGAGEMENT_ATTENTION.includes(detail.followable as string | null)
+			)
+				fail('has a follow answer the reader was not offered');
 			break;
 	}
 }

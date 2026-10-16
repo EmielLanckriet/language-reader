@@ -34,6 +34,24 @@ describe('the recorder', () => {
 		expect(written[0].kind).toBe('hardcore-watch');
 	});
 
+	it('writes why a word was tapped with its lookup, and nothing when no reason was given', async () => {
+		const written: Parameters<Repository['recordEncounters']>[1] = [];
+		const sink = {
+			startSession: async () => 1,
+			recordEncounters: async (_s: number, batch: typeof written) => void written.push(...batch)
+		};
+		const recorder = new Recorder(sink, 7, 'reading', [[0, 3]]);
+		recorder.opened({ lexemeId: 1, fromOffset: 0, toOffset: 1 });
+		recorder.closed({ reason: 'misheard' });
+		recorder.opened({ lexemeId: 2, fromOffset: 1, toOffset: 2 });
+		recorder.closed({ chose: 'retired', reason: 'split' });
+		recorder.opened({ lexemeId: 3, fromOffset: 2, toOffset: 3 });
+		recorder.closed();
+		await recorder.close();
+		const lookups = written.filter((e) => e.kind === 'lookup').map((e) => e.detail);
+		expect(lookups).toEqual([{ reason: 'misheard' }, { chose: 'retired', reason: 'split' }, {}]);
+	});
+
 	it('writes where English was visible: the opening state first, and each reveal with its range', async () => {
 		const written: Parameters<Repository['recordEncounters']>[1] = [];
 		const sink = {

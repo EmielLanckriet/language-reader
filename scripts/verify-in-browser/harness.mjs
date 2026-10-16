@@ -709,9 +709,12 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		const path = () => tab.evaluate('return location.pathname');
 		const sheet = () => tab.evaluate(`return !!document.querySelector('.leave-sheet')`);
-		const choose = (label) =>
+		// Under its own question when given: "Partly" is offered for following and for attention.
+		const choose = (label, question) =>
 			tab.evaluate(
-				`[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.trim()===${JSON.stringify(label)}).click()`
+				question
+					? `const q=[...document.querySelectorAll('.leave-sheet .question')].find(p=>p.textContent.includes(${JSON.stringify(question)}));[...q.nextElementSibling.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(label)}).click()`
+					: `[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.trim()===${JSON.stringify(label)}).click()`
 			);
 		try {
 			await tab.send('Emulation.setDeviceMetricsOverride', {
@@ -761,7 +764,7 @@ const scenarios = {
 					`return document.querySelector('.leave-sheet button[aria-pressed="true"]')?.textContent.trim()==='Only listened'`
 				)
 			);
-			await choose('Partly');
+			await choose('Partly', 'paying attention');
 			await until('attention saved', () =>
 				tab.evaluate(
 					`return [...document.querySelectorAll('.leave-sheet button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Only listened,Partly'`
@@ -1438,24 +1441,30 @@ const scenarios = {
 			await until('saved session summary', () =>
 				tab.evaluate(`return !!document.querySelector('.session-card[open]')`)
 			);
-			const choose = (text) =>
+			// The answer under its own question: "Partly" is offered for following and for attention.
+			const choose = (text, question) =>
 				tab.evaluate(
-					`[...document.querySelectorAll('.session-card[open] .answer-options button')].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click(); return true;`
+					`const q=[...document.querySelectorAll('.session-card[open] .question')].find(p=>p.textContent.includes(${JSON.stringify(question)}));[...q.nextElementSibling.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click(); return true;`
 				);
 			const pressed = () =>
 				tab.evaluate(
 					`return [...document.querySelectorAll('.session-card .answer-options button[aria-pressed="true"]')].map(b=>b.textContent.trim()).sort().join(',')`
 				);
-			await choose('Only listened');
+			await choose('Only listened', 'watch, or only listen');
 			await until('mode saved', async () => ((await pressed()) === 'Only listened' ? true : null));
-			await choose('Partly');
+			// ADR-0043: asked only after "Only listened".
+			await choose('Yes', 'without the picture');
+			await until('follow answer saved', async () =>
+				(await pressed()) === 'Only listened,Yes' ? true : null
+			);
+			await choose('Partly', 'paying attention');
 			await until('attention saved', async () =>
-				(await pressed()) === 'Only listened,Partly' ? true : null
+				(await pressed()) === 'Only listened,Partly,Yes' ? true : null
 			);
 			await tab.goto('/progress');
 			await until('answers survived reload', async () => {
 				await tab.evaluate(`document.querySelector('.session-card').open=true; return true;`);
-				return (await pressed()) === 'Only listened,Partly' ? true : null;
+				return (await pressed()) === 'Only listened,Partly,Yes' ? true : null;
 			});
 			// A zone where it is now about 2 AM: the day-end setting must move "today" back a day.
 			const offset = ((((2 - new Date().getUTCHours()) % 24) + 36) % 24) - 12;

@@ -30,6 +30,11 @@
 		{ value: 'watched', label: 'Watched' },
 		{ value: 'listened', label: 'Only listened' }
 	];
+	const followable: { value: Engagement['followable']; label: string }[] = [
+		{ value: 'yes', label: 'Yes' },
+		{ value: 'partly', label: 'Partly' },
+		{ value: 'no', label: 'No' }
+	];
 	const attention: { value: Engagement['attentive']; label: string }[] = [
 		{ value: 'yes', label: 'Yes' },
 		{ value: 'partly', label: 'Partly' },
@@ -48,6 +53,19 @@
 				onclick={() => onengage({ mode: option.value })}>{option.label}</button
 			>{/each}
 	</div>
+	{#if engagement?.mode === 'listened'}
+		<!-- ADR-0043: how well it comes through by sound alone, for the listening analysis (#29). -->
+		<p class="question">Could you follow it without the picture?</p>
+		<div class="answer-options">
+			{#each followable as option (option.label)}<button
+					class="secondary"
+					class:chosen={engagement?.followable === option.value}
+					aria-pressed={engagement?.followable === option.value}
+					{disabled}
+					onclick={() => onengage({ followable: option.value })}>{option.label}</button
+				>{/each}
+		</div>
+	{/if}
 	<p class="question">Were you paying attention?</p>
 	<div class="answer-options">
 		{#each attention as option (option.label)}<button

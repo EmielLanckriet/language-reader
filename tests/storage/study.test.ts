@@ -157,13 +157,17 @@ it('keeps how a session was taken in beside its lookup answer, changing neither 
 		const before = memory();
 		repo.recordEncounters(session, [
 			{ kind: 'engagement', at: later, detail: { mode: 'watched', attentive: null } },
-			{ kind: 'engagement', at: later, detail: { mode: 'listened', attentive: 'partly' } }
+			{
+				kind: 'engagement',
+				at: later,
+				detail: { mode: 'listened', attentive: 'partly', followable: 'no' }
+			}
 		]);
 		expect(memory()).toEqual(before);
 		expect(repo.studyOverview('Europe/Brussels', new Date(later)).sessions[0]).toMatchObject({
 			answer: 'all',
 			lastAt: at,
-			engagement: { mode: 'listened', attentive: 'partly' }
+			engagement: { mode: 'listened', attentive: 'partly', followable: 'no' }
 		});
 	} finally {
 		db.close();
