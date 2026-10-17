@@ -41,7 +41,8 @@ MB; rows take their height from the ResizeObserver and the margin is read once, 
 measuring out of the profile but only brought scrolling's long tasks from 2.16 to 1.94 s (longest
 165 → 112 ms): the layout moved to the browser's own pass, and the rest is building the lines.
 Browser: `cardlayout` (meanings through the worker), `offline` and `shell` (the worker is
-precached) pass; `sheet` fails identically before the change (a `.reading` it no longer finds).
+precached) pass. `sheet` had failed since 2026-09-30 on a `.card` scroll pasted in from the
+flashcard work (the sheet has none); without it it passes, the meaning shown through the worker.
 
 After, same phone, data and drill: 62 ms to the next card over the first ten, 41 ms over the last
 ten, no long tasks, heap flat at ~40 MB. Tests: per-word and all-words sightings agree, and the

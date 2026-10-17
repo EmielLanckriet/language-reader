@@ -1877,9 +1877,8 @@ const scenarios = {
 						const word = sheet.querySelector('.word').getBoundingClientRect();
 						return { top: sheet.getBoundingClientRect().top, height: sheet.getBoundingClientRect().height, wordTop: word.top, scroll: sheet.scrollHeight > sheet.clientHeight };`)
 				);
-				await tab.evaluate(`document.querySelector('.card').scrollIntoView({block:'start'})`);
 				const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
-				writeFileSync(`sheet-${name}.png`, Buffer.from(shot.data, 'base64'));
+				writeFileSync(`/tmp/reader-sheet-${name}.png`, Buffer.from(shot.data, 'base64'));
 				result[name] = box;
 				await tab.evaluate(
 					`document.querySelector('.sheet button[aria-label="Cancel"]').click(); return true;`
