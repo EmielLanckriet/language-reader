@@ -29,6 +29,12 @@ documents, and both narrowed queries use `+kind`, since by the kind index SQLite
 range or review. A change: 5.6 → 14.2 ms before, 2.0 ms at both sizes after (laptop). Left as
 they are, whole-history by design: the backup copy (all data, 30 s after the last change and
 every 5 minutes while changing), Cards' met-words count and the study overview on each visit.
+The reader page holds its document in a deep `$state` too, but on the phone (isolated test
+reader, a synthetic 400-cue video) it costs nothing measurable, so it is unchanged: 60 s of
+playback had no long task and a flat heap; a tap opens the sheet in 4–19 ms. Two costs seen
+there: the first tap of each app start parses the whole dictionary on the main thread (one 428 ms
+task), and scrolling fast through the whole video spent 2.2 s in long tasks, mostly the line list
+measuring each row as it mounts (`getComputedStyle` and `offsetHeight` force a layout per row).
 
 After, same phone, data and drill: 62 ms to the next card over the first ten, 41 ms over the last
 ten, no long tasks, heap flat at ~40 MB. Tests: per-word and all-words sightings agree, and the
