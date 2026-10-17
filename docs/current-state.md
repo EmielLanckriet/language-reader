@@ -3,6 +3,17 @@
 Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## An empty sound or video file counts as none (#45) — deployed, not yet seen on the phone
+
+Documents 23 and 25 on the daily reader hold a 0-byte `sound-only.m4a` (found 2026-10-17 during
+#41). `loadMedia` took it for the made sound: a card played it instead of the video, the reader
+gave it to locked listening, and it was never made again. Likely an interrupted write: the file is
+created empty before its contents are committed (not verified). Now any empty playable file loads
+as no file, so the reader makes the sound again when the video is next opened. A test with an
+in-memory OPFS, red before the fix and red with only the sound half; 661 tests, type check, lint.
+Writing under a temporary name was not done: Chrome never truncates a finished file on rewrite,
+so only a first write leaves one empty, and ignoring it covers that.
+
 ## A drill card no longer waits on every drill ever made (#41) — deployed, not yet phone checked by the reader
 
 "When doing lots of flashcards in hardcore mode, you need to wait really long to hear the

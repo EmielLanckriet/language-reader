@@ -233,6 +233,9 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	for await (const handle of directory.values()) {
 		if (handle.kind !== 'file') continue;
 		const file = await (handle as FileSystemFileHandle).getFile();
+		// An interrupted write leaves the file it created empty (issue #45): no file, so a derived
+		// sound is made again and a card plays the video instead.
+		if (file.size === 0 && isPlayable(file.name)) continue;
 		if (file.name === SOUND_ONLY) found.sound = file;
 		else if (isPlayable(file.name)) found.media = file;
 		else if (isSubtitle(file.name)) found.cues = parseSubtitles(await file.text());
