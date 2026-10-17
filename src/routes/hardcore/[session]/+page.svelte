@@ -224,7 +224,8 @@
 		const key = `${current.part}`;
 		if (drilling === key) return;
 		drilling = key;
-		const words = part.words;
+		// A copy: the plan is a deep proxy, which cannot be posted to the storage worker.
+		const words = [...part.words];
 		checking = true;
 		void (async () => {
 			const { repository } = await session();
