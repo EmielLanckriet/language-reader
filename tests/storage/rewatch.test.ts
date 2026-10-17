@@ -102,3 +102,57 @@ it('dates an exposure from a drill card that showed its line, and from nothing e
 		db.close();
 	}
 });
+
+// A grade recomputes one word. Its drill sightings come from a query for that word alone, since the
+// one for every word at once cost 0.4 s a grade on the phone (issue #41); both must agree.
+it('finds a word’s drill sightings alone as it does for every word at once', async () => {
+	const line = '甲乙丙丁戊己庚辛壬癸子丑';
+	const memoryOf = async (drilled: boolean) => {
+		const db = await freshDatabase();
+		try {
+			const repo = new Repository(db);
+			const [id] = await buildHistory(repo, [line], []);
+			const tokens = repo.getDocument(id).tokens;
+			const at = (hour: number) => new Date(Date.UTC(2026, 9, 1, hour)).toISOString();
+			if (drilled)
+				repo.recordEncounters(repo.startSession(id, 'hardcore'), [
+					{
+						kind: 'review',
+						at: at(9),
+						lexemeId: tokens[0].lexemeId,
+						documentId: id,
+						fromOffset: 0,
+						toOffset: 1,
+						detail: { skill: 'reading', grade: 3, hardcore: { part: 0 }, line: [0, 12] }
+					}
+				]);
+			repo.recordEncounters(repo.startSession(id, 'media'), [
+				{
+					kind: 'played',
+					at: at(10),
+					documentId: id,
+					fromOffset: 0,
+					toOffset: 12,
+					mediaMs: 0,
+					textVisible: true,
+					detail: { toMs: 5000 }
+				},
+				{ kind: 'attention', at: at(10), detail: { answer: 'all' } }
+			]);
+			// One word alone, as a grade or a tap recomputes it: the last, ending where the line ends.
+			const word = tokens[11].lexemeId!;
+			repo.recordEncounters(repo.startSession(id, 'reading'), [
+				{ kind: 'lookup', at: at(11), lexemeId: word, documentId: id, fromOffset: 11, toOffset: 12 }
+			]);
+			const alone = repo.getMemory([word]).memory.get(word);
+			repo.rebuildMemory();
+			return { alone, together: repo.getMemory([word]).memory.get(word) };
+		} finally {
+			db.close();
+		}
+	};
+	const drilled = await memoryOf(true);
+	expect(drilled.alone).toEqual(drilled.together);
+	// The sighting matters here: without the drill, the same word remembers differently.
+	expect((await memoryOf(false)).together).not.toEqual(drilled.together);
+});

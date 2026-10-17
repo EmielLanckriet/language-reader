@@ -222,8 +222,12 @@ interface HistoryRun {
 	reach?: string;
 	/** Each word's drill sightings, for every word at once: see `drillSightings`. */
 	drilled?: Map<LexemeId, Row[]>;
+	/** A run of a few words, as one grade or tap makes: drill sightings are found word by word. */
+	few?: boolean;
 }
-const newRun = (): HistoryRun => ({ lines: new Map(), help: new Map() });
+const newRun = (few = false): HistoryRun => ({ lines: new Map(), help: new Map(), few });
+/** Up to this many words, each word's drill sightings are cheaper found alone (issue #41). */
+const FEW_WORDS = 8;
 
 const WITHDRAWN = `SELECT session_id FROM encounter WHERE kind = 'withdrawn' AND session_id IS NOT NULL`;
 const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
@@ -1564,7 +1568,7 @@ export class Repository {
 			[lexemeId]
 		);
 		const rows = all.filter((row) => row.withdrawn === 0);
-		const drilled = this.drillSightings(shared).get(lexemeId) ?? [];
+		const drilled = this.drillSightings(lexemeId, shared);
 		const viewings = new Map<string, { session: number; at: number }[]>();
 		for (const row of [...all, ...drilled]) {
 			const occurrence = `${row.document_id} ${row.start}`;
@@ -1659,8 +1663,28 @@ export class Repository {
 	 * at once, once a run: per word it cost 1.1 ms (0.24 s of answering a 219-word session,
 	 * 2026-10-16). The few drill reviews first, then their lines' tokens: joined the other way round,
 	 * SQLite walked every review's document tokens (80 s of Learning data's 90 s, 2026-10-15).
+	 *
+	 * A run of a few words asks for each word alone, from the documents it is in: for every word at
+	 * once read every review's detail on each grade, 0.4 s of each card on the phone (issue #41).
+	 * `t.start < d.last` follows from `t."end" <= d.last`, but only it ends the index range: without
+	 * it each drilled line read its document's tokens to the end, more with every drill review.
 	 */
-	private drillSightings(shared: HistoryRun): Map<LexemeId, Row[]> {
+	private drillSightings(lexemeId: LexemeId, shared: HistoryRun): Row[] {
+		if (shared.few)
+			return queryRows(
+				this.db,
+				`WITH drill AS MATERIALIZED (
+           SELECT session_id, document_id, at,
+                  json_extract(detail, '$.line[0]') AS first, json_extract(detail, '$.line[1]') AS last
+           FROM encounter
+           WHERE document_id IN (SELECT document_id FROM token WHERE lexeme_id = ?)
+             AND kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
+         SELECT t.lexeme_id, d.session_id, d.document_id, d.at, t.start FROM drill d
+         JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t.start < d.last
+                     AND t."end" <= d.last
+         WHERE t.lexeme_id = ?`,
+				[lexemeId, lexemeId]
+			);
 		if (shared.drilled === undefined) {
 			shared.drilled = new Map();
 			for (const row of queryRows(
@@ -1670,22 +1694,24 @@ export class Repository {
                   json_extract(detail, '$.line[0]') AS first, json_extract(detail, '$.line[1]') AS last
            FROM encounter WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
          SELECT t.lexeme_id, d.session_id, d.document_id, d.at, t.start FROM drill d
-         JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t."end" <= d.last
+         JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t.start < d.last
+                     AND t."end" <= d.last
          WHERE t.lexeme_id IS NOT NULL`
 			)) {
 				const id = Number(row.lexeme_id);
 				shared.drilled.set(id, [...(shared.drilled.get(id) ?? []), row]);
 			}
 		}
-		return shared.drilled;
+		return shared.drilled.get(lexemeId) ?? [];
 	}
 
 	/** Recompute these words' memory rows from their history, under the current rule (R6). */
 	private recomputeMemory(lexemeIds: Iterable<LexemeId>): void {
 		const { parameters, strengths } = this.inForce();
 		const rule = ruleKey(parameters);
-		const shared = newRun();
-		for (const lexemeId of lexemeIds) {
+		const words = [...lexemeIds];
+		const shared = newRun(words.length <= FEW_WORDS);
+		for (const lexemeId of words) {
 			run(this.db, 'DELETE FROM memory WHERE lexeme_id = ?', [lexemeId]);
 			const memory = memoryOf(this.wordHistory(lexemeId, shared), parameters, strengths);
 			for (const [skill, m] of Object.entries(memory) as [Skill, Memory][]) {

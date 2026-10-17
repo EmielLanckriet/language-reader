@@ -51,6 +51,28 @@ export function occurrenceOn(
 }
 
 /**
+ * Each word's first occurrence within the part's lines, and its line, from tokens in order: one pass
+ * per part. Asking `occurrenceOn` line by line for each card read every token for each line, up to
+ * a second of each card on the phone (issue #41).
+ */
+export function firstOccurrences(
+	tokens: Token[],
+	lineRanges: [number, number][],
+	lines: [number, number]
+): Map<number, { token: Token; line: number }> {
+	const found = new Map<number, { token: Token; line: number }>();
+	let line = lines[0];
+	for (const token of tokens) {
+		while (line <= lines[1] && token.start >= lineRanges[line][1]) line++;
+		if (line > lines[1]) break;
+		const [start, end] = lineRanges[line];
+		if (token.lexemeId === undefined || token.start < start || token.end > end) continue;
+		if (!found.has(token.lexemeId)) found.set(token.lexemeId, { token, line });
+	}
+	return found;
+}
+
+/**
  * A drill card's sentence: the whole line, which for a video is the subtitle line, so the card's
  * audio is that line's (ADR-0035, `timedExample`).
  */

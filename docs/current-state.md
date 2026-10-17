@@ -3,6 +3,34 @@
 Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## A drill card no longer waits on every drill ever made (#41) — deployed, not yet phone checked by the reader
+
+"When doing lots of flashcards in hardcore mode, you need to wait really long to hear the
+sentences." Measured on the phone in the isolated test reader with the reader's copy restored (a
+one-off exception to the never-restore rule, asked for by the reader; the test origin was wiped
+afterwards) and the issue's own drill replayed (document 28, one part, 47 grades in its order). The
+sentence's audio was never slow (0.2 s from tap to playing); getting to the next card was, and grew:
+0.53 s per card over the first ten of 60, 0.84 s over the last ten. Two causes, both by profile:
+
+- Storage worker, ~0.39 s a grade: recomputing the graded word asked `drillSightings` for every
+  word's sightings, and its token range had no upper bound, so each drill review ever recorded read
+  its document's tokens from its line to the end. Now a run of up to 8 words asks per word, and both
+  queries bound the range (`t.start < d.last`, implied by `t."end" <= d.last`). This touched every
+  grade and tap, Cards too, not only hardcore.
+- Drill page, up to 1 s of main thread a card: each card searched every line's tokens of a deep
+  `$state` proxy of the document. Now one pass per part (`firstOccurrences`), and the document and
+  media are `$state.raw`.
+
+After, same phone, data and drill: 62 ms to the next card over the first ten, 41 ms over the last
+ten, no long tasks, heap flat at ~40 MB. Tests: per-word and all-words sightings agree, and the
+sighting matters in that fixture (mutations: no rows, `<` for `<=` at the line's end, both red);
+`firstOccurrences` agrees with the line-by-line search (two of three mutations red, the third
+equivalent). 660 tests, type check, lint. Not established: the laptop restore has no tokens (they
+are derived), so laptop timings of these queries say nothing. Seen once while restoring: the test
+reader's renderer crashed (SIGSEGV in a `DedicatedWorker`, null pointer) during the
+post-restore recompute — the same moment as #42's unexplained crash; cause not found.
+Also found: documents 23 and 25 hold a 0-byte `sound-only.m4a`, which a card prefers to the video.
+
 ## Anki words are not special: one 14-day rule, and hardcore drills only due ones (#42) — deployed and phone checked
 
 On the Vietnam video (document 40, 2026-10-16) a drill offered 味道, 水果, 冷, 舒服 and six more:

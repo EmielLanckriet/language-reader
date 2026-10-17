@@ -18,7 +18,7 @@
 		clock,
 		dayStart,
 		drillSentence,
-		occurrenceOn,
+		firstOccurrences,
 		readDayEnd,
 		type PlanDetail
 	} from '$lib/ui/hardcore';
@@ -31,8 +31,10 @@
 	 * comes from the session's records, so coming back from the player continues at the next step.
 	 */
 	const sessionId = $derived(Number(page.params.session));
-	let document = $state<StoredDocument | null>(null);
-	let media = $state<StoredMedia | null>(null);
+	// Raw: replaced whole, never changed in place. Deep proxies made reading the document's tokens
+	// for each card cost hundreds of milliseconds on the phone (issue #41).
+	let document = $state.raw<StoredDocument | null>(null);
+	let media = $state.raw<StoredMedia | null>(null);
 	let plan = $state<PlanDetail | null>(null);
 	let records = $state<StepRecord[]>([]);
 	let characters: string[] = [];
@@ -234,22 +236,22 @@
 		showing++;
 	});
 
+	const occurrences = $derived(
+		part && document ? firstOccurrences(document.tokens, lineRanges, part.lines) : undefined
+	);
 	const card = $derived.by(() => {
 		const lexemeId = queue[0];
-		if (lexemeId === undefined || !part || !document) return undefined;
-		for (let line = part.lines[0]; line <= part.lines[1]; line++) {
-			const range = lineRanges[line];
-			const token = occurrenceOn(document.tokens, range, lexemeId);
-			if (!token) continue;
-			return {
-				lexemeId,
-				word: characters.slice(token.start, token.end).join(''),
-				token,
-				range,
-				sentence: drillSentence(document, characters, range, line, token)
-			};
-		}
-		return undefined;
+		const found = lexemeId === undefined ? undefined : occurrences?.get(lexemeId);
+		if (!found || !document) return undefined;
+		const { token, line } = found;
+		const range = lineRanges[line];
+		return {
+			lexemeId,
+			word: characters.slice(token.start, token.end).join(''),
+			token,
+			range,
+			sentence: drillSentence(document, characters, range, line, token)
+		};
 	});
 
 	async function grade(value: 1 | 2 | 3 | 4, _shown: unknown, help: CardHelp) {
