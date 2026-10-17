@@ -372,10 +372,6 @@ export class RepositoryClient {
 		return this.call({ method: 'hardcoreSession', args: [sessionId] });
 	}
 
-	drilledSince(since: string): Promise<LexemeId[]> {
-		return this.call({ method: 'drilledSince', args: [since] });
-	}
-
 	frequencyRanks(lexemeIds: LexemeId[]): Promise<Map<LexemeId, number>> {
 		return this.call({ method: 'frequencyRanks', args: [lexemeIds] });
 	}

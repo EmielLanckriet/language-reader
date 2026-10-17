@@ -3,6 +3,21 @@
 Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Hardcore judges every word by its memory alone (#46) — deployed, not yet seen on the phone
+
+A drill-only session on the Vietnam video (document 40) planned 22 words and opened on none. Read
+from the phone: all 22 had been passed in a drill 8 minutes before, and FR-010 skipped words passed
+today while the plan counted them. They were planned at all because `classify` drilled every word
+with memory that was not an active card whatever its memory, and a drill review does not make a
+word a card; all 22 had memory due between that afternoon and 29 October. The reader: hardcore
+ignores card status and retiring; a word is drilled when new or due, never otherwise. Now
+`classify` uses the reading memory alone, a retired word included (with no memory it is new), and
+a drill classes its part's words again when it starts, replacing "passed today" and the "done
+today" marks (`drilledSince` is gone). The `ignored` check went too: ADR-0040 turned every
+`ignored` mark into `retired`. Spec 014 FR-004 and FR-010 amended. A classify test, red before the
+change on the tapped-only, drilled and retired cases; 661 tests, type check, lint. The drill page's
+re-check is not covered by a test or browser scenario.
+
 ## An empty sound or video file counts as none (#45) — deployed, not yet seen on the phone
 
 Documents 23 and 25 on the daily reader hold a 0-byte `sound-only.m4a` (found 2026-10-17 during

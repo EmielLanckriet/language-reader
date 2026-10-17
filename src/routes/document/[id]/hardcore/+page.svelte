@@ -19,7 +19,7 @@
 		type LineSpan,
 		type Order
 	} from '$lib/domain/hardcore';
-	import { clock, dayStart, readDayEnd, type PlanDetail } from '$lib/ui/hardcore';
+	import { clock, type PlanDetail } from '$lib/ui/hardcore';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 
 	/**
@@ -32,7 +32,6 @@
 	let characters: string[] = [];
 	let lineRanges = $state<[number, number][]>([]);
 	let words = $state(new Map<number, FragmentWord>());
-	let passed = $state(new Set<number>());
 	let resumeLine = $state(0);
 	let problem = $state<unknown>(null);
 	let starting = $state(false);
@@ -74,11 +73,10 @@
 					...new Set(found.tokens.flatMap((t) => (t.lexemeId === undefined ? [] : [t.lexemeId])))
 				];
 				const now = new Date();
-				const [states, memory, ranks, drilled, resume] = await Promise.all([
+				const [states, memory, ranks, resume] = await Promise.all([
 					repository.getStates(lexemes),
 					repository.getMemory(lexemes),
 					repository.frequencyRanks(lexemes),
-					repository.drilledSince(dayStart(now, readDayEnd()).toISOString()),
 					foundMedia?.media ? resumeOf(wanted, foundMedia.cues).catch(() => 0) : 0
 				]);
 				if (stopped) return;
@@ -100,7 +98,6 @@
 				characters = codePointsOf(found.rawContent);
 				lineRanges = lineRangesOf(characters);
 				words = classified;
-				passed = new Set(drilled);
 				media = foundMedia;
 				resumeLine = resume > 0 && foundMedia ? Math.max(0, lineAt(foundMedia.cues, resume)) : 0;
 				to = lineRanges.length - 1;
@@ -258,8 +255,7 @@
 		<ol class="parts">
 			{#each parts as part, i (i)}
 				<li>
-					{partLabel(part.lines)} · {part.words.length} words{#if part.words.length > 0 && part.words.every( (w) => passed.has(w) )}
-						· done today{/if}
+					{partLabel(part.lines)} · {part.words.length} words
 				</li>
 			{/each}
 		</ol>

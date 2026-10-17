@@ -7,12 +7,11 @@
 import type { HardcoreStep } from './encounter';
 import type { FsrsParameters } from './anki';
 import type { Memory } from './memory';
-import { isActive } from './queue';
 import { kindOf } from './shares';
 import type { LexemeId, Token, WordState } from './types';
 
-/** How a word stands for a drill (FR-004); `excluded` is an active card not due, or retired by hand. */
-export type WordClass = 'new' | 'due' | 'not-active' | 'excluded';
+/** How a word stands for a drill (FR-004): no memory yet, due by its memory, or not due. */
+export type WordClass = 'new' | 'due' | 'excluded';
 
 export interface FragmentWord {
 	lexemeId: LexemeId;
@@ -54,9 +53,8 @@ export interface StepRecord {
 }
 
 /**
- * How a word stands for a drill (FR-004): new, due, not yet active (tapped or not), or excluded —
- * an active card not due, a word retired by hand, or one ignored. A set-aside word is judged by its
- * Anki memory like any reviewed card (issue #42): set aside keeps it off Cards, not out of a drill.
+ * How a word stands for a drill (FR-004): by its reading memory alone (issue #46). Whether it is a
+ * card, set aside or retired does not matter: retiring only keeps a word off Cards.
  */
 export function classify(
 	state: WordState | undefined,
@@ -65,13 +63,8 @@ export function classify(
 	parameters?: FsrsParameters
 ): { class: WordClass; known: boolean } {
 	const known = kindOf(state?.state, reading, now, parameters) === 'known';
-	const of = (wordClass: WordClass) => ({ class: wordClass, known });
-	if (state?.state === 'ignored') return of('excluded');
-	if (!reading) return of(state?.state === 'retired' ? 'excluded' : 'new');
-	if (reading.setAside || isActive(reading))
-		return of(Date.parse(reading.due) <= now.getTime() ? 'due' : 'excluded');
-	if (state?.state === 'retired') return of('excluded');
-	return of('not-active');
+	if (!reading) return { class: 'new', known };
+	return { class: Date.parse(reading.due) <= now.getTime() ? 'due' : 'excluded', known };
 }
 
 /** Where an Again puts the card: three cards later (FR-009). */

@@ -33,14 +33,6 @@ export function readDayEnd(): number {
 	}
 }
 
-/** When the study day `now` falls in began, on the local clock. */
-export function dayStart(now: Date, dayEndHour: number): Date {
-	const start = new Date(now);
-	start.setHours(dayEndHour, 0, 0, 0);
-	if (start > now) start.setDate(start.getDate() - 1);
-	return start;
-}
-
 /** A word's first occurrence on a line: what its drill card marks. */
 export function occurrenceOn(
 	tokens: Token[],

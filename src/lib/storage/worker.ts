@@ -307,8 +307,6 @@ function run(request: Request): unknown {
 			return repository.startSession(request.args[0], request.args[1] as SessionKind);
 		case 'hardcoreSession':
 			return repository.hardcoreSession(request.args[0]);
-		case 'drilledSince':
-			return repository.drilledSince(request.args[0]);
 		case 'frequencyRanks':
 			return repository.frequencyRanks(request.args[0]);
 		case 'recordEncounters':

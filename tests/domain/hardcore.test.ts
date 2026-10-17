@@ -81,7 +81,7 @@ describe('the next step', () => {
 });
 
 // A document as lines of tokens: a number is a word's lexeme, 0 a punctuation mark.
-const CLASSES: WordClass[] = ['new', 'due', 'not-active', 'excluded'];
+const CLASSES: WordClass[] = ['new', 'due', 'excluded'];
 const documentArb = fc.record({
 	lines: fc.array(fc.array(fc.integer({ min: 0, max: 12 }), { maxLength: 8, size: 'max' }), {
 		minLength: 1,
@@ -210,20 +210,34 @@ describe('which words a drill takes (FR-004)', () => {
 		userId: 1
 	});
 
-	it('classes each kind of word', () => {
+	it('classes each word by its memory alone, card or not, retired or not', () => {
 		expect(classify(undefined, undefined, now).class).toBe('new');
-		// Tapped: a candidate, not active.
-		expect(classify(undefined, reading({ events: [lookup(at(1))] }), now).class).toBe('not-active');
+		// Tapped in October, never a card: due by December.
+		expect(classify(undefined, reading({ events: [lookup(at(1))] }), now).class).toBe('due');
 		// Reviewed on Cards in October: due by December.
 		expect(classify(undefined, reading({ events: [review(at(1))] }), now).class).toBe('due');
-		// Reviewed the day before: active, not due.
+		// Reviewed the day before: not due.
 		const recent = reading({ events: [review('2026-11-30T10:00:00Z')] });
 		expect(classify(undefined, recent, now).class).toBe('excluded');
-		const retired = reading({
-			events: [lookup(at(1))],
-			marks: [{ ...o(at(2)), asserted: 'retired', provenance: 'manual' }]
+		// Issue #46: never a card, passed in a drill an hour before: not due, so not drilled again.
+		const drilled = reading({
+			events: [
+				lookup(at(1)),
+				{
+					...review('2026-12-01T09:00:00Z'),
+					detail: { skill: 'reading', grade: 3, hardcore: { part: 0 } }
+				}
+			]
 		});
-		expect(classify(state('retired'), retired, now).class).toBe('excluded');
+		expect(classify(undefined, drilled, now).class).toBe('excluded');
+		// Retired by hand: retiring only keeps a word off Cards, so its memory decides.
+		const retired = (events: WordHistory['events']) =>
+			reading({ events, marks: [{ ...o(at(2)), asserted: 'retired', provenance: 'manual' }] });
+		expect(classify(state('retired'), retired([lookup(at(1))]), now).class).toBe('due');
+		expect(classify(state('retired'), retired([review('2026-11-30T10:00:00Z')]), now).class).toBe(
+			'excluded'
+		);
+		expect(classify(state('retired'), undefined, now).class).toBe('new');
 		// Set aside (issue #42): an Anki word, judged by its imported memory like any reviewed card.
 		const aside = (stability: number) =>
 			reading({
@@ -239,7 +253,6 @@ describe('which words a drill takes (FR-004)', () => {
 		const asideState = state('retired', setAsideProvenance(2000));
 		expect(classify(asideState, aside(1310.8), now).class).toBe('excluded');
 		expect(classify(asideState, aside(2), now).class).toBe('due');
-		expect(classify(state('ignored'), undefined, now).class).toBe('excluded');
 	});
 });
 

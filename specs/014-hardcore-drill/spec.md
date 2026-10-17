@@ -67,8 +67,8 @@ or reading (it counts for memory as it does today).
 
 ### US4 — Cut a long fragment into parts by load (P2)
 The reader picks "cut by load" with a part size of N drill words (default 20). The session lists
-the parts with their line range and word count, marks the parts done today, and starts at the
-first part not done or at any part the reader picks.
+the parts with their line range and word count, and starts at the first part not done in this
+session or at any part the reader picks.
 Acceptance: parts are consecutive line ranges covering the fragment; a word is drilled in the first
 part it occurs in, never again in a later part of the same session; each part but possibly the last
 has about N drill words (between N/2 and 1.5 N unless one line alone holds more).
@@ -82,9 +82,10 @@ Acceptance: each filter removes exactly the words it should, in combination with
 session start shows how many words will be drilled before starting.
 
 ### US6 — Come back to a part later the same day (P3)
-Leaving mid-session loses no grade. Starting the same part again the same day skips the words
-already passed in a drill today.
-Acceptance: after passing 7 of 20 words and leaving, starting that part again drills the other 13.
+Leaving mid-session loses no grade. Starting the same part again skips the words whose memory is
+not due, which a word just passed is not.
+Acceptance: after passing 7 of 20 words and leaving, starting that part again at once drills the
+other 13.
 
 ## Edge Cases
 - A part with no drill words: the drill step says so and the session moves on to the next step.
@@ -120,12 +121,13 @@ Acceptance: after passing 7 of 20 words and leaving, starting that part again dr
 
 ### Which words
 - **FR-004** The drillable words of a fragment are its Chinese words (lexemes, not punctuation,
-  Latin text or numbers) that are new (no memory yet), due active cards, not yet active (every word
-  with memory that is not an active card, tapped or not: tapped candidates and words met only
-  untapped alike). Excluded: active cards not due, and words retired by hand. A set-aside word
-  (ADR-0040 amendment) is classed like an active card: drillable when its memory, Anki history
-  included, is due, excluded otherwise (issue #42; amended 2026-10-17: before, every set-aside word
-  was drillable, so a word known for years in Anki was drilled as if new).
+  Latin text or numbers) that are new (no memory yet) or whose reading memory, Anki history
+  included, is due. A word whose memory is not due is excluded. Whether a word is an active card,
+  a candidate, set aside or retired by hand does not matter: retiring only keeps a word off Cards.
+  (Amended 2026-10-17 twice. Issue #42: every set-aside word was drillable, so a word known for
+  years in Anki was drilled as if new. Issue #46: every word with memory that was not an active
+  card was drillable whatever its memory, so words passed in a drill came back in every plan, and
+  words retired by hand were never drilled even when due.)
 - **FR-005** Filters, each optional and combinable: at least x occurrences in the fragment; rank
   among the y most common words in general Chinese (the frequency list of ADR-0039); coverage
   target z%: walking the drillable words most frequent in the fragment first, keep adding words until
@@ -142,7 +144,10 @@ Acceptance: after passing 7 of 20 words and leaving, starting that part again dr
   reveal (ADR-0035).
 - **FR-009** Learning steps: a card graded Again comes back 3 cards later (or last when fewer
   remain); Hard, Good or Easy passes it. The drill ends when every word has passed once.
-- **FR-010** Words already passed in a drill today are skipped when the part starts again.
+- **FR-010** When a part's drill starts, its words are judged again by FR-004 at that moment: a
+  word passed since the plan was made is skipped while its memory is not due. (Amended 2026-10-17,
+  issue #46: words passed in a drill today were skipped, but the plan's count included them, so a
+  plan of 22 words opened on none.)
 
 ### Watching
 - **FR-011** Watch first and watch after play the part from its first line's start to its last
@@ -197,10 +202,8 @@ ranges of a started session, and the start and end of each step done in it. Earn
    watched or read stretch done in a session can be traced to its session, part and step (#29).
 
 ## Assumptions
-- "Passed today" counts drills in any document.
 - Leaving a session ends it; there is no "resume this session". Starting again chooses options
-  afresh, and FR-010 skips the words already passed today. A part is "done today" when all its
-  drill words were passed today.
+  afresh, and FR-004 leaves out words whose memory is not due, drills in any document included.
 - English preview playback with English shown is recorded like any playback with English shown;
   existing rules decide how much it counts.
 

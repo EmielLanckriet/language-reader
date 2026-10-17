@@ -10,18 +10,11 @@
 	import { lineRangesOf } from '$lib/domain/helped';
 	import { RETRACTED } from '$lib/domain/state';
 	import { HARDCORE_STEPS, type HardcoreStep } from '$lib/domain/encounter';
-	import { afterGrade, nextStep, type StepRecord } from '$lib/domain/hardcore';
+	import { afterGrade, classify, nextStep, type StepRecord } from '$lib/domain/hardcore';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import { humanLines } from '$lib/media/translation';
 	import { quickTranslation, type QuickStatus } from '$lib/translation/quick';
-	import {
-		clock,
-		dayStart,
-		drillSentence,
-		firstOccurrences,
-		readDayEnd,
-		type PlanDetail
-	} from '$lib/ui/hardcore';
+	import { clock, drillSentence, firstOccurrences, type PlanDetail } from '$lib/ui/hardcore';
 	import CardFace from '$lib/ui/CardFace.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import type { CardHelp } from '$lib/domain/card-help';
@@ -39,7 +32,6 @@
 	let records = $state<StepRecord[]>([]);
 	let characters: string[] = [];
 	let lineRanges: [number, number][] = [];
-	let passed = $state(new Set<number>());
 	let fromPart = $state(0);
 	let problem = $state<unknown>(null);
 	let busy = $state(false);
@@ -58,10 +50,9 @@
 			try {
 				const { repository } = await session();
 				const found = await repository.hardcoreSession(wanted);
-				const [doc, foundMedia, drilled] = await Promise.all([
+				const [doc, foundMedia] = await Promise.all([
 					repository.getDocument(found.documentId),
-					loadMedia(found.documentId),
-					repository.drilledSince(dayStart(new Date(), readDayEnd()).toISOString())
+					loadMedia(found.documentId)
 				]);
 				if (stopped) return;
 				characters = codePointsOf(doc.rawContent);
@@ -69,7 +60,6 @@
 				media = foundMedia?.media ? foundMedia : null;
 				plan = found.plan as unknown as PlanDetail;
 				records = found.steps;
-				passed = new Set(drilled);
 				document = doc;
 				// Back from the player or the reader: that step is done.
 				const ended = page.url.searchParams.get('ended');
@@ -223,6 +213,8 @@
 
 	let queue = $state<number[]>([]);
 	let drilling = $state<string | null>(null);
+	/** While a part's words are being checked against memory. */
+	let checking = $state(false);
 	/** Counts showings, so a card shown again is mounted afresh, on its front. */
 	let showing = $state(0);
 	let retiredLast = $state<{ lexemeId: number; word: string; previous?: string } | null>(null);
@@ -232,8 +224,23 @@
 		const key = `${current.part}`;
 		if (drilling === key) return;
 		drilling = key;
-		queue = part.words.filter((w) => !passed.has(w));
-		showing++;
+		const words = part.words;
+		checking = true;
+		void (async () => {
+			const { repository } = await session();
+			const { memory, parameters } = await repository.getMemory(words);
+			if (drilling !== key) return;
+			// Memory decides now, as it did for the plan (FR-010): a word passed since then is not due.
+			const now = new Date();
+			queue = words.filter(
+				(w) => classify(undefined, memory.get(w)?.reading, now, parameters).class !== 'excluded'
+			);
+			showing++;
+		})()
+			.catch((error) => (problem = error))
+			.finally(() => {
+				if (drilling === key) checking = false;
+			});
 	});
 
 	const occurrences = $derived(
@@ -276,7 +283,6 @@
 					}
 				}
 			]);
-			if (value > 1) passed = new Set([...passed, card.lexemeId]);
 			retiredLast = null;
 			queue = afterGrade(queue, value);
 			showing++;
@@ -344,8 +350,7 @@
 				{#each plan.parts as each, i (i)}
 					<li>
 						<button class="link" onclick={() => (fromPart = i)}>
-							{partLabel(each.lines)} · {each.words.length} words{#if each.words.length > 0 && each.words.every( (w) => passed.has(w) )}
-								· done today{/if}
+							{partLabel(each.lines)} · {each.words.length} words
 						</button>
 					</li>
 				{/each}
@@ -386,6 +391,8 @@
 				>{media ? 'Watch' : 'Read'} {partLabel(part.lines)}</button
 			>
 			<button class="secondary" onclick={finishStep} disabled={busy}>Skip</button>
+		{:else if checking}
+			<p class="loading">Finding the words…</p>
 		{:else if card}
 			<p class="counts">{queue.length} to go</p>
 			<div class="drill">

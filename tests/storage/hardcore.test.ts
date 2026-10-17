@@ -95,35 +95,13 @@ describe('a hardcore session read back', () => {
 		parts: [{ lines: [0, 0], words: [1, 2] }]
 	};
 
-	it('gives its plan and steps in order, and the words passed in drills since a moment', async () => {
-		const { repository, first, wo, kan } = await library();
+	it('gives its plan and steps in order', async () => {
+		const { repository, first } = await library();
 		const session = repository.startSession(first, 'hardcore');
 		const now = new Date().toISOString();
 		repository.recordEncounters(session, [
 			{ kind: 'hardcore-plan', at: now, detail: plan },
-			{ kind: 'hardcore-step', at: now, detail: { part: 0, step: 'drill', at: 'start' } }
-		]);
-		drill(repository, first, kan, now);
-		const shu = repository.getDocument(first).tokens.find((t) => t.start === 2)!.lexemeId!;
-		repository.recordEncounters(session, [
-			{
-				kind: 'review',
-				at: now,
-				lexemeId: shu,
-				documentId: first,
-				fromOffset: 2,
-				toOffset: 3,
-				detail: { skill: 'reading', grade: 2, hardcore: { part: 0 }, line: [0, 8] }
-			},
-			{
-				kind: 'review',
-				at: now,
-				lexemeId: wo,
-				documentId: first,
-				fromOffset: 0,
-				toOffset: 1,
-				detail: { skill: 'reading', grade: 1, hardcore: { part: 0 }, line: [0, 8] }
-			},
+			{ kind: 'hardcore-step', at: now, detail: { part: 0, step: 'drill', at: 'start' } },
 			{ kind: 'hardcore-step', at: now, detail: { part: 0, step: 'drill', at: 'end' } }
 		]);
 		expect(repository.hardcoreSession(session)).toEqual({
@@ -134,10 +112,6 @@ describe('a hardcore session read back', () => {
 				{ part: 0, step: 'drill', at: 'end' }
 			]
 		});
-		// 我 was graded Again only: not passed. 书 passed on Hard; 看 passed, in another session.
-		expect(repository.drilledSince(daysAgo(1))).toEqual([kan, shu].sort((a, b) => a - b));
-		expect(repository.drilledSince(now)).toEqual([kan, shu].sort((a, b) => a - b));
-		expect(repository.drilledSince(new Date(Date.now() + 1000).toISOString())).toEqual([]);
 	});
 
 	it('ranks words by general frequency, unlisted ones absent', async () => {
@@ -197,6 +171,5 @@ describe('a drill in the rest of the history (FR-017)', () => {
 
 		repository.withdrawDocument(first, 'test');
 		expect(reps()).toBeUndefined();
-		expect(repository.drilledSince('2000-01-01T00:00:00Z')).toEqual([]);
 	});
 });

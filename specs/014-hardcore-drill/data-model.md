@@ -18,14 +18,14 @@ in the player's own session, as today.
 
 ## Derived
 
-- **Drillable word** (per word in the document): class `new` (no memory), `due` (active, due now),
-  `not-active` (memory, not active), `set-aside`, or excluded (`active` not due, `retired` by
-  hand); the shares' known flag; general-frequency rank.
+- **Drillable word** (per word in the document): class `new` (no memory), `due` (reading memory
+  due now), or `excluded` (memory not due), whether a card, set aside or retired (amended
+  2026-10-17, issue #46); the shares' known flag; general-frequency rank.
 - **Part**: consecutive lines; its words in drill order, each with its card line (first line of the
   part holding it). Computed at the start, then read back from the plan.
 - **Session progress**: the next step is the first (part, step) in the plan with no `end` record.
-  A part is done today when all its words were passed in a drill today.
-- **Passed today**: words with a hardcore review graded 2–4 since the day began (day-end hour).
+- **A part's drill queue**: its plan words classed again when the drill starts, new and due ones
+  kept (FR-010; replaced "passed today" on 2026-10-17, issue #46).
 - **Memory** (`memory` table, rule key `evidence-4+no-steps+known-2+drill-14/…`):
 
 ```

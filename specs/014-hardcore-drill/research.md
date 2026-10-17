@@ -89,6 +89,8 @@ is cue i. Decision:
 - The plan keeps every part's words (`hardcore-plan`): a drilled due word stops being due, so
   recomputing the parts later would shift them. Words passed today are skipped when a drill
   starts, not removed from the plan, so the parts and their "done today" marks stay put.
+  (Superseded 2026-10-17, issue #46: words are classed by memory alone, and a drill re-classes
+  its part's words when it starts; "passed today" and "done today" are gone.)
 Properties (test-first, derived data): parts are consecutive and tile the fragment; every kept
 word is in exactly one part, the first containing it; sizes as above; filters are monotone (a
 stricter value never adds a word).

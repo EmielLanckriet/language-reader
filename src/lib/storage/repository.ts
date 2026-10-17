@@ -661,19 +661,6 @@ export class Repository {
 		};
 	}
 
-	/** Words passed (graded Hard or better) in a drill since `since`, not taken back (FR-010). */
-	drilledSince(since: string): LexemeId[] {
-		return queryRows(
-			this.db,
-			`SELECT DISTINCT lexeme_id FROM encounter
-        WHERE kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL
-          AND json_extract(detail, '$.grade') >= 2 AND at >= ?
-          AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))
-        ORDER BY lexeme_id`,
-			[since]
-		).map((row) => Number(row.lexeme_id));
-	}
-
 	/** Each word's place in general Chinese frequency (ADR-0039); unlisted words are absent. */
 	frequencyRanks(lexemeIds: LexemeId[]): Map<LexemeId, number> {
 		const ranks = new Map<LexemeId, number>();
