@@ -176,15 +176,25 @@
 		Array.from({ length: shown.last - shown.first }, (_, k) => shown.first + k)
 	);
 
+	// Every line has the same margin, so it is read once. The height comes from the observer, which
+	// has it from the layout just done: `getComputedStyle` and `offsetHeight` on each built line
+	// forced one more layout per line (issue #41; scrolling through a 400-line video on the phone,
+	// long tasks 2.16 → 1.94 s and the longest 165 → 112 ms: the rest is building the lines).
+	let margin: number | undefined;
 	function measure(node: HTMLElement, line: number) {
-		const margin = parseFloat(getComputedStyle(node).marginBottom) || 0;
+		margin ??= parseFloat(getComputedStyle(node).marginBottom) || 0;
+		let size: number | undefined;
 		const note = () => {
-			const height = node.offsetHeight + margin;
+			if (size === undefined) return;
+			const height = size + margin!;
 			if (heights[line] === height) return;
 			heights[line] = height;
 			measured++;
 		};
-		const observer = new ResizeObserver(note);
+		const observer = new ResizeObserver(([entry]) => {
+			size = entry.borderBoxSize?.[0]?.blockSize ?? node.offsetHeight;
+			note();
+		});
 		observer.observe(node);
 		return {
 			update(next: number) {

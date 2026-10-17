@@ -33,8 +33,15 @@ The reader page holds its document in a deep `$state` too, but on the phone (iso
 reader, a synthetic 400-cue video) it costs nothing measurable, so it is unchanged: 60 s of
 playback had no long task and a flat heap; a tap opens the sheet in 4–19 ms. Two costs seen
 there: the first tap of each app start parses the whole dictionary on the main thread (one 428 ms
-task), and scrolling fast through the whole video spent 2.2 s in long tasks, mostly the line list
+task), and scrolling fast through the whole video spent 2.2 s in long tasks, the line list
 measuring each row as it mounts (`getComputedStyle` and `offsetHeight` force a layout per row).
+Both changed, same phone and video: the dictionary is loaded and looked up in its own worker
+(`dictionary-worker.ts`), so ten taps had no long task and the page's heap fell from ~47 to ~17
+MB; rows take their height from the ResizeObserver and the margin is read once, which took the
+measuring out of the profile but only brought scrolling's long tasks from 2.16 to 1.94 s (longest
+165 → 112 ms): the layout moved to the browser's own pass, and the rest is building the lines.
+Browser: `cardlayout` (meanings through the worker), `offline` and `shell` (the worker is
+precached) pass; `sheet` fails identically before the change (a `.reading` it no longer finds).
 
 After, same phone, data and drill: 62 ms to the next card over the first ten, 41 ms over the last
 ten, no long tasks, heap flat at ~40 MB. Tests: per-word and all-words sightings agree, and the

@@ -1,31 +1,42 @@
 /** Word lookup against CC-CEDICT, loaded the first time a word is looked up. */
 
 import { base } from '$app/paths';
-import { explain, type Entry, type Part } from './gloss';
+import type { Entry, Part } from './gloss';
 
 export type { Entry, Part };
 
-let loading: Promise<Map<string, Entry[]>> | undefined;
+// The dictionary lives in its own worker: only a word and its few entries cross to the page.
+let worker: Worker | undefined;
+let nextId = 0;
+const pending = new Map<number, { resolve: (parts: Part[]) => void; reject: (e: Error) => void }>();
 
-async function load(): Promise<Map<string, Entry[]>> {
-	const response = await fetch(`${base}/dictionary-zh.txt`);
-	if (!response.ok) throw new Error(`the dictionary could not be loaded (${response.status})`);
-	const entries = new Map<string, Entry[]>();
-	for (const line of (await response.text()).split('\n')) {
-		if (!line || line.startsWith('#')) continue;
-		const [word, pinyin, meaning] = line.split('\t');
-		const list = entries.get(word) ?? [];
-		list.push({ pinyin, meaning });
-		entries.set(word, list);
-	}
-	return entries;
+function dictionary(): Worker {
+	if (worker) return worker;
+	worker = new Worker(new URL('./dictionary-worker.ts', import.meta.url), { type: 'module' });
+	worker.onmessage = (event) => {
+		const { id, parts, error } = event.data;
+		const call = pending.get(id);
+		pending.delete(id);
+		if (error === undefined) call?.resolve(parts);
+		else call?.reject(new Error(error));
+	};
+	worker.onerror = (event) => {
+		// A worker that failed to start answers nothing: fail what waits, and start afresh next time.
+		for (const call of pending.values())
+			call.reject(new Error(event.message || 'the dictionary stopped'));
+		pending.clear();
+		worker?.terminate();
+		worker = undefined;
+	};
+	return worker;
 }
 
 /** What the word means: see gloss.ts for how a word the dictionary lacks is explained. */
-export async function lookUp(word: string, readings?: string[]): Promise<Part[]> {
-	loading ??= load().catch((error) => {
-		loading = undefined;
-		throw error;
+export function lookUp(word: string, readings?: string[]): Promise<Part[]> {
+	return new Promise((resolve, reject) => {
+		const id = nextId++;
+		pending.set(id, { resolve, reject });
+		const url = new URL(`${base}/dictionary-zh.txt`, location.href).href;
+		dictionary().postMessage({ id, url, word, readings });
 	});
-	return explain(await loading, word, readings);
 }
