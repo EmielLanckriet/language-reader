@@ -103,9 +103,10 @@ it('dates an exposure from a drill card that showed its line, and from nothing e
 	}
 });
 
-// A grade recomputes one word. Its drill sightings come from a query for that word alone, since the
-// one for every word at once cost 0.4 s a grade on the phone (issue #41); both must agree.
-it('finds a word’s drill sightings alone as it does for every word at once', async () => {
+// A grade recomputes one word. Its drill sightings and its documents' longest ranges come from
+// queries for that word alone, since those for every word at once read the whole history on each
+// grade (issue #41); both must agree.
+it('remembers a word recomputed alone as when every word is recomputed', async () => {
 	const line = '甲乙丙丁戊己庚辛壬癸子丑';
 	const memoryOf = async (drilled: boolean) => {
 		const db = await freshDatabase();

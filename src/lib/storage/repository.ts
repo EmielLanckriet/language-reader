@@ -1560,7 +1560,7 @@ export class Repository {
               e.session_id IN (${WITHDRAWN}) AS withdrawn
        FROM token t
        JOIN encounter e ON e.document_id = t.document_id
-                       AND e.from_offset < t.end AND e.from_offset > t.start - ${this.reach(shared)}
+                       AND e.from_offset < t.end AND e.from_offset > t.start - ${this.reach(lexemeId, shared)}
                        AND e.to_offset > t.start AND e.kind IN ('read', 'played')
        JOIN session s ON s.id = e.session_id
        WHERE t.lexeme_id = ?
@@ -1641,20 +1641,32 @@ export class Repository {
 	 * it: the same rows. Measured 2026-10-16 on the reader's backup (#1): every one of 5,720 words
 	 * had identical rows, and answering a median session went from 1.4 s to 0.7 s on the laptop. A
 	 * document with no such range when the run began keeps MAX_RANGE.
+	 *
+	 * Once a run for every document, which a run of a few words paid in full: every grade, tap and
+	 * mark read every read and played range (issue #41). Such a run asks only of the word's documents.
 	 */
-	private reach(shared: HistoryRun): string {
-		if (shared.reach === undefined) {
-			const spans = queryRows(
-				this.db,
-				`SELECT document_id, MAX(to_offset - from_offset) AS span FROM encounter
-         WHERE kind IN ('read', 'played') AND document_id IS NOT NULL GROUP BY document_id`
-			);
-			shared.reach =
-				spans.length === 0
-					? String(MAX_RANGE)
-					: `(CASE t.document_id ${spans.map((row) => `WHEN ${Number(row.document_id)} THEN ${Number(row.span)}`).join(' ')} ELSE ${MAX_RANGE} END)`;
-		}
+	private reach(lexemeId: LexemeId, shared: HistoryRun): string {
+		if (shared.few) return this.spanExpression([lexemeId]);
+		shared.reach ??= this.spanExpression();
 		return shared.reach;
+	}
+
+	/**
+	 * Each document's longest read or played range, of these words' documents or of every one. For
+	 * a few documents `+kind` keeps SQLite off the kind index, which walked every range ever read.
+	 */
+	private spanExpression(lexemeIds?: LexemeId[]): string {
+		const spans = queryRows(
+			this.db,
+			`SELECT document_id, MAX(to_offset - from_offset) AS span FROM encounter
+       WHERE ${lexemeIds ? '+kind' : 'kind'} IN ('read', 'played') AND document_id IS NOT NULL
+       ${lexemeIds ? `AND document_id IN (SELECT document_id FROM token WHERE lexeme_id IN (${lexemeIds.map(() => '?').join(',')}))` : ''}
+       GROUP BY document_id`,
+			lexemeIds ?? []
+		);
+		return spans.length === 0
+			? String(MAX_RANGE)
+			: `(CASE t.document_id ${spans.map((row) => `WHEN ${Number(row.document_id)} THEN ${Number(row.span)}`).join(' ')} ELSE ${MAX_RANGE} END)`;
 	}
 
 	/**
@@ -1664,8 +1676,9 @@ export class Repository {
 	 * 2026-10-16). The few drill reviews first, then their lines' tokens: joined the other way round,
 	 * SQLite walked every review's document tokens (80 s of Learning data's 90 s, 2026-10-15).
 	 *
-	 * A run of a few words asks for each word alone, from the documents it is in: for every word at
-	 * once read every review's detail on each grade, 0.4 s of each card on the phone (issue #41).
+	 * A run of a few words asks for each word alone, from the documents it is in (`+kind`: by the kind
+	 * index SQLite read every review): for every word at once read every review's detail on each
+	 * grade, 0.4 s of each card on the phone (issue #41).
 	 * `t.start < d.last` follows from `t."end" <= d.last`, but only it ends the index range: without
 	 * it each drilled line read its document's tokens to the end, more with every drill review.
 	 */
@@ -1678,7 +1691,7 @@ export class Repository {
                   json_extract(detail, '$.line[0]') AS first, json_extract(detail, '$.line[1]') AS last
            FROM encounter
            WHERE document_id IN (SELECT document_id FROM token WHERE lexeme_id = ?)
-             AND kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
+             AND +kind = 'review' AND json_extract(detail, '$.hardcore') IS NOT NULL)
          SELECT t.lexeme_id, d.session_id, d.document_id, d.at, t.start FROM drill d
          JOIN token t ON t.document_id = d.document_id AND t.start >= d.first AND t.start < d.last
                      AND t."end" <= d.last

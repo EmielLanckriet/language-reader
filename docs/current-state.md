@@ -21,6 +21,15 @@ sentence's audio was never slow (0.2 s from tap to playing); getting to the next
   `$state` proxy of the document. Now one pass per part (`firstOccurrences`), and the document and
   media are `$state.raw`.
 
+Then, asked what else reads everything to change one thing: timed every statement of a grade, a
+Cards answer, a tap and a mark on synthetic histories of 8,802 and 26,370 encounters, for a word
+whose own history is the same in both. One more: `reach`, each document's longest read or played
+range, read every such range on each change. Now a few-word run asks only of the word's
+documents, and both narrowed queries use `+kind`, since by the kind index SQLite still read every
+range or review. A change: 5.6 → 14.2 ms before, 2.0 ms at both sizes after (laptop). Left as
+they are, whole-history by design: the backup copy (all data, 30 s after the last change and
+every 5 minutes while changing), Cards' met-words count and the study overview on each visit.
+
 After, same phone, data and drill: 62 ms to the next card over the first ten, 41 ms over the last
 ten, no long tasks, heap flat at ~40 MB. Tests: per-word and all-words sightings agree, and the
 sighting matters in that fixture (mutations: no rows, `<` for `<=` at the line's end, both red);
