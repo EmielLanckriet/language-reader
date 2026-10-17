@@ -3,7 +3,7 @@
 Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## Hardcore judges every word by its memory alone (#46) — deployed, not yet seen on the phone
+## Hardcore judges every word by its memory alone (#46) — deployed and phone checked
 
 A drill-only session on the Vietnam video (document 40) planned 22 words and opened on none. Read
 from the phone: all 22 had been passed in a drill 8 minutes before, and FR-010 skipped words passed
@@ -16,7 +16,13 @@ a drill classes its part's words again when it starts, replacing "passed today" 
 today" marks (`drilledSince` is gone). The `ignored` check went too: ADR-0040 turned every
 `ignored` mark into `retired`. Spec 014 FR-004 and FR-010 amended. A classify test, red before the
 change on the tapped-only, drilled and retired cases; 661 tests, type check, lint. The drill page's
-re-check is not covered by a test or browser scenario.
+re-check is not covered by a test or browser scenario, and the first build of it failed on the
+phone: it posted the plan's part words, a deep `$state` proxy, to the storage worker ("could not be
+cloned"); it now posts a copy. On the phone, document 40 from the beginning, drill only: the
+planner said 1 word and the drill opened on 1 card, 共 (retired, no memory); the database agreed,
+292 of the video's 293 words not due. Seen once while updating to the first build: "Update now"
+stayed on "Updating…" for 5+ minutes, the new worker installed but stopped, until DevTools forced
+skip-waiting; the next update through the same button went through. Cause not found.
 
 ## An empty sound or video file counts as none (#45) — deployed, not yet seen on the phone
 
