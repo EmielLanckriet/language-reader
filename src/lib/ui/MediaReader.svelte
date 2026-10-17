@@ -178,8 +178,8 @@
 
 	// Every line has the same margin, so it is read once. The height comes from the observer, which
 	// has it from the layout just done: `getComputedStyle` and `offsetHeight` on each built line
-	// forced one more layout per line (issue #41; scrolling through a 400-line video on the phone,
-	// long tasks 2.16 → 1.94 s and the longest 165 → 112 ms: the rest is building the lines).
+	// forced one more layout per line (issue #41). It left the profile, but scrolling did not
+	// measurably improve: the lines shown have to be built and laid out anyway.
 	let margin: number | undefined;
 	function measure(node: HTMLElement, line: number) {
 		margin ??= parseFloat(getComputedStyle(node).marginBottom) || 0;

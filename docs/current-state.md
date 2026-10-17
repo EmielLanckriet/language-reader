@@ -44,13 +44,18 @@ The reader page holds its document in a deep `$state` too, but on the phone (iso
 reader, a synthetic 400-cue video) it costs nothing measurable, so it is unchanged: 60 s of
 playback had no long task and a flat heap; a tap opens the sheet in 4–19 ms. Two costs seen
 there: the first tap of each app start parses the whole dictionary on the main thread (one 428 ms
-task), and scrolling fast through the whole video spent 2.2 s in long tasks, the line list
-measuring each row as it mounts (`getComputedStyle` and `offsetHeight` force a layout per row).
-Both changed, same phone and video: the dictionary is loaded and looked up in its own worker
-(`dictionary-worker.ts`), so ten taps had no long task and the page's heap fell from ~47 to ~17
-MB; rows take their height from the ResizeObserver and the margin is read once, which took the
-measuring out of the profile but only brought scrolling's long tasks from 2.16 to 1.94 s (longest
-165 → 112 ms): the layout moved to the browser's own pass, and the rest is building the lines.
+task), and scrolling fast through the whole video spent about 2 s in long tasks, where the
+profile showed the line list measuring each row as it mounts (`getComputedStyle` and
+`offsetHeight` force a layout per row). Both changed, same phone and video: the dictionary is
+loaded and looked up in its own worker (`dictionary-worker.ts`), so ten taps had no long task and
+the page's heap fell from ~47 to ~17 MB. Rows take their height from the ResizeObserver and the
+margin is read once: the measuring left the profile, but scrolling did not measurably improve.
+An earlier "2.16 → 1.94 s" was one run each; seven runs of one build spread from 1,974 to 2,993
+ms (median 2,173), longest task 145–207 ms. The layout moved to the browser's own pass: the
+lines shown must be built and laid out anyway. Also tried and dropped, seven runs each: one click
+handler for the list's words, and `content-visibility: auto` on lines (measuring only rendered
+ones), median 2,100 ms (1,595–2,628) against 2,173 — within the spread. Svelte already delegates
+clicks, and the list builds only lines about to be shown, so neither had work to save.
 Browser: `cardlayout` (meanings through the worker), `offline` and `shell` (the worker is
 precached) pass. `sheet` had failed since 2026-09-30 on a `.card` scroll pasted in from the
 flashcard work (the sheet has none); without it it passes, the meaning shown through the worker.
