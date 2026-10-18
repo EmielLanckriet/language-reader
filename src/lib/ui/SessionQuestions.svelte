@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AttentionAnswer, Engagement } from '$lib/domain/encounter';
 
-	/** A session's optional feedback: on Progress, and in the reader when it is left (2026-10-04). */
+	/** A session's optional feedback: under More → Sessions, and in the reader when it is left or finished. */
 	let {
 		modality,
 		engagement,

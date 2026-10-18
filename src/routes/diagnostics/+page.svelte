@@ -11,6 +11,7 @@
 	import { readNewCards, keepNewCards } from '$lib/ui/new-cards';
 	import { replacements } from '$lib/media/store';
 	import ReportDialog from '$lib/ui/ReportDialog.svelte';
+	import SessionList from '$lib/ui/SessionList.svelte';
 	import { readToken, keepToken, REPOSITORY } from '$lib/report/report';
 
 	let githubToken = $state(readToken() ?? '');
@@ -23,6 +24,8 @@
 	// Cards settings (moved off the Cards page). The waiting count needs today's queue, so it is
 	// only asked for when the group is opened.
 	let newCards = $state(readNewCards());
+	// Built only once opened: listing sessions reads the whole history.
+	let sessionsOpened = $state(false);
 	let awaitingContext = $state<number | null>(null);
 	async function countAwaiting() {
 		if (awaitingContext !== null) return;
@@ -633,6 +636,14 @@
 			{/if}
 		</dd>
 	</dl>
+</details>
+
+<details class="group" ontoggle={(e) => e.currentTarget.open && (sessionsOpened = true)}>
+	<summary>
+		<span class="title">Sessions</span>
+		<small>Past sessions · Optional feedback</small>
+	</summary>
+	{#if sessionsOpened}<SessionList />{/if}
 </details>
 
 <details class="group">

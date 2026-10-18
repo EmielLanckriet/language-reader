@@ -334,9 +334,16 @@
 		finishProblem = null;
 		player?.pause();
 		try {
-			const id = await recorder.finish();
+			// The same as leaving (asked for 2026-10-18): the questions after real reading or playing,
+			// then the library, where the document is listed.
+			const home = media?.media ? resolve('/') : resolve('/texts');
+			if (recorder.engagedMs() >= FEEDBACK_AFTER_MS) {
+				await askBeforeLeaving(() => goto(home));
+				return;
+			}
+			await recorder.finish();
 			leavingQuietly = true;
-			await goto(resolve(`/progress?session=${id}`));
+			await goto(home);
 		} catch (error) {
 			finishProblem = error;
 		} finally {
@@ -347,7 +354,7 @@
 	/**
 	 * Leaving without Finish session asks the session's questions here, since the reader forgets them
 	 * otherwise (asked for 2026-10-04). Only after some real reading or playing, and only for leaving
-	 * within the app: closing the app cannot wait for a sheet, and Progress still asks later.
+	 * within the app: closing the app cannot wait for a sheet, and More → Sessions still asks later.
 	 */
 	let leaving = $state<{
 		session: number;
@@ -380,7 +387,7 @@
 			const id = await recorder.finish();
 			leaving = { session: id, modality, engagement: null, answered: false, answer: null, go };
 		} catch {
-			// Not saved yet: leave as before; the recorder's stash and Progress keep the session.
+			// Not saved yet: leave as before; the recorder's stash and More → Sessions keep the session.
 			go();
 		} finally {
 			leavingQuietly = false;
@@ -978,7 +985,9 @@
 	<div class="leave-backdrop">
 		<div class="leave-sheet" role="dialog" aria-modal="true" aria-label="Before you go">
 			<h2>Before you go</h2>
-			<p class="muted">Session saved. These are optional; you can also answer later in Progress.</p>
+			<p class="muted">
+				Session saved. These are optional; you can also answer later under More → Sessions.
+			</p>
 			<SessionQuestions
 				modality={current.modality}
 				engagement={current.engagement}

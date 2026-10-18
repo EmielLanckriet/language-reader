@@ -156,6 +156,41 @@ const ALL_LINES = `localStorage.setItem('reader.stage', 'false'); return true;`;
 // the session's questions in a sheet (#32), and this answers it with Later.
 const LATER = `const later = [...document.querySelectorAll('.leave-sheet button')].find((b) => b.textContent.trim() === 'Later'); if (later) { later.click(); return null; }`;
 
+// Finish session works like leaving (2026-10-18): the questions after 10 s of reading or playing,
+// then the library (Texts for a text). Resolves to 'sheet' when asked, 'left' when gone at once.
+async function finishSession(tab) {
+	await tab.evaluate(
+		`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Finish session').click()`
+	);
+	return until('finished', () =>
+		tab.evaluate(
+			`if (document.querySelector('.leave-sheet')) return 'sheet'; return /\\/(texts)?$/.test(location.pathname) ? 'left' : null;`
+		)
+	);
+}
+
+async function finishAndLeave(tab) {
+	if ((await finishSession(tab)) === 'sheet') {
+		await tab.evaluate(LATER);
+		await until('left after Later', () =>
+			tab.evaluate(`return /\\/(texts)?$/.test(location.pathname)`)
+		);
+	}
+}
+
+// Past sessions and their questions live under More → Sessions, built once the group is opened.
+async function openSessions(tab) {
+	await tab.goto('/diagnostics');
+	await until('Sessions group', () =>
+		tab.evaluate(
+			`const group = [...document.querySelectorAll('details.group')].find((d) => d.querySelector('.title')?.textContent === 'Sessions'); if (!group) return false; group.open = true; return true;`
+		)
+	);
+	await until('session cards', () =>
+		tab.evaluate(`return !!document.querySelector('.session-card')`)
+	);
+}
+
 // Import a Termux job the way the reader does: open the library, find it under "New from Termux",
 // press Open. The reader service must be serving it (make-fixtures.sh).
 async function importFromTermux(tab, title) {
@@ -496,12 +531,7 @@ const scenarios = {
 				`return [...document.querySelectorAll('.sheet .choice')].map(b=>b.textContent.replace(/\\s+/g,' ').trim())`
 			);
 			await tab.evaluate(`document.querySelector('.sheet button[aria-label="Cancel"]').click()`);
-			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
-			);
-			await until('saved session', () =>
-				tab.evaluate(`return location.pathname.endsWith('/progress')`)
-			);
+			await finishAndLeave(tab);
 			await tab.goto('/cards');
 			await until('card and pinyin', () =>
 				tab.evaluate(
@@ -562,7 +592,7 @@ const scenarios = {
 				pass:
 					sheetChoices.length === 1 &&
 					sheetChoices[0].startsWith('Retire') &&
-					more.groups.length === 5 &&
+					more.groups.length === 6 &&
 					more.groups[1] === 'Cards' &&
 					front.extras.length === 0 &&
 					!front.heading &&
@@ -617,12 +647,8 @@ const scenarios = {
 				tab.evaluate(`return !!document.querySelector('.sheet button[aria-label="Cancel"]')`)
 			);
 			await tab.evaluate(`document.querySelector('.sheet button[aria-label="Cancel"]').click()`);
-			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
-			);
-			await until('on Progress', () =>
-				tab.evaluate(`return location.pathname.endsWith('/progress')`)
-			);
+			await finishAndLeave(tab);
+			await tab.goto('/progress');
 			const ROW = `[...document.querySelectorAll('.words .body .row')].find(r=>r.querySelector('.word')?.textContent==='学习')`;
 			const row = () =>
 				tab.evaluate(
@@ -800,9 +826,9 @@ const scenarios = {
 				async () => (await path()).endsWith('/texts') && !(await sheet())
 			);
 
-			// 2. The answer is the session's, on Progress.
-			await tab.goto('/progress');
-			await until('answer on Progress', () =>
+			// 2. The answer is the session's, under More → Sessions.
+			await openSessions(tab);
+			await until('answer under Sessions', () =>
 				tab.evaluate(
 					`return document.querySelector('.session-card summary')?.textContent.includes('Feedback saved')`
 				)
@@ -918,8 +944,8 @@ const scenarios = {
 				'arrived at the library',
 				async () => (await path()).endsWith('/language-reader/') && !(await sheet())
 			);
-			await tab.goto('/progress');
-			await until('both answers on Progress', () =>
+			await openSessions(tab);
+			await until('both answers under Sessions', () =>
 				tab.evaluate(
 					`const card=document.querySelector('.session-card'); card.open=true; return [...card.querySelectorAll('button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Only listened,Partly'`
 				)
@@ -968,13 +994,27 @@ const scenarios = {
 				75000,
 				500
 			);
+			// Finish asks the questions in a sheet, then goes to Texts (2026-10-18).
+			if ((await finishSession(tab)) !== 'sheet') throw new Error('Finish did not ask');
 			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
+				`[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.includes('every unknown')).click()`
 			);
-			await until('saved session summary', () =>
+			await until('answer saved in the sheet', () =>
 				tab.evaluate(
-					`return document.body.innerText.includes('Session saved.') && !!document.querySelector('.session-card')`
+					`return document.querySelector('.leave-sheet').innerText.includes('Current answer: Yes')`
 				)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Done').click()`
+			);
+			await until('arrived at Texts', () =>
+				tab.evaluate(
+					`return location.pathname.endsWith('/texts') && !document.querySelector('.leave-sheet')`
+				)
+			);
+			await tab.goto('/progress');
+			await until('week on Progress', () =>
+				tab.evaluate(`return !!document.querySelector('.week-days')`)
 			);
 			const complete = await tab.evaluate(
 				`return document.querySelectorAll('.week-days .complete').length`
@@ -983,14 +1023,12 @@ const scenarios = {
 			const streak = await tab.evaluate(`return document.querySelector('.streak')?.textContent`);
 			if (!/^\s*1\s+study day in your streak\s*$/.test(streak ?? ''))
 				throw new Error(`Expected a one-day streak, got ${JSON.stringify(streak)}`);
-			await tab.evaluate(
-				`[...document.querySelectorAll('.answer-options button')].find(b=>b.textContent.includes('every unknown')).click()`
+			const sessionsOnProgress = await tab.evaluate(
+				`return !!document.querySelector('.session-card') || document.body.innerText.includes('Your sessions')`
 			);
-			await until('answer saved', () =>
-				tab.evaluate(`return document.body.innerText.includes('Current answer: Yes')`)
-			);
-			await tab.goto('/progress');
-			await until('feedback survived reload', () =>
+			if (sessionsOnProgress) throw new Error('Sessions are still on Progress');
+			await openSessions(tab);
+			await until('feedback under Sessions', () =>
 				tab.evaluate(`return document.body.textContent.includes('Current answer: Yes')`)
 			);
 			await tab.evaluate(
@@ -998,6 +1036,10 @@ const scenarios = {
 			);
 			await until('corrected answer', () =>
 				tab.evaluate(`return document.body.innerText.includes('Current answer: Only some')`)
+			);
+			await tab.goto('/progress');
+			await until('week on Progress', () =>
+				tab.evaluate(`return !!document.querySelector('.week-days')`)
 			);
 			for (const theme of ['light', 'dark']) {
 				await tab.send('Emulation.setEmulatedMedia', {
@@ -1014,6 +1056,11 @@ const scenarios = {
 			await until('continue card', () =>
 				tab.evaluate(`return !!document.querySelector('.continue-card')`)
 			);
+			// The library no longer points at sessions waiting for feedback.
+			const feedbackNotice = await tab.evaluate(
+				`return document.body.innerText.includes('feedback waiting')`
+			);
+			if (feedbackNotice) throw new Error('The library still shows the feedback notice');
 			await tab.send('Emulation.setEmulatedMedia', {
 				features: [{ name: 'prefers-color-scheme', value: 'light' }]
 			});
@@ -1576,20 +1623,17 @@ const scenarios = {
 				replayed.line === played.line &&
 				replayed.time < played.time &&
 				again.line === replayed.line;
-			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
-			);
-			await until('saved session summary', () =>
-				tab.evaluate(`return !!document.querySelector('.session-card[open]')`)
-			);
+			// Finish asks in the leaving sheet after 10 s of playing (2026-10-18).
+			if ((await finishSession(tab)) !== 'sheet') throw new Error('Finish did not ask');
+			let within = '.leave-sheet';
 			// The answer under its own question: "Partly" is offered for following and for attention.
 			const choose = (text, question) =>
 				tab.evaluate(
-					`const q=[...document.querySelectorAll('.session-card[open] .question')].find(p=>p.textContent.includes(${JSON.stringify(question)}));[...q.nextElementSibling.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click(); return true;`
+					`const q=[...document.querySelectorAll('${within} .question')].find(p=>p.textContent.includes(${JSON.stringify(question)}));[...q.nextElementSibling.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click(); return true;`
 				);
 			const pressed = () =>
 				tab.evaluate(
-					`return [...document.querySelectorAll('.session-card .answer-options button[aria-pressed="true"]')].map(b=>b.textContent.trim()).sort().join(',')`
+					`return [...document.querySelectorAll('${within} .answer-options button[aria-pressed="true"]')].map(b=>b.textContent.trim()).sort().join(',')`
 				);
 			await choose('Only listened', 'watch, or only listen');
 			await until('mode saved', async () => ((await pressed()) === 'Only listened' ? true : null));
@@ -1602,8 +1646,15 @@ const scenarios = {
 			await until('attention saved', async () =>
 				(await pressed()) === 'Only listened,Partly,Yes' ? true : null
 			);
-			await tab.goto('/progress');
-			await until('answers survived reload', async () => {
+			await tab.evaluate(
+				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Done').click()`
+			);
+			await until('left for the library', () =>
+				tab.evaluate(`return location.pathname.endsWith('/language-reader/')`)
+			);
+			await openSessions(tab);
+			within = '.session-card';
+			await until('answers survived', async () => {
 				await tab.evaluate(`document.querySelector('.session-card').open=true; return true;`);
 				return (await pressed()) === 'Only listened,Partly,Yes' ? true : null;
 			});
@@ -2539,8 +2590,8 @@ const scenarios = {
 			await until('leaving for the library', () =>
 				tab.evaluate(`${LATER} return !location.pathname.includes('/read/') || null;`)
 			);
-			// Spec 010 moved the question from a sheet on leaving to the session's card on Progress.
-			await tab.goto('/progress');
+			// The session's card, under More → Sessions since 2026-10-18.
+			await openSessions(tab);
 			const asked = await until('the attention question', () =>
 				tab.evaluate(`
 					const card = document.querySelector('.session-card');

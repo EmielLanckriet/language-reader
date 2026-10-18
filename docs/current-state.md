@@ -3,6 +3,16 @@
 Updated 2026-10-18. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
+## Sessions under More; Finish asks like leaving — deployed, not yet seen on the phone
+
+The reader, 2026-10-18: "I barely need" the session feedback. Progress now holds the week and the
+word list; past sessions and their optional questions are a Sessions group under More
+(`SessionList.svelte`, built only when opened, since `studyOverview` reads the whole history). The
+library's "N sessions have optional feedback waiting" card is gone. Finish session now does what
+leaving does: after 10 s of reading or playing, the "Before you go" sheet, then the library (Texts
+for a text); a shorter session goes straight there. Browser `study`, `leaving`, `leavingvideo`,
+`listened`, `encounters`, `cardlayout` and `wordlist` updated and passing.
+
 ## The word list on Progress (#47) — deployed, not yet seen on the phone
 
 Progress now lists every word with a memory or a mark, below the study overview. Searchable by

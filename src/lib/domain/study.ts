@@ -23,7 +23,7 @@ export interface StudySession {
 
 /**
  * How much reading or playing a session needs before it asks for feedback, on leaving or on
- * Progress (issue #32, the reader: a mere visit does not deserve a grade).
+ * finishing (issue #32, the reader: a mere visit does not deserve a grade).
  */
 export const FEEDBACK_AFTER_MS = 10_000;
 
