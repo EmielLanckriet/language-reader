@@ -23,13 +23,18 @@ async function load(url: string): Promise<Map<string, Entry[]>> {
 }
 
 self.onmessage = async (event: MessageEvent) => {
-	const { id, url, word, readings } = event.data;
+	const { id, url, word, readings, words } = event.data;
 	try {
 		loading ??= load(url).catch((error) => {
 			loading = undefined;
 			throw error;
 		});
-		self.postMessage({ id, parts: explain(await loading, word, readings) });
+		const dictionary = await loading;
+		// A list of words (the word list, issue #47) is answered in one message, not one per word.
+		const parts = words
+			? (words as string[]).map((each) => explain(dictionary, each))
+			: explain(dictionary, word, readings);
+		self.postMessage({ id, parts });
 	} catch (error) {
 		self.postMessage({ id, error: error instanceof Error ? error.message : String(error) });
 	}

@@ -28,7 +28,9 @@ import type {
 	DocumentSummary,
 	RecentSession,
 	StoredDocument,
-	UpgradeBatch
+	UpgradeBatch,
+	WordDetail,
+	WordListEntry
 } from './repository';
 import type { AnalyzerStamp, ResolvedToken } from '../analyzer/resolve';
 import type { IngestedDocument } from '../content/types';
@@ -276,6 +278,14 @@ export class RepositoryClient {
 	/** Words with a mark or a reading memory, with their library counts: read only (spec 016). */
 	vocabulary(): Promise<{ id: LexemeId; form: string; count: number }[]> {
 		return this.call({ method: 'vocabulary', args: [] });
+	}
+
+	wordList(): Promise<{ words: WordListEntry[]; parameters?: FsrsParameters }> {
+		return this.call({ method: 'wordList', args: [] });
+	}
+
+	wordDetail(lexemeId: LexemeId): Promise<WordDetail> {
+		return this.call({ method: 'wordDetail', args: [lexemeId] });
 	}
 
 	getStates(lexemeIds: LexemeId[]): Promise<Map<LexemeId, WordState>> {

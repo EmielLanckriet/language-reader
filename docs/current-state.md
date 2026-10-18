@@ -1,7 +1,23 @@
 # Current state
 
-Updated 2026-10-17. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-18. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## The word list on Progress (#47) — deployed, not yet seen on the phone
+
+Progress now lists every word with a memory or a mark, below the study overview. Searchable by
+characters, by pinyin as typed (no tones or spaces: `shuiguo`) or by English. Rows show the word,
+pinyin, deck status (in deck, set aside, retired, not in deck) and reading due date; a Columns menu
+adds reading stability and recall, listening due/stability/recall, meaning, mark, difficulty,
+reviews, lapses and last seen (kept in `localStorage`); a header sorts. A tap opens a read-only
+sheet with both skills' memory, all meanings, where the word was met and its marks. One query per
+visit (`wordList`); where it was met only on opening a word (`wordDetail`). Pinyin and meanings come
+from one batched message to the dictionary worker, after the characters are shown. Only the rows
+near the screen are built. Tests red first (marked-only words, list of every word, withdrawn
+sessions; the toneless search; sorting); 665 tests, type check, lint. Browser `wordlist` passes,
+with `cardlayout` and `study`. The install crossed its size ceiling by 1,017 bytes from code growth
+since 2026-10-05, not a new file; re-baselined at 12,502,576 bytes (`check-bundle.mjs`). Not
+measured: how long the list takes with the phone's thousands of words.
 
 ## Hardcore judges every word by its memory alone (#46) — deployed and phone checked
 

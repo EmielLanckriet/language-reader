@@ -589,6 +589,147 @@ const scenarios = {
 			await tab.close();
 		}
 	},
+	async wordlist() {
+		const { writeFileSync } = await import('node:fs');
+		const tab = await openTab('about:blank');
+		try {
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 1,
+				mobile: true
+			});
+			await tab.goto('/add');
+			await until('paste field', () => tab.evaluate('return !!document.querySelector("textarea")'));
+			await tab.evaluate(
+				`const area=document.querySelector('textarea');area.value='我们每天学习中文。';area.dispatchEvent(new Event('input',{bubbles:true}));`
+			);
+			await until('save enabled', () => tab.evaluate(`return ${SAVE_BUTTON}?.disabled===false`));
+			await tab.evaluate(`${SAVE_BUTTON}.click()`);
+			const link = await until('saved text', () => tab.evaluate(`return ${READ_LINK}`));
+			await tab.goto(link.replace(BASE, ''));
+			await until('word to look up', () =>
+				tab.evaluate(
+					`const word=[...document.querySelectorAll('.reading button.token')].find(b=>{const c=b.cloneNode(true);c.querySelectorAll('rt').forEach(e=>e.remove());return c.textContent==='学习';});if(!word)return false;word.click();return true;`
+				)
+			);
+			await until('word sheet', () =>
+				tab.evaluate(`return !!document.querySelector('.sheet button[aria-label="Cancel"]')`)
+			);
+			await tab.evaluate(`document.querySelector('.sheet button[aria-label="Cancel"]').click()`);
+			await tab.evaluate(
+				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Finish session').click()`
+			);
+			await until('on Progress', () =>
+				tab.evaluate(`return location.pathname.endsWith('/progress')`)
+			);
+			const ROW = `[...document.querySelectorAll('.words .body .row')].find(r=>r.querySelector('.word')?.textContent==='学习')`;
+			const row = () =>
+				tab.evaluate(
+					`const r=${ROW};return r?[...r.querySelectorAll('.cell')].map(c=>c.textContent.trim()):null`
+				);
+			const first = await until('学习 listed with pinyin', async () => {
+				const cells = await row();
+				return cells && !cells.includes('…') ? cells : null;
+			});
+			const search = (text) =>
+				tab.evaluate(
+					`const s=document.querySelector('.words input[type=search]');s.value=${JSON.stringify(text)};s.dispatchEvent(new Event('input',{bubbles:true}));`
+				);
+			const words = () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('.words .body .row .word')].map(w=>w.textContent)`
+				);
+			await search('xuexi');
+			const byPinyin = await until('pinyin search', async () => {
+				const found = await words();
+				return found.length > 0 && found.every((w) => w === '学习') ? found : null;
+			});
+			await search('study');
+			const byMeaning = await until('meaning search', async () => {
+				const found = await words();
+				return found.includes('学习') ? found : null;
+			});
+			await search('');
+			// Columns: add Stability; the choice survives a reload.
+			await tab.evaluate(
+				`[...document.querySelectorAll('.words button')].find(b=>b.textContent.trim()==='Columns').click()`
+			);
+			await until('column choices', () =>
+				tab.evaluate(`return document.querySelectorAll('.columns input').length > 0`)
+			);
+			await tab.evaluate(
+				`[...document.querySelectorAll('.columns label')].find(l=>l.textContent.trim()==='Stability').querySelector('input').click()`
+			);
+			const headers = () =>
+				tab.evaluate(
+					`return [...document.querySelectorAll('.words .head .cell')].map(c=>c.textContent.replace(/[↑↓]/g,'').trim())`
+				);
+			const added = await until('Stability column', async () => {
+				const found = await headers();
+				return found.includes('Stability') ? found : null;
+			});
+			await tab.goto('/progress');
+			const kept = await until('columns after reload', async () => {
+				const found = await headers();
+				return found.length > 1 ? found : null;
+			});
+			const width = await tab.evaluate(
+				`return {page:document.documentElement.scrollWidth,viewport:innerWidth}`
+			);
+			await tab.evaluate(`${ROW}.scrollIntoView({block:'center'})`);
+			let shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+			writeFileSync('/tmp/reader-words-list.png', Buffer.from(shot.data, 'base64'));
+			await tab.evaluate(`${ROW}.click()`);
+			const sheet = await until('detail sheet', () =>
+				tab.evaluate(
+					`const s=document.querySelector('[role=dialog][aria-label="About 学习"]');if(!s||/Finding where|Looking up/.test(s.textContent))return null;return {headings:[...s.querySelectorAll('h3')].map(h=>h.textContent),text:s.textContent.replace(/\\s+/g,' '),buttons:[...s.querySelectorAll('button')].map(b=>b.textContent.trim())}`
+				)
+			);
+			for (const theme of ['light', 'dark']) {
+				await tab.send('Emulation.setEmulatedMedia', {
+					features: [{ name: 'prefers-color-scheme', value: theme }]
+				});
+				shot = await tab.send('Page.captureScreenshot', { format: 'png' });
+				writeFileSync(
+					'/tmp/reader-words-sheet-' + theme + '.png',
+					Buffer.from(shot.data, 'base64')
+				);
+			}
+			await tab.evaluate(
+				`[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Close').click()`
+			);
+			const closed = await until('sheet closed', () =>
+				tab.evaluate(`return !document.querySelector('[role=dialog]')`)
+			);
+			return {
+				// Issue #47: read only, so the sheet's one button is Close.
+				pass:
+					first[0] === '学习' &&
+					first.includes('In deck') &&
+					/x[uú]é?\s?x[ií]/.test(first[1]) &&
+					byPinyin.length === 1 &&
+					byMeaning.includes('学习') &&
+					added.includes('Stability') &&
+					kept.includes('Stability') &&
+					width.page === width.viewport &&
+					sheet.headings.includes('Reading') &&
+					sheet.headings.includes('Met in') &&
+					sheet.text.includes('我们每天学习中文') &&
+					sheet.buttons.join(',') === 'Close' &&
+					closed,
+				first,
+				byPinyin,
+				byMeaning,
+				added,
+				kept,
+				width,
+				sheet
+			};
+		} finally {
+			await tab.close();
+		}
+	},
 	async leaving() {
 		const { writeFileSync } = await import('node:fs');
 		const tab = await openTab('about:blank');

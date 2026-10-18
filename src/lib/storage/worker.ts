@@ -281,6 +281,10 @@ function run(request: Request): unknown {
 			return repository.wordsByForm(request.args[0], request.args[1]);
 		case 'vocabulary':
 			return repository.vocabulary();
+		case 'wordList':
+			return repository.wordList();
+		case 'wordDetail':
+			return repository.wordDetail(request.args[0]);
 		case 'readHistory':
 			return repository.readHistory();
 		case 'replaceTokens':

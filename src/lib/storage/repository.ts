@@ -105,6 +105,21 @@ function memoryFromRow(row: Row): Memory {
 	};
 }
 
+/** A row of the word list (issue #47): the hand mark and each skill's memory, where there are any. */
+export interface WordListEntry {
+	id: LexemeId;
+	form: string;
+	mark?: string;
+	reading?: Memory;
+	listening?: Memory;
+}
+
+export interface WordDetail {
+	met: { documentId: DocumentId; title: string }[];
+	ankiExample: boolean;
+	marks: { asserted: string; at: string; provenance: string }[];
+}
+
 /** A sentence a card shows its word in (research R9), in code points of its document. */
 export interface CardSentence {
 	source: 'reader' | 'anki';
@@ -2105,6 +2120,64 @@ export class Repository {
        WHERE l.id IN (SELECT lexeme_id FROM memory WHERE skill = 'reading'
                       UNION SELECT lexeme_id FROM status_event)`
 		).map((row) => ({ id: Number(row.id), form: String(row.surface), count: Number(row.n) }));
+	}
+
+	/**
+	 * Every word with a memory or a mark, for the word list (issue #47), and the parameters its
+	 * recall is computed with. One query per visit.
+	 */
+	wordList(): { words: WordListEntry[]; parameters?: FsrsParameters } {
+		const words = new Map<LexemeId, WordListEntry>();
+		for (const row of queryRows(
+			this.db,
+			`SELECT l.id, l.surface, ws.state AS mark, m.*
+         FROM lexeme l
+         LEFT JOIN word_state ws ON ws.lexeme_id = l.id
+         LEFT JOIN memory m ON m.lexeme_id = l.id
+        WHERE l.id IN (SELECT lexeme_id FROM memory UNION SELECT lexeme_id FROM word_state)`
+		)) {
+			const id = Number(row.id);
+			let word = words.get(id);
+			if (!word) {
+				word = { id, form: String(row.surface) };
+				if (row.mark !== null) word.mark = String(row.mark);
+				words.set(id, word);
+			}
+			if (row.skill !== null) word[String(row.skill) as Skill] = memoryFromRow(row);
+		}
+		return { words: [...words.values()], parameters: this.inForce().parameters };
+	}
+
+	/** What only one word's detail needs: where it was met, and its marks in order. */
+	wordDetail(lexemeId: LexemeId): WordDetail {
+		const met = queryRows(
+			this.db,
+			`SELECT DISTINCT d.id, d.title FROM token t
+         JOIN encounter e ON e.document_id = t.document_id
+          AND e.from_offset <= t.start AND e.to_offset >= t."end"
+          AND e.kind IN ('read', 'played', 'lookup', 'check')
+          AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN}))
+         JOIN document d ON d.id = t.document_id
+        WHERE t.lexeme_id = ? ORDER BY d.id`,
+			[lexemeId]
+		).map((row) => ({ documentId: Number(row.id), title: String(row.title) }));
+		const ankiExample =
+			queryRows(
+				this.db,
+				`SELECT 1 FROM encounter WHERE kind = 'anki-example' AND lexeme_id = ? LIMIT 1`,
+				[lexemeId]
+			).length > 0;
+		const marks = queryRows(
+			this.db,
+			`SELECT asserted, asserted_at, provenance FROM status_event
+        WHERE lexeme_id = ? ORDER BY device_id, device_seq`,
+			[lexemeId]
+		).map((row) => ({
+			asserted: String(row.asserted),
+			at: String(row.asserted_at),
+			provenance: String(row.provenance)
+		}));
+		return { met, ankiExample, marks };
 	}
 
 	getStates(lexemeIds: LexemeId[]): Map<LexemeId, WordState> {

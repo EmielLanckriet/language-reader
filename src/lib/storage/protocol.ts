@@ -17,6 +17,8 @@ export type Call =
 	| { method: 'getStates'; args: [number[]] }
 	| { method: 'wordsByForm'; args: [string, string[]] }
 	| { method: 'vocabulary'; args: [] }
+	| { method: 'wordList'; args: [] }
+	| { method: 'wordDetail'; args: [number] }
 	| { method: 'getMemory'; args: [number[]] }
 	| { method: 'tuningAnalysis'; args: [] }
 	| { method: 'parametersInForce'; args: [] }
