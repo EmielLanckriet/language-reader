@@ -58,7 +58,7 @@ mutated once to see its test fail.
 - [X] T026 Run on the 2026-10-16 backup (temporary test, removed afterwards): after restore and the switch, active = 2,111 + 丁, and no mark other than Anki levels and `(none)` remains.
 - [X] T027 Browser scenarios `cards`, `study`, `hardcore`, `wordlist`, `sheet` updated and run (isolated, `npm run build`).
 - [X] T028 Docs: ADR-0039, 0040, 0041 headers say amended by ADR-0044; `docs/anticipated-changes.md` spec 019 rows; `docs/current-state.md` entry; the switch-time count of the phone read before the update.
-- [ ] T029 `npm test`, `npm run check`, lint, `node scripts/check-bundle.mjs`; commit and push to main; deploy; phone round per quickstart.md (with "Just curious").
+- [X] T029 `npm test`, `npm run check`, lint, `node scripts/check-bundle.mjs`; commit and push to main; deploy; phone round per quickstart.md (with "Just curious").
 
 ## Dependencies
 

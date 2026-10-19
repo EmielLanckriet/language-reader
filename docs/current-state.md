@@ -3,7 +3,7 @@
 Updated 2026-10-19. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
 
-## A word's status apart from its memory (spec 019, ADR-0044) — built, not yet on the phone
+## A word's status apart from its memory (spec 019, ADR-0044) — deployed and phone checked
 
 The reader, 2026-10-19, after reading how cards were chosen: the rules of ADR-0039–0041 (known
 words and Anki seeds active whatever their stability, a `learning` mark making a candidate,
@@ -26,7 +26,16 @@ all 2,805 words of that backup before the old code went. Also: "Just curious" as
 (spec 017). Tests red first, rules mutation-checked; 698 tests, type check, lint. Browser
 `cardlayout`, `wordlist`, `study`, `sheet`, `leaving` and `hardcore` pass; `hardcore` failed on
 the code before this too (since #46 the planner offers no word passed today, and the scenario
-still expected one), now fixed. Not measured: the switch's time on the phone.
+still expected one), now fixed.
+
+On the phone, 2026-10-19 (a fresh copy on Termux first, 12:33 UTC): before the update Cards said
+33 due · 5 new; Update now at 12:34:29, the switch recorded at 12:34:34 (reload included), the new
+build's Cards at 12:34:38. The switch carried 2,354 words and deleted 1,064 marks; only Anki levels
+are left. Within 13 s the background recompute made six words active by the 14-day rule: 丁, 老,
+旅, 哪来, 熊二, 共, all retired by hand before (哪来 and 熊二 had no memory on the 10-16 backup, so
+only 丁 was expected; they have since passed 14 days from reading and drills). Cards re-counted:
+34 due · 5 new, the extra card 丁. "Just curious" is in the installed build; Retire, Ignore and
+their undo were not pressed on the daily reader (learning data), only in the browser scenarios.
 
 ## Sessions under More; Finish asks like leaving — deployed, not yet seen on the phone
 
