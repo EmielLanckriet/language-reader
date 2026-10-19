@@ -92,6 +92,6 @@ describe('the parameters an import brings', () => {
 		const { queryRows } = await import('../../src/lib/storage/db');
 		const db = await freshDatabase();
 		new Repository(db).importAnki(one);
-		expect(queryRows(db, `SELECT * FROM encounter`)).toEqual([]);
+		expect(queryRows(db, `SELECT * FROM encounter WHERE kind != 'status-switch'`)).toEqual([]);
 	});
 });

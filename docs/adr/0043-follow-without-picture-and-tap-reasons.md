@@ -7,7 +7,8 @@ migration:
 - The **engagement** answer may carry `followable`: `yes` / `partly` / `no` / null, asked after
   "Only listened": could the reader follow the video without the picture?
 - A **lookup** may carry `reason`: `unknown` (didn't know it), `sense` (checking the meaning here),
-  `split` (wrongly split), `misheard`, `subtitles` (the subtitles are wrong).
+  `split` (wrongly split), `misheard`, `subtitles` (the subtitles are wrong), and since
+  2026-10-19 `curious` (just curious: the reader asked for it).
 
 Validation refuses any other value; absence is valid, as every older record lacks them. Nothing
 reads them yet: memory, cards, the shares and the fit are unchanged.

@@ -849,3 +849,14 @@ a 140-word score on generated text.
 | Refitting on a schedule | medium | cheap — same fit | Defer |
 | Separate review weights per skill | medium | cheap — the parameter set is versioned | Defer |
 | Per-moment helped intervals instead of whole-session blur-off | low | cheap — derived from retained encounters | Defer ([ADR-0037](adr/0037-in-context-outcomes-and-fitted-rules.md)) |
+
+## What Spec 019 Planning Settled — 2026-10-19
+
+| Change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| Change the 14-day threshold | high | cheap — future activations only; past ones are earned | One constant (`status.ts`) |
+| A fourth status (e.g. paused until a date) | medium | cheap — free-text status, validated on write | Defer |
+| Activate a word by hand | medium | cheap — one more `reader` change | Defer |
+| Separate statuses for reading and listening | low | expensive once changes accumulate | Ignore: cards are reading cards (#7) |
+| Bulk retire or ignore | medium | cheap — many `reader` changes | Defer |
+| Drop `memory.card` / `memory.reviewed` and `legacy-active.ts` | high | cheap — derived columns; the switch is their only reader | Once no pre-switch library or copy can be restored |

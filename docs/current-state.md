@@ -1,7 +1,32 @@
 # Current state
 
-Updated 2026-10-18. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-19. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## A word's status apart from its memory (spec 019, ADR-0044) — built, not yet on the phone
+
+The reader, 2026-10-19, after reading how cards were chosen: the rules of ADR-0039–0041 (known
+words and Anki seeds active whatever their stability, a `learning` mark making a candidate,
+`ignored` dropping a word's evidence) were not theirs any more. Every word now has a stored status,
+retired, active or ignored (`status_change` log and `word_status` replay, migration 6, copy format
+4); memory keeps no card flags (`evidence-5`, the evidence of `evidence-4`). Cards: active words
+when due, and the budget's picks from tapped retired words. Hardcore: new or due words, never
+ignored ones. Shares count every word by recall. A retired word becomes active in one place
+(`status.ts` `activation`, called after each memory recompute): reading stability reaches 14 days
+(after a hand retire, only once it fell under 14 since), or its first Cards review. Only the reader
+moves a word out of active or ignored: Retire and Ignore on Cards, the drill card, the word sheet
+and Progress's word detail, each undone back to the status before. The marks are Anki's levels
+only. The switch runs once, when the database opens (and on restoring an older copy): words active
+under the old rule become active, read from memory rows under the old rule key or `legacy-active.ts`;
+every `ignored`, `learning`, `known`, `unknown` and `retired` mark is deleted with a `(none)` that
+undid one. On the 2026-10-16 backup (laptop restore): 2,111 carried over, 1,048 marks deleted,
+丁 (retired by hand at 22 days) active by the 14-day rule, as the reader chose; due cards the same
+as the old code's but for 丁. `legacyActive` agreed with the old code on 3,000 random histories and
+all 2,805 words of that backup before the old code went. Also: "Just curious" as a tap reason
+(spec 017). Tests red first, rules mutation-checked; 698 tests, type check, lint. Browser
+`cardlayout`, `wordlist`, `study`, `sheet`, `leaving` and `hardcore` pass; `hardcore` failed on
+the code before this too (since #46 the planner offers no word passed today, and the scenario
+still expected one), now fixed. Not measured: the switch's time on the phone.
 
 ## Sessions under More; Finish asks like leaving — deployed, not yet seen on the phone
 
@@ -166,7 +191,7 @@ ffmpeg reads keyboard commands from stdin, so `-nostdin`; it ate two piped insta
 
 After "Only listened", the session questions ask "Could you follow it without the picture?" (kept as
 `followable` in the engagement record); the word sheet offers why a word was tapped (`reason` on the
-lookup: unknown, sense, split, misheard, subtitles). Optional, validated, read by nothing yet; for
+lookup: unknown, sense, split, misheard, subtitles; curious added 2026-10-19). Optional, validated, read by nothing yet; for
 issue #29's analysis. Tests red first; browser `listened` and `leavingvideo` pass (answers now
 scoped to their questions, since "Partly" is offered twice). Browser `sheet` fails on the code
 before this too (a missing element to scroll to).

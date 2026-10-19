@@ -24,7 +24,7 @@
 		sentence,
 		busy = false,
 		ongrade,
-		onretire,
+		onstatus,
 		notice
 	}: {
 		lexemeId: number;
@@ -32,7 +32,8 @@
 		sentence?: CardSentence;
 		busy?: boolean;
 		ongrade: (value: 1 | 2 | 3 | 4, shown: CardSentence | undefined, help: CardHelp) => void;
-		onretire: () => void;
+		/** Retire or Ignore (spec 019): out of Cards, or out of Cards and drills. */
+		onstatus: (status: 'retired' | 'ignored') => void;
 		notice?: Snippet;
 	} = $props();
 
@@ -160,9 +161,9 @@
 		ongrade(value, shown, { sentenceShown: shown !== undefined, heard });
 	}
 
-	function retire() {
+	function setStatus(status: 'retired' | 'ignored') {
 		audio?.stop();
-		onretire();
+		onstatus(status);
 	}
 
 	const GRADES = [
@@ -217,7 +218,8 @@
 			<button onclick={playWord}>Hear word</button>
 			<button onclick={playSentence} disabled={!sentenceClip}>Hear sentence</button>
 			{#if playing}<button onclick={() => audio?.stop()}>Stop</button>{/if}
-			<button class="retire" onclick={retire} disabled={busy}>Retire this card</button>
+			<button class="retire" onclick={() => setStatus('retired')} disabled={busy}>Retire</button>
+			<button class="ignore" onclick={() => setStatus('ignored')} disabled={busy}>Ignore</button>
 		</div>
 		{@render notice?.()}
 		{#if audioProblem}<p class="audio-note" role="status">{audioProblem}</p>{/if}
@@ -376,6 +378,9 @@
 	}
 	.audio-actions .retire {
 		margin-left: auto;
+	}
+	.audio-actions .retire,
+	.audio-actions .ignore {
 		min-height: 44px;
 		padding: 0.4rem 0.6rem;
 		font-size: 0.8rem;

@@ -30,7 +30,8 @@ import { baselineSet, checkParameterSet, type ParameterSet } from '../domain/fit
 import { default_w } from 'ts-fsrs';
 import { assertion, inHistoryOrder } from '../domain/history';
 import { evaluateDataset, TUNING_SCHEDULER, type TuningDataset } from '../domain/tuning';
-import { RULE, setAsideProvenance } from '../domain/memory';
+import { RULE } from '../domain/memory';
+import { legacyActive } from '../domain/legacy-active';
 import {
 	FEEDBACK_AFTER_MS,
 	studyStreak,
@@ -46,12 +47,22 @@ import {
 	type SessionKind
 } from '../domain/encounter';
 import type { StepRecord } from '../domain/hardcore';
+import {
+	activation,
+	replayStatuses,
+	validateStatusChange,
+	type Cause,
+	type Position,
+	type ReadingPoint,
+	type Status,
+	type StatusChange
+} from '../domain/status';
 import type { CardHelp } from '../domain/card-help';
 import type { Noise } from '../domain/shares';
 import { checkedExample, type AnkiExample } from '../domain/card-examples';
 import type { FsrsParameters } from '../domain/anki';
 import {
-	memoryOf,
+	memoryWithTrajectory,
 	ruleKey,
 	type Exposure,
 	type HistoryEvent,
@@ -97,18 +108,16 @@ function memoryFromRow(row: Row): Memory {
 		due: String(row.due),
 		reps: Number(row.reps),
 		lapses: Number(row.lapses),
-		card: row.card === 1 || row.card === 3,
-		...(row.card === 2 ? { known: true as const } : {}),
-		...(row.card === 3 ? { setAside: true as const } : {}),
-		reviewed: row.reviewed === 1,
 		...(row.seeded === null ? {} : { seeded: String(row.seeded) })
 	};
 }
 
-/** A row of the word list (issue #47): the hand mark and each skill's memory, where there are any. */
+/** A row of the word list (issue #47): status, mark and each skill's memory, where there are any. */
 export interface WordListEntry {
 	id: LexemeId;
 	form: string;
+	/** Spec 019: retired when the word has no status change. */
+	status: Status;
 	mark?: string;
 	reading?: Memory;
 	listening?: Memory;
@@ -212,7 +221,7 @@ export interface StoredDocument {
 export { StorageFailure } from './failures';
 import { StorageFailure } from './failures';
 import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
-import { ankiImportOf, isFromAnki, planImport, type AnkiExport } from '../domain/anki';
+import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
 
 /** Every word a stretch covered in a session answered "I tapped every word I didn't know". */
 /**
@@ -256,12 +265,22 @@ const ENCOUNTERED_TOKEN = `EXISTS (SELECT 1 FROM encounter e
  * encounters before it instead took 9 s on the phone at 67,617 tokens (issue #1), on every visit to
  * Cards, and held up every other storage call behind it.
  */
-/** Words met while reading, watching or tapping: how a set-aside word comes up again. */
+/** Words met while reading, watching or tapping: with Anki examples, the words a card has a sentence for. */
 const MET_WORDS = `SELECT DISTINCT t.lexeme_id FROM encounter e
   JOIN token t ON t.document_id=e.document_id
    AND t.start>=e.from_offset AND t.start<=e.to_offset AND t.end<=e.to_offset
  WHERE e.kind IN ('read','played','lookup','check')
    AND (e.session_id IS NULL OR e.session_id NOT IN (${WITHDRAWN}))`;
+
+/** The rule key's head before spec 019: memory rows under it say which words were active. */
+const LEGACY_RULE = 'evidence-4+no-steps+known-2+stable-14';
+/** The marks the switch deletes (spec 019, FR-017): status lives in its own table now. */
+const OLD_MARKS = new Set(['ignored', 'learning', 'known', 'unknown', 'retired']);
+
+/** Words tapped at least once, outside withdrawn sessions: the new-word budget's pool (spec 019). */
+const TAPPED_WORDS = `SELECT lexeme_id FROM encounter
+  WHERE kind IN ('lookup', 'check') AND lexeme_id IS NOT NULL
+    AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`;
 
 export const ENCOUNTERED_WORDS = `${MET_WORDS}
  UNION SELECT lexeme_id FROM encounter WHERE kind='anki-example' AND lexeme_id IS NOT NULL`;
@@ -297,7 +316,10 @@ const ATTENTIVELY_CREDITABLE = `
               OR (s.from_offset <= t.start AND s.to_offset >= t.end)))))`;
 
 export class Repository {
-	constructor(private readonly db: Database) {}
+	constructor(private readonly db: Database) {
+		// Before anything reads a status (spec 019): a library from before it would show no Cards.
+		this.switchToStatuses();
+	}
 
 	/**
 	 * Store a document and the tokens derived from it.
@@ -846,63 +868,100 @@ export class Repository {
 	}
 
 	/**
-	 * Sets aside every word whose current mark is an Anki level and whose general frequency is not
-	 * among the `top` most common (the reader, 2026-10-07); returns how many, and with `dryRun` only
-	 * counts. A retire whose word comes back by coming up in what the reader reads or watches.
+	 * Set a word's status by the reader's hand (spec 019): Retire, Ignore, or undoing either, which
+	 * writes the earlier status back.
 	 */
-	setAsideAnki(top: number, dryRun: boolean): number {
-		if (this.frequency.size === 0) throw new Error('The frequency list is not loaded yet.');
-		const words = queryRows(
-			this.db,
-			`SELECT w.lexeme_id, l.surface, w.provenance FROM word_state w
-       JOIN lexeme l ON l.id = w.lexeme_id WHERE w.state LIKE 'anki-%'`
-		).filter(
-			(row) =>
-				isFromAnki(String(row.provenance)) &&
-				!((this.frequency.get(String(row.surface)) ?? Infinity) < top)
-		);
-		if (dryRun || words.length === 0) return words.length;
+	setStatus(lexemeId: LexemeId, status: Status): void {
 		transact(this.db, () => {
-			const deviceId = deviceIdOf(this.db);
-			for (const row of words) {
-				const entry = assertion({
-					lexemeId: Number(row.lexeme_id),
-					asserted: 'retired',
-					deviceId,
-					deviceSeq: nextDeviceSeq(this.db, deviceId),
-					assertedAt: new Date().toISOString(),
-					provenance: setAsideProvenance(top)
-				});
-				this.appendEvent(entry);
-				this.projectEntry(entry);
-			}
+			this.appendStatusChange(lexemeId, status, 'reader');
+			this.recomputeMemory([lexemeId]);
 		});
-		return words.length;
+	}
+
+	/** Each word's current status; a word without one is retired (FR-001). */
+	getStatuses(lexemeIds: LexemeId[]): Map<LexemeId, Status> {
+		const statuses = new Map<LexemeId, Status>(lexemeIds.map((id) => [id, 'retired']));
+		const unique = [...new Set(lexemeIds)];
+		if (unique.length === 0) return statuses;
+		for (const row of queryRows(
+			this.db,
+			`SELECT lexeme_id, status FROM word_status
+       WHERE lexeme_id IN (${unique.map(() => '?').join(', ')})`,
+			unique
+		))
+			statuses.set(Number(row.lexeme_id), String(row.status) as Status);
+		return statuses;
 	}
 
 	/**
-	 * Retires every word whose current mark is `ignored`; returns how many. Run once the app opens:
-	 * ignoring is no longer offered (ADR-0040), and the reader asked for those words to be retired.
+	 * A word's status, whether the reader set it, and the status before its latest change: what the
+	 * Retire and Ignore buttons show and what their undo writes back (FR-013, FR-014).
 	 */
-	retireIgnored(): number {
-		const ignored = queryRows(this.db, `SELECT lexeme_id FROM word_state WHERE state = 'ignored'`);
-		if (ignored.length === 0) return 0;
+	statusDetail(lexemeId: LexemeId): { status: Status; byReader: boolean; before?: Status } {
+		const changes = this.readStatusLog(lexemeId);
+		const last = changes.at(-1);
+		if (!last) return { status: 'retired', byReader: false };
+		return {
+			status: last.status,
+			byReader: last.cause === 'reader',
+			before: changes.at(-2)?.status ?? 'retired'
+		};
+	}
+
+	/** Every status change, in history order. */
+	readStatusLog(lexemeId?: LexemeId): StatusChange[] {
+		return queryRows(
+			this.db,
+			`SELECT lexeme_id, status, cause, changed_at, device_id, device_seq FROM status_change
+       ${lexemeId === undefined ? '' : 'WHERE lexeme_id = ?'}
+       ORDER BY device_id, device_seq`,
+			lexemeId === undefined ? [] : [lexemeId]
+		).map((row) => ({
+			lexemeId: Number(row.lexeme_id),
+			status: String(row.status) as Status,
+			cause: String(row.cause) as Cause,
+			at: String(row.changed_at),
+			deviceId: String(row.device_id),
+			deviceSeq: Number(row.device_seq)
+		}));
+	}
+
+	/** Rebuild `word_status` from the log: it must change nothing (the replay is the definition). */
+	rebuildStatuses(): void {
+		const replayed = replayStatuses(this.readStatusLog());
 		transact(this.db, () => {
-			const deviceId = deviceIdOf(this.db);
-			for (const row of ignored) {
-				const entry = assertion({
-					lexemeId: Number(row.lexeme_id),
-					asserted: 'retired',
-					deviceId,
-					deviceSeq: nextDeviceSeq(this.db, deviceId),
-					assertedAt: new Date().toISOString(),
-					provenance: 'converted from ignored (ADR-0040)'
-				});
-				this.appendEvent(entry);
-				this.projectEntry(entry);
-			}
+			run(this.db, 'DELETE FROM word_status');
+			for (const change of replayed.values()) this.projectStatus(change.lexemeId, change.status);
 		});
-		return ignored.length;
+	}
+
+	/** The log first, then its replay, in the caller's transaction with the device counter. */
+	private appendStatusChange(lexemeId: LexemeId, status: Status, cause: Cause): void {
+		validateStatusChange({ status, cause });
+		const deviceId = deviceIdOf(this.db);
+		run(
+			this.db,
+			`INSERT INTO status_change (lexeme_id, status, cause, changed_at, device_id, device_seq)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+			[
+				lexemeId,
+				status,
+				cause,
+				new Date().toISOString(),
+				deviceId,
+				nextDeviceSeq(this.db, deviceId)
+			]
+		);
+		this.projectStatus(lexemeId, status);
+	}
+
+	private projectStatus(lexemeId: LexemeId, status: Status): void {
+		run(
+			this.db,
+			`INSERT INTO word_status (lexeme_id, status) VALUES (?, ?)
+       ON CONFLICT (lexeme_id) DO UPDATE SET status = excluded.status`,
+			[lexemeId, status]
+		);
 	}
 
 	/**
@@ -1720,15 +1779,24 @@ export class Repository {
 		return shared.drilled.get(lexemeId) ?? [];
 	}
 
-	/** Recompute these words' memory rows from their history, under the current rule (R6). */
+	/**
+	 * Recompute these words' memory rows from their history, under the current rule (R6), and let
+	 * each retired word become active if `activation` says so. Every caller holds a transaction.
+	 */
 	private recomputeMemory(lexemeIds: Iterable<LexemeId>): void {
 		const { parameters, strengths } = this.inForce();
 		const rule = ruleKey(parameters);
 		const words = [...lexemeIds];
 		const shared = newRun(words.length <= FEW_WORDS);
+		const switchAt = this.switchPosition();
 		for (const lexemeId of words) {
 			run(this.db, 'DELETE FROM memory WHERE lexeme_id = ?', [lexemeId]);
-			const memory = memoryOf(this.wordHistory(lexemeId, shared), parameters, strengths);
+			const { memory, trajectory } = memoryWithTrajectory(
+				this.wordHistory(lexemeId, shared),
+				parameters,
+				strengths
+			);
+			if (switchAt) this.settleStatus(lexemeId, trajectory, switchAt);
 			for (const [skill, m] of Object.entries(memory) as [Skill, Memory][]) {
 				run(
 					this.db,
@@ -1745,15 +1813,100 @@ export class Repository {
 						m.due,
 						m.reps,
 						m.lapses,
-						// 2 marks a known word's card (issue #5), 3 a set-aside one: derived like the rest.
-						m.setAside ? 3 : m.known ? 2 : m.card ? 1 : 0,
-						m.reviewed ? 1 : 0,
+						// `card` and `reviewed`: read only by the switch to statuses (spec 019, R6).
+						0,
+						0,
 						m.seeded ?? null,
 						rule
 					]
 				);
 			}
 		}
+	}
+
+	/**
+	 * The one place a word becomes active (spec 019, FR-005): what `activation` decides from its
+	 * reading trajectory and its status changes, appended in the caller's transaction.
+	 */
+	private settleStatus(lexemeId: LexemeId, trajectory: ReadingPoint[], switchAt: Position): void {
+		const changes = this.readStatusLog(lexemeId);
+		const last = changes.at(-1);
+		const status = last?.status ?? 'retired';
+		const retiredByReader =
+			status === 'retired'
+				? [...changes].reverse().find((c) => c.status === 'retired' && c.cause === 'reader')
+				: undefined;
+		const cause = activation({ status, lastChange: last, retiredByReader, switchAt, trajectory });
+		if (cause) this.appendStatusChange(lexemeId, 'active', cause);
+	}
+
+	/**
+	 * The switch to statuses (spec 019, research R4), once per library and recognised by its
+	 * `status-switch` encounter: every word active under the old rule becomes active, and marks
+	 * asserting `ignored`, `learning`, `known`, `unknown` or `retired` are deleted with any `(none)`
+	 * that undid one. Memory is not recomputed here: the rule key changed, so the sweep does it.
+	 */
+	switchToStatuses(): void {
+		if (this.switchPosition()) return;
+		transact(this.db, () => this.runSwitch());
+	}
+
+	/** The switch's work, in the caller's transaction. */
+	private runSwitch(): void {
+		const { parameters, strengths } = this.inForce();
+		// The old rule key for the same parameters: rows computed under it hold the old answer.
+		const oldRule = ruleKey(parameters).replace(/^[^/]*\//, `${LEGACY_RULE}/`);
+		const rows = new Map<LexemeId, Row[]>();
+		for (const row of queryRows(this.db, 'SELECT * FROM memory'))
+			rows.set(Number(row.lexeme_id), [...(rows.get(Number(row.lexeme_id)) ?? []), row]);
+		const shared = newRun();
+		let carried = 0;
+		for (const lexemeId of this.wordsWithHistory()) {
+			const own = rows.get(lexemeId) ?? [];
+			const reading = own.find((row) => row.skill === 'reading');
+			// A word's rows are always written together, under one rule. Codes: 1 card, 2 known, 3 set aside.
+			const active = own.some((row) => row.rule === oldRule)
+				? !!reading &&
+					[1, 2].includes(Number(reading.card)) &&
+					(reading.reviewed === 1 || reading.seeded !== null || reading.card === 2)
+				: legacyActive(this.wordHistory(lexemeId, shared), parameters, strengths);
+			if (!active) continue;
+			this.appendStatusChange(lexemeId, 'active', 'carried-over');
+			carried++;
+		}
+
+		const deleted: number[] = [];
+		const previous = new Map<LexemeId, string>();
+		for (const row of queryRows(
+			this.db,
+			'SELECT id, lexeme_id, asserted FROM status_event ORDER BY device_id, device_seq'
+		)) {
+			const lexemeId = Number(row.lexeme_id);
+			const asserted = String(row.asserted);
+			const before = previous.get(lexemeId);
+			if (OLD_MARKS.has(asserted) || (asserted === RETRACTED && before && OLD_MARKS.has(before)))
+				deleted.push(Number(row.id));
+			previous.set(lexemeId, asserted);
+		}
+		for (const id of deleted) run(this.db, 'DELETE FROM status_event WHERE id = ?', [id]);
+		run(this.db, 'DELETE FROM word_state');
+		for (const state of projectStates(this.readHistory()).values()) this.writeProjectedState(state);
+
+		this.appendEncounter(null, {
+			kind: 'status-switch',
+			at: new Date().toISOString(),
+			detail: { carried, deletedMarks: deleted.length }
+		});
+	}
+
+	/** Where the switch to statuses sits in the history; undefined before it has run. */
+	private switchPosition(): Position | undefined {
+		const row = queryRows(
+			this.db,
+			`SELECT device_id, device_seq FROM encounter WHERE kind = 'status-switch'
+       ORDER BY device_id, device_seq LIMIT 1`
+		)[0];
+		return row && { deviceId: String(row.device_id), deviceSeq: Number(row.device_seq) };
 	}
 
 	/**
@@ -2130,16 +2283,18 @@ export class Repository {
 		const words = new Map<LexemeId, WordListEntry>();
 		for (const row of queryRows(
 			this.db,
-			`SELECT l.id, l.surface, ws.state AS mark, m.*
+			`SELECT l.id, l.surface, ws.state AS mark, COALESCE(st.status, 'retired') AS status, m.*
          FROM lexeme l
          LEFT JOIN word_state ws ON ws.lexeme_id = l.id
+         LEFT JOIN word_status st ON st.lexeme_id = l.id
          LEFT JOIN memory m ON m.lexeme_id = l.id
-        WHERE l.id IN (SELECT lexeme_id FROM memory UNION SELECT lexeme_id FROM word_state)`
+        WHERE l.id IN (SELECT lexeme_id FROM memory UNION SELECT lexeme_id FROM word_state
+                       UNION SELECT lexeme_id FROM word_status)`
 		)) {
 			const id = Number(row.id);
 			let word = words.get(id);
 			if (!word) {
-				word = { id, form: String(row.surface) };
+				word = { id, form: String(row.surface), status: String(row.status) as Status };
 				if (row.mark !== null) word.mark = String(row.mark);
 				words.set(id, word);
 			}
@@ -2338,18 +2493,22 @@ export class Repository {
 
 	/** Today's reading cards in the order to show them (research R8), with each card's word. */
 	cardsToday(cap: number, now: Date = new Date()): CardsToday {
+		// Spec 019: active words, and the retired words the budget may pick (tapped at least once).
 		const rows = queryRows(
 			this.db,
-			`SELECT m.*, l.surface FROM memory m JOIN lexeme l ON l.id = m.lexeme_id
-       WHERE m.skill = 'reading' AND m.card > 0`
+			`SELECT m.*, l.surface, COALESCE(ws.status, 'retired') AS status,
+              m.lexeme_id IN (${TAPPED_WORDS}) AS tapped
+       FROM memory m JOIN lexeme l ON l.id = m.lexeme_id
+       LEFT JOIN word_status ws ON ws.lexeme_id = m.lexeme_id
+       WHERE m.skill = 'reading'
+         AND (ws.status = 'active' OR (ws.status IS NULL OR ws.status = 'retired')
+              AND m.lexeme_id IN (${TAPPED_WORDS}))`
 		);
-		const ids = (sql: string) =>
-			new Set(queryRows(this.db, sql).map((row) => Number(row.lexeme_id)));
-		const eligible = ids(ENCOUNTERED_WORDS);
-		const met = rows.some((row) => row.card === 3) ? ids(MET_WORDS) : new Set<number>();
-		const readyRows = rows.filter((row) =>
-			(row.card === 3 ? met : eligible).has(Number(row.lexeme_id))
+		// A card needs a sentence: an Anki word never met waits for one.
+		const eligible = new Set(
+			queryRows(this.db, ENCOUNTERED_WORDS).map((row) => Number(row.lexeme_id))
 		);
+		const readyRows = rows.filter((row) => eligible.has(Number(row.lexeme_id)));
 		const rank = new Map<number, number>();
 		for (const row of readyRows) {
 			const at = this.frequency.get(String(row.surface));
@@ -2369,7 +2528,12 @@ export class Repository {
 			)[0].n
 		);
 		const queue = cardQueue(
-			readyRows.map((row) => ({ lexemeId: Number(row.lexeme_id), memory: memoryFromRow(row) })),
+			readyRows.map((row) => ({
+				lexemeId: Number(row.lexeme_id),
+				memory: memoryFromRow(row),
+				status: String(row.status) as Status,
+				tapped: row.tapped === 1
+			})),
 			{ rank, firstReviewsToday, cap, now }
 		);
 		return {
@@ -2541,6 +2705,17 @@ export class Repository {
 			if (!agrees) {
 				throw new StorageFailure('the stored word states are not the replay of their history');
 			}
+			const statusLog = this.readStatusLog();
+			const statusReplay = replayStatuses(statusLog);
+			const storedStatuses = queryRows(this.db, 'SELECT lexeme_id, status FROM word_status');
+			if (
+				storedStatuses.length !== statusReplay.size ||
+				!storedStatuses.every(
+					(row) => statusReplay.get(Number(row.lexeme_id))?.status === row.status
+				)
+			) {
+				throw new StorageFailure('the stored word statuses are not the replay of their changes');
+			}
 
 			// One device in practice: `deviceIdOf` takes the first row unordered, which is only
 			// unambiguous while there is one. A copy restores that device first either way.
@@ -2621,6 +2796,15 @@ export class Repository {
 								to: correction.occurrence.toOffset
 							}
 						: {})
+				})),
+				statuses: statusLog.map((change) => ({
+					deviceId: change.deviceId,
+					deviceSeq: change.deviceSeq,
+					...word(change.lexemeId),
+					status: change.status,
+					cause: change.cause,
+					at: change.at,
+					userId: 1
 				}))
 			};
 		});
@@ -2722,6 +2906,8 @@ export class Repository {
 		}
 
 		return transact(this.db, () => {
+			// The empty library's own record of starting with statuses: the copy brings its history.
+			run(this.db, `DELETE FROM encounter WHERE kind = 'status-switch'`);
 			run(this.db, 'DELETE FROM device');
 			const writerFirst = [...copy.devices].sort(
 				(a, b) => Number(b.id === copy.writer) - Number(a.id === copy.writer)
@@ -2827,6 +3013,37 @@ export class Repository {
 					'The copy is inconsistent: its marks do not match its history.'
 				);
 			}
+			for (const change of copy.statuses) {
+				const status = change.status as Status;
+				const cause = change.cause as Cause;
+				try {
+					validateStatusChange({ status, cause });
+				} catch (error) {
+					throw new CopyRejected(
+						'statuses',
+						`The copy is inconsistent: ${(error as Error).message}`
+					);
+				}
+				run(
+					this.db,
+					`INSERT INTO status_change (lexeme_id, status, cause, changed_at, device_id, device_seq, user_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+					[
+						this.findOrCreateLexeme(change.language, change.surface),
+						status,
+						cause,
+						change.at,
+						change.deviceId,
+						change.deviceSeq,
+						change.userId
+					]
+				);
+			}
+			for (const change of replayStatuses(this.readStatusLog()).values())
+				this.projectStatus(change.lexemeId, change.status);
+			// A copy from before spec 019 switches now, as the phone did when it updated (FR-018).
+			if (!this.switchPosition()) this.runSwitch();
+
 			// Memory is derived and never copied: rebuilt from what was just restored.
 			run(this.db, 'DELETE FROM memory');
 			this.recomputeMemory(this.wordsWithHistory());

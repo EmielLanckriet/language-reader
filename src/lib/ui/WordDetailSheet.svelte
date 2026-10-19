@@ -4,20 +4,25 @@
 	import type { WordDetail, WordListEntry } from '$lib/storage/repository';
 	import { deckStatus, fromNow, markLabel, type Context, type Gloss } from './word-list';
 	import ErrorNotice from './ErrorNotice.svelte';
+	import StatusButtons from './StatusButtons.svelte';
+	import type { Status } from '$lib/domain/status';
 
-	// Read only (issue #47): this sheet shows a word's data and changes nothing.
+	// A word's data (issue #47), and its Retire and Ignore (spec 019): the only change made here.
 	let {
 		word,
 		gloss,
 		detail,
 		context,
-		onclose
+		onclose,
+		onstatus
 	}: {
 		word: WordListEntry;
 		gloss: Gloss | undefined;
 		detail: Promise<WordDetail>;
 		context: Context;
 		onclose: () => void;
+		/** The word's status was changed here, so the list can show it. */
+		onstatus: (status: Status) => void;
 	} = $props();
 
 	const meanings = $derived(lookUp(word.form));
@@ -58,6 +63,7 @@
 		<dl>
 			<dt>Deck</dt>
 			<dd>{deckStatus(word)}</dd>
+			<dd class="statuses"><StatusButtons lexemeId={word.id} onchanged={onstatus} /></dd>
 			{#if markLabel(word.mark)}
 				<dt>Mark</dt>
 				<dd>{markLabel(word.mark)}</dd>
@@ -178,6 +184,10 @@
 	}
 	dd {
 		margin: 0;
+	}
+	dd.statuses {
+		grid-column: 2;
+		margin-bottom: 0.3rem;
 	}
 	ul {
 		margin: 0;

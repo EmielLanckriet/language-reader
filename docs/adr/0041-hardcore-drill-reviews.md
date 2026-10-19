@@ -1,5 +1,5 @@
 # ADR-0041: Hardcore drill reviews, and a word drilled in at 14 days
-Status: Accepted. Date: 2026-10-13. Amends: [ADR-0039](0039-which-words-are-cards.md) (what makes
+Status: Accepted, amended by [ADR-0044](0044-word-status.md) (2026-10-19: the 14-day rule makes a word's status active, decided in one place). Date: 2026-10-13. Amends: [ADR-0039](0039-which-words-are-cards.md) (what makes
 a card active), [ADR-0040](0040-retired-words.md)'s amendment (what ends a set-aside mark),
 [ADR-0037](0037-in-context-outcomes-and-fitted-rules.md)'s `evidence-4` (what counts as a sentence
 seen before). Spec 014, issue #36.

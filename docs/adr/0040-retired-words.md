@@ -1,5 +1,5 @@
 # ADR-0040: Retired words leave the deck but keep their memory
-Status: Accepted. Date: 2026-10-06. Amends: [ADR-0039](0039-which-words-are-cards.md) (which words are cards).
+Status: Accepted, amended by [ADR-0044](0044-word-status.md) (2026-10-19: retired and ignored are statuses, not marks; every `retired` mark was deleted). Date: 2026-10-06. Amends: [ADR-0039](0039-which-words-are-cards.md) (which words are cards).
 
 A word whose latest mark is **`retired`** is never a card: not active, not a candidate, never due,
 and left out of the library's "due come up" counts. Its memory goes on as before: reading and

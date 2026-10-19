@@ -10,6 +10,7 @@ import type { AnkiExport } from '../domain/anki';
 import type { TuningDataset, TuningReport } from '../domain/tuning';
 import type { StudyOverview } from '../domain/study';
 import type { ParameterSet } from '../domain/fit';
+import type { Status } from '../domain/status';
 
 import { RejectedInput } from '../content/types';
 import type { CopyBody } from '../backup/format';
@@ -288,6 +289,23 @@ export class RepositoryClient {
 		return this.call({ method: 'wordDetail', args: [lexemeId] });
 	}
 
+	/** Retire, Ignore, or undo either (spec 019). */
+	setStatus(lexemeId: LexemeId, status: Status): Promise<void> {
+		return this.call<void>({ method: 'setStatus', args: [lexemeId, status] }).then(earned);
+	}
+
+	/** Each word's status; retired when it has none. */
+	getStatuses(lexemeIds: LexemeId[]): Promise<Map<LexemeId, Status>> {
+		return this.call({ method: 'getStatuses', args: [lexemeIds] });
+	}
+
+	/** A word's status, whether the reader set it, and what it was before, for undo. */
+	statusDetail(
+		lexemeId: LexemeId
+	): Promise<{ status: Status; byReader: boolean; before?: Status }> {
+		return this.call({ method: 'statusDetail', args: [lexemeId] });
+	}
+
 	getStates(lexemeIds: LexemeId[]): Promise<Map<LexemeId, WordState>> {
 		// A Map survives structuredClone intact, so it arrives as a Map rather than as an object.
 		return this.call({ method: 'getStates', args: [lexemeIds] });
@@ -389,15 +407,6 @@ export class RepositoryClient {
 	/** Documents whose words the corrections in force would change, rewritten; how many (issue #2). */
 	reapplyCorrections(): Promise<number | null> {
 		return this.call({ method: 'reapplyCorrections', args: [] });
-	}
-
-	/** Words marked ignored, retired instead (ADR-0040); how many. */
-	retireIgnored(): Promise<number> {
-		return this.call({ method: 'retireIgnored', args: [] });
-	}
-
-	setAsideAnki(top: number, dryRun: boolean): Promise<number> {
-		return this.call({ method: 'setAsideAnki', args: [top, dryRun] });
 	}
 
 	staleMemory(limit: number): Promise<number[]> {

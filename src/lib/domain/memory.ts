@@ -19,20 +19,12 @@ import {
 import { ankiSeedOf, isFromAnki, type AnkiSeed, type FsrsParameters } from './anki';
 import type { AttentionAnswer, SessionKind, Skill } from './encounter';
 import { RETRACTED } from './state';
+import type { Position, ReadingPoint } from './status';
 
-export const RULE = 'evidence-4';
+/** `evidence-5` (spec 019): the evidence of `evidence-4`, with no card flags and no mark but Anki's. */
+export const RULE = 'evidence-5';
 /** How due dates follow from a memory: part of what a stored memory was computed under. */
 const SCHEDULE = 'no-steps';
-/**
- * A word off the queue joins Cards once its reading stability reaches this many days, whatever
- * brought it there — an Anki seed, reading, a drill (ADR-0041, amended for issue #42): it arrives
- * already known, adding about 1/14 review a day.
- */
-export const ACTIVE_AT_DAYS = 14;
-/** Which words are active cards (issue #5): part of what a stored memory was computed under. */
-const ACTIVATION = `known-2+stable-${ACTIVE_AT_DAYS}`;
-/** Untapped attentive sessions that make a never-tapped word a known, active card (issue #5). */
-export const KNOWN_SESSIONS = 2;
 
 /** Position in the history: what orders it. `at` only measures the time between evidence. */
 export interface Ordered {
@@ -81,6 +73,8 @@ export interface WordHistory {
 
 export interface Evidence {
 	at: string;
+	/** Where in the history it happened: what `activation` compares with status changes. */
+	position: Position;
 	rating: Grade;
 	/** Present only for an actual answer, never an inferred encounter rating. */
 	review?: Pick<Ordered, 'deviceId' | 'deviceSeq'>;
@@ -148,30 +142,14 @@ export function strengthened(
 
 export interface SkillEvidence {
 	seed?: AnkiSeed;
+	/** The import mark the seed came from. */
+	seedPosition?: Position;
 	evidence: Evidence[];
 }
 
 export interface WordEvidence {
-	/** A card-creating event happened (R8): a lookup, an Anki seed, a hand mark of learning. */
-	card: boolean;
-	/**
-	 * Never tapped, and met untapped in KNOWN_SESSIONS sessions answered "I tapped every word I
-	 * didn't know", with the English not shown: an active card outside the new-word budget (#5).
-	 */
-	known: boolean;
-	/** Set aside (the reader, 2026-10-07): a candidate card, not due, until reviewed after the mark. */
-	setAside: boolean;
-	/** Retired by hand (ADR-0040): no drill makes a card of it. */
-	retired: boolean;
 	reading: SkillEvidence;
 	listening: SkillEvidence;
-}
-
-const SET_ASIDE = 'set aside:';
-
-/** The provenance of a retire that sets an Anki word outside the `top` most common aside. */
-export function setAsideProvenance(top: number): string {
-	return `${SET_ASIDE} outside the ${top} most common words`;
 }
 
 export interface Memory {
@@ -182,12 +160,6 @@ export interface Memory {
 	due: string;
 	reps: number;
 	lapses: number;
-	card: boolean;
-	/** A known word's card (WordEvidence.known); reading only. */
-	known?: true;
-	/** A set-aside word's card (WordEvidence.setAside); reading only. */
-	setAside?: true;
-	reviewed: boolean;
 	/** `anki`, or `anki-undated` when the import did not know the last review (format 1). */
 	seeded?: string;
 }
@@ -209,14 +181,9 @@ function isTap(event: HistoryEvent): boolean {
 	return event.kind === 'lookup' || event.kind === 'check';
 }
 
-/** A grade from a hardcore drill: evidence like any review, but it makes no card (ADR-0041). */
+/** A grade from a hardcore drill: evidence like any review (ADR-0041). */
 function isDrill(event: HistoryEvent): boolean {
 	return event.kind === 'review' && event.detail.hardcore !== undefined;
-}
-
-/** A review on Cards: the kind that makes a card and an active one (ADR-0039). */
-function isCardReview(event: HistoryEvent): boolean {
-	return event.kind === 'review' && !isDrill(event);
 }
 
 /** An exposure counts for listening only when the words were heard with the text hidden. */
@@ -233,25 +200,15 @@ function skillOf(item: { modality?: SessionKind; textVisible?: boolean }): Skill
 export function evidenceFor(history: WordHistory): WordEvidence {
 	const marks = [...history.marks].sort(byHistory);
 	const events = [...history.events].sort(byHistory);
-	const none: WordEvidence = {
-		card: false,
-		known: false,
-		setAside: false,
-		retired: false,
-		reading: { evidence: [] },
-		listening: { evidence: [] }
-	};
-
-	const current = marks.at(-1)?.asserted;
-	if (current === 'ignored') return none;
-
 	// The Anki seed: the last import's, unless undone, and none imported after an in-app review.
 	const firstReview = events.find((event) => event.kind === 'review');
 	let seed: AnkiSeed | undefined;
+	let seedPosition: Position | undefined;
 	for (const mark of marks) {
 		if (!isFromAnki(mark.provenance)) continue;
 		if (firstReview && byHistory(mark, firstReview) > 0) continue;
 		seed = mark.asserted === RETRACTED ? undefined : ankiSeedOf(mark.provenance);
+		seedPosition = seed ? { deviceId: mark.deviceId, deviceSeq: mark.deviceSeq } : undefined;
 	}
 
 	const lookedIn = new Set(
@@ -260,21 +217,13 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			.map((event) => event.sessionId)
 	);
 	const found: WordEvidence = {
-		card:
-			seed !== undefined ||
-			events.some((event) => isTap(event) || isCardReview(event)) ||
-			marks.some((mark) => mark.asserted === 'learning'),
-		known: false,
-		setAside: false,
-		retired: false,
-		reading: { seed, evidence: [] },
+		reading: { seed, ...(seedPosition ? { seedPosition } : {}), evidence: [] },
 		listening: { evidence: [] }
 	};
 	const counted = new Set<string>();
 	const once = (key: string) => (counted.has(key) ? false : (counted.add(key), true));
 	const seenOn = new Map<string, Evidence>();
 
-	const attentive = new Set<number>();
 	type Item = { event?: HistoryEvent; exposure?: Exposure };
 	const stream: Item[] = [
 		...events.map((event) => ({ event })),
@@ -285,21 +234,24 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 		const item = (event ?? exposure)!;
 		if (seed && item.at <= seed.lastReview) continue;
 		const session = event?.sessionId ?? `none-${item.deviceId}-${item.deviceSeq}`;
+		const position = { deviceId: item.deviceId, deviceSeq: item.deviceSeq };
 
 		if (event && isTap(event)) {
 			if (!once(`tap ${session}`)) continue;
 			const observed = event.sessionId !== undefined && skillOf(event) === 'reading';
 			found.reading.evidence.push({
 				at: event.at,
+				position,
 				rating: AGAIN,
 				from: 'tap',
 				...(observed ? { context: { deviceId: event.deviceId, deviceSeq: event.deviceSeq } } : {})
 			});
-			found.listening.evidence.push({ at: event.at, rating: AGAIN, from: 'tap' });
+			found.listening.evidence.push({ at: event.at, position, rating: AGAIN, from: 'tap' });
 		} else if (event?.kind === 'review') {
 			const skill = event.detail.skill as Skill;
 			found[skill].evidence.push({
 				at: event.at,
+				position,
 				rating: event.detail.grade as Grade,
 				review: { deviceId: event.deviceId, deviceSeq: event.deviceSeq },
 				...(isDrill(event) ? { hardcore: true as const } : {})
@@ -309,8 +261,6 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			if (exposure.helped) continue;
 			if (history.answers.get(exposure.sessionId) !== 'all') continue;
 			if (lookedIn.has(exposure.sessionId)) continue;
-			// Known takes two contexts: a sentence seen again may be understood from memory of it.
-			if (exposure.rewatchDays === undefined) attentive.add(exposure.sessionId);
 			const day = `${skill} ${exposure.at.slice(0, 10)}`;
 			const earlier = seenOn.get(day);
 			if (earlier) {
@@ -323,6 +273,7 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			}
 			const evidence: Evidence = {
 				at: exposure.at,
+				position,
 				rating: GOOD,
 				from: 'seen',
 				...(exposure.rewatchDays === undefined ? {} : { rewatchDays: exposure.rewatchDays }),
@@ -333,21 +284,6 @@ export function evidenceFor(history: WordHistory): WordEvidence {
 			seenOn.set(day, evidence);
 			found[skill].evidence.push(evidence);
 		}
-	}
-	found.known = !events.some(isTap) && attentive.size >= KNOWN_SESSIONS;
-	// Retired from the deck (ADR-0040): the memory goes on, the word is never a card or due. Set
-	// aside, it stays a candidate the budget may pick, and a Reader review after the mark ends it.
-	if (current === 'retired') {
-		const last = marks.at(-1)!;
-		const aside = last.provenance.startsWith(SET_ASIDE);
-		const reviewedSince = events.some(
-			(event) =>
-				isCardReview(event) && event.detail.skill === 'reading' && byHistory(event, last) > 0
-		);
-		if (!aside) found.card = false;
-		else found.setAside = !reviewedSince;
-		found.retired = !aside;
-		found.known = false;
 	}
 	return found;
 }
@@ -374,9 +310,9 @@ function scheduler(parameters?: FsrsParameters, cache = true): FSRS {
 
 /** The rule and the parameters together: what a stored memory has to be recomputed under. */
 export function ruleKey(parameters?: FsrsParameters): string {
-	if (!parameters) return `${RULE}+${SCHEDULE}+${ACTIVATION}/default`;
+	if (!parameters) return `${RULE}+${SCHEDULE}/default`;
 	const weights = parameters.weights.map((w) => w.toFixed(4)).join(',');
-	return `${RULE}+${SCHEDULE}+${ACTIVATION}/${parameters.preset}:${parameters.retention}:${weights}`;
+	return `${RULE}+${SCHEDULE}/${parameters.preset}:${parameters.retention}:${weights}`;
 }
 
 const DAY_MS = 86_400_000;
@@ -507,19 +443,36 @@ export function memoryOf(
 	parameters?: FsrsParameters,
 	strengths?: RuleStrengths
 ): Partial<Record<Skill, Memory>> {
+	return memoryWithTrajectory(history, parameters, strengths).memory;
+}
+
+/**
+ * The memory, and the reading stability after each piece of evidence (the Anki seed first): what
+ * `activation` reads (spec 019). One fold gives both.
+ */
+export function memoryWithTrajectory(
+	history: WordHistory,
+	parameters?: FsrsParameters,
+	strengths?: RuleStrengths
+): { memory: Partial<Record<Skill, Memory>>; trajectory: ReadingPoint[] } {
 	const found = evidenceFor(history);
 	const f = scheduler(parameters);
 	const memory: Partial<Record<Skill, Memory>> = {};
+	const { seed: readingSeed, seedPosition } = found.reading;
+	const trajectory: ReadingPoint[] =
+		readingSeed && seedPosition
+			? [{ ...seedPosition, stability: readingSeed.stability, cardReview: false }]
+			: [];
 	for (const skill of ['reading', 'listening'] as const) {
-		// Stable: the first time the stability reaches the threshold, the seed's own included, and
-		// for good (ADR-0041, amended for issue #42).
-		let stable = (found[skill].seed?.stability ?? 0) >= ACTIVE_AT_DAYS;
-		const card = fold(f, found[skill], undefined, { strengths, skill }, (_, after) => {
-			stable ||= after.stability >= ACTIVE_AT_DAYS;
+		const card = fold(f, found[skill], undefined, { strengths, skill }, (evidence, after) => {
+			if (skill === 'reading')
+				trajectory.push({
+					...evidence.position,
+					stability: after.stability,
+					cardReview: evidence.review !== undefined && !evidence.hardcore
+				});
 		});
 		if (!card) continue;
-		stable &&= skill === 'reading' && !found.retired;
-		const isCard = skill === 'reading' && (found.card || stable);
 		const seed = found[skill].seed;
 		memory[skill] = {
 			stability: card.stability,
@@ -529,16 +482,10 @@ export function memoryOf(
 			due: card.due.toISOString(),
 			reps: card.reps,
 			lapses: card.lapses,
-			card: isCard,
-			...(skill === 'reading' && found.known && !isCard ? { known: true as const } : {}),
-			...(skill === 'reading' && found.setAside && !stable ? { setAside: true as const } : {}),
-			reviewed:
-				stable ||
-				history.events.some((event) => isCardReview(event) && event.detail.skill === skill),
 			...(seed ? { seeded: seed.dateKnown ? 'anki' : 'anki-undated' } : {})
 		};
 	}
-	return memory;
+	return { memory, trajectory };
 }
 
 /** Today's chance of recall. */

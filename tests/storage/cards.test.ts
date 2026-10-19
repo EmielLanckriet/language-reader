@@ -181,9 +181,9 @@ it('excludes unread occurrences and withdrawn encounters, including from the que
 	expect(repository.cardsToday(10).counts.awaitingContext).toBe(1);
 });
 
-it('offers a known word as due outside the budget, stored and read back as known (issue #5)', async () => {
+it('offers a word read untapped in two attentive sessions neither as due nor as new (spec 019)', async () => {
 	const repository = new Repository(await freshDatabase());
-	// The word in two sentences, one read in each session: a sentence read again would not count.
+	// The word in two sentences, one read in each session: once a known word, an active card (#5).
 	const [documentId] = await buildHistory(repository, ['我看书。\n我来了。'], []);
 	const word = repository.getDocument(documentId).tokens.find((t) => t.isWord)!.lexemeId!;
 	for (const [day, fromOffset] of [
@@ -196,8 +196,9 @@ it('offers a known word as due outside the budget, stored and read back as known
 		]);
 	}
 	repository.refreshMemory(repository.staleMemory(1000));
-	expect(repository.getMemory([word]).memory.get(word)?.reading?.known).toBe(true);
-	const later = repository.cardsToday(0, new Date('2027-01-01T00:00:00Z'));
-	expect(later.queue.due).toContain(word);
-	expect(later.queue.fresh).toEqual([]);
+	expect(repository.getMemory([word]).memory.get(word)?.reading).toBeDefined();
+	expect(repository.getStatuses([word]).get(word)).toBe('retired');
+	const later = repository.cardsToday(10, new Date('2027-01-01T00:00:00Z'));
+	expect(later.queue.due).not.toContain(word);
+	expect(later.queue.fresh).not.toContain(word);
 });

@@ -12,7 +12,8 @@ import { isDueWord, textShares, understood, type Noise } from '$lib/domain/share
 import type { Memory } from '$lib/domain/memory';
 import type { Skill } from '$lib/domain/encounter';
 import type { FsrsParameters } from '$lib/domain/anki';
-import type { LexemeId, WordState } from '$lib/domain/types';
+import type { LexemeId } from '$lib/domain/types';
+import type { Status } from '$lib/domain/status';
 import {
 	classifyTracks,
 	defaultChoice,
@@ -27,7 +28,7 @@ export interface ScoreStore {
 		language: string,
 		forms: string[]
 	): Promise<Map<string, { id: LexemeId; met: boolean }>>;
-	getStates(ids: LexemeId[]): Promise<Map<LexemeId, WordState>>;
+	getStatuses(ids: LexemeId[]): Promise<Map<LexemeId, Status>>;
 	getMemory(ids: LexemeId[]): Promise<{
 		memory: Map<LexemeId, Partial<Record<Skill, Memory>>>;
 		parameters?: FsrsParameters;
@@ -74,19 +75,17 @@ export async function scoreText(
 	}
 	const neverMetWords = unmet.sort((a, b) => byForm.get(b)! - byForm.get(a)!);
 	const known = [...occurrences.keys()].filter((id) => id > 0);
-	const [states, memory] = await Promise.all([store.getStates(known), store.getMemory(known)]);
+	const [statuses, memory] = await Promise.all([store.getStatuses(known), store.getMemory(known)]);
 	const due = [...occurrences]
-		.filter(([id]) =>
-			isDueWord(states.get(id)?.state, memory.memory.get(id)?.reading, now, memory.parameters)
-		)
+		.filter(([id]) => isDueWord(statuses.get(id), memory.memory.get(id)?.reading, now))
 		.sort((a, b) => b[1] - a[1])
 		.map(([id]) => formOf.get(id)!);
 	return {
-		known: textShares(occurrences, states, memory.memory, now, memory.parameters)?.known,
+		known: textShares(occurrences, memory.memory, now, memory.parameters)?.known,
 		due,
 		neverMet: neverMetWords.length,
 		neverMetWords,
-		understood: understood(occurrences, states, memory.memory, now, memory.parameters, memory.noise)
+		understood: understood(occurrences, memory.memory, now, memory.parameters, memory.noise)
 	};
 }
 

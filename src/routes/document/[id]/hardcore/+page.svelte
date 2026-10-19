@@ -73,8 +73,8 @@
 					...new Set(found.tokens.flatMap((t) => (t.lexemeId === undefined ? [] : [t.lexemeId])))
 				];
 				const now = new Date();
-				const [states, memory, ranks, resume] = await Promise.all([
-					repository.getStates(lexemes),
+				const [statuses, memory, ranks, resume] = await Promise.all([
+					repository.getStatuses(lexemes),
 					repository.getMemory(lexemes),
 					repository.frequencyRanks(lexemes),
 					foundMedia?.media ? resumeOf(wanted, foundMedia.cues).catch(() => 0) : 0
@@ -83,7 +83,7 @@
 				const classified = new Map(
 					lexemes.map((lexemeId): [number, FragmentWord] => {
 						const { class: wordClass, known } = classify(
-							states.get(lexemeId),
+							statuses.get(lexemeId),
 							memory.memory.get(lexemeId)?.reading,
 							now,
 							memory.parameters

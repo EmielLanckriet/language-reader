@@ -74,7 +74,6 @@
 			if (document.visibilityState !== 'visible') return;
 			// Corrections first: they move tokens, which the memory sweep then reads.
 			await repository.reapplyCorrections();
-			await repository.retireIgnored();
 			// Memory first: a batch takes milliseconds, where a document's re-segmentation takes seconds.
 			await sweepStaleMemory(repository, () => document.visibilityState === 'visible');
 			await sweepStaleDocuments(

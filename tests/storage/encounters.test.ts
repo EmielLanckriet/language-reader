@@ -40,7 +40,10 @@ describe('recording encounters', () => {
 			{ kind: 'attention', at, detail: { answer: 'all' } }
 		]);
 
-		const rows = queryRows(db, 'SELECT * FROM encounter ORDER BY device_seq');
+		const rows = queryRows(
+			db,
+			`SELECT * FROM encounter WHERE kind != 'status-switch' ORDER BY device_seq`
+		);
 		expect(rows).toHaveLength(2);
 		expect(rows[0]).toMatchObject({
 			session_id: session,

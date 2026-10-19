@@ -21,6 +21,7 @@ describe('searching the word list', () => {
 		const word = (id: number, stability?: number): WordListEntry => ({
 			id,
 			form: String(id),
+			status: 'retired',
 			...(stability === undefined
 				? {}
 				: {
@@ -31,9 +32,7 @@ describe('searching the word list', () => {
 							lastAt: '2026-10-01T00:00:00Z',
 							due: '2026-10-20T00:00:00Z',
 							reps: 1,
-							lapses: 0,
-							card: true,
-							reviewed: true
+							lapses: 0
 						}
 					})
 		});

@@ -7,6 +7,7 @@
 
 import type { Availability } from './availability';
 import type { CardHelp } from '../domain/card-help';
+import type { Status } from '../domain/status';
 
 /** Methods the worker will run on the repository, named rather than sent as functions. */
 export type Call =
@@ -15,6 +16,9 @@ export type Call =
 	| { method: 'saveDocument'; args: [unknown, unknown, unknown] }
 	| { method: 'assertState'; args: [number, string, unknown?] }
 	| { method: 'getStates'; args: [number[]] }
+	| { method: 'setStatus'; args: [number, Status] }
+	| { method: 'getStatuses'; args: [number[]] }
+	| { method: 'statusDetail'; args: [number] }
 	| { method: 'wordsByForm'; args: [string, string[]] }
 	| { method: 'vocabulary'; args: [] }
 	| { method: 'wordList'; args: [] }
@@ -52,8 +56,6 @@ export type Call =
 	| { method: 'cardsToday'; args: [number] }
 	| { method: 'staleMemory'; args: [number] }
 	| { method: 'reapplyCorrections'; args: [] }
-	| { method: 'retireIgnored'; args: [] }
-	| { method: 'setAsideAnki'; args: [number, boolean] }
 	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }

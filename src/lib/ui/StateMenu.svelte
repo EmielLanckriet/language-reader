@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { ankiImportOf } from '$lib/domain/anki';
-	import { ANKI_LEVELS, RETRACTED } from '$lib/domain/state';
+	import { ANKI_LEVELS } from '$lib/domain/state';
+	import type { Status } from '$lib/domain/status';
+	import StatusButtons from './StatusButtons.svelte';
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { recall, type Memory } from '$lib/domain/memory';
 	import type { FsrsParameters } from '$lib/domain/anki';
@@ -18,6 +20,7 @@
 		word,
 		sentence,
 		marking = true,
+		lexemeId,
 		current,
 		provenance,
 		onchoose,
@@ -36,10 +39,13 @@
 		sentence?: string;
 		/** False while a transcript is still arriving: there is no stored word to mark yet. */
 		marking?: boolean;
+		/** The stored word, whose status the Retire and Ignore buttons set (spec 019). */
+		lexemeId?: number;
 		current: string | null;
 		/** How the current state was acquired: shown when it came from Anki (FR-012). */
 		provenance?: string;
-		onchoose: (state: string, reason?: TapReason) => void;
+		/** A status was set from the sheet: it closes, and the tap is recorded with the choice. */
+		onchoose: (status: Status, reason?: TapReason) => void;
 		/** The reader only checked a word they knew: a check, not a lookup (spec 007). */
 		/** The tap was a mistake: close without it counting (spec 013). */
 		onundo?: () => void;
@@ -65,15 +71,10 @@
 		{ value: 'sense', label: 'Checking the meaning here' },
 		{ value: 'split', label: 'Wrongly split' },
 		{ value: 'misheard', label: 'Misheard' },
-		{ value: 'subtitles', label: 'Subtitles wrong' }
+		{ value: 'subtitles', label: 'Subtitles wrong' },
+		{ value: 'curious', label: 'Just curious' }
 	];
 	let reason = $state<TapReason | undefined>();
-
-	/**
-	 * Only Retire is offered (the reader, 2026-10-06: the four choices are not needed, and ignoring
-	 * is not wanted); older marks still count. Tapping it on a retired word takes the mark back.
-	 */
-	const retired = $derived(current === 'retired');
 
 	let refusal = $state<string | null>(null);
 	const splits = $derived.by(() => {
@@ -104,11 +105,7 @@
 	const remembered = $derived.by(() => {
 		if (!memory?.reading && !memory?.listening) return null;
 		const reading = memory.reading;
-		const origin = reading?.reviewed
-			? 'Reviewed in the Reader'
-			: reading?.seeded
-				? 'Started from Anki'
-				: 'From your lookups';
+		const origin = reading?.seeded ? 'Started from Anki' : 'From what you read, heard and reviewed';
 		return {
 			skills: `${describeSkill('Reading', memory.reading)} · ${describeSkill('Listening', memory.listening)}`,
 			origin
@@ -177,15 +174,10 @@
 		{:else if fromAnki}<p class="muted small">{fromAnki}</p>{/if}
 
 		{#if marking}
-			<button
-				class="choice"
-				class:chosen={retired}
-				aria-pressed={retired}
-				onclick={() => onchoose(retired ? RETRACTED : 'retired', reason)}
-			>
-				{retired ? 'Retired ✓ · tap to undo' : 'Retire'}
-				<small>remembered, never a card</small>
-			</button>
+			{#if lexemeId !== undefined}<StatusButtons
+					{lexemeId}
+					onchanged={(status) => onchoose(status, reason)}
+				/>{/if}
 			{#if reasons}
 				<p class="muted small">Why did you tap? (optional)</p>
 				<div class="reasons">
@@ -342,30 +334,6 @@
 	.small {
 		font-size: 0.75rem;
 		margin: 0;
-	}
-
-	.choice {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.4rem;
-		min-height: 38px;
-		min-width: 0;
-		padding: 0.2rem 0.3rem;
-		font-size: 0.8rem;
-		background: transparent;
-		color: var(--ink);
-		border: 1px solid var(--rule);
-	}
-
-	.choice small {
-		color: var(--muted);
-		font-size: 0.7rem;
-	}
-
-	.choice.chosen {
-		border-color: var(--accent);
-		border-width: 2px;
 	}
 
 	.actions {

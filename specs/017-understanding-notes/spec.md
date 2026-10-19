@@ -20,7 +20,7 @@ change reads as not answered.
 ### User Story 2 - Why did you tap? (P1)
 
 The word sheet offers, optionally, why the word was tapped: **didn't know it**, **checking the
-meaning here**, **wrongly split**, **misheard**, **subtitles wrong**. Choosing one is recorded with
+meaning here**, **wrongly split**, **misheard**, **subtitles wrong**, **just curious** (added 2026-10-19). Choosing one is recorded with
 that tap; ignoring it records the tap as before.
 
 **Acceptance**: (1) a reason chosen before the sheet closes is recorded on that lookup; (2) a sheet
@@ -36,7 +36,7 @@ closed without a reason records the lookup exactly as before; (3) an undone tap 
 
 - **FR-001**: The engagement answer MAY carry `followable`: `yes`, `partly`, `no` or null; asked only
   when the session's mode is `listened`.
-- **FR-002**: A lookup MAY carry `reason`: `unknown`, `sense`, `split`, `misheard`, `subtitles`.
+- **FR-002**: A lookup MAY carry `reason`: `unknown`, `sense`, `split`, `misheard`, `subtitles`, `curious`.
 - **FR-003**: Records MUST be refused when either field holds another value; absent is valid
   (older records, and taps without a reason).
 - **FR-004**: Memory, cards, shares and the fit MUST NOT change because of either field.

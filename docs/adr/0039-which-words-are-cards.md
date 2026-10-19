@@ -1,5 +1,5 @@
 # ADR-0039: Which words are cards, and which new ones come first
-Status: Accepted. Date: 2026-10-05. Amends: [ADR-0027](0027-encounter-log-and-derived-memory.md) (what makes a card) and spec 007 research R8 (new-card order). Issue #5.
+Status: Accepted, amended by [ADR-0044](0044-word-status.md) (2026-10-19: a stored status decides cards; known words and seeds no longer active by themselves). Date: 2026-10-05. Amends: [ADR-0027](0027-encounter-log-and-derived-memory.md) (what makes a card) and spec 007 research R8 (new-card order). Issue #5.
 
 A word is an **active** card, coming due on its own schedule, when it was reviewed in Reader, seen
 in Anki (an Anki seed), or is a **known** word: never tapped, and met untapped in two separate

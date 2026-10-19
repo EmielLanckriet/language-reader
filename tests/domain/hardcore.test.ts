@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import type { Token } from '../../src/lib/domain/types';
-import { memoryOf, setAsideProvenance, type WordHistory } from '../../src/lib/domain/memory';
+import { memoryOf, type WordHistory } from '../../src/lib/domain/memory';
 import {
 	afterGrade,
 	classify,
@@ -203,14 +203,7 @@ describe('which words a drill takes (FR-004)', () => {
 	});
 	const reading = (h: Partial<WordHistory>) =>
 		memoryOf({ marks: [], events: [], exposures: [], answers: new Map(), ...h }).reading;
-	const state = (s: string, provenance = 'manual') => ({
-		lexemeId: 1,
-		state: s,
-		provenance,
-		userId: 1
-	});
-
-	it('classes each word by its memory alone, card or not, retired or not', () => {
+	it('classes each word by its memory alone, active or retired (spec 019)', () => {
 		expect(classify(undefined, undefined, now).class).toBe('new');
 		// Tapped in October, never a card: due by December.
 		expect(classify(undefined, reading({ events: [lookup(at(1))] }), now).class).toBe('due');
@@ -230,29 +223,30 @@ describe('which words a drill takes (FR-004)', () => {
 			]
 		});
 		expect(classify(undefined, drilled, now).class).toBe('excluded');
-		// Retired by hand: retiring only keeps a word off Cards, so its memory decides.
-		const retired = (events: WordHistory['events']) =>
-			reading({ events, marks: [{ ...o(at(2)), asserted: 'retired', provenance: 'manual' }] });
-		expect(classify(state('retired'), retired([lookup(at(1))]), now).class).toBe('due');
-		expect(classify(state('retired'), retired([review('2026-11-30T10:00:00Z')]), now).class).toBe(
-			'excluded'
-		);
-		expect(classify(state('retired'), undefined, now).class).toBe('new');
-		// Set aside (issue #42): an Anki word, judged by its imported memory like any reviewed card.
-		const aside = (stability: number) =>
+		// Retired: retiring only keeps a word off Cards, so its memory decides.
+		const tapped = reading({ events: [lookup(at(1))] });
+		expect(classify('retired', tapped, now).class).toBe('due');
+		expect(classify('active', tapped, now).class).toBe('due');
+		expect(classify('retired', recent, now).class).toBe('excluded');
+		expect(classify('retired', undefined, now).class).toBe('new');
+		// An Anki word, judged by its imported memory like any reviewed card.
+		const anki = (stability: number) =>
 			reading({
 				marks: [
 					{
 						...o(at(1)),
 						asserted: 'anki-long-term',
 						provenance: `anki ${at(1)} s=${stability} d=5 r=2026-08-18T14:55:21Z decay=0.264`
-					},
-					{ ...o(at(2)), asserted: 'retired', provenance: setAsideProvenance(2000) }
+					}
 				]
 			});
-		const asideState = state('retired', setAsideProvenance(2000));
-		expect(classify(asideState, aside(1310.8), now).class).toBe('excluded');
-		expect(classify(asideState, aside(2), now).class).toBe('due');
+		expect(classify('retired', anki(1310.8), now).class).toBe('excluded');
+		expect(classify('retired', anki(2), now).class).toBe('due');
+	});
+
+	it('never drills an ignored word, new or due (spec 019)', () => {
+		expect(classify('ignored', undefined, now).class).toBe('excluded');
+		expect(classify('ignored', reading({ events: [lookup(at(1))] }), now).class).toBe('excluded');
 	});
 });
 

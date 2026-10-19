@@ -38,16 +38,16 @@ const rows = (db: Database) =>
 	queryRows(db, 'SELECT * FROM memory ORDER BY lexeme_id, skill').map((row) => JSON.stringify(row));
 
 describe('memory kept with the history', () => {
-	it('is made by a lookup, in the same write, as a card in both skills', async () => {
+	it('is made by a lookup, in the same write, in both skills', async () => {
 		const { db, repository, documentId, words, lookup } = await library();
 		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
 			lookup(0, day(1))
 		]);
 
 		const memory = queryRows(db, 'SELECT * FROM memory ORDER BY skill');
-		expect(memory.map((row) => [row.lexeme_id, row.skill, row.card, row.rule])).toEqual([
-			[words[0].lexemeId!, 'listening', 0, ruleKey()],
-			[words[0].lexemeId!, 'reading', 1, ruleKey()]
+		expect(memory.map((row) => [row.lexeme_id, row.skill, row.rule])).toEqual([
+			[words[0].lexemeId!, 'listening', ruleKey()],
+			[words[0].lexemeId!, 'reading', ruleKey()]
 		]);
 	});
 
@@ -68,15 +68,12 @@ describe('memory kept with the history', () => {
 		expect(queryRows(db, `SELECT reps FROM memory WHERE skill = 'reading'`)[0].reps).toBe(
 			Number(before) + 1
 		);
-		// Every word read past starts a memory (evidence-2), though only the looked-up one is a card.
+		// Every word read past starts a memory (evidence-2).
 		expect(queryRows(db, 'SELECT DISTINCT lexeme_id FROM memory ORDER BY lexeme_id')).toEqual(
 			[...new Set(words.map((w) => w.lexemeId!))]
 				.sort((a, b) => a - b)
 				.map((id) => ({ lexeme_id: id }))
 		);
-		expect(
-			queryRows(db, "SELECT lexeme_id FROM memory WHERE card = 1 AND skill = 'reading'")
-		).toEqual([{ lexeme_id: words[0].lexemeId! }]);
 	});
 
 	it('credits only the words of the part that played, when a video was left halfway', async () => {
@@ -190,13 +187,14 @@ describe('memory kept with the history', () => {
 		]);
 	});
 
-	it('is removed when the word is marked ignored', async () => {
+	it('is kept when the word is ignored (spec 019)', async () => {
 		const { db, repository, documentId, words, lookup } = await library();
 		repository.recordEncounters(repository.startSession(documentId, 'reading'), [
 			lookup(0, day(1))
 		]);
-		repository.assertState(words[0].lexemeId!, 'ignored');
-		expect(queryRows(db, 'SELECT * FROM memory')).toEqual([]);
+		const before = rows(db);
+		repository.setStatus(words[0].lexemeId!, 'ignored');
+		expect(rows(db)).toEqual(before);
 	});
 
 	it('rebuilt from nothing, is exactly what was built up event by event', async () => {
@@ -315,8 +313,8 @@ describe('memory kept with the history', () => {
 		});
 		expect([...memory.keys()]).toEqual([words[0].lexemeId!]);
 		expect(memory.get(words[0].lexemeId!)).toMatchObject({
-			reading: { card: true, reviewed: false, reps: 1, lapses: 0 },
-			listening: { card: false }
+			reading: { reps: 1, lapses: 0 },
+			listening: { reps: 1 }
 		});
 	});
 

@@ -7,7 +7,8 @@ import { isDueWord, kindOf } from '$lib/domain/shares';
 import type { Memory } from '$lib/domain/memory';
 import type { Skill } from '$lib/domain/encounter';
 import type { FsrsParameters } from '$lib/domain/anki';
-import type { LexemeId, WordState } from '$lib/domain/types';
+import type { LexemeId } from '$lib/domain/types';
+import type { Status } from '$lib/domain/status';
 import type { Score } from './find';
 
 export interface StoryWords {
@@ -20,7 +21,7 @@ export interface StoryWords {
 /** Due words as Cards counts them and known ones as the library does, most frequent first. */
 export function chooseWords(
 	vocabulary: { id: LexemeId; form: string; count: number }[],
-	states: Map<LexemeId, WordState>,
+	statuses: Map<LexemeId, Status>,
 	memory: Map<LexemeId, Partial<Record<Skill, Memory>>>,
 	now: Date,
 	parameters: FsrsParameters | undefined,
@@ -29,16 +30,12 @@ export function chooseWords(
 	const byCount = [...vocabulary].sort((a, b) => b.count - a.count);
 	const reading = (id: LexemeId) => memory.get(id)?.reading;
 	const due = byCount
-		.filter((w) => isDueWord(states.get(w.id)?.state, reading(w.id), now, parameters))
+		.filter((w) => isDueWord(statuses.get(w.id), reading(w.id), now))
 		.slice(0, limits.due)
 		.map((w) => w.form);
 	const dueSet = new Set(due);
 	const known = byCount
-		.filter(
-			(w) =>
-				!dueSet.has(w.form) &&
-				kindOf(states.get(w.id)?.state, reading(w.id), now, parameters) === 'known'
-		)
+		.filter((w) => !dueSet.has(w.form) && kindOf(reading(w.id), now, parameters) === 'known')
 		.slice(0, limits.known)
 		.map((w) => w.form);
 	return { due, known };

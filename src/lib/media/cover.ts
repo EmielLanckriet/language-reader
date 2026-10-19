@@ -199,24 +199,17 @@ export async function sharesOf(ids: DocumentId[]): Promise<Map<DocumentId, Figur
 		repository.wordLines(ids)
 	]);
 	const lexemes = [...new Set([...occurrences.values()].flatMap((words) => [...words.keys()]))];
-	const [states, memory] = await Promise.all([
-		repository.getStates(lexemes),
+	const [statuses, memory] = await Promise.all([
+		repository.getStatuses(lexemes),
 		repository.getMemory(lexemes)
 	]);
 	const now = new Date();
 	const found = new Map<DocumentId, Figures>();
 	for (const [id, words] of occurrences) {
-		const shares = textShares(words, states, memory.memory, now, memory.parameters);
+		const shares = textShares(words, memory.memory, now, memory.parameters);
 		if (!shares) continue;
-		const counts = wordCounts(
-			words,
-			lines.get(id) ?? new Map(),
-			states,
-			memory.memory,
-			now,
-			memory.parameters
-		);
-		const share = understood(words, states, memory.memory, now, memory.parameters, memory.noise);
+		const counts = wordCounts(words, lines.get(id) ?? new Map(), statuses, memory.memory, now);
+		const share = understood(words, memory.memory, now, memory.parameters, memory.noise);
 		found.set(id, { shares, counts, understood: share });
 	}
 	return found;

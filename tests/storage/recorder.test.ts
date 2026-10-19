@@ -139,7 +139,7 @@ describe('the recorder', () => {
 
 		const rows = queryRows(
 			db,
-			"SELECT kind, lexeme_id, media_ms, detail FROM encounter WHERE kind NOT IN ('study-time','session-end') ORDER BY device_seq"
+			"SELECT kind, lexeme_id, media_ms, detail FROM encounter WHERE kind NOT IN ('study-time','session-end','status-switch') ORDER BY device_seq"
 		);
 		expect(rows.map((row) => row.kind)).toEqual([
 			'played',

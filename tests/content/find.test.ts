@@ -39,7 +39,7 @@ const libraryArb = fc.record({
 function store(repository: Repository): ScoreStore {
 	return {
 		wordsByForm: async (language, forms) => repository.wordsByForm(language, forms),
-		getStates: async (ids) => repository.getStates(ids),
+		getStatuses: async (ids) => repository.getStatuses(ids),
 		getMemory: async (ids) => repository.getMemory(ids)
 	};
 }
@@ -118,18 +118,11 @@ describe('a candidate scored as unsaved text', () => {
 				const saved = await save(repository, text);
 				const occurrences = repository.wordOccurrences([saved]).get(saved) ?? new Map();
 				const lexemes = [...occurrences.keys()];
-				const states = repository.getStates(lexemes);
+				const statuses = repository.getStatuses(lexemes);
 				const memory = repository.getMemory(lexemes);
-				const shares = textShares(occurrences, states, memory.memory, NOW, memory.parameters);
+				const shares = textShares(occurrences, memory.memory, NOW, memory.parameters);
 				expect(score.known).toBe(shares?.known);
-				const counts = wordCounts(
-					occurrences,
-					new Map(),
-					states,
-					memory.memory,
-					NOW,
-					memory.parameters
-				);
+				const counts = wordCounts(occurrences, new Map(), statuses, memory.memory, NOW);
 				expect(score.due.length).toBe(counts.due);
 				const met = new Set(queryRows(db, ENCOUNTERED_WORDS).map((row) => Number(row.lexeme_id)));
 				const marked = new Set(

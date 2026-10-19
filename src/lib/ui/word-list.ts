@@ -4,7 +4,7 @@
  */
 
 import { recall, type Memory } from '$lib/domain/memory';
-import { ANKI_LEVELS, AVAILABLE_STATES, RETRACTED } from '$lib/domain/state';
+import { ANKI_LEVELS, RETRACTED } from '$lib/domain/state';
 import type { FsrsParameters } from '$lib/domain/anki';
 import type { WordListEntry } from '$lib/storage/repository';
 
@@ -34,17 +34,14 @@ export function matches(form: string, gloss: Gloss | undefined, query: string): 
 	);
 }
 
-/** Where the word stands with the deck, from its reading memory and its mark (ADR-0040, 0041). */
+const STATUS_LABELS = { active: 'Active', retired: 'Retired', ignored: 'Ignored' } as const;
+
+/** Where the word stands with the deck: its status (spec 019). */
 export function deckStatus(word: WordListEntry): string {
-	if (word.reading?.setAside) return 'Set aside';
-	if (word.reading?.card) return 'In deck';
-	if (word.mark === 'retired') return 'Retired';
-	return 'Not in deck';
+	return STATUS_LABELS[word.status];
 }
 
-const MARK_LABELS = new Map(
-	[...AVAILABLE_STATES, ...ANKI_LEVELS].map((state) => [state.name, state.label])
-);
+const MARK_LABELS = new Map(ANKI_LEVELS.map((state) => [state.name, state.label]));
 
 export function markLabel(mark: string | undefined): string {
 	if (mark === undefined || mark === RETRACTED) return '';

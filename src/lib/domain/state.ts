@@ -13,33 +13,12 @@ export interface StateDefinition {
 }
 
 /**
- * Slice 0's states — **a placeholder, like the analyzer**.
- *
- * This is data, not structure (FR-006a). Adding a state here is the entire change: the column is
- * free text with no enumeration and no check constraint, so nothing migrates. Nothing anywhere may
- * depend on there being exactly four, on these names, or on this order.
- *
- * Whether this product wants discrete states at all, or a numeric familiarity level, is
- * deliberately unsettled. Because current state is a projection (FR-010a), moving to graded levels
- * is a change of fold rather than a change of schema.
- *
- * **Renaming an existing state is not cheap**, and is the one part of the state model that is a
- * one-way door: it silently reinterprets every mark already made under the old name.
+ * Marks are Anki's levels only (spec 019, ADR-0044): the reader's own states (unknown, learning,
+ * known, ignored, retired) were deleted at the switch to statuses, which live in their own table.
+ * A mark name is free text, so a new kind of mark is data, not a migration; **renaming one is not
+ * cheap**: it silently reinterprets every mark already made under the old name.
  */
-export const AVAILABLE_STATES: StateDefinition[] = [
-	{ name: 'unknown', label: 'Unknown' },
-	{ name: 'learning', label: 'Learning' },
-	{ name: 'known', label: 'Known' },
-	{ name: 'ignored', label: 'Ignored' },
-	// Out of the deck, still remembered (ADR-0040).
-	{ name: 'retired', label: 'Retired' }
-];
-
-/**
- * Anki's own levels for a word imported from the reader's collection (ADR-0024), kept apart from the
- * four the reader chooses: `learning` already means the reader's own judgment. Not offered in the
- * word sheet; only an import writes them.
- */
+/** Anki's own levels for a word imported from the reader's collection (ADR-0024): only an import writes them. */
 export const ANKI_LEVELS: StateDefinition[] = [
 	{ name: 'anki-learning', label: 'Anki: learning' },
 	{ name: 'anki-young', label: 'Anki: young' },
@@ -52,14 +31,6 @@ export const ANKI_LEVELS: StateDefinition[] = [
  * word the import marked from nothing, since the history is append-only and cannot lose the event.
  */
 export const RETRACTED = '(none)';
-
-export function stateNames(): string[] {
-	return AVAILABLE_STATES.map((state) => state.name);
-}
-
-export function isKnownState(name: string): boolean {
-	return stateNames().includes(name);
-}
 
 /**
  * Fold a history into the current state of every word it mentions.

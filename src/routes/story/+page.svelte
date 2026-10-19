@@ -136,11 +136,11 @@
 			const { repository } = await session();
 			const vocabulary = await repository.vocabulary();
 			const ids = vocabulary.map((w) => w.id);
-			const [states, memory] = await Promise.all([
-				repository.getStates(ids),
+			const [statuses, memory] = await Promise.all([
+				repository.getStatuses(ids),
 				repository.getMemory(ids)
 			]);
-			const words = chooseWords(vocabulary, states, memory.memory, new Date(), memory.parameters);
+			const words = chooseWords(vocabulary, statuses, memory.memory, new Date(), memory.parameters);
 			const analyzer = await activeAnalyzer();
 			let draft = 0;
 			const result = await writeStory(

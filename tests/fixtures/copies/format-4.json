@@ -1,0 +1,156 @@
+{
+	"format": 4,
+	"app": "language-reader",
+	"createdAt": "2026-10-20T12:00:00.000Z",
+	"writer": "4370d3cc-63dc-45e7-988b-55959359f4be",
+	"devices": [
+		{
+			"id": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"nextSeq": 11
+		}
+	],
+	"documents": [
+		{
+			"id": 1,
+			"title": "我看书。",
+			"language": "zh",
+			"contentType": "text/plain",
+			"rawContent": "我看书。",
+			"createdAt": "2026-10-19T11:38:40.826Z"
+		}
+	],
+	"events": [
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 3,
+			"language": "zh",
+			"surface": "我",
+			"asserted": "anki-long-term",
+			"assertedAt": "2026-10-19T11:38:40.832Z",
+			"provenance": "anki 2026-09-27T20:00:00Z s=30 d=6.708 r=2026-08-18T14:55:20Z decay=0.264",
+			"userId": 1
+		}
+	],
+	"states": [
+		{
+			"language": "zh",
+			"surface": "我",
+			"state": "anki-long-term",
+			"provenance": "anki 2026-09-27T20:00:00Z s=30 d=6.708 r=2026-08-18T14:55:20Z decay=0.264",
+			"userId": 1
+		}
+	],
+	"sessions": [
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 5,
+			"documentId": 1,
+			"modality": "reading",
+			"startedAt": "2026-10-19T11:38:40.847Z",
+			"userId": 1
+		}
+	],
+	"encounters": [
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 1,
+			"kind": "status-switch",
+			"detail": {
+				"carried": 0,
+				"deletedMarks": 0
+			},
+			"at": "2026-10-19T11:38:40.822Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 2,
+			"kind": "anki-parameters",
+			"detail": {
+				"preset": "Default",
+				"retention": 0.9,
+				"weights": [
+					0.1171, 2.677, 4.5017, 23.0332, 6.4299, 0.6978, 2.6018, 0.0167, 2.1238, 0.2581, 1.0861,
+					1.462, 0.0331, 0.1444, 1.6717, 0.2341, 2.4564, 0.8208, 0.3059, 0.2683, 0.2641
+				],
+				"importId": "2026-09-27T20:00:00Z"
+			},
+			"at": "2026-10-19T11:38:40.831Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 6,
+			"session": {
+				"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+				"deviceSeq": 5
+			},
+			"kind": "lookup",
+			"language": "zh",
+			"surface": "看",
+			"documentId": 1,
+			"from": 1,
+			"to": 2,
+			"detail": {},
+			"at": "2026-10-20T10:00:00Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 7,
+			"kind": "review",
+			"language": "zh",
+			"surface": "看",
+			"detail": {
+				"skill": "reading",
+				"grade": 3
+			},
+			"at": "2026-10-20T11:00:00Z",
+			"userId": 1
+		}
+	],
+	"corrections": [],
+	"statuses": [
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 4,
+			"language": "zh",
+			"surface": "我",
+			"status": "active",
+			"cause": "stable",
+			"at": "2026-10-19T11:38:40.841Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 8,
+			"language": "zh",
+			"surface": "看",
+			"status": "active",
+			"cause": "first-review",
+			"at": "2026-10-19T11:38:40.857Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 9,
+			"language": "zh",
+			"surface": "书",
+			"status": "ignored",
+			"cause": "reader",
+			"at": "2026-10-19T11:38:40.859Z",
+			"userId": 1
+		},
+		{
+			"deviceId": "4370d3cc-63dc-45e7-988b-55959359f4be",
+			"deviceSeq": 10,
+			"language": "zh",
+			"surface": "我",
+			"status": "retired",
+			"cause": "reader",
+			"at": "2026-10-19T11:38:40.861Z",
+			"userId": 1
+		}
+	],
+	"integrity": "c5c45b919070ca1e882fb600a5474484e4bac54c5218369ea28273ebecc5fcbe"
+}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { AVAILABLE_STATES, stateNames, projectStates } from '../../src/lib/domain/state';
+import { ANKI_LEVELS, projectStates } from '../../src/lib/domain/state';
 import { assertion } from '../../src/lib/domain/history';
 import type { HistoryEntry } from '../../src/lib/domain/types';
 
@@ -27,32 +27,18 @@ function historyOf(pairs: [number, string][]): HistoryEntry[] {
 }
 
 const anyAssertions = fc.array(
-	fc.tuple(fc.integer({ min: 1, max: 6 }), fc.constantFrom(...stateNames())),
+	fc.tuple(
+		fc.integer({ min: 1, max: 6 }),
+		fc.constantFrom(...ANKI_LEVELS.map((level) => level.name), 'retired')
+	),
 	{ maxLength: 40 }
 );
 
-describe('the state set', () => {
-	it('is configuration, not structure (FR-006a)', () => {
-		// Deliberately not `toEqual([...four names...])`. Adding a state must not break a test.
-		expect(AVAILABLE_STATES.length).toBeGreaterThan(0);
-		for (const state of AVAILABLE_STATES) {
-			expect(state.name).toBeTypeOf('string');
-			expect(state.label).toBeTypeOf('string');
-		}
-	});
-
-	it('has distinct names', () => {
-		expect(new Set(stateNames()).size).toBe(AVAILABLE_STATES.length);
-	});
-
-	it('ships the placeholder set slice 0 was specified with', () => {
-		// The one place the four are named. If this fails because a state was *added*, update it;
-		// if it fails because one was renamed, that is a change of meaning and is expensive —
-		// it reinterprets marks already made (FR-006a).
-		expect(stateNames()).toContain('unknown');
-		expect(stateNames()).toContain('learning');
-		expect(stateNames()).toContain('known');
-		expect(stateNames()).toContain('ignored');
+describe('the marks', () => {
+	it("are Anki's levels, with distinct names and labels (spec 019)", () => {
+		expect(ANKI_LEVELS.length).toBeGreaterThan(0);
+		expect(new Set(ANKI_LEVELS.map((level) => level.name)).size).toBe(ANKI_LEVELS.length);
+		for (const level of ANKI_LEVELS) expect(level.label).toBeTypeOf('string');
 	});
 });
 

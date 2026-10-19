@@ -23,6 +23,7 @@ import partialUpgradeSql from './migrations/002-partial-upgrade.sql?raw';
 import encountersSql from './migrations/003-encounters.sql?raw';
 import correctionsSql from './migrations/004-corrections.sql?raw';
 import catchUpSql from './migrations/005-catch-up.sql?raw';
+import wordStatusSql from './migrations/006-word-status.sql?raw';
 
 export type { Database, SqlValue };
 
@@ -86,7 +87,8 @@ const MIGRATIONS: { version: number; name: string; sql: string }[] = [
 	{ version: 2, name: '002-partial-upgrade', sql: partialUpgradeSql },
 	{ version: 3, name: '003-encounters', sql: encountersSql },
 	{ version: 4, name: '004-corrections', sql: correctionsSql },
-	{ version: 5, name: '005-catch-up', sql: catchUpSql }
+	{ version: 5, name: '005-catch-up', sql: catchUpSql },
+	{ version: 6, name: '006-word-status', sql: wordStatusSql }
 ];
 
 /** The database file, inside the origin-private file system. Invisible to the reader. */

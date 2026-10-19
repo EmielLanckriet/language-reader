@@ -219,6 +219,11 @@
 			chosen = null;
 			detail = null;
 		}}
+		onstatus={(status) => {
+			const id = chosen!.id;
+			words = words!.map((w) => (w.id === id ? { ...w, status } : w));
+			chosen = { ...chosen!, status };
+		}}
 	/>
 {/if}
 

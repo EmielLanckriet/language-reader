@@ -61,9 +61,10 @@ describe('copy format 2', () => {
 			corrections: []
 		};
 		expect(upgrade(one as unknown as CopyBody)).toMatchObject({
-			format: 3,
+			format: 4,
 			sessions: [],
-			encounters: []
+			encounters: [],
+			statuses: []
 		});
 	});
 
@@ -72,11 +73,13 @@ describe('copy format 2', () => {
 		const body = source.exportBody('test', at);
 		expect(body.sessions).toHaveLength(2);
 		expect(body.encounters.map((encounter) => encounter.kind)).toEqual([
+			// A new library records first that it starts with statuses (spec 019).
+			'status-switch',
 			'played',
 			'lookup',
 			'attention'
 		]);
-		expect(body.encounters[1]).toMatchObject({ surface: '你', from: 0, to: 1, mediaMs: 4000 });
+		expect(body.encounters[2]).toMatchObject({ surface: '你', from: 0, to: 1, mediaMs: 4000 });
 
 		const target = new Repository(await freshDatabase());
 		target.restoreCopy(await open(JSON.stringify(await seal(body))));

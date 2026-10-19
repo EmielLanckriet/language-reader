@@ -6,7 +6,7 @@
  * here touches storage.
  */
 
-export const FORMAT = 3;
+export const FORMAT = 4;
 
 export interface CopyDocument {
 	id: number;
@@ -101,6 +101,20 @@ export interface CopyBody {
 	encounters: CopyEncounter[];
 	/** Spec 004's segmentation corrections; always empty before format 3. */
 	corrections: CopyCorrection[];
+	/** Format 4 (spec 019): every status change, in history order. */
+	statuses: CopyStatus[];
+}
+
+/** Format 4 (spec 019): one change of a word's status, the word by surface like a mark. */
+export interface CopyStatus {
+	deviceId: string;
+	deviceSeq: number;
+	language: string;
+	surface: string;
+	status: string;
+	cause: string;
+	at: string;
+	userId: number;
 }
 
 export interface Copy extends CopyBody {
@@ -117,8 +131,10 @@ export function holdsNothing(body: CopyBody): boolean {
 		body.events.length === 0 &&
 		body.states.length === 0 &&
 		body.sessions.length === 0 &&
-		body.encounters.length === 0 &&
-		body.corrections.length === 0
+		// A new library records that it began with statuses (spec 019); that is not earned work.
+		body.encounters.every((encounter) => encounter.kind === 'status-switch') &&
+		body.corrections.length === 0 &&
+		body.statuses.length === 0
 	);
 }
 
@@ -192,5 +208,7 @@ export function upgrade(body: CopyBody): CopyBody {
 	// 2 → 3: corrections were reserved and always empty.
 	if (current.format === 2)
 		current = { ...current, format: 3, corrections: current.corrections ?? [] };
+	// 3 → 4: statuses began with spec 019; restoring such a copy runs the switch on it.
+	if (current.format === 3) current = { ...current, format: 4, statuses: [] };
 	return current;
 }

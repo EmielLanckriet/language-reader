@@ -42,6 +42,7 @@
 		type HardcoreStep,
 		type TapReason
 	} from '$lib/domain/encounter';
+	import type { Status } from '$lib/domain/status';
 	import { FEEDBACK_AFTER_MS } from '$lib/domain/study';
 	import { Recorder, type EncounterSink, type WordAt } from '$lib/ui/recorder';
 	import { colourBand } from '$lib/domain/memory';
@@ -692,21 +693,14 @@
 			.filter((id): id is LexemeId => id !== undefined);
 	}
 
-	async function choose(state: string, reason?: TapReason) {
+	/** A status was set in the sheet (StatusButtons saved it): the tap is recorded with it. */
+	async function choose(status: Status, reason?: TapReason) {
 		const token = chosen;
 		if (token?.lexemeId === undefined || !document) return;
-		recorder?.closed({ chose: state, reason });
+		recorder?.closed({ chose: status, reason });
 		chosen = null;
 		try {
 			const { repository } = await session();
-			// The occurrence is recorded alongside the judgment: which document, and where in it.
-			// Unused in this slice, and irrecoverable if not written at the time — same-reading
-			// homographs are told apart by context and by nothing else.
-			await repository.assertState(token.lexemeId, state, {
-				documentId: document.id,
-				fromOffset: token.start,
-				toOffset: token.end
-			});
 			await recorder?.flush();
 			states = await repository.getStates(lexemesIn(document));
 			await readMemory(lexemesIn(document));
@@ -940,6 +934,7 @@
 				: states.get(chosen.lexemeId)?.provenance}
 			memory={chosen.lexemeId === undefined ? undefined : memory.memory.get(chosen.lexemeId)}
 			parameters={memory.parameters}
+			lexemeId={chosen.lexemeId}
 			onchoose={choose}
 			readings={readings.slice(chosen.start, chosen.end)}
 			joinRefused={joining && 'refused' in joining ? joining.refused : undefined}

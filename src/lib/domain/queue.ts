@@ -1,25 +1,20 @@
 /**
- * Which cards the flashcard page offers today, and in what order (spec 007, research R8). Pure:
- * nothing about the queue is stored, since a card is made by events already in the history.
+ * Which cards the flashcard page offers today, and in what order (spec 007 research R8, spec 019).
+ * Pure: nothing about the queue is stored. Due cards are active words whose reading memory is due;
+ * new cards are tapped words still retired, picked by general frequency up to the daily budget.
  */
 
 import { State } from 'ts-fsrs';
 import type { Memory } from './memory';
+import type { Status } from './status';
 
 export interface QueueCard {
 	lexemeId: number;
-	/** The reading memory: cards are reading cards in this slice. */
+	/** The reading memory: cards are reading cards (#7). */
 	memory: Memory;
-}
-
-/**
- * A card that comes due on its own schedule, outside the new-word budget (issue #5): reviewed in
- * Reader, seen in Anki, or a known word, and not set aside. Any other card is a candidate the
- * budget may pick.
- */
-export function isActive(memory: Memory): boolean {
-	if (memory.setAside) return false;
-	return memory.reviewed || memory.seeded !== undefined || memory.known === true;
+	status: Status;
+	/** Tapped at least once: what makes a retired word one the budget may pick. */
+	tapped: boolean;
 }
 
 export interface QueueOptions {
@@ -51,25 +46,23 @@ export function cardQueue(cards: QueueCard[], options: QueueOptions): Queue {
 	const byDue = (a: QueueCard, b: QueueCard) => due(a) - due(b) || a.lexemeId - b.lexemeId;
 	const learning = (card: QueueCard) =>
 		card.memory.state === State.Learning || card.memory.state === State.Relearning;
-	const cardsOnly = cards.filter((card) => card.memory.card || card.memory.known);
 
-	const reviewed = cardsOnly.filter((card) => card.memory.reviewed);
-	const scheduled = cardsOnly.filter((card) => !card.memory.reviewed && isActive(card.memory));
-	const fresh = cardsOnly.filter((card) => !isActive(card.memory));
+	const active = cards.filter((card) => card.status === 'active');
+	const candidates = cards.filter((card) => card.status === 'retired' && card.tapped);
 
 	const room = Math.max(0, options.cap - options.firstReviewsToday);
 	const rank = (card: QueueCard) => options.rank.get(card.lexemeId) ?? Infinity;
 
 	return {
-		due: [
-			...reviewed.filter((card) => due(card) <= now).sort(byDue),
-			...scheduled.filter((card) => due(card) <= now).sort(byDue)
-		].map((card) => card.lexemeId),
-		soon: reviewed
+		due: active
+			.filter((card) => due(card) <= now)
+			.sort(byDue)
+			.map((card) => card.lexemeId),
+		soon: active
 			.filter((card) => learning(card) && due(card) > now && due(card) <= now + LEARN_AHEAD_MS)
 			.sort(byDue)
 			.map((card) => card.lexemeId),
-		fresh: fresh
+		fresh: candidates
 			.sort((a, b) => rank(a) - rank(b) || a.lexemeId - b.lexemeId)
 			.slice(0, room)
 			.map((card) => card.lexemeId)

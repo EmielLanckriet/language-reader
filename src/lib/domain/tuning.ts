@@ -9,7 +9,7 @@ export const TUNING_SCHEDULER = 'ts-fsrs@5.4.2';
  * Rules an export may have been made under; its raw history replays under `RULE`. One from before
  * `evidence-4` has no `rewatchDays`, so it replays as if every sentence was new.
  */
-const READABLE_RULES = ['evidence-2', 'evidence-3', RULE];
+const READABLE_RULES = ['evidence-2', 'evidence-3', 'evidence-4', RULE];
 
 export interface TuningDataset {
 	/** 2 (spec 013): exposures carry `helped`, and words without reviews are included. */

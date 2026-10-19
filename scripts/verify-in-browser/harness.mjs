@@ -527,8 +527,11 @@ const scenarios = {
 			await until('word sheet', () =>
 				tab.evaluate(`return !!document.querySelector('.sheet button[aria-label="Cancel"]')`)
 			);
-			const sheetChoices = await tab.evaluate(
-				`return [...document.querySelectorAll('.sheet .choice')].map(b=>b.textContent.replace(/\\s+/g,' ').trim())`
+			// The status buttons load the word's status first (spec 019).
+			const sheetChoices = await until('status buttons', () =>
+				tab.evaluate(
+					`const c=[...document.querySelectorAll('.sheet .choice')].map(b=>b.textContent.replace(/\\s+/g,' ').trim());return c.length?c:null`
+				)
 			);
 			await tab.evaluate(`document.querySelector('.sheet button[aria-label="Cancel"]').click()`);
 			await finishAndLeave(tab);
@@ -558,19 +561,24 @@ const scenarios = {
 				shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 				writeFileSync('/tmp/reader-card-back-' + theme + '.png', Buffer.from(shot.data, 'base64'));
 			}
-			// Retire, then Undo: the card leaves the queue and comes back (ADR-0040).
-			await tab.evaluate(`document.querySelector('.retire').click()`);
-			const retired = await until('card retired', () =>
-				tab.evaluate(
-					`return !document.querySelector('.hanzi') && /retired/.test(document.body.textContent) ? [...document.querySelectorAll('[role=status]')].find(e=>/retired/.test(e.textContent)).textContent.replace(/\\s+/g,' ').trim() : null`
-				)
-			);
-			await tab.evaluate(
-				`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Undo').click()`
-			);
-			await until('card back after undo', () =>
-				tab.evaluate(`return document.querySelector('.hanzi')?.textContent==='学习'`)
-			);
+			// Retire, then Undo; Ignore, then Undo: the card leaves the queue and comes back (spec 019).
+			const leaveAndUndo = async (button, word) => {
+				await tab.evaluate(`document.querySelector('.${button}').click()`);
+				const note = await until(`card ${word}`, () =>
+					tab.evaluate(
+						`return !document.querySelector('.hanzi') && /${word}/.test(document.body.textContent) ? [...document.querySelectorAll('[role=status]')].find(e=>/${word}/.test(e.textContent)).textContent.replace(/\\s+/g,' ').trim() : null`
+					)
+				);
+				await tab.evaluate(
+					`[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Undo').click()`
+				);
+				await until(`card back after undoing ${word}`, () =>
+					tab.evaluate(`return document.querySelector('.hanzi')?.textContent==='学习'`)
+				);
+				return note;
+			};
+			const retired = await leaveAndUndo('retire', 'retired');
+			const ignored = await leaveAndUndo('ignore', 'ignored');
 			await tab.evaluate(`document.querySelector('.reveal').click()`);
 			await tab.evaluate(`document.querySelector('.g4').click()`);
 			await until('review recorded', () =>
@@ -590,8 +598,11 @@ const scenarios = {
 			return {
 				// Issue #7: sound and pinyin are on the front, meanings and English only on the back.
 				pass:
+					// A new word is retired, so the sheet offers Ignore only (Retire is for active words).
 					sheetChoices.length === 1 &&
-					sheetChoices[0].startsWith('Retire') &&
+					sheetChoices[0].startsWith('Ignore') &&
+					retired.includes('retired') &&
+					ignored.includes('ignored') &&
 					more.groups.length === 6 &&
 					more.groups[1] === 'Cards' &&
 					front.extras.length === 0 &&
@@ -612,6 +623,7 @@ const scenarios = {
 				back,
 				sheetChoices,
 				retired,
+				ignored,
 				more,
 				reviewRecorded: true
 			};
@@ -709,7 +721,7 @@ const scenarios = {
 			await tab.evaluate(`${ROW}.click()`);
 			const sheet = await until('detail sheet', () =>
 				tab.evaluate(
-					`const s=document.querySelector('[role=dialog][aria-label="About 学习"]');if(!s||/Finding where|Looking up/.test(s.textContent))return null;return {headings:[...s.querySelectorAll('h3')].map(h=>h.textContent),text:s.textContent.replace(/\\s+/g,' '),buttons:[...s.querySelectorAll('button')].map(b=>b.textContent.trim())}`
+					`const s=document.querySelector('[role=dialog][aria-label="About 学习"]');if(!s||/Finding where|Looking up/.test(s.textContent)||!s.querySelector('.choice'))return null;return {headings:[...s.querySelectorAll('h3')].map(h=>h.textContent),text:s.textContent.replace(/\\s+/g,' '),buttons:[...s.querySelectorAll('button')].map(b=>b.textContent.trim())}`
 				)
 			);
 			for (const theme of ['light', 'dark']) {
@@ -722,6 +734,20 @@ const scenarios = {
 					Buffer.from(shot.data, 'base64')
 				);
 			}
+			// Spec 019: Ignore from the detail, shown in the list, and undone back to Retired.
+			const pressStatus = (label) =>
+				tab.evaluate(
+					`[...document.querySelectorAll('[role=dialog] .choice')].find(b=>b.textContent.trim().startsWith('${label}')).click()`
+				);
+			const deckOfRow = `${ROW}.textContent`;
+			await pressStatus('Ignore');
+			const ignoredRow = await until('row ignored', () =>
+				tab.evaluate(`return ${deckOfRow}.includes('Ignored') ? ${deckOfRow} : null`)
+			);
+			await pressStatus('Ignored ✓');
+			const undoneRow = await until('row retired again', () =>
+				tab.evaluate(`return ${deckOfRow}.includes('Retired') ? ${deckOfRow} : null`)
+			);
 			await tab.evaluate(
 				`[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Close').click()`
 			);
@@ -729,10 +755,12 @@ const scenarios = {
 				tab.evaluate(`return !document.querySelector('[role=dialog]')`)
 			);
 			return {
-				// Issue #47: read only, so the sheet's one button is Close.
+				// Issue #47, spec 019: the sheet's buttons are Ignore and Close.
 				pass:
 					first[0] === '学习' &&
-					first.includes('In deck') &&
+					first.includes('Retired') &&
+					!!ignoredRow &&
+					!!undoneRow &&
 					/x[uú]é?\s?x[ií]/.test(first[1]) &&
 					byPinyin.length === 1 &&
 					byMeaning.includes('学习') &&
@@ -742,7 +770,9 @@ const scenarios = {
 					sheet.headings.includes('Reading') &&
 					sheet.headings.includes('Met in') &&
 					sheet.text.includes('我们每天学习中文') &&
-					sheet.buttons.join(',') === 'Close' &&
+					sheet.buttons.length === 2 &&
+					sheet.buttons[0].startsWith('Ignore') &&
+					sheet.buttons[1] === 'Close' &&
 					closed,
 				first,
 				byPinyin,
@@ -3751,11 +3781,11 @@ const scenarios = {
 					'the word count',
 					() =>
 						tab.evaluate(
-							`const m = document.querySelector('.summary')?.textContent.match(/(\\d+) words/); return m ? Number(m[1]) : null;`
+							`const m = document.querySelector('.summary')?.textContent.match(/(\\d+) words/); return m ? { n: Number(m[1]) } : null;`
 						),
 					10000,
 					100
-				);
+				).then((found) => found.n);
 			};
 			const words = await setup(true);
 			await clickText('button', 'Start');
@@ -3822,17 +3852,8 @@ const scenarios = {
 				250
 			);
 			await until('the Hardcore link', () => clickText('a', 'Hardcore'), 20000, 250);
-			await setup(false);
-			await clickText('button', 'Start');
-			const second = await until(
-				'the second drill',
-				() =>
-					tab.evaluate(
-						`return location.pathname.includes('/hardcore/') && document.body.textContent.includes('No words left to drill') ? true : null;`
-					),
-				20000,
-				250
-			);
+			// Issue #46: the planner itself leaves out words passed today, so it offers none.
+			const second = (await setup(false)) === 0;
 			const near = (ended) => ended.paused && Math.abs(ended.at - ended.until) < 0.5;
 			return {
 				pass:

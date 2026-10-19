@@ -8,7 +8,7 @@
 	import { loadMedia, type StoredMedia } from '$lib/media/store';
 	import { codePointsOf } from '$lib/domain/offsets';
 	import { lineRangesOf } from '$lib/domain/helped';
-	import { RETRACTED } from '$lib/domain/state';
+	import type { Status } from '$lib/domain/status';
 	import { HARDCORE_STEPS, type HardcoreStep } from '$lib/domain/encounter';
 	import { afterGrade, classify, nextStep, type StepRecord } from '$lib/domain/hardcore';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
@@ -217,7 +217,13 @@
 	let checking = $state(false);
 	/** Counts showings, so a card shown again is mounted afresh, on its front. */
 	let showing = $state(0);
-	let retiredLast = $state<{ lexemeId: number; word: string; previous?: string } | null>(null);
+	/** The last word retired or ignored here, with the status it had, for Undo (spec 019). */
+	let setLast = $state<{
+		lexemeId: number;
+		word: string;
+		status: 'retired' | 'ignored';
+		previous: Status;
+	} | null>(null);
 
 	$effect(() => {
 		if (current?.step !== 'drill' || !part) return;
@@ -229,12 +235,17 @@
 		checking = true;
 		void (async () => {
 			const { repository } = await session();
-			const { memory, parameters } = await repository.getMemory(words);
+			const [{ memory, parameters }, statuses] = await Promise.all([
+				repository.getMemory(words),
+				repository.getStatuses(words)
+			]);
 			if (drilling !== key) return;
-			// Memory decides now, as it did for the plan (FR-010): a word passed since then is not due.
+			// Memory decides now, as it did for the plan (FR-010): a word passed since then is not due;
+			// a word ignored since then is not drilled (spec 019).
 			const now = new Date();
 			queue = words.filter(
-				(w) => classify(undefined, memory.get(w)?.reading, now, parameters).class !== 'excluded'
+				(w) =>
+					classify(statuses.get(w), memory.get(w)?.reading, now, parameters).class !== 'excluded'
 			);
 			showing++;
 		})()
@@ -284,7 +295,7 @@
 					}
 				}
 			]);
-			retiredLast = null;
+			setLast = null;
 			queue = afterGrade(queue, value);
 			showing++;
 			if (queue.length === 0) await record(current.part, 'drill', 'end');
@@ -295,15 +306,16 @@
 		}
 	}
 
-	async function retire() {
+	/** Out of this drill either way; ignored, it is never drilled again (spec 019). */
+	async function setStatus(status: 'retired' | 'ignored') {
 		if (!card || !current || busy) return;
 		busy = true;
 		try {
 			const { repository } = await session();
 			const { lexemeId, word } = card;
-			const previous = (await repository.getStates([lexemeId])).get(lexemeId)?.state;
-			await repository.assertState(lexemeId, 'retired');
-			retiredLast = { lexemeId, word, previous };
+			const previous = (await repository.getStatuses([lexemeId])).get(lexemeId) ?? 'retired';
+			await repository.setStatus(lexemeId, status);
+			setLast = { lexemeId, word, status, previous };
 			queue = queue.filter((w) => w !== lexemeId);
 			showing++;
 			if (queue.length === 0) await record(current.part, 'drill', 'end');
@@ -314,14 +326,14 @@
 		}
 	}
 
-	async function unretire() {
-		if (!retiredLast || busy) return;
+	async function undo() {
+		if (!setLast || busy) return;
 		busy = true;
 		try {
 			const { repository } = await session();
-			await repository.assertState(retiredLast.lexemeId, retiredLast.previous ?? RETRACTED);
-			queue = [retiredLast.lexemeId, ...queue];
-			retiredLast = null;
+			await repository.setStatus(setLast.lexemeId, setLast.previous);
+			queue = [setLast.lexemeId, ...queue];
+			setLast = null;
 			showing++;
 		} catch (error) {
 			problem = error;
@@ -404,12 +416,13 @@
 						sentence={card.sentence}
 						{busy}
 						ongrade={grade}
-						onretire={retire}
+						onstatus={setStatus}
 					>
 						{#snippet notice()}
-							{#if retiredLast}<p class="note" role="status">
-									<span lang="zh-Hans">{retiredLast.word}</span> retired.
-									<button class="link" onclick={unretire} disabled={busy}>Undo</button>
+							{#if setLast}<p class="note" role="status">
+									<span lang="zh-Hans">{setLast.word}</span>
+									{setLast.status}.
+									<button class="link" onclick={undo} disabled={busy}>Undo</button>
 								</p>{/if}
 						{/snippet}
 					</CardFace>

@@ -43,6 +43,7 @@ import frequencyUrl from '../domain/frequency-zh.txt?url';
 const READER_CHANGES = new Set([
 	'saveDocument',
 	'assertState',
+	'setStatus',
 	'removeDocument',
 	'replaceDocument',
 	'importAnki',
@@ -277,6 +278,12 @@ function run(request: Request): unknown {
 			return repository.withdrawDocument(request.args[0], request.args[1]);
 		case 'getStates':
 			return repository.getStates(request.args[0]);
+		case 'setStatus':
+			return repository.setStatus(request.args[0], request.args[1]);
+		case 'getStatuses':
+			return repository.getStatuses(request.args[0]);
+		case 'statusDetail':
+			return repository.statusDetail(request.args[0]);
 		case 'wordsByForm':
 			return repository.wordsByForm(request.args[0], request.args[1]);
 		case 'vocabulary':
@@ -319,10 +326,6 @@ function run(request: Request): unknown {
 			return repository.staleMemory(request.args[0]);
 		case 'reapplyCorrections':
 			return repository.reapplyCorrections();
-		case 'retireIgnored':
-			return repository.retireIgnored();
-		case 'setAsideAnki':
-			return repository.setAsideAnki(request.args[0], request.args[1]);
 		case 'refreshMemory':
 			return repository.refreshMemory(request.args[0]);
 		case 'recordReview':

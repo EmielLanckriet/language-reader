@@ -54,10 +54,8 @@ describe('a copy restores exactly what it holds', () => {
 		target.assertState(lexeme, 'known');
 
 		const events = target.exportBody('test', 'now').events;
-		expect(events.map((event) => [event.deviceId, event.deviceSeq])).toEqual([
-			[body.writer, 1],
-			[body.writer, 2]
-		]);
+		expect(events.map((event) => event.deviceId)).toEqual([body.writer, body.writer]);
+		expect(events[1].deviceSeq).toBeGreaterThan(events[0].deviceSeq);
 	});
 
 	it('replaces a device the fresh install made but never used', async () => {

@@ -8,7 +8,8 @@ import type { HardcoreStep } from './encounter';
 import type { FsrsParameters } from './anki';
 import type { Memory } from './memory';
 import { kindOf } from './shares';
-import type { LexemeId, Token, WordState } from './types';
+import type { Status } from './status';
+import type { LexemeId, Token } from './types';
 
 /** How a word stands for a drill (FR-004): no memory yet, due by its memory, or not due. */
 export type WordClass = 'new' | 'due' | 'excluded';
@@ -53,16 +54,17 @@ export interface StepRecord {
 }
 
 /**
- * How a word stands for a drill (FR-004): by its reading memory alone (issue #46). Whether it is a
- * card, set aside or retired does not matter: retiring only keeps a word off Cards.
+ * How a word stands for a drill (FR-004): by its reading memory alone (issue #46), whether active
+ * or retired; an ignored word is never drilled (spec 019, FR-011).
  */
 export function classify(
-	state: WordState | undefined,
+	status: Status | undefined,
 	reading: Memory | undefined,
 	now: Date,
 	parameters?: FsrsParameters
 ): { class: WordClass; known: boolean } {
-	const known = kindOf(state?.state, reading, now, parameters) === 'known';
+	const known = kindOf(reading, now, parameters) === 'known';
+	if (status === 'ignored') return { class: 'excluded', known };
 	if (!reading) return { class: 'new', known };
 	return { class: Date.parse(reading.due) <= now.getTime() ? 'due' : 'excluded', known };
 }

@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { default_request_retention, default_w, forgetting_curve } from 'ts-fsrs';
-import { isActive } from '../../src/lib/domain/queue';
 import {
 	evidenceFor,
 	memoryOf,
-	setAsideProvenance,
+	memoryWithTrajectory,
 	recall,
 	colourBand,
 	ruleKey,
-	ACTIVE_AT_DAYS,
 	type WordHistory,
 	type HistoryEvent,
 	type Exposure,
@@ -148,10 +146,9 @@ describe('evidence-1', () => {
 			]);
 		});
 
-		it('starts a memory for a word that had none, without making it a card (evidence-2)', () => {
+		it('starts a memory for a word that had none (evidence-2)', () => {
 			const h = history({ exposures: [seen(1, at(3))], answers: answered('all') });
 			expect(ratings(h)).toEqual({ reading: [GOOD], listening: [] });
-			expect(evidenceFor(h).card).toBe(false);
 		});
 
 		it('counts for nothing when English was shown over it, while a tap there still fails', () => {
@@ -222,63 +219,18 @@ describe('evidence-1', () => {
 		});
 	});
 
-	it('gives an ignored word no memory, and gives it back when it is marked again', () => {
-		const ignored = history({ events: [lookup(1)], marks: [mark('ignored', 'manual', at(2))] });
-		expect(memoryOf(ignored)).toEqual({});
-		ignored.marks.push(mark('learning', 'manual', at(3)));
-		expect(memoryOf(ignored).reading).toBeDefined();
-	});
-
-	// The reader, 2026-10-07: Anki words outside the most common are set aside, a retire that lets
-	// the word compete for a new-card slot again, and be due again once reviewed in Reader.
-	it('keeps a set-aside word a candidate, not due, until a review after the mark', () => {
-		// Under 14 days: one past it is an active card at once (ADR-0041, amended for issue #42).
-		const h = history({ marks: [seed(at(1), 2)], events: [review(GOOD, at(2))] });
-		const before = memoryOf(h).reading!;
-		h.marks.push(mark('retired', setAsideProvenance(2000), at(5)));
-		const aside = memoryOf(h).reading!;
-		expect(aside.stability).toBe(before.stability);
-		expect(aside.card).toBe(true);
-		expect(aside.setAside).toBe(true);
-		expect(isActive(aside)).toBe(false);
-		h.events.push(review(GOOD, at(9)));
-		const back = memoryOf(h).reading!;
-		expect(back.setAside).toBeUndefined();
-		expect(isActive(back)).toBe(true);
-		// An ordinary retire is still no card at all.
-		const retired = history({ marks: [seed(at(1)), mark('retired', 'manual', at(5))] });
-		expect(memoryOf(retired).reading!.card).toBe(false);
-		expect(memoryOf(retired).reading!.setAside).toBeUndefined();
-	});
-
-	it('makes a card of a tap, an Anki word, or a word marked learning, and nothing else', () => {
-		expect(evidenceFor(history({ events: [lookup(1)] })).card).toBe(true);
-		expect(evidenceFor(history({ marks: [seed()] })).card).toBe(true);
-		expect(evidenceFor(history({ marks: [mark('learning')] })).card).toBe(true);
-		// A check is a tap (evidence-3), so it makes a card like a lookup.
-		expect(evidenceFor(history({ events: [check(1, false, true)] })).card).toBe(true);
-		expect(evidenceFor(history({ marks: [mark('known')] })).card).toBe(false);
-	});
-
-	it('keeps a retired word’s memory but makes it no card, until it is marked again', () => {
-		const tapped = history({ marks: [seed()], events: [lookup(1, at(3))] });
-		const known = history({
-			exposures: [seen(1, at(3)), seen(2, at(5))],
-			answers: new Map([
-				[1, 'all'],
-				[2, 'all']
-			])
-		});
-		for (const h of [tapped, known]) {
-			const before = memoryOf(h).reading!;
-			h.marks.push(mark('retired', 'manual', at(9)));
-			const after = memoryOf(h).reading!;
-			expect(after.stability).toBe(before.stability);
-			expect(after.card).toBe(false);
-			expect(after.known).toBeFalsy();
-			h.marks.push(mark('(none)', 'manual', at(10)));
-			expect(memoryOf(h).reading).toEqual(before);
+	// Spec 019: status lives apart from memory, so no mark but an Anki import changes the evidence.
+	it('keeps the same memory whatever hand marks the word carries, ignored and retired included', () => {
+		const make = () => history({ marks: [seed(at(1), 5)], events: [lookup(1, at(2))] });
+		const plain = memoryOf(make());
+		for (const asserted of ['ignored', 'retired', 'learning', 'known', 'unknown', '(none)']) {
+			const h = make();
+			h.marks.push(mark(asserted, 'manual', at(3)));
+			expect(memoryOf(h)).toEqual(plain);
 		}
+		const aside = make();
+		aside.marks.push(mark('retired', 'set aside: outside the 2000 most common words', at(3)));
+		expect(memoryOf(aside)).toEqual(plain);
 	});
 
 	it('has no memory without evidence', () => {
@@ -459,40 +411,6 @@ describe('evidence-3 over any history', () => {
 	});
 });
 
-describe('a card from knowing (issue #5)', () => {
-	// Never tapped, and met untapped in two separate sessions answered "I tapped every word I didn't
-	// know" with the line's English not shown: an active card outside the new-word budget.
-	const allIn = (...sessions: number[]) =>
-		new Map(sessions.map((session) => [session, 'all' as const]));
-	const reading = (h: WordHistory) => memoryOf(h).reading;
-
-	it('is known after untapped meetings in two such sessions', () => {
-		const h = history({ exposures: [seen(1, at(3)), seen(2, at(5))], answers: allIn(1, 2) });
-		expect(reading(h)?.known).toBe(true);
-		expect(reading(h)?.card).toBe(false);
-	});
-
-	it('is not known from one session, under shown English, or in an unanswered session', () => {
-		const once = history({ exposures: [seen(1, at(3)), seen(1, at(5))], answers: allIn(1) });
-		const helped = history({
-			exposures: [seen(1, at(3)), seen(2, at(5), false, true, true)],
-			answers: allIn(1, 2)
-		});
-		const unanswered = history({ exposures: [seen(1, at(3)), seen(2, at(5))], answers: allIn(1) });
-		for (const h of [once, helped, unanswered]) expect(reading(h)?.known).toBeFalsy();
-	});
-
-	it('is a candidate instead once the word was tapped at any point', () => {
-		const h = history({
-			events: [lookup(3, at(7))],
-			exposures: [seen(1, at(3)), seen(2, at(5))],
-			answers: allIn(1, 2, 3)
-		});
-		expect(reading(h)?.known).toBeFalsy();
-		expect(reading(h)?.card).toBe(true);
-	});
-});
-
 describe('a sentence seen before (issue #6)', () => {
 	// Untapped in a sentence already read or watched, a word may be understood from memory of the
 	// line: the Good counts for less, a discount halving with every 14 days since the line was seen.
@@ -519,11 +437,6 @@ describe('a sentence seen before (issue #6)', () => {
 		});
 		expect(stability(h)).toBe(fresh);
 	});
-
-	it('does not make a word known: that takes two sessions in sentences not seen before', () => {
-		const h = history({ exposures: [seen(1, at(3)), rewatch(2, at(5), 2)], answers: allIn(1, 2) });
-		expect(memoryOf(h).reading?.known).toBeFalsy();
-	});
 });
 
 describe('a drill grade (spec 014, ADR-0041)', () => {
@@ -537,109 +450,9 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 		detail: { skill: 'reading', grade, hardcore: { part: 0 }, line: [0, 10] }
 	});
 	const reading = (h: WordHistory) => memoryOf(h).reading!;
-	const allFrom = (first: number, count: number) =>
-		new Map(Array.from({ length: count }, (_, i) => [first + i, 'all' as const]));
 
-	it('gives a new word a memory but makes it no card', () => {
-		const m = reading(history({ events: [drill(GOOD, at(1))] }));
-		expect(m.stability).toBeGreaterThan(0);
-		expect(m.card).toBe(false);
-		expect(m.reviewed).toBe(false);
-		expect(isActive(m)).toBe(false);
-	});
-
-	it('leaves a tapped word a candidate', () => {
-		const m = reading(history({ events: [lookup(1, at(1)), drill(GOOD, at(1, 12))] }));
-		expect(m.card).toBe(true);
-		expect(m.reviewed).toBe(false);
-		expect(isActive(m)).toBe(false);
-	});
-
-	it('drills a word in the first time its stability reaches 14 days, for good', () => {
-		const h = history({ events: [drill(GOOD, at(1))] });
-		let day = 1;
-		let reached = false;
-		for (let i = 0; i < 8 && !reached; i++) {
-			const m = reading(h);
-			reached = m.stability >= ACTIVE_AT_DAYS;
-			expect(m.reviewed).toBe(reached);
-			expect(m.card).toBe(reached);
-			if (reached) break;
-			day += Math.max(1, Math.round(m.stability));
-			h.events.push(drill(GOOD, at(day)));
-		}
-		expect(reached).toBe(true);
-		h.events.push(drill(AGAIN, at(day + 90)));
-		const forgotten = reading(h);
-		expect(forgotten.stability).toBeLessThan(ACTIVE_AT_DAYS);
-		expect(forgotten.reviewed).toBe(true);
-		expect(isActive(forgotten)).toBe(true);
-	});
-
-	// A tap first, so the word cannot become known by reading instead (issue #5).
-	const readUntil14 = (withDrill: boolean) => {
-		const h = history({
-			events: [lookup(1, at(1)), ...(withDrill ? [drill(GOOD, at(1, 12))] : [])],
-			answers: allFrom(2, 40)
-		});
-		let day = 2;
-		let reached = false;
-		for (let session = 2; session < 40 && !reached; session++) {
-			const m = reading(h);
-			reached = m.stability >= ACTIVE_AT_DAYS;
-			if (!reached) {
-				day += Math.max(1, Math.round(m.stability));
-				h.exposures.push(seen(session, at(day)));
-			}
-		}
-		expect(reached).toBe(true);
-		return reading(h);
-	};
-
-	it('makes a card of a word when reading after its first drill reaches 14 days', () => {
-		expect(readUntil14(true).reviewed).toBe(true);
-	});
-
-	// One rule for every word off the queue (issue #42 follow-up): reading alone is enough.
-	it('makes a card of a word read to 14 days without a drill', () => {
-		const m = readUntil14(false);
-		expect(m.reviewed).toBe(true);
-		expect(isActive(m)).toBe(true);
-	});
-
-	it('makes a set-aside word whose Anki memory is past 14 days an active card at once', () => {
-		const h = history({ marks: [seed(at(1)), mark('retired', setAsideProvenance(2000), at(5))] });
-		expect(reading(h).setAside).toBeUndefined();
-		expect(isActive(reading(h))).toBe(true);
-	});
-
-	it('keeps a set-aside word under 14 days aside until its stability reaches 14', () => {
-		const h = history({
-			marks: [seed(at(1), 5), mark('retired', setAsideProvenance(2000), at(5))],
-			events: [drill(AGAIN, at(9))]
-		});
-		expect(reading(h).setAside).toBe(true);
-		expect(isActive(reading(h))).toBe(false);
-		let day = 9;
-		for (let i = 0; i < 12 && reading(h).stability < ACTIVE_AT_DAYS; i++) {
-			day += Math.max(1, Math.round(reading(h).stability));
-			h.events.push(drill(GOOD, at(day)));
-		}
-		expect(reading(h).stability).toBeGreaterThanOrEqual(ACTIVE_AT_DAYS);
-		expect(reading(h).setAside).toBeUndefined();
-		expect(isActive(reading(h))).toBe(true);
-	});
-
-	it('never makes a card of a word retired by hand, however well drilled', () => {
-		const h = history({ marks: [mark('retired', 'manual', at(1))], events: [drill(GOOD, at(2))] });
-		let day = 2;
-		for (let i = 0; i < 8; i++) {
-			day += Math.max(1, Math.round(reading(h).stability));
-			h.events.push(drill(GOOD, at(day)));
-		}
-		expect(reading(h).stability).toBeGreaterThanOrEqual(ACTIVE_AT_DAYS);
-		expect(reading(h).card).toBe(false);
-		expect(isActive(reading(h))).toBe(false);
+	it('gives a new word a memory', () => {
+		expect(reading(history({ events: [drill(GOOD, at(1))] })).stability).toBeGreaterThan(0);
 	});
 
 	it('schedules a due card from a drill grade as from a Cards grade', () => {
@@ -651,10 +464,30 @@ describe('a drill grade (spec 014, ADR-0041)', () => {
 		);
 		expect(drilled.due).toBe(carded.due);
 		expect(drilled.stability).toBe(carded.stability);
-		expect(drilled.reviewed).toBe(true);
 	});
 
-	it('names the threshold in the rule key, so changing it recomputes', () => {
-		expect(ruleKey()).toContain(`stable-${ACTIVE_AT_DAYS}`);
+	// What `activation` reads (spec 019): the stability after each piece, in history order.
+	it('gives the reading trajectory, the seed first, with only Cards reviews marked as such', () => {
+		const h = history({
+			marks: [seed(at(1), 5)],
+			events: [lookup(1, at(2)), review(GOOD, at(4)), drill(GOOD, at(9))]
+		});
+		const { memory, trajectory } = memoryWithTrajectory(h);
+		expect(trajectory.map((p) => p.cardReview)).toEqual([false, false, true, false]);
+		expect(trajectory[0].stability).toBe(5);
+		expect(trajectory.at(-1)!.stability).toBe(memory.reading!.stability);
+		const positions = trajectory.map((p) => p.deviceSeq);
+		expect(positions).toEqual([...positions].sort((a, b) => a - b));
+	});
+
+	it('leaves listening out of the trajectory', () => {
+		const heard = history({
+			events: [{ ...review(GOOD, at(2)), detail: { skill: 'listening', grade: GOOD } }]
+		});
+		expect(memoryWithTrajectory(heard).trajectory).toEqual([]);
+	});
+
+	it('names evidence-5 in the rule key, so every memory is recomputed once', () => {
+		expect(ruleKey()).toMatch(/^evidence-5\+/);
 	});
 });

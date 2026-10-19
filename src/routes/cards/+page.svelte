@@ -4,7 +4,7 @@
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import CardFace from '$lib/ui/CardFace.svelte';
 	import type { CardSentence, CardsToday } from '$lib/storage/repository';
-	import { RETRACTED } from '$lib/domain/state';
+	import type { Status } from '$lib/domain/status';
 	import { readNewCards } from '$lib/ui/new-cards';
 	import type { CardHelp } from '$lib/domain/card-help';
 
@@ -75,7 +75,7 @@
 					: undefined;
 			await repository.recordReview(current.lexemeId, value, shown, sentence?.sourceKey, help);
 			reviewed++;
-			retiredLast = null;
+			setLast = null;
 			await next();
 		} catch (error) {
 			problem = error;
@@ -84,18 +84,23 @@
 		}
 	}
 
-	/** The last card retired, with the mark it had, so Undo can put that mark back (ADR-0040). */
-	let retiredLast = $state<{ lexemeId: number; word: string; previous?: string } | null>(null);
+	/** The last card retired or ignored, with the status it had, so Undo can put it back (spec 019). */
+	let setLast = $state<{
+		lexemeId: number;
+		word: string;
+		status: 'retired' | 'ignored';
+		previous: Status;
+	} | null>(null);
 
-	async function retire() {
+	async function setStatus(status: 'retired' | 'ignored') {
 		if (!current || grading) return;
 		grading = true;
 		try {
 			const { repository } = await session();
 			const { lexemeId, word } = current;
-			const previous = (await repository.getStates([lexemeId])).get(lexemeId)?.state;
-			await repository.assertState(lexemeId, 'retired');
-			retiredLast = { lexemeId, word, previous };
+			const previous = (await repository.getStatuses([lexemeId])).get(lexemeId) ?? 'retired';
+			await repository.setStatus(lexemeId, status);
+			setLast = { lexemeId, word, status, previous };
 			await next();
 		} catch (error) {
 			problem = error;
@@ -104,15 +109,15 @@
 		}
 	}
 
-	async function unretire() {
-		if (!retiredLast || grading) return;
+	async function undo() {
+		if (!setLast || grading) return;
 		grading = true;
 		try {
 			const { repository } = await session();
-			await repository.assertState(retiredLast.lexemeId, retiredLast.previous ?? RETRACTED);
+			await repository.setStatus(setLast.lexemeId, setLast.previous);
 			if (current) order.unshift(current.lexemeId);
-			order.unshift(retiredLast.lexemeId);
-			retiredLast = null;
+			order.unshift(setLast.lexemeId);
+			setLast = null;
 			await next();
 		} catch (error) {
 			problem = error;
@@ -139,21 +144,24 @@
 				sentence={current.sentence}
 				busy={grading}
 				ongrade={grade}
-				onretire={retire}
+				onstatus={setStatus}
 			>
 				{#snippet notice()}
-					{#if retiredLast}<p class="audio-note" role="status">
-							<span lang="zh-Hans">{retiredLast.word}</span> retired: it stays remembered but is no
-							longer a card.
-							<button class="link" onclick={unretire} disabled={grading}>Undo</button>
+					{#if setLast}<p class="audio-note" role="status">
+							<span lang="zh-Hans">{setLast.word}</span>
+							{setLast.status === 'retired'
+								? 'retired: it stays remembered and can come back as a card.'
+								: 'ignored: it stays remembered, never a card or drilled.'}
+							<button class="link" onclick={undo} disabled={grading}>Undo</button>
 						</p>{/if}
 				{/snippet}
 			</CardFace>
 		{/key}
 	{:else}
-		{#if retiredLast}<p class="audio-note" role="status">
-				<span lang="zh-Hans">{retiredLast.word}</span> retired.
-				<button class="link" onclick={unretire} disabled={grading}>Undo</button>
+		{#if setLast}<p class="audio-note" role="status">
+				<span lang="zh-Hans">{setLast.word}</span>
+				{setLast.status}.
+				<button class="link" onclick={undo} disabled={grading}>Undo</button>
 			</p>{/if}
 		<div class="empty card-face">
 			<h2>{reviewed > 0 ? 'Done for now.' : 'Nothing to review.'}</h2>

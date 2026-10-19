@@ -2,9 +2,10 @@ import { Repository } from '../../src/lib/storage/repository';
 import { characterSplitter } from '../../src/lib/analyzer/character';
 import { resolveTokens, stampOf } from '../../src/lib/analyzer/resolve';
 import { queryRows, type Database } from '../../src/lib/storage/db';
-import { AVAILABLE_STATES } from '../../src/lib/domain/state';
+import { ANKI_LEVELS } from '../../src/lib/domain/state';
 
-export const STATES = AVAILABLE_STATES.map((state) => state.name);
+/** The marks a history holds since spec 019: Anki's levels. */
+export const STATES = ANKI_LEVELS.map((state) => state.name);
 
 export interface Mark {
 	document: number;

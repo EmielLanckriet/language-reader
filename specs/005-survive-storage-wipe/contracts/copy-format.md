@@ -28,6 +28,15 @@ states the rules that make a copy restorable, and that tests hold to.
    subtitle file written to `media/<id>/`. The video is fetched through the service when it can be
    found (R8). None of this is earned; failures leave readable documents.
 
+## Statuses (format 4, spec 019)
+
+`statuses` lists every status change in history order, words by `(language, surface)`. The writer
+refuses a copy whose stored statuses are not the replay of its changes; restoring replays them and
+validates each (`status.ts`). A copy without a `status-switch` encounter (format 1–3, or older
+format 4) runs the switch to statuses on restore, as the phone did when it updated; a new library's
+own `status-switch` record is replaced by the copy's history. A copy holding only that record holds
+nothing (issue #22).
+
 ## Older formats
 
 A copy of format *n* is upgraded one step at a time to the current format, by pure functions

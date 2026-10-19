@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { chooseWords, storyLines, writeStory, type Draft } from '../../src/lib/content/story';
 import type { Score } from '../../src/lib/content/find';
 import type { Memory } from '../../src/lib/domain/memory';
+import type { Status } from '../../src/lib/domain/status';
 import { State } from 'ts-fsrs';
 
 // Stories with your due words (spec 016): which words are asked for, and the draft loop. The model
@@ -9,7 +10,7 @@ import { State } from 'ts-fsrs';
 
 const NOW = new Date('2026-10-16T12:00:00Z');
 
-function memory(days: { stabilityDays: number; dueInDays: number; reviewed?: boolean }): Memory {
+function memory(days: { stabilityDays: number; dueInDays: number }): Memory {
 	return {
 		stability: days.stabilityDays,
 		difficulty: 5,
@@ -17,9 +18,7 @@ function memory(days: { stabilityDays: number; dueInDays: number; reviewed?: boo
 		lastAt: new Date(NOW.getTime() - 86_400_000).toISOString(),
 		due: new Date(NOW.getTime() + days.dueInDays * 86_400_000).toISOString(),
 		reps: 3,
-		lapses: 0,
-		card: true,
-		reviewed: days.reviewed ?? true
+		lapses: 0
 	};
 }
 
@@ -38,11 +37,17 @@ describe('the words a story asks for', () => {
 			[2, { reading: memory({ stabilityDays: 5, dueInDays: -2 }) }],
 			[3, { reading: memory({ stabilityDays: 300, dueInDays: 200 }) }],
 			[4, { reading: memory({ stabilityDays: 300, dueInDays: 200 }) }],
-			// Due by date, but not an active card: never asked for as due.
-			[5, { reading: memory({ stabilityDays: 5, dueInDays: -1, reviewed: false }) }]
+			// Due by date, but retired: never asked for as due.
+			[5, { reading: memory({ stabilityDays: 5, dueInDays: -1 }) }]
 		]);
-		const states = new Map([[6, { lexemeId: 6, state: 'ignored' } as never]]);
-		const words = chooseWords(vocabulary, states, reading, NOW, undefined, { due: 10, known: 1 });
+		const statuses = new Map<number, Status>([
+			[1, 'active'],
+			[2, 'active'],
+			[3, 'active'],
+			[4, 'active'],
+			[6, 'ignored']
+		]);
+		const words = chooseWords(vocabulary, statuses, reading, NOW, undefined, { due: 10, known: 1 });
 		expect(words.due).toEqual(['说明', '坚持']);
 		expect(words.known).toEqual(['我们']);
 	});

@@ -11,6 +11,7 @@ const valid: Encounter[] = [
 	{ kind: 'lookup', at, ...word },
 	// Spec 017, ADR-0043: why the word was tapped, and whether a listened video could be followed.
 	{ kind: 'lookup', at, ...word, detail: { reason: 'sense' } },
+	{ kind: 'lookup', at, ...word, detail: { reason: 'curious' } },
 	{ kind: 'engagement', at, detail: { mode: 'listened', attentive: 'yes', followable: 'partly' } },
 	{ kind: 'engagement', at, detail: { mode: 'listened', attentive: null, followable: null } },
 	{ kind: 'check', at, ...word },

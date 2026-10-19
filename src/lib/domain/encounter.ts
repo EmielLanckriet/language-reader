@@ -37,7 +37,9 @@ export type EncounterKind =
 	/** A hardcore step's start or end. */
 	| 'hardcore-step'
 	/** In the player's own session: it was opened from this hardcore step. */
-	| 'hardcore-watch';
+	| 'hardcore-watch'
+	/** Statuses began here (spec 019): once per library, with what the switch carried and deleted. */
+	| 'status-switch';
 
 export const HARDCORE_STEPS = ['preview', 'watch-first', 'drill', 'watch-after'] as const;
 export type HardcoreStep = (typeof HARDCORE_STEPS)[number];
@@ -55,7 +57,14 @@ export interface Engagement {
 }
 
 /** Why a word was tapped, when the reader says (ADR-0043): kept on its lookup, used by nothing yet. */
-export const TAP_REASONS = ['unknown', 'sense', 'split', 'misheard', 'subtitles'] as const;
+export const TAP_REASONS = [
+	'unknown',
+	'sense',
+	'split',
+	'misheard',
+	'subtitles',
+	'curious'
+] as const;
 export type TapReason = (typeof TAP_REASONS)[number];
 
 export interface Encounter {

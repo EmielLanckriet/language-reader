@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { State } from 'ts-fsrs';
 import { wordCounts } from '../../src/lib/domain/shares';
 import type { Memory } from '../../src/lib/domain/memory';
-import type { WordState } from '../../src/lib/domain/types';
+import type { Status } from '../../src/lib/domain/status';
 
 /** The library's counts: due words that come up, new words, and the new words that recur. */
 const now = new Date('2026-09-29T12:00:00Z');
@@ -13,26 +13,17 @@ const memory = (due: string): Memory => ({
 	lastAt: '2026-09-20T12:00:00Z',
 	due,
 	reps: 3,
-	lapses: 0,
-	card: false,
-	reviewed: true
-});
-const mark = (lexemeId: number, state: string): WordState => ({
-	lexemeId,
-	state,
-	provenance: 'manual',
-	userId: 1
+	lapses: 0
 });
 
 describe('wordCounts', () => {
-	it('counts due words with their occurrences, and new words recurring in 3 or more lines', () => {
+	it('counts due active words with their occurrences, and new words recurring in 3 or more lines', () => {
 		const occurrences = new Map([
 			[1, 4], // due
 			[2, 3], // due exactly now
 			[3, 9], // not yet due
 			[4, 5], // new, in 3 lines
 			[5, 6], // new, 6 times but in 2 lines
-			[6, 2], // marked, no memory: not new
 			[7, 8], // ignored, though due
 			[8, 1] // new, once
 		]);
@@ -42,13 +33,14 @@ describe('wordCounts', () => {
 			[3, 5],
 			[4, 3],
 			[5, 2],
-			[6, 2],
 			[7, 4],
 			[8, 1]
 		]);
-		const states = new Map([
-			[6, mark(6, 'known')],
-			[7, mark(7, 'ignored')]
+		const statuses = new Map<number, Status>([
+			[1, 'active'],
+			[2, 'active'],
+			[3, 'active'],
+			[7, 'ignored']
 		]);
 		const memories = new Map([
 			[1, { reading: memory('2026-09-28T12:00:00Z') }],
@@ -56,7 +48,7 @@ describe('wordCounts', () => {
 			[3, { reading: memory('2026-09-30T12:00:00Z') }],
 			[7, { reading: memory('2026-09-01T12:00:00Z') }]
 		]);
-		expect(wordCounts(occurrences, lines, states, memories, now)).toEqual({
+		expect(wordCounts(occurrences, lines, statuses, memories, now)).toEqual({
 			due: 2,
 			dueOccurrences: 7,
 			fresh: 3,
@@ -64,22 +56,18 @@ describe('wordCounts', () => {
 		});
 	});
 
-	it('counts as due only active cards: reviewed, seen in Anki, or known (issue #5)', () => {
+	it('counts as due only active words (spec 019)', () => {
 		const due = '2026-09-28T12:00:00Z';
 		const occurrences = new Map([
 			[1, 1],
 			[2, 1],
-			[3, 1],
-			[4, 1],
-			[5, 1]
+			[3, 1]
 		]);
-		const memories = new Map([
-			[1, { reading: memory(due) }], // reviewed
-			[2, { reading: { ...memory(due), reviewed: false, seeded: 'anki' } }],
-			[3, { reading: { ...memory(due), reviewed: false, known: true as const } }],
-			[4, { reading: { ...memory(due), reviewed: false, card: true } }], // a candidate
-			[5, { reading: { ...memory(due), reviewed: false } }] // not a card
-		]);
-		expect(wordCounts(occurrences, new Map(), new Map(), memories, now).due).toBe(3);
+		const statuses = new Map<number, Status>([
+			[1, 'active'],
+			[3, 'ignored']
+		]); // 2: retired, having no status
+		const memories = new Map([1, 2, 3].map((id) => [id, { reading: memory(due) }]));
+		expect(wordCounts(occurrences, new Map(), statuses, memories, now).due).toBe(1);
 	});
 });
