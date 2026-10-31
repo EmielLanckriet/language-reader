@@ -20,11 +20,13 @@ and recovery. Earned history must never be overwritten by a background improveme
 
 ## Principle II's list is a ceiling, not just a floor
 
-It names the areas that MUST be tested first, and says wiring and glue are EXEMPT. Honour both
-halves. Orchestration gets **one test that would catch a plumbing bug**, not a suite. A recent
-change shipped 860 test lines for 400 lines of logic; maybe a third of that was mandated.
+It names the areas that MUST be tested first, and says wiring, glue, derived data and sending to
+outside services are EXEMPT. Honour both halves. Exempt code gets **one test that would catch a
+plumbing bug**, not a suite: no property tests, no mutation runs. A change once shipped 860 test
+lines for 400 lines of logic; on 2026-10-31 a background sync to Taal got 17 tests and two rounds
+of mutation checks it did not need.
 
-## Before keeping a test, make it fail
+## Before keeping a test on the irreversible surface, make it fail
 
 Mutate the code it covers and watch it go red. Three tests written in one session could not fail at
 all — two equivalence properties that were true by construction, and a property whose generator
@@ -43,18 +45,21 @@ an ADR. `scripts/measure/` is where the one-off harnesses live when they are wor
 Not writing code. Verifying in a browser (a build, a Chrome, minutes of waiting) and round-trips to
 the phone (a deploy, an update prompt, a wait on a person).
 
-- Run only the `verify:browser` scenarios a change can plausibly reach.
+- Run a `verify:browser` scenario only when the change is about what that scenario tests. Never
+  build fixtures for a wording or label change: the batched phone check covers it.
 - Batch phone checks: three or four changes per deploy, not one.
 - Reading this codebase is expensive too — `src/` is about a third comment lines. Write comments for
   _decisions_, and let mechanical code be read as code.
 
 ## Planning proportional to the change
 
-Use the full Spec Kit flow for substantial features, earned-data contracts, and architectural
-changes. Small fixes, UI adjustments, documentation, and reversible implementation changes need
-only a clear problem, a focused change, and relevant checks (ADR-0031). Keep an ADR when a lasting
-tradeoff changes. Reuse the segmenter comparison harness for quality measurements; invariant tests
-and quality benchmarks answer different questions.
+The short path is the default: a clear problem, a focused change, the checks it can plausibly
+break. The full Spec Kit flow is for changes that add or reshape earned data, or the architecture.
+Paperwork per change: one line in `docs/current-state.md`; an ADR only for earned-data shape or a
+decision likely to be revisited (otherwise a dated note on the existing ADR); anticipated changes
+only for earned data. Type check, lint and tests run once when the change is done, not after
+every edit. Reuse the segmenter comparison harness for quality measurements; invariant tests and
+quality benchmarks answer different questions.
 
 ## Verification and device use
 

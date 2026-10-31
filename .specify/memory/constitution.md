@@ -1,9 +1,7 @@
 <!--
-SYNC IMPACT REPORT
-Version change: 2.0.0 → 2.1.0 (2026-09-29, ADR-0031)
-Allows a proportionate workflow for small reversible work and separate quality benchmarks.
-Earned-data test-first requirements and real-phone validation remain unchanged.
-Shared agent instructions and current-state entry point added; old specs remain historical.
+Amended 2026-10-31 (ADR-0046): the short path is the default; test-first and mutation checks only
+for earned data; anticipated changes and ADRs only for earned data and revisited decisions; stale
+Dafny, whisper and old-status text removed; one earned/derived definition; no versioning.
 -->
 
 # Language Reader Constitution
@@ -26,15 +24,17 @@ questions into observable facts.
 
 Tests MUST be written before implementation for the following, and only the following, areas:
 
-- Word status transitions (`unknown` / `learning` / `known` / `ignored`) and their legal edges
+- Word status transitions (`retired` / `active` / `ignored`, spec 019) and their legal edges
 - **Lexeme merge and split**, including status resolution
 - **Status event replay** — that folding the event log reproduces current status
 - Review scheduling logic
 - Text segmentation correctness
-- Anki export payload construction
+- Migrations, and any other code that writes or reshapes earned data
 
 Property-based tests MUST be used where the state space is large enough to make example-based
-tests unconvincing. UI components, wiring, and glue code are explicitly EXEMPT.
+tests unconvincing. UI components, wiring, glue code, derived data and sending to outside
+services are explicitly EXEMPT: at most one test that would catch a plumbing bug. Mutation checks
+("make the test fail before keeping it") belong to the list above, not to the exempt areas.
 
 Tooling follows the domain core's language: `vitest` as runner and a property-based library such
 as `fast-check`. The mandatory list above and the exemptions are language-independent and are
@@ -47,10 +47,6 @@ version — and MUST NOT use an expected segmentation as a universal correctness
 versioned quality benchmarks MAY compare against reviewed reference segmentations (ADR-0031). Word-hood is undefined and
 analyzer-dependent, so expected values encode one analyzer's judgment and break on every
 upgrade. Earned data, by contrast, is asserted exactly.
-
-**Properties proved in a verified kernel are not re-tested in Python** (see Principle VII and
-ADR-0005). What is tested at that boundary is the adapter: that values are correctly marshalled
-into and out of the kernel.
 
 Rationale: These areas are the only parts of the system with real invariants; everywhere else,
 tests would be ceremony that slows learning without buying correctness. Narrow, mandatory rigor
@@ -76,7 +72,7 @@ told; it does not relax the constraint on writing.
 
 ### IV. Vertical Slices Only
 
-Every feature MUST span persistence, API, and UI. Horizontal phases ("build the backend first",
+Every feature MUST span storage and UI. Horizontal phases ("build the backend first",
 "do all the models now") are PROHIBITED. Each increment MUST be small enough to discard without
 significant loss.
 
@@ -105,24 +101,9 @@ a plugin system with one plugin, configuration for values that never vary — is
 seams are added by amending this constitution, never improvised mid-feature.
 
 **Anticipated change filter.** Seam placement is driven by an explicit register of
-anticipated changes, not by intuition. Every feature specification MUST list the future
-capabilities it can foresee, and each entry MUST be rated on two axes: how plausible the change
-is, and what retrofitting it later would cost.
-
-**Earned versus derived data.** Before applying the reversibility test, persisted data MUST be
-classified. Data is EARNED if it results from the user's irreplaceable effort or from an external
-system of record — word status, review history, notes, reading position, anything imported from
-Anki — and cannot be reconstructed if lost. Data is DERIVED if it is computed from earned data,
-source material, or reference data — segmentation, tokens, pronunciations, definitions,
-frequency annotations — and can be recomputed.
-
-Changes to the structure of EARNED data are expensive by default and MUST be hedged before the
-first row is written. Changes to the structure of DERIVED data are cheap by default REGARDLESS
-OF ROW COUNT, and MUST be deferred; recomputation is not migration.
-
-This holds only while the inputs to derivation are retained. Any pipeline that discards its
-input silently converts derived data into earned data. Inputs MUST therefore be preserved
-verbatim, and discarding one is a decision requiring an ADR.
+anticipated changes, not by intuition. A feature that adds or reshapes earned data MUST list the
+future capabilities it can foresee, each rated on two axes: how plausible the change is, and what
+retrofitting it later would cost. Other features MAY skip the register.
 
 **Reversibility test.** The remaining cases resolve as follows, and a new seam requires BOTH
 conditions:
@@ -170,9 +151,9 @@ always a recorded decision rather than an accumulation.
 
 ### VI. Decisions Are Recorded
 
-Every architectural choice MUST produce a short ADR in `docs/adr/` stating what was decided,
-which alternatives were rejected, and why. ADRs are written during planning, never
-retroactively.
+A short ADR in `docs/adr/` records what was decided, which alternatives were rejected, and why,
+for decisions about the shape of earned data and for choices likely to be revisited. Smaller
+changes to a recorded decision get a dated note on its ADR, not a new one.
 
 Rationale: With open-ended scope these decisions will be revisited, often after the reasoning
 has been forgotten. Unrecorded rationale is the most expensive artifact to lose, and it is the
@@ -185,17 +166,6 @@ idiomatic construction is harder to follow than a longer plain one, the plain on
 chosen. Explicit over implicit; a named intermediate over a dense expression; a longer function
 with a clear sequence over a short one requiring several inferences; comments that explain *why*
 rather than restating *what*.
-
-**Source versus artifact.** This principle governs code a human is expected to read and modify.
-It does NOT govern generated artifacts, which are judged by whether their *source* is readable —
-compiler output is not held to the standard of the language it was compiled from. An artifact
-qualifies only if its source is in the repository and is what gets edited, generation is
-reproducible by a committed command, it sits behind a hand-written interface, and it is never
-hand-edited.
-
-Dafny-generated Python qualifies. **Agent-generated Python does NOT** — it has no retained
-editable source, its generation is not reproducible, and it is edited directly thereafter. It is
-held to this principle in full.
 
 Rationale: The developer is learning software engineering through this project rather than
 arriving with it, so reading the code is a substantial part of the point rather than a
@@ -216,9 +186,9 @@ The reader MUST NOT be made to wait for the best version when a rough one could 
 - This applies to derived data only (ADR-0003). Earned data is never "rough" and is never
   replaced by a background process.
 
-Instances: speech-to-text uses whisper `base` for the first chunk and `small` after (ADR-0019);
-line translation by a small dedicated model, replaced by the local LLM's lines as they arrive
-(ADR-0023).
+Instances: transcription shows a 10 s first window, then 30 s windows (ADR-0029); line
+translation by a small dedicated model, replaced by Termux's better pass as it arrives (ADR-0023);
+dictionary segmentation at once, the contextual model behind it.
 
 Rationale: Stated by the reader on 2026-09-26, after the local LLM translated three times slower
 than playback on the phone. A long up-front wait is the friction that made Sapling unusable, and
@@ -244,12 +214,8 @@ fails. See ADR-0007.
 - **Chinese analysis**: `Intl.Segmenter` for segmentation, a JavaScript library for pronunciation,
   CC-CEDICT as a data file. The analyzer's output is never authoritative; user corrections are
   earned data anchored on character offsets (ADR-0002).
-- **Verified kernels**: Dafny 4.11.0 installed as a `dotnet tool`, compiled with
-  `dafny build -t:js`, requiring `bignumber.js`. Scope unchanged from ADR-0005 — small pure
-  algebraic components only.
-- **Toolchain versions** (verified working 2026-09-01): Node 24.20.0 LTS via `nvm`; .NET SDK
-  10.0.400 LTS with the 8.0 runtime, user-local in `~/.dotnet`; spec-kit 1.0.3. All installed
-  without `sudo` and without altering system packages.
+- **Toolchain versions** (verified working 2026-09-01): Node 24.20.0 LTS via `nvm`; spec-kit
+  1.0.3. All installed without `sudo` and without altering system packages.
 - **Anki integration**: `.apkg` export. The reader remains independent of `sentencegen`
   (ADR-0006).
 - **LLM analysis** (optional tier): called directly from the browser with the reader's own key,
@@ -267,44 +233,23 @@ Every new dependency MUST carry a named justification, per Principle V.
 
 ## Development Workflow
 
-For substantial features, earned-data contract changes, and architectural changes, the Spec Kit
-flow is followed in order: `specify` → `clarify` → `plan` → `tasks` → `implement`.
+**The short path is the default**: a clear problem, a focused change, and the checks that change
+can plausibly break (ADR-0031). The full Spec Kit flow (`specify` → `clarify` → `plan` → `tasks`
+→ `implement`) is for changes that add or reshape earned data, or change the architecture; within
+it, `clarify` is mandatory, because ambiguity is otherwise resolved silently by the implementing
+agent.
 
-`clarify` is MANDATORY within that full flow, not optional. Ambiguity is disproportionately expensive
-for a solo developer without professional software engineering experience, because unresolved
-ambiguity is resolved silently by the implementing agent rather than surfaced.
+Changes reach the phone in batches, per Principle I. A change updates `docs/current-state.md` with
+a line, and an ADR only per Principle VI.
 
-Small fixes, documentation, UI adjustments, and reversible implementation changes MAY use a short
-problem statement, focused implementation, and relevant checks without generating a full set of
-specification artifacts (ADR-0031). Earned-data test-first requirements still apply.
-
-Every feature branch ends with a deploy and a phone check, per Principle I. ADRs are authored
-during `plan`, per Principle VI.
-
-**Anticipated Changes.** Every specification MUST contain an "Anticipated Changes" section
-listing foreseeable future capabilities, each rated for plausibility and retrofit cost per
-Principle V. `plan` MUST consult this section when justifying seams, and MUST NOT introduce a
-seam that is not traceable to an entry in it. The union of these lists is maintained in
-`docs/anticipated-changes.md`; ratings there are revised as the project learns, and a revision
-that moves an item into the "build the seam now" cell is a trigger for planning work, not a
-silent edit.
+**Anticipated Changes.** A specification that adds or reshapes earned data contains an
+"Anticipated Changes" section rated per Principle V; `plan` MUST NOT introduce a seam that is not
+traceable to an entry in it. `docs/anticipated-changes.md` collects them and is read when placing
+a seam, not by default.
 
 ## Governance
 
-This constitution supersedes ad-hoc practice. Where a plan, task, or implementation conflicts
-with it, the constitution wins.
+This constitution supersedes ad-hoc practice. Amending it takes a short ADR. Adding or moving a
+seam under Principle V is an amendment.
 
-**Amendments** require an ADR in `docs/adr/` explaining the change and its motivation. Adding or
-moving a seam under Principle V is an amendment.
-
-**Versioning** follows semantic versioning:
-
-- **MAJOR**: a principle is removed or redefined in a backward-incompatible way.
-- **MINOR**: a principle or section is added, or guidance is materially expanded.
-- **PATCH**: clarifications, wording, and non-semantic refinements.
-
-**Compliance**: every `plan` MUST verify its approach against these principles before `tasks` is
-generated. Complexity that violates Principle V MUST be justified in writing or removed. Review
-gates that pass without checking Principle III are invalid.
-
-**Version**: 2.1.0 | **Ratified**: 2026-08-28 | **Last Amended**: 2026-09-29
+**Last Amended**: 2026-10-31 (ADR-0046)
