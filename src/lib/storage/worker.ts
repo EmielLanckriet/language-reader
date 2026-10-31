@@ -264,6 +264,8 @@ function run(request: Request): unknown {
 			return repository.returnToParameters(request.args[0]);
 		case 'studyOverview':
 			return repository.studyOverview(request.args[0], undefined, request.args[1]);
+		case 'taalInputs':
+			return repository.taalInputs(request.args[0]);
 		case 'wordOccurrences':
 			return repository.wordOccurrences(request.args[0]);
 		case 'wordLines':

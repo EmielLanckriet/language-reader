@@ -1,7 +1,18 @@
 # Current state
 
-Updated 2026-10-19. Start here for project status; consult the relevant spec and ADR for detail.
+Updated 2026-10-31. Start here for project status; consult the relevant spec and ADR for detail.
 This describes repository behavior and recorded results, not a fresh certification of every feature.
+
+## Study time to the Taal challenge (spec 020, ADR-0045) — built, not yet on the phone
+
+More → Taal challenge takes a code made in Taal (Settings → Connected apps → Connect). From the
+day of connecting, the app sends one session per local hour through Taal's published connect
+contract: reading and watching as Input (Study when the session was answered "every unknown
+word"), hardcore drill steps as Study, Cards reviews as cards. Sends run in the background after
+earned changes; Progress shows the last send or why it failed. First built with Google sign-in,
+then switched before deploying (2026-10-31) when Taal published the code contract. Unit tests
+cover the mapping, the per-hour diff and the request shape; 723 tests, type check. Not yet checked
+against the real Taal: that needs the reader's code on the phone.
 
 ## A word's status apart from its memory (spec 019, ADR-0044) — deployed and phone checked
 

@@ -73,6 +73,7 @@ import {
 } from '../domain/memory';
 import type { AttentionAnswer, Engagement, Skill } from '../domain/encounter';
 import { cardQueue, type Queue } from '../domain/queue';
+import type { TaalInputs } from '../domain/taal';
 import {
 	type Database,
 	type Row,
@@ -2022,6 +2023,72 @@ export class Repository {
 				nextDeviceSeq(this.db, deviceId)
 			]
 		);
+	}
+
+	/**
+	 * What this app's Taal share is computed from (spec 020, research R4), for moments from `from`
+	 * on, outside withdrawn sessions: study time as Progress counts it, each of those sessions'
+	 * latest look-up answer, Cards reviews (drill grades excluded), and each hardcore part's drill
+	 * step.
+	 */
+	taalInputs(from: string): TaalInputs {
+		const outsideWithdrawn = `(session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`;
+		const studyTime = queryRows(
+			this.db,
+			`SELECT at, json_extract(detail,'$.durationMs') AS duration, session_id FROM encounter
+			WHERE kind = 'study-time' AND at >= ? AND ${outsideWithdrawn}
+			ORDER BY at, device_id, device_seq`,
+			[from]
+		).map((row) => ({
+			at: String(row.at),
+			durationMs: Number(row.duration),
+			sessionId: row.session_id === null ? null : Number(row.session_id)
+		}));
+		const answers = queryRows(
+			this.db,
+			`SELECT s.session_id,
+			(SELECT json_extract(a.detail,'$.answer') FROM encounter a
+				WHERE a.session_id = s.session_id AND a.kind = 'attention'
+				ORDER BY a.device_id DESC, a.device_seq DESC LIMIT 1) AS answer
+			FROM (SELECT DISTINCT session_id FROM encounter
+				WHERE kind = 'study-time' AND at >= ? AND session_id IS NOT NULL
+				AND session_id NOT IN (${WITHDRAWN})) s
+			ORDER BY s.session_id`,
+			[from]
+		)
+			.filter((row) => row.answer !== null)
+			.map((row) => ({
+				sessionId: Number(row.session_id),
+				answer: String(row.answer) as AttentionAnswer
+			}));
+		const cards = queryRows(
+			this.db,
+			`SELECT at FROM encounter WHERE kind = 'review' AND at >= ?
+			AND json_extract(detail,'$.hardcore') IS NULL AND ${outsideWithdrawn}
+			ORDER BY at, device_id, device_seq`,
+			[from]
+		).map((row) => ({ at: String(row.at) }));
+		const drills = queryRows(
+			this.db,
+			`SELECT
+			MIN(CASE WHEN kind = 'hardcore-step' AND json_extract(detail,'$.at') = 'start' THEN at END) AS start,
+			MAX(CASE WHEN kind = 'hardcore-step' AND json_extract(detail,'$.at') = 'end' THEN at END) AS finish,
+			MAX(CASE WHEN kind = 'review' THEN at END) AS last_grade
+			FROM encounter
+			WHERE session_id IS NOT NULL AND session_id NOT IN (${WITHDRAWN})
+			AND ((kind = 'hardcore-step' AND json_extract(detail,'$.step') = 'drill')
+				OR (kind = 'review' AND json_extract(detail,'$.hardcore') IS NOT NULL))
+			GROUP BY session_id, CASE WHEN kind = 'review'
+				THEN json_extract(detail,'$.hardcore.part') ELSE json_extract(detail,'$.part') END
+			HAVING start IS NOT NULL AND start >= ?
+			ORDER BY start`,
+			[from]
+		).map((row) => ({
+			start: String(row.start),
+			end: row.finish === null ? null : String(row.finish),
+			lastGrade: row.last_grade === null ? null : String(row.last_grade)
+		}));
+		return { studyTime, answers, cards, drills };
 	}
 
 	/** The latest sessions and what happened in them, newest first, for Diagnostics. */

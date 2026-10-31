@@ -30,6 +30,7 @@ export type Call =
 	| { method: 'applyParameters'; args: [unknown] }
 	| { method: 'returnToParameters'; args: [string | null] }
 	| { method: 'studyOverview'; args: [string, number] }
+	| { method: 'taalInputs'; args: [string] }
 	| { method: 'wordOccurrences'; args: [number[]] }
 	| { method: 'wordLines'; args: [number[]] }
 	| { method: 'playedThrough'; args: [number[]] }

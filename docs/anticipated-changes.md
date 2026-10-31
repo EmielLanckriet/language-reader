@@ -860,3 +860,13 @@ a 140-word score on generated text.
 | Separate statuses for reading and listening | low | expensive once changes accumulate | Ignore: cards are reading cards (#7) |
 | Bulk retire or ignore | medium | cheap — many `reader` changes | Defer |
 | Drop `memory.card` / `memory.reviewed` and `legacy-active.ts` | high | cheap — derived columns; the switch is their only reader | Once no pre-switch library or copy can be restored |
+
+## What Spec 020 Settled — 2026-10-26, revised 2026-10-31
+
+| Change | Plausibility | Retrofit cost | Action |
+|---|---|---|---|
+| Taal's connect contract changes | medium | cheap — sessions are derived from the history; only `src/lib/taal/send.ts` speaks to Taal | Defer; the failure shows on Progress, and the guide's version date shows a change |
+| A different mapping (rereading as Review, a ceiling on drill idle time) | medium | cheap — sessions recompute and replace themselves at Taal, for days it keeps | Defer; the reader kept rewatches as Input/Study on 2026-10-31. The mapping is `taalSessions` |
+| Send Output | low | cheap — one more field in a session | Ignore |
+| Another tracker than Taal | low | cheap — sessions are derived | Ignore: no interface for one service (Principle V) |
+| Two devices sending at once | low | cheap — both send the same hourly totals for the same history | Ignore |

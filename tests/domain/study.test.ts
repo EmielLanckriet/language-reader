@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { studyStreak, studyWeek } from '../../src/lib/domain/study';
+import { studyDayOf, studyStreak, studyWeek } from '../../src/lib/domain/study';
 import { validateEncounter } from '../../src/lib/domain/encounter';
 
 it('awards each local day once, independent of grades and feedback', () => {
@@ -139,5 +139,20 @@ describe('the streak (#38)', () => {
 		];
 		expect(studyStreak(events, 'Europe/Brussels', now, 4)).toBe(5);
 		expect(studyStreak(events, 'Europe/Brussels', now, 0)).toBe(1);
+	});
+});
+
+describe('studyDayOf', () => {
+	it('puts a moment before the day end hour on the day before', () => {
+		const day = studyDayOf('Europe/Brussels', 2);
+		expect(day(new Date('2026-10-26T00:59:00Z'))).toBe('2026-10-25'); // 01:59 local
+		expect(day(new Date('2026-10-26T01:00:00Z'))).toBe('2026-10-26'); // 02:00 local
+		expect(studyDayOf('Europe/Brussels', 0)(new Date('2026-10-26T00:59:00Z'))).toBe('2026-10-26');
+	});
+	it('follows the local clock through a DST change', () => {
+		// 2026-10-25: Brussels goes from UTC+2 to UTC+1 at 03:00 local.
+		const day = studyDayOf('Europe/Brussels', 4);
+		expect(day(new Date('2026-10-25T02:30:00Z'))).toBe('2026-10-24'); // 03:30 local, after the change
+		expect(day(new Date('2026-10-25T03:00:00Z'))).toBe('2026-10-25'); // 04:00 local
 	});
 });

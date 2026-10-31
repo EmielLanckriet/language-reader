@@ -6,6 +6,7 @@
 	import { EARNED_CHANGE } from '$lib/storage/client';
 	import type { StudyOverview } from '$lib/domain/study';
 	import ErrorNotice from './ErrorNotice.svelte';
+	import TaalStatus from './TaalStatus.svelte';
 	let { full = false }: { full?: boolean } = $props();
 	let overview = $state<StudyOverview | null>(null);
 	let problem = $state<unknown>(null);
@@ -123,6 +124,7 @@
 						>{/each}</select
 				></label
 			>{/if}
+		{#if full}<TaalStatus />{/if}
 		{#if !full}<a class="text-link" href={resolve('/progress')}
 				>View your progress <span aria-hidden="true">↗</span></a
 			>{/if}

@@ -12,6 +12,7 @@
 	import { replacements } from '$lib/media/store';
 	import ReportDialog from '$lib/ui/ReportDialog.svelte';
 	import SessionList from '$lib/ui/SessionList.svelte';
+	import TaalConnect from '$lib/ui/TaalConnect.svelte';
 	import { readToken, keepToken, REPOSITORY } from '$lib/report/report';
 
 	let githubToken = $state(readToken() ?? '');
@@ -26,6 +27,7 @@
 	let newCards = $state(readNewCards());
 	// Built only once opened: listing sessions reads the whole history.
 	let sessionsOpened = $state(false);
+	let taalOpened = $state(false);
 	let awaitingContext = $state<number | null>(null);
 	async function countAwaiting() {
 		if (awaitingContext !== null) return;
@@ -366,7 +368,8 @@
 
 <h1>More</h1>
 <p class="subtitle">
-	Settings and records for this device. Nothing here is sent anywhere unless you send a report.
+	Settings and records for this device. Nothing here is sent anywhere unless you send a report or
+	connect the Taal challenge.
 </p>
 
 <details class="group">
@@ -636,6 +639,14 @@
 			{/if}
 		</dd>
 	</dl>
+</details>
+
+<details class="group" ontoggle={(e) => e.currentTarget.open && (taalOpened = true)}>
+	<summary>
+		<span class="title">Taal challenge</span>
+		<small>Send your study time to Taal</small>
+	</summary>
+	{#if taalOpened}<TaalConnect />{/if}
 </details>
 
 <details class="group" ontoggle={(e) => e.currentTarget.open && (sessionsOpened = true)}>

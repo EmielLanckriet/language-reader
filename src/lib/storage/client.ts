@@ -23,6 +23,7 @@ function earned<T>(result: T): T {
 	return result;
 }
 import { StorageFailure } from './failures';
+import type { TaalInputs } from '../domain/taal';
 import type {
 	CardSentence,
 	CardsToday,
@@ -362,6 +363,11 @@ export class RepositoryClient {
 
 	returnToParameters(id: string | null): Promise<void> {
 		return this.call<void>({ method: 'returnToParameters', args: [id] }).then(earned);
+	}
+
+	/** What the Taal share is computed from, for moments from `from` on (spec 020). */
+	taalInputs(from: string): Promise<TaalInputs> {
+		return this.call({ method: 'taalInputs', args: [from] });
 	}
 
 	studyOverview(timeZone: string, dayEndHour: number): Promise<StudyOverview> {

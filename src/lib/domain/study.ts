@@ -35,7 +35,7 @@ export function studyWeek(
 ) {
 	const { today, monday, activity } = studyDays(events, timeZone, now, dayEndHour);
 	const days = Array.from({ length: 7 }, (_, i) => {
-		const date = shift(monday, i);
+		const date = shiftDay(monday, i);
 		const day = activity.get(date) ?? { durationMs: 0, reviews: 0 };
 		return {
 			date,
@@ -59,11 +59,11 @@ export function studyStreak(
 ): number {
 	const { monday, activity } = studyDays(events, timeZone, now, dayEndHour);
 	const doneIn = (start: string) =>
-		Array.from({ length: 7 }, (_, i) => activity.get(shift(start, i))).filter(
+		Array.from({ length: 7 }, (_, i) => activity.get(shiftDay(start, i))).filter(
 			(day) => day && isStudyDay(day)
 		).length;
 	let streak = doneIn(monday);
-	for (let start = shift(monday, -7); doneIn(start) >= 5; start = shift(start, -7))
+	for (let start = shiftDay(monday, -7); doneIn(start) >= 5; start = shiftDay(start, -7))
 		streak += doneIn(start);
 	return streak;
 }
@@ -71,19 +71,18 @@ export function studyStreak(
 const isStudyDay = (day: { durationMs: number; reviews: number }) =>
 	day.durationMs >= 60000 || day.reviews >= 5;
 
-function shift(date: string, days: number): string {
+export function shiftDay(date: string, days: number): string {
 	const moved = new Date(`${date}T00:00:00Z`);
 	moved.setUTCDate(moved.getUTCDate() + days);
 	return moved.toISOString().slice(0, 10);
 }
 
 /**
- * Activity per study day up to `now`. Calendar arithmetic uses UTC dates as date labels, not
- * 24-hour jumps through local DST. A day ends at `dayEndHour` on the local clock (asked for
- * 2026-10-04): activity before it belongs to the day before, and a week runs from that hour on
- * Monday.
+ * The study day of a moment, as `YYYY-MM-DD`. Calendar arithmetic uses UTC dates as date labels,
+ * not 24-hour jumps through local DST. A day ends at `dayEndHour` on the local clock (asked for
+ * 2026-10-04): a moment before it belongs to the day before.
  */
-function studyDays(events: StudyEvent[], timeZone: string, now: Date, dayEndHour: number) {
+export function studyDayOf(timeZone: string, dayEndHour: number): (date: Date) => string {
 	const formatter = new Intl.DateTimeFormat('en-CA', {
 		timeZone,
 		year: 'numeric',
@@ -92,22 +91,27 @@ function studyDays(events: StudyEvent[], timeZone: string, now: Date, dayEndHour
 		hour: '2-digit',
 		hourCycle: 'h23'
 	});
+	const labelOf = (date: Date) => {
+		const parts = formatter.formatToParts(date);
+		const part = (kind: string) => parts.find((p) => p.type === kind)!.value;
+		const label = `${part('year')}-${part('month')}-${part('day')}`;
+		return Number(part('hour')) >= dayEndHour ? label : shiftDay(label, -1);
+	};
 	// Every time zone's offset is a whole number of quarter hours, so one label serves a quarter.
 	const labels = new Map<number, string>();
-	const dateOf = (date: Date) => {
+	return (date: Date) => {
 		const quarter = Math.floor(date.getTime() / 900000);
 		let label = labels.get(quarter);
 		if (label === undefined) labels.set(quarter, (label = labelOf(date)));
 		return label;
 	};
-	const labelOf = (date: Date) => {
-		const parts = formatter.formatToParts(date);
-		const part = (kind: string) => parts.find((p) => p.type === kind)!.value;
-		const label = `${part('year')}-${part('month')}-${part('day')}`;
-		return Number(part('hour')) >= dayEndHour ? label : shift(label, -1);
-	};
+}
+
+/** Activity per study day up to `now`; a week runs from the day end hour on Monday. */
+function studyDays(events: StudyEvent[], timeZone: string, now: Date, dayEndHour: number) {
+	const dateOf = studyDayOf(timeZone, dayEndHour);
 	const today = dateOf(now);
-	const monday = shift(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
+	const monday = shiftDay(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
 	const activity = new Map<string, { durationMs: number; reviews: number }>();
 	for (const event of events) {
 		const at = new Date(event.at);
