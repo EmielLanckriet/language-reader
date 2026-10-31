@@ -22,7 +22,7 @@ function reading(hours: number, minutes = 1): TaalInputs {
 		).flat(),
 		answers: [],
 		cards: [],
-		drills: []
+		drillGrades: []
 	};
 }
 

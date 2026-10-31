@@ -37,7 +37,7 @@
 			Taal: waiting for the first send.
 		{:else if status.ok}
 			Taal is up to date ({time(status.at)}): today {status.today.input} min Input, {status.today
-				.study} min Study, {status.today.cards} cards.
+				.study} min Study, {status.today.output} min Output, {status.today.cards} cards.
 		{:else}
 			Not sent to Taal ({time(status.at)}): {WHY[status.reason]}. Nothing is lost.
 			{#if status.reason === 'refused'}<a href={resolve('/diagnostics')}>More</a>{:else}<button

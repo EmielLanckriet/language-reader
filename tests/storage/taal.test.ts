@@ -37,7 +37,7 @@ describe('taalInputs', () => {
 		expect(inputs.answers).toEqual([{ sessionId: thorough, answer: 'all' }]);
 	});
 
-	it('gives Cards reviews but not drill grades as cards, and each drill part’s marks', async () => {
+	it('gives Cards reviews and drill grades apart', async () => {
 		const { repository, document, lexemeId } = await library();
 		repository.recordReview(lexemeId, 3, undefined, '2026-10-26T09:00:00Z');
 		repository.recordReview(lexemeId, 3, undefined, '2026-10-20T09:00:00Z');
@@ -71,13 +71,9 @@ describe('taalInputs', () => {
 
 		const inputs = repository.taalInputs('2026-10-25T00:00:00Z');
 		expect(inputs.cards).toEqual([{ at: '2026-10-26T09:00:00Z' }]);
-		expect(inputs.drills).toEqual([
-			{
-				start: '2026-10-26T10:00:00Z',
-				end: '2026-10-26T10:14:00Z',
-				lastGrade: '2026-10-26T10:05:00Z'
-			},
-			{ start: '2026-10-26T10:20:00Z', end: null, lastGrade: '2026-10-26T10:27:00Z' }
+		expect(inputs.drillGrades).toEqual([
+			{ at: '2026-10-26T10:05:00Z' },
+			{ at: '2026-10-26T10:27:00Z' }
 		]);
 	});
 });

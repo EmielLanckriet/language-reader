@@ -6,6 +6,7 @@ import {
 	TAAL_KEEPS_DAYS,
 	taalSessions,
 	toSend,
+	type DayShare,
 	type TaalInputs,
 	type TaalSession
 } from '$lib/domain/taal';
@@ -33,7 +34,7 @@ export interface TaalConnection {
 export type TaalReason = 'offline' | 'refused' | 'failed';
 
 export type TaalStatus =
-	| { at: string; ok: true; today: { input: number; study: number; cards: number } }
+	| { at: string; ok: true; today: DayShare }
 	| { at: string; ok: false; reason: TaalReason; detail: string };
 
 export interface SendDeps {

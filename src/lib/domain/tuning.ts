@@ -137,7 +137,7 @@ export function validateDataset(value: unknown): asserts value is TuningDataset 
 			integer(answer[0]);
 			if (
 				answer.length !== 2 ||
-				!['all', 'some', 'none', null].includes(answer[1] as AttentionAnswer) ||
+				!['all', 'some', 'none', 'shadow', null].includes(answer[1] as AttentionAnswer) ||
 				sessions.has(answer[0])
 			)
 				throw new Error('Invalid attention answer.');

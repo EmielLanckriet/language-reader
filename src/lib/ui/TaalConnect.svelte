@@ -38,8 +38,8 @@
 <dl class="facts">
 	<dt>What is sent</dt>
 	<dd>
-		Your reading and watching minutes (Study when you looked up every unknown word, Input
-		otherwise), hardcore drill minutes as Study, and your Cards answers, per hour. Taal adds them
+		Your reading and watching minutes (Study when you studied it, Output when you shadowed it, Input
+		otherwise), 10 s of Study per drill card and 10 s per Cards answer, per hour. Taal adds them
 		next to what you enter there yourself. Days before you connect are never sent. Nothing else
 		leaves this device.
 	</dd>

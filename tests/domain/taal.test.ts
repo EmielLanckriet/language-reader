@@ -12,7 +12,7 @@ import {
 import { studyDayOf } from '../../src/lib/domain/study';
 
 const hour = localHourOf('Europe/Brussels');
-const none: TaalInputs = { studyTime: [], answers: [], cards: [], drills: [] };
+const none: TaalInputs = { studyTime: [], answers: [], cards: [], drillGrades: [] };
 
 /** `minutes` of one-minute study-time events of a session, ending from `from` on. */
 function reading(sessionId: number | null, from: string, minutes: number, durationMs = 60000) {
@@ -27,6 +27,12 @@ function reading(sessionId: number | null, from: string, minutes: number, durati
 const sessionsOf = (inputs: Partial<TaalInputs>) => taalSessions({ ...none, ...inputs }, hour);
 const ms = (iso: string) => Date.parse(iso);
 
+/** `n` moments `seconds` apart from `from`, as Cards reviews or drill grades. */
+const moments = (from: string, n: number, seconds = 10) =>
+	Array.from({ length: n }, (_, i) => ({
+		at: new Date(ms(from) + i * seconds * 1000).toISOString()
+	}));
+
 describe('taalSessions (spec 020 mapping, one session per local hour)', () => {
 	it('counts an unanswered session as Input, from its first moment in the hour', () => {
 		expect(sessionsOf({ studyTime: reading(1, '2026-10-26T10:00:00Z', 12) })).toEqual([
@@ -34,21 +40,23 @@ describe('taalSessions (spec 020 mapping, one session per local hour)', () => {
 		]);
 	});
 
-	it('counts a session answered "every unknown word" as Study, other answers as Input', () => {
+	it('counts "Studied it" as Study, "Shadowed it" as Output, other answers as Input', () => {
 		const studyTime = [
 			...reading(1, '2026-10-26T10:00:00Z', 5),
 			...reading(2, '2026-10-26T10:10:00Z', 3),
 			...reading(3, '2026-10-26T10:20:00Z', 2),
-			...reading(4, '2026-10-26T10:30:00Z', 1)
+			...reading(4, '2026-10-26T10:30:00Z', 1),
+			...reading(5, '2026-10-26T10:40:00Z', 4)
 		];
 		const answers = [
 			{ sessionId: 1, answer: 'all' as const },
 			{ sessionId: 2, answer: 'some' as const },
 			{ sessionId: 3, answer: 'none' as const },
-			{ sessionId: 4, answer: null }
+			{ sessionId: 4, answer: null },
+			{ sessionId: 5, answer: 'shadow' as const }
 		];
 		expect(sessionsOf({ studyTime, answers })).toEqual([
-			{ id: '2026-10-26T11', at: ms('2026-10-26T10:01:00Z'), input: 6, study: 5 }
+			{ id: '2026-10-26T11', at: ms('2026-10-26T10:01:00Z'), input: 6, study: 5, output: 4 }
 		]);
 	});
 
@@ -64,43 +72,26 @@ describe('taalSessions (spec 020 mapping, one session per local hour)', () => {
 		).toEqual([{ id: '2026-10-26T11', at: ms('2026-10-26T10:00:00Z'), input: 1 }]);
 	});
 
-	it('counts Cards reviews as cards', () => {
-		const cards = Array.from({ length: 25 }, (_, i) => ({
-			at: new Date(ms('2026-10-26T09:00:00Z') + i * 10000).toISOString()
-		}));
-		expect(sessionsOf({ cards })).toEqual([
-			{ id: '2026-10-26T10', at: ms('2026-10-26T09:00:00Z'), cards: 25 }
+	it('sends each Cards review as 1.2 cards, which Taal counts as 10 s', () => {
+		expect(sessionsOf({ cards: moments('2026-10-26T09:00:00Z', 25) })).toEqual([
+			{ id: '2026-10-26T10', at: ms('2026-10-26T09:00:00Z'), cards: 30 }
 		]);
 	});
 
-	it('counts a drill part from its start to its end as Study, idle time included', () => {
-		expect(
-			sessionsOf({
-				drills: [{ start: '2026-10-26T10:00:00Z', end: '2026-10-26T10:14:00Z', lastGrade: null }]
-			})
-		).toEqual([{ id: '2026-10-26T11', at: ms('2026-10-26T10:00:00Z'), study: 14 }]);
+	it('counts each drill grade as 10 s of Study, however long the drill sat idle', () => {
+		const grades = moments('2026-10-26T10:00:00Z', 6, 300);
+		expect(sessionsOf({ drillGrades: grades })).toEqual([
+			{ id: '2026-10-26T11', at: ms('2026-10-26T10:00:00Z'), study: 1 }
+		]);
 	});
 
-	it('counts a drill part without an end up to its last grade, and one with neither not at all', () => {
+	it('puts each moment in its local hour, so no session crosses a day end', () => {
+		// 03:59 and 04:00 Brussels (UTC+1 after 25 October); the day ends at 04:00.
 		expect(
-			sessionsOf({
-				drills: [
-					{ start: '2026-10-26T10:00:00Z', end: null, lastGrade: '2026-10-26T10:07:00Z' },
-					{ start: '2026-10-26T11:00:00Z', end: null, lastGrade: null }
-				]
-			})
-		).toEqual([{ id: '2026-10-26T11', at: ms('2026-10-26T10:00:00Z'), study: 7 }]);
-	});
-
-	it('splits a drill at the whole local hour, so no session crosses a day end', () => {
-		// 03:50–04:20 Brussels (UTC+1 after 25 October); the day ends at 04:00.
-		expect(
-			sessionsOf({
-				drills: [{ start: '2026-10-27T02:50:00Z', end: '2026-10-27T03:20:00Z', lastGrade: null }]
-			})
+			sessionsOf({ cards: [{ at: '2026-10-27T02:59:00Z' }, { at: '2026-10-27T03:00:00Z' }] })
 		).toEqual([
-			{ id: '2026-10-27T03', at: ms('2026-10-27T02:50:00Z'), study: 10 },
-			{ id: '2026-10-27T04', at: ms('2026-10-27T03:00:00Z'), study: 20 }
+			{ id: '2026-10-27T03', at: ms('2026-10-27T02:59:00Z'), cards: 1.2 },
+			{ id: '2026-10-27T04', at: ms('2026-10-27T03:00:00Z'), cards: 1.2 }
 		]);
 	});
 
@@ -108,24 +99,21 @@ describe('taalSessions (spec 020 mapping, one session per local hour)', () => {
 		expect(
 			sessionsOf({
 				cards: [{ at: '2026-10-26T10:30:00Z' }],
-				drills: [{ start: '2026-10-26T10:05:00Z', end: '2026-10-26T10:10:00Z', lastGrade: null }]
+				drillGrades: [{ at: '2026-10-26T10:05:00Z' }]
 			})
-		).toEqual([{ id: '2026-10-26T11', at: ms('2026-10-26T10:05:00Z'), study: 5, cards: 1 }]);
+		).toEqual([{ id: '2026-10-26T11', at: ms('2026-10-26T10:05:00Z'), study: 0.2, cards: 1.2 }]);
 	});
 
 	it('uses the local hour where the zone is half an hour off UTC', () => {
-		// 10:20–10:40 UTC is 15:50–16:10 in Kolkata (UTC+5:30): two local hours.
+		// 10:20 and 10:40 UTC are 15:50 and 16:10 in Kolkata (UTC+5:30): two local hours.
 		expect(
 			taalSessions(
-				{
-					...none,
-					drills: [{ start: '2026-10-26T10:20:00Z', end: '2026-10-26T10:40:00Z', lastGrade: null }]
-				},
+				{ ...none, cards: [{ at: '2026-10-26T10:20:00Z' }, { at: '2026-10-26T10:40:00Z' }] },
 				localHourOf('Asia/Kolkata')
 			)
 		).toEqual([
-			{ id: '2026-10-26T15', at: ms('2026-10-26T10:20:00Z'), study: 10 },
-			{ id: '2026-10-26T16', at: ms('2026-10-26T10:30:00Z'), study: 10 }
+			{ id: '2026-10-26T15', at: ms('2026-10-26T10:20:00Z'), cards: 1.2 },
+			{ id: '2026-10-26T16', at: ms('2026-10-26T10:40:00Z'), cards: 1.2 }
 		]);
 	});
 
@@ -141,14 +129,19 @@ describe('taalSessions (spec 020 mapping, one session per local hour)', () => {
 });
 
 describe('shareOn', () => {
-	it("sums a study day's sessions to whole minutes, by the reader's day end", () => {
+	it("sums a study day's sessions to whole minutes and reviews, by the reader's day end", () => {
 		const day = studyDayOf('Europe/Brussels', 4);
 		const sessions: TaalSession[] = [
 			{ id: 'a', at: ms('2026-10-27T02:30:00Z'), input: 3 }, // 03:30, still the 26th
-			{ id: 'b', at: ms('2026-10-27T08:00:00Z'), input: 0.7, study: 2, cards: 4 },
-			{ id: 'c', at: ms('2026-10-27T09:00:00Z'), input: 0.7 }
+			{ id: 'b', at: ms('2026-10-27T08:00:00Z'), input: 0.7, study: 2, output: 1, cards: 4.8 },
+			{ id: 'c', at: ms('2026-10-27T09:00:00Z'), input: 0.7, cards: 1.2 }
 		];
-		expect(shareOn(sessions, day, '2026-10-27')).toEqual({ input: 1, study: 2, cards: 4 });
+		expect(shareOn(sessions, day, '2026-10-27')).toEqual({
+			input: 1,
+			study: 2,
+			output: 1,
+			cards: 5
+		});
 	});
 });
 
@@ -201,6 +194,7 @@ it("leaves Taal holding exactly this app's current sessions after any sequence o
 			id: fc.constantFrom(...ids),
 			input: amount,
 			study: amount,
+			output: amount,
 			cards: fc.option(fc.integer({ min: 1, max: 99 }), { nil: undefined })
 		}),
 		fc.record({ kind: fc.constant('clear' as const), id: fc.constantFrom(...ids) }),
@@ -227,7 +221,7 @@ it("leaves Taal holding exactly this app's current sessions after any sequence o
 				if (st.kind === 'clear') current.delete(st.id);
 				else if (st.kind === 'share') {
 					const session = s(st.id);
-					for (const mode of ['input', 'study', 'cards'] as const)
+					for (const mode of ['input', 'study', 'output', 'cards'] as const)
 						if (st[mode] !== undefined) session[mode] = st[mode];
 					if (Object.keys(session).length > 2) current.set(st.id, session);
 					else current.delete(st.id);

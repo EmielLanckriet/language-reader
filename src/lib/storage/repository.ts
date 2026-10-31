@@ -2028,8 +2028,7 @@ export class Repository {
 	/**
 	 * What this app's Taal share is computed from (spec 020, research R4), for moments from `from`
 	 * on, outside withdrawn sessions: study time as Progress counts it, each of those sessions'
-	 * latest look-up answer, Cards reviews (drill grades excluded), and each hardcore part's drill
-	 * step.
+	 * latest look-up answer, Cards reviews, and drill grades.
 	 */
 	taalInputs(from: string): TaalInputs {
 		const outsideWithdrawn = `(session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`;
@@ -2068,27 +2067,14 @@ export class Repository {
 			ORDER BY at, device_id, device_seq`,
 			[from]
 		).map((row) => ({ at: String(row.at) }));
-		const drills = queryRows(
+		const drillGrades = queryRows(
 			this.db,
-			`SELECT
-			MIN(CASE WHEN kind = 'hardcore-step' AND json_extract(detail,'$.at') = 'start' THEN at END) AS start,
-			MAX(CASE WHEN kind = 'hardcore-step' AND json_extract(detail,'$.at') = 'end' THEN at END) AS finish,
-			MAX(CASE WHEN kind = 'review' THEN at END) AS last_grade
-			FROM encounter
-			WHERE session_id IS NOT NULL AND session_id NOT IN (${WITHDRAWN})
-			AND ((kind = 'hardcore-step' AND json_extract(detail,'$.step') = 'drill')
-				OR (kind = 'review' AND json_extract(detail,'$.hardcore') IS NOT NULL))
-			GROUP BY session_id, CASE WHEN kind = 'review'
-				THEN json_extract(detail,'$.hardcore.part') ELSE json_extract(detail,'$.part') END
-			HAVING start IS NOT NULL AND start >= ?
-			ORDER BY start`,
+			`SELECT at FROM encounter WHERE kind = 'review' AND at >= ?
+			AND json_extract(detail,'$.hardcore') IS NOT NULL AND ${outsideWithdrawn}
+			ORDER BY at, device_id, device_seq`,
 			[from]
-		).map((row) => ({
-			start: String(row.start),
-			end: row.finish === null ? null : String(row.finish),
-			lastGrade: row.last_grade === null ? null : String(row.last_grade)
-		}));
-		return { studyTime, answers, cards, drills };
+		).map((row) => ({ at: String(row.at) }));
+		return { studyTime, answers, cards, drillGrades };
 	}
 
 	/** The latest sessions and what happened in them, newest first, for Diagnostics. */

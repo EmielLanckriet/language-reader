@@ -841,11 +841,11 @@ const scenarios = {
 				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
 			);
 			await tab.evaluate(
-				`[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.trim()==='Only some').click()`
+				`[...document.querySelectorAll('.leave-sheet .answer-options button')].find(b=>b.textContent.trim().startsWith('Just')).click()`
 			);
 			await until('answer saved in sheet', () =>
 				tab.evaluate(
-					`return document.querySelector('.leave-sheet').innerText.includes('Current answer: Only some')`
+					`return document.querySelector('.leave-sheet').innerText.includes('Current answer: Just')`
 				)
 			);
 			await tab.evaluate(
@@ -906,7 +906,7 @@ const scenarios = {
 		const tab = await openTab('about:blank');
 		const path = () => tab.evaluate('return location.pathname');
 		const sheet = () => tab.evaluate(`return !!document.querySelector('.leave-sheet')`);
-		// Under its own question when given: "Partly" is offered for following and for attention.
+		// Under its own question when given.
 		const choose = (label, question) =>
 			tab.evaluate(
 				question
@@ -947,24 +947,18 @@ const scenarios = {
 			const questions = await tab.evaluate(
 				`return document.querySelector('.leave-sheet').innerText`
 			);
-			if (!questions.includes('Did you watch, or only listen?'))
-				throw new Error('The sheet does not ask how the video was followed');
+			if (!questions.includes('How did you watch this?'))
+				throw new Error('The sheet does not ask how the video was watched');
 			const paused = await tab.evaluate(`return document.querySelector('video').paused`);
 			const shot = await tab.send('Page.captureScreenshot', { format: 'png' });
 			writeFileSync('/tmp/reader-leaving-video.png', Buffer.from(shot.data, 'base64'));
 			const width = await tab.evaluate(
 				'return {body:document.documentElement.scrollWidth,viewport:innerWidth}'
 			);
-			await choose('Only listened');
-			await until('mode saved', () =>
+			await choose('Just watched it');
+			await until('answer saved', () =>
 				tab.evaluate(
-					`return document.querySelector('.leave-sheet button[aria-pressed="true"]')?.textContent.trim()==='Only listened'`
-				)
-			);
-			await choose('Partly', 'paying attention');
-			await until('attention saved', () =>
-				tab.evaluate(
-					`return [...document.querySelectorAll('.leave-sheet button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Only listened,Partly'`
+					`return document.querySelector('.leave-sheet button[aria-pressed="true"]')?.textContent.trim()==='Just watched it'`
 				)
 			);
 			await tab.evaluate(
@@ -975,9 +969,9 @@ const scenarios = {
 				async () => (await path()).endsWith('/language-reader/') && !(await sheet())
 			);
 			await openSessions(tab);
-			await until('both answers under Sessions', () =>
+			await until('the answer under Sessions', () =>
 				tab.evaluate(
-					`const card=document.querySelector('.session-card'); card.open=true; return [...card.querySelectorAll('button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Only listened,Partly'`
+					`const card=document.querySelector('.session-card'); card.open=true; return [...card.querySelectorAll('button[aria-pressed="true"]')].map(b=>b.textContent.trim()).join()==='Just watched it'`
 				)
 			);
 			return { pass: paused && width.body <= width.viewport, paused, width };
@@ -1031,7 +1025,7 @@ const scenarios = {
 			);
 			await until('answer saved in the sheet', () =>
 				tab.evaluate(
-					`return document.querySelector('.leave-sheet').innerText.includes('Current answer: Yes')`
+					`return document.querySelector('.leave-sheet').innerText.includes('Current answer: Studied')`
 				)
 			);
 			await tab.evaluate(
@@ -1059,13 +1053,13 @@ const scenarios = {
 			if (sessionsOnProgress) throw new Error('Sessions are still on Progress');
 			await openSessions(tab);
 			await until('feedback under Sessions', () =>
-				tab.evaluate(`return document.body.textContent.includes('Current answer: Yes')`)
+				tab.evaluate(`return document.body.textContent.includes('Current answer: Studied')`)
 			);
 			await tab.evaluate(
-				`document.querySelector('.session-card').open=true;[...document.querySelectorAll('.answer-options button')].find(b=>b.textContent.includes('Only some')).click()`
+				`document.querySelector('.session-card').open=true;[...document.querySelectorAll('.answer-options button')].find(b=>b.textContent.trim().startsWith('Just')).click()`
 			);
 			await until('corrected answer', () =>
-				tab.evaluate(`return document.body.innerText.includes('Current answer: Only some')`)
+				tab.evaluate(`return document.body.innerText.includes('Current answer: Just')`)
 			);
 			await tab.goto('/progress');
 			await until('week on Progress', () =>
@@ -1656,7 +1650,6 @@ const scenarios = {
 			// Finish asks in the leaving sheet after 10 s of playing (2026-10-18).
 			if ((await finishSession(tab)) !== 'sheet') throw new Error('Finish did not ask');
 			let within = '.leave-sheet';
-			// The answer under its own question: "Partly" is offered for following and for attention.
 			const choose = (text, question) =>
 				tab.evaluate(
 					`const q=[...document.querySelectorAll('${within} .question')].find(p=>p.textContent.includes(${JSON.stringify(question)}));[...q.nextElementSibling.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(text)}).click(); return true;`
@@ -1665,16 +1658,9 @@ const scenarios = {
 				tab.evaluate(
 					`return [...document.querySelectorAll('${within} .answer-options button[aria-pressed="true"]')].map(b=>b.textContent.trim()).sort().join(',')`
 				);
-			await choose('Only listened', 'watch, or only listen');
-			await until('mode saved', async () => ((await pressed()) === 'Only listened' ? true : null));
-			// ADR-0043: asked only after "Only listened".
-			await choose('Yes', 'without the picture');
-			await until('follow answer saved', async () =>
-				(await pressed()) === 'Only listened,Yes' ? true : null
-			);
-			await choose('Partly', 'paying attention');
-			await until('attention saved', async () =>
-				(await pressed()) === 'Only listened,Partly,Yes' ? true : null
+			await choose('Just watched it', 'How did you watch');
+			await until('answer saved', async () =>
+				(await pressed()) === 'Just watched it' ? true : null
 			);
 			await tab.evaluate(
 				`[...document.querySelectorAll('.leave-sheet button')].find(b=>b.textContent.trim()==='Done').click()`
@@ -1686,7 +1672,7 @@ const scenarios = {
 			within = '.session-card';
 			await until('answers survived', async () => {
 				await tab.evaluate(`document.querySelector('.session-card').open=true; return true;`);
-				return (await pressed()) === 'Only listened,Partly,Yes' ? true : null;
+				return (await pressed()) === 'Just watched it' ? true : null;
 			});
 			// A zone where it is now about 2 AM: the day-end setting must move "today" back a day.
 			const offset = ((((2 - new Date().getUTCHours()) % 24) + 36) % 24) - 12;
@@ -2627,16 +2613,14 @@ const scenarios = {
 					const card = document.querySelector('.session-card');
 					if (!card) return null;
 					card.open = true;
-					const choice = [...card.querySelectorAll('.answer-options button')].find((b) => b.textContent.trim() === 'Only some');
+					const choice = [...card.querySelectorAll('.answer-options button')].find((b) => b.textContent.trim().startsWith('Just'));
 					if (!choice) return null;
 					choice.click();
 					return true;
 				`)
 			);
 			await until('the answer saved', () =>
-				tab.evaluate(
-					`return document.body.innerText.includes('Current answer: Only some') || null;`
-				)
+				tab.evaluate(`return document.body.innerText.includes('Current answer: Just') || null;`)
 			);
 			await tab.goto('/diagnostics');
 			const recorded = await until('the session on Diagnostics', () =>

@@ -985,15 +985,9 @@
 			</p>
 			<SessionQuestions
 				modality={current.modality}
-				engagement={current.engagement}
 				answered={current.answered}
 				answer={current.answer}
 				disabled={answering}
-				onengage={(change) =>
-					saveLeaving({
-						kind: 'engagement',
-						detail: { mode: null, attentive: null, ...current.engagement, ...change }
-					})}
 				onanswer={(value) => saveLeaving({ kind: 'attention', detail: { answer: value } })}
 			/>
 			{#if leaveProblem}<ErrorNotice error={leaveProblem} />{/if}

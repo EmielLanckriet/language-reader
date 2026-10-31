@@ -3,7 +3,7 @@
 	import { readDayEnd } from '$lib/ui/hardcore';
 	import { session } from '$lib/storage/session';
 	import type { StudyOverview } from '$lib/domain/study';
-	import type { AttentionAnswer, Engagement, Encounter } from '$lib/domain/encounter';
+	import type { AttentionAnswer, Encounter } from '$lib/domain/encounter';
 	import ErrorNotice from './ErrorNotice.svelte';
 	import SessionQuestions from './SessionQuestions.svelte';
 
@@ -65,12 +65,6 @@
 	}
 	const answer = (id: number, value: AttentionAnswer) =>
 		save(id, { kind: 'attention', detail: { answer: value } });
-	/** Both fields each time, so the latest engagement alone says the whole answer. */
-	const engage = (id: number, current: Engagement | null, change: Partial<Engagement>) =>
-		save(id, {
-			kind: 'engagement',
-			detail: { mode: null, attentive: null, ...current, ...change }
-		});
 </script>
 
 {#if problem}<ErrorNotice error={problem} onretry={load} />
@@ -103,11 +97,9 @@
 			<div class="session-body">
 				<SessionQuestions
 					modality={entry.modality}
-					engagement={entry.engagement}
 					answered={entry.answered}
 					answer={entry.answer}
 					disabled={saving !== null}
-					onengage={(change) => engage(entry.id, entry.engagement, change)}
 					onanswer={(value) => answer(entry.id, value)}
 				/>
 				{#if entry.available}<a

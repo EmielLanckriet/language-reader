@@ -48,7 +48,8 @@ export type Modality = 'reading' | 'media';
 /** What a session row is of: a sitting with a text or a video, or a hardcore session (spec 014). */
 export type SessionKind = Modality | 'hardcore';
 export type Skill = 'reading' | 'listening';
-export type AttentionAnswer = 'all' | 'some' | 'none' | null;
+/** 'shadow' (2026-10-31): the session was shadowed; for memory it is like 'none'. */
+export type AttentionAnswer = 'all' | 'some' | 'none' | 'shadow' | null;
 export interface Engagement {
 	mode: 'watched' | 'listened' | null;
 	attentive: 'yes' | 'partly' | 'no' | null;
@@ -91,7 +92,7 @@ export class InvalidEncounter extends Error {
 	name = 'InvalidEncounter';
 }
 
-const ATTENTION_ANSWERS = ['all', 'some', 'none', null];
+const ATTENTION_ANSWERS = ['all', 'some', 'none', 'shadow', null];
 const ENGAGEMENT_MODES = ['watched', 'listened', null];
 const ENGAGEMENT_ATTENTION = ['yes', 'partly', 'no', null];
 

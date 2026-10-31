@@ -7,7 +7,7 @@ import type { AttentionAnswer } from './encounter';
  * on the right day by its own settings. A session's id is its hour, so sending it again replaces
  * it at Taal: totals, never increments.
  */
-export const TAAL_MODES = ['input', 'study', 'cards'] as const;
+export const TAAL_MODES = ['input', 'study', 'output', 'cards'] as const;
 export type TaalMode = (typeof TAAL_MODES)[number];
 
 export interface TaalSession {
@@ -17,6 +17,7 @@ export interface TaalSession {
 	at: number;
 	input?: number;
 	study?: number;
+	output?: number;
 	cards?: number;
 }
 
@@ -27,8 +28,8 @@ export interface TaalInputs {
 	answers: { sessionId: number; answer: AttentionAnswer }[];
 	/** Reviews on Cards; drill grades are not among them. */
 	cards: { at: string }[];
-	/** Each hardcore part's drill step: its start and end marks, and its last grade. */
-	drills: { start: string; end: string | null; lastGrade: string | null }[];
+	/** Each grade in a hardcore drill. */
+	drillGrades: { at: string }[];
 }
 
 /** Taal clears sessions older than 120 days. */
@@ -37,6 +38,12 @@ export const TAAL_KEEPS_DAYS = 120;
 export const TAAL_BATCH = 100;
 
 const QUARTER_MS = 900000;
+/**
+ * A card counts 10 s, never the time it sat on screen (the reader, 2026-10-31): a drill grade as
+ * 10 s of Study, a Cards review as 1.2 cards, since Taal counts 5 cards as a minute.
+ */
+const DRILL_GRADE_MS = 10000;
+const CARD_WEIGHT = 1.2;
 
 /**
  * The local hour of a moment in `timeZone`. Every zone's offset is a whole number of quarter
@@ -69,59 +76,62 @@ export function localHourOf(timeZone: string): (date: Date) => string {
 const tenths = (ms: number) => Math.round(ms / 6000) / 10;
 
 export function taalSessions(inputs: TaalInputs, hourOf: (date: Date) => string): TaalSession[] {
-	const hours = new Map<string, { at: number; input: number; study: number; cards: number }>();
+	const hours = new Map<string, Record<TaalMode, number> & { at: number }>();
 	const add = (t: number, mode: TaalMode, amount: number) => {
 		const id = hourOf(new Date(t));
 		let found = hours.get(id);
-		if (!found) hours.set(id, (found = { at: t, input: 0, study: 0, cards: 0 }));
+		if (!found) hours.set(id, (found = { at: t, input: 0, study: 0, output: 0, cards: 0 }));
 		found.at = Math.min(found.at, t);
 		found[mode] += amount;
 	};
-	const thorough = new Set(
-		inputs.answers.filter((a) => a.answer === 'all').map((a) => a.sessionId)
-	);
+	const answers = new Map(inputs.answers.map((a) => [a.sessionId, a.answer]));
+	const modeOf = (sessionId: number | null): TaalMode => {
+		const answer = sessionId === null ? null : answers.get(sessionId);
+		return answer === 'all' ? 'study' : answer === 'shadow' ? 'output' : 'input';
+	};
 	for (const event of inputs.studyTime) {
 		const t = Date.parse(event.at);
 		if (!Number.isFinite(t) || !Number.isFinite(event.durationMs)) continue;
 		const duration = Math.max(0, Math.min(60000, event.durationMs));
-		const mode = event.sessionId !== null && thorough.has(event.sessionId) ? 'study' : 'input';
-		add(t, mode, duration);
+		add(t, modeOf(event.sessionId), duration);
 	}
 	for (const review of inputs.cards) {
 		const t = Date.parse(review.at);
 		if (Number.isFinite(t)) add(t, 'cards', 1);
 	}
-	for (const drill of inputs.drills) {
-		const from = Date.parse(drill.start);
-		const to = Date.parse(drill.end ?? drill.lastGrade ?? drill.start);
-		for (let t = from; t < to;) {
-			const next = Math.min(to, (Math.floor(t / QUARTER_MS) + 1) * QUARTER_MS);
-			add(t, 'study', next - t);
-			t = next;
-		}
+	for (const grade of inputs.drillGrades) {
+		const t = Date.parse(grade.at);
+		if (Number.isFinite(t)) add(t, 'study', DRILL_GRADE_MS);
 	}
 	const sessions: TaalSession[] = [];
 	for (const [id, hour] of hours) {
 		const session: TaalSession = { id, at: hour.at };
-		if (tenths(hour.input) > 0) session.input = tenths(hour.input);
-		if (tenths(hour.study) > 0) session.study = tenths(hour.study);
-		if (hour.cards > 0) session.cards = hour.cards;
+		for (const mode of ['input', 'study', 'output'] as const)
+			if (tenths(hour[mode]) > 0) session[mode] = tenths(hour[mode]);
+		if (hour.cards > 0) session.cards = Math.round(hour.cards * CARD_WEIGHT * 10) / 10;
 		if (Object.keys(session).length > 2) sessions.push(session);
 	}
 	return sessions.sort((a, b) => a.at - b.at);
 }
 
-/** A study day's share in whole minutes and cards, for Progress. */
+export type DayShare = Record<TaalMode, number>;
+
+/** A study day's share in whole minutes and reviews, for Progress. */
 export function shareOn(
 	sessions: TaalSession[],
 	dayOf: (date: Date) => string,
 	day: string
-): { input: number; study: number; cards: number } {
-	const sum = { input: 0, study: 0, cards: 0 };
+): DayShare {
+	const sum: DayShare = { input: 0, study: 0, output: 0, cards: 0 };
 	for (const session of sessions)
 		if (dayOf(new Date(session.at)) === day)
 			for (const mode of TAAL_MODES) sum[mode] += session[mode] ?? 0;
-	return { input: Math.round(sum.input), study: Math.round(sum.study), cards: sum.cards };
+	return {
+		input: Math.round(sum.input),
+		study: Math.round(sum.study),
+		output: Math.round(sum.output),
+		cards: Math.round(sum.cards / CARD_WEIGHT)
+	};
 }
 
 const same = (a: TaalSession | undefined, b: TaalSession) =>

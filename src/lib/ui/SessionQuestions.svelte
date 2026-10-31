@@ -1,85 +1,39 @@
 <script lang="ts">
-	import type { AttentionAnswer, Engagement } from '$lib/domain/encounter';
+	import type { AttentionAnswer } from '$lib/domain/encounter';
 
-	/** A session's optional feedback: under More → Sessions, and in the reader when it is left or finished. */
+	/**
+	 * A session's one optional question: under More → Sessions, and in the reader when it is left
+	 * or finished. "Studied it" lets untapped words count as understood and sends the minutes to
+	 * Taal as Study; "Shadowed it" as Output; "Just watched it" as Input (asked for 2026-10-31).
+	 */
 	let {
 		modality,
-		engagement,
 		answered,
 		answer,
 		disabled = false,
-		onengage,
 		onanswer
 	}: {
 		modality: string;
-		engagement: Engagement | null;
 		answered: boolean;
 		answer: AttentionAnswer;
 		disabled?: boolean;
-		onengage: (change: Partial<Engagement>) => void;
 		onanswer: (value: AttentionAnswer) => void;
 	} = $props();
 
-	const answers: { value: AttentionAnswer; label: string }[] = [
-		{ value: 'all', label: 'Yes, every unknown word' },
-		{ value: 'some', label: 'Only some' },
-		{ value: 'none', label: 'I wasn’t tracking unknown words' },
-		{ value: null, label: 'Skip / not sure' }
-	];
-	const modes: { value: Engagement['mode']; label: string }[] = [
-		{ value: 'watched', label: 'Watched' },
-		{ value: 'listened', label: 'Only listened' }
-	];
-	const followable: { value: Engagement['followable']; label: string }[] = [
-		{ value: 'yes', label: 'Yes' },
-		{ value: 'partly', label: 'Partly' },
-		{ value: 'no', label: 'No' }
-	];
-	const attention: { value: Engagement['attentive']; label: string }[] = [
-		{ value: 'yes', label: 'Yes' },
-		{ value: 'partly', label: 'Partly' },
-		{ value: 'no', label: 'No' }
-	];
+	const media = $derived(modality === 'media');
+	const answers = $derived<{ value: AttentionAnswer; label: string }[]>([
+		{ value: 'all', label: 'Studied it: looked up every unknown word' },
+		{ value: 'none', label: media ? 'Just watched it' : 'Just read it' },
+		{ value: 'shadow', label: 'Shadowed it' },
+		{ value: null, label: 'Skip' }
+	]);
+	// Answers given before 2026-10-31 may be "some", which is no longer offered.
+	const current = $derived(
+		answer === 'some' ? 'Looked some up' : answers.find((a) => a.value === answer)?.label
+	);
 </script>
 
-{#if modality === 'media'}
-	<p class="question">Did you watch, or only listen?</p>
-	<div class="answer-options">
-		{#each modes as option (option.label)}<button
-				class="secondary"
-				class:chosen={engagement?.mode === option.value}
-				aria-pressed={engagement?.mode === option.value}
-				{disabled}
-				onclick={() => onengage({ mode: option.value })}>{option.label}</button
-			>{/each}
-	</div>
-	{#if engagement?.mode === 'listened'}
-		<!-- ADR-0043: how well it comes through by sound alone, for the listening analysis (#29). -->
-		<p class="question">Could you follow it without the picture?</p>
-		<div class="answer-options">
-			{#each followable as option (option.label)}<button
-					class="secondary"
-					class:chosen={engagement?.followable === option.value}
-					aria-pressed={engagement?.followable === option.value}
-					{disabled}
-					onclick={() => onengage({ followable: option.value })}>{option.label}</button
-				>{/each}
-		</div>
-	{/if}
-	<p class="question">Were you paying attention?</p>
-	<div class="answer-options">
-		{#each attention as option (option.label)}<button
-				class="secondary"
-				class:chosen={engagement?.attentive === option.value}
-				aria-pressed={engagement?.attentive === option.value}
-				{disabled}
-				onclick={() => onengage({ attentive: option.value })}>{option.label}</button
-			>{/each}
-	</div>
-	<p class="muted">Kept as a note for now; it does not change your cards.</p>
-{/if}
-<p class="question">Did you look up every word you didn’t understand?</p>
-<p class="muted">This helps interpret untapped words. It does not affect your weekly goal.</p>
+<p class="question">{media ? 'How did you watch this?' : 'How did you read this?'}</p>
 <div class="answer-options">
 	{#each answers as option (option.label)}<button
 			class="secondary"
@@ -89,10 +43,7 @@
 			onclick={() => onanswer(option.value)}>{option.label}</button
 		>{/each}
 </div>
-{#if answered}<p class="muted">
-		Current answer: {answers.find((a) => a.value === answer)?.label}. Changes keep the original
-		answer in your history.
-	</p>{/if}
+{#if answered}<p class="muted">Current answer: {current}.</p>{/if}
 
 <style>
 	.question {
