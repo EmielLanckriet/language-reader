@@ -41,8 +41,6 @@ pass: a real dependency even though hosting is static.
 
 ## Deployed, waiting for a phone check
 
-- The one-question session sheet (2026-10-31). (Taal with a code: confirmed working by the reader
-  on 2026-11-01.)
 - Sessions under More; Finish asks like leaving.
 - The word list on Progress (#47); how long it takes with thousands of words is not measured.
 - An empty sound or video file counts as none (#45).
