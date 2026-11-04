@@ -212,3 +212,158 @@ export function upgrade(body: CopyBody): CopyBody {
 	if (current.format === 3) current = { ...current, format: 4, statuses: [] };
 	return current;
 }
+
+/** Rows per history table: an increment says how many the chain holds once it is applied. */
+export interface CopyCounts {
+	events: number;
+	sessions: number;
+	encounters: number;
+	corrections: number;
+	statuses: number;
+}
+
+/**
+ * Where a chain of copies stands (ADR-0048): the full copy it started from, the last piece sent,
+ * the writer's last sequence number in it, and the counts that must hold for the next increment.
+ */
+export interface CopyCursor {
+	base: string;
+	tip: string;
+	writer: string;
+	seq: number;
+	counts: CopyCounts;
+}
+
+/**
+ * What was added since the piece before (Sapling's log, ADR-0048): history rows with a later
+ * sequence number of the writer; documents whose content changed, with every current id in
+ * `documentIds`; the states of the words those rows touched, or their removal; devices whole.
+ */
+export interface CopyIncrement {
+	format: number;
+	kind: 'increment';
+	app: string;
+	createdAt: string;
+	writer: string;
+	base: string;
+	after: string;
+	devices: { id: string; nextSeq: number }[];
+	documentIds: number[];
+	documents: CopyDocument[];
+	events: CopyEvent[];
+	states: CopyState[];
+	statesRemoved: { language: string; surface: string }[];
+	sessions: CopySession[];
+	encounters: CopyEncounter[];
+	corrections: CopyCorrection[];
+	statuses: CopyStatus[];
+	counts: CopyCounts;
+}
+
+/**
+ * Keep only the documents whose mark differs from the one last sent; `marks` holds the current
+ * mark of every document in the increment. Returns the trimmed increment and the marks to keep.
+ */
+export function trimDocuments(
+	sent: Record<number, string>,
+	increment: CopyIncrement,
+	marks: Record<number, string>
+): { increment: CopyIncrement; sent: Record<number, string> } {
+	return {
+		increment: {
+			...increment,
+			documents: increment.documents.filter((d) => sent[d.id] !== marks[d.id])
+		},
+		sent: Object.fromEntries(increment.documentIds.map((id) => [id, marks[id] ?? sent[id]]))
+	};
+}
+
+const bySequence = <T extends { deviceId: string; deviceSeq: number }>(a: T, b: T) =>
+	a.deviceId === b.deviceId ? a.deviceSeq - b.deviceSeq : a.deviceId < b.deviceId ? -1 : 1;
+
+const wordKey = (word: { language: string; surface: string }) =>
+	`${word.language}\u0000${word.surface}`;
+
+/**
+ * The full copy a base and its increments stand for, in the order `exportBody` writes. Throws when
+ * a piece does not follow the one before it, or the counts it promises do not come out.
+ */
+export function mergeChain(base: CopyBody, increments: CopyIncrement[]): CopyBody {
+	const merged: CopyBody = {
+		...base,
+		documents: [...base.documents],
+		events: [...base.events],
+		sessions: [...base.sessions],
+		encounters: [...base.encounters],
+		corrections: [...base.corrections],
+		statuses: [...base.statuses]
+	};
+	const states = new Map(base.states.map((state) => [wordKey(state), state]));
+	let tip = base.createdAt;
+	for (const piece of increments) {
+		if (piece.kind !== 'increment' || piece.base !== base.createdAt || piece.after !== tip) {
+			throw new CopyRejected('chain', 'The copies do not follow each other.');
+		}
+		tip = piece.createdAt;
+		const documents = new Map(merged.documents.map((d) => [d.id, d]));
+		for (const document of piece.documents) documents.set(document.id, document);
+		const missing = piece.documentIds.find((id) => !documents.has(id));
+		if (missing !== undefined) {
+			throw new CopyRejected('chain', `The copies lack document ${missing}.`);
+		}
+		merged.documents = piece.documentIds.map((id) => documents.get(id)!);
+		merged.events.push(...piece.events);
+		merged.sessions.push(...piece.sessions);
+		merged.encounters.push(...piece.encounters);
+		merged.corrections.push(...piece.corrections);
+		merged.statuses.push(...piece.statuses);
+		for (const state of piece.states) states.set(wordKey(state), state);
+		for (const word of piece.statesRemoved) states.delete(wordKey(word));
+		const { counts } = piece;
+		if (
+			merged.events.length !== counts.events ||
+			merged.sessions.length !== counts.sessions ||
+			merged.encounters.length !== counts.encounters ||
+			merged.corrections.length !== counts.corrections ||
+			merged.statuses.length !== counts.statuses
+		) {
+			throw new CopyRejected('chain', 'The copies do not add up: a piece is missing.');
+		}
+		merged.app = piece.app;
+		merged.createdAt = piece.createdAt;
+		merged.writer = piece.writer;
+		merged.devices = piece.devices;
+	}
+	merged.events.sort(bySequence);
+	merged.sessions.sort(bySequence);
+	merged.encounters.sort(bySequence);
+	merged.corrections.sort(bySequence);
+	merged.statuses.sort(bySequence);
+	merged.states = [...states.values()].sort((a, b) =>
+		wordKey(a) < wordKey(b) ? -1 : wordKey(a) > wordKey(b) ? 1 : 0
+	);
+	return merged;
+}
+
+/** Seal any piece: the same check as a full copy's. */
+export async function sealPiece<T extends object>(piece: T): Promise<T & { integrity: string }> {
+	return { ...piece, integrity: await sha256(canonical(piece)) };
+}
+
+/** Read an increment, refusing a damaged one. */
+export async function openIncrement(text: string): Promise<CopyIncrement> {
+	let parsed: (CopyIncrement & { integrity?: string }) | undefined;
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		throw new CopyRejected('parse', 'A piece of the copy could not be read.');
+	}
+	const { integrity, ...piece } = parsed ?? ({} as CopyIncrement & { integrity?: string });
+	if (piece.kind !== 'increment' || piece.format !== FORMAT) {
+		throw new CopyRejected('format', 'A piece of the copy is not one this app reads.');
+	}
+	if (integrity !== (await sha256(canonical(piece)))) {
+		throw new CopyRejected('integrity', 'A piece of the copy is damaged.');
+	}
+	return piece;
+}

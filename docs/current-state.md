@@ -39,8 +39,9 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 - **Taal challenge** (spec 020, ADR-0045): with a code from Taal, one session per local hour:
   reading and watching as Input, Study when "Studied it", Output when "Shadowed it"; 10 s of Study
   per drill grade; each Cards review as 1.2 cards (10 s at Taal).
-- **Safety**: automatic copies to Termux and restore; a deleted document with history is hidden,
-  not erased. Report a problem or idea goes to GitHub issues.
+- **Safety**: automatic copies to Termux, as increments after a weekly full copy (ADR-0048), and
+  restore; a deleted document with history is hidden, not erased. Report a problem or idea goes
+  to GitHub issues.
 
 ## Deployed, waiting for a phone check
 
@@ -56,8 +57,7 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 ## Open
 
 - **Native app**: videos still copied into app storage (one copy, read from Termux's, is next);
-  not cross-origin isolated; the full backup copy still costs ~1.6 s on the laptop with the real
-  library (`scripts/measure/write-cost/`). 22 videos lost in the 2026-11-04 wipe: Termux no longer
+  not cross-origin isolated. 22 videos lost in the 2026-11-04 wipe: Termux no longer
   had their bundles.
 
 - **Phone freeze (2026-09-29)**: inference is bounded and serialized (ADR-0032); thermal safety is

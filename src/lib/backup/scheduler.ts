@@ -5,7 +5,7 @@
  */
 
 import { EARNED_CHANGE } from '$lib/storage/client';
-import { makeCopy, send } from './destination';
+import { copyNow } from './destination';
 
 /** Overridable for the browser harness, so a wipe check takes seconds rather than minutes. */
 function delays(): { quiet: number; every: number } {
@@ -33,15 +33,13 @@ export function startCopying(): void {
 	let sending = false;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
-	async function flush() {
+	async function flush(hidden = false) {
 		if (unsentSince === null || sending) return;
 		sending = true;
 		try {
 			const since = unsentSince;
 			// An empty library has nothing waiting to be copied, so it is not left looking stale.
-			const text = await makeCopy();
-			if (text === null || (await send(text)))
-				unsentSince = unsentSince === since ? null : unsentSince;
+			if (await copyNow(hidden)) unsentSince = unsentSince === since ? null : unsentSince;
 		} catch {
 			// Not sent: stays unsent, and the safeguard notice turns stale after the bound.
 		} finally {
@@ -55,7 +53,7 @@ export function startCopying(): void {
 		timer = setTimeout(() => void flush(), quiet);
 	});
 	document.addEventListener('visibilitychange', () => {
-		if (document.visibilityState === 'hidden') void flush();
+		if (document.visibilityState === 'hidden') void flush(true);
 	});
 	setInterval(() => void flush(), every);
 	timer = setTimeout(() => void flush(), quiet);

@@ -8,7 +8,18 @@ import { session } from '$lib/storage/session';
 import { readTar } from '$lib/media/tar';
 import { isPlayable, isSubtitle, mediaFiles, replacesIn, saveMedia } from '$lib/media/store';
 import { version } from '$app/environment';
-import { holdsNothing, open, seal, type CopyBody } from './format';
+import {
+	holdsNothing,
+	mergeChain,
+	open,
+	openIncrement,
+	seal,
+	sealPiece,
+	trimDocuments,
+	type CopyBody,
+	type CopyCursor,
+	type CopyDocument
+} from './format';
 
 import { SERVICE } from '$lib/media/service-address';
 const LAST_SENT = 'reader.lastCopy';
@@ -24,14 +35,60 @@ async function reachable(): Promise<boolean> {
 }
 
 /**
- * The reader's work now, sealed: the database's part from the worker, media subtitles from OPFS.
- * Null when the library holds nothing earned: such a copy is not worth sending (issue #22).
+ * Where the chain of copies Termux holds stands (ADR-0048): the cursor after the last piece it
+ * took, the mark of every document as last sent, and when the chain's full copy was made.
  */
-export async function makeCopy(): Promise<string | null> {
-	const { repository } = await session();
-	const body = await repository.exportBody(version, new Date().toISOString());
-	if (holdsNothing(body)) return null;
-	for (const document of body.documents) {
+interface Chain {
+	cursor: CopyCursor;
+	sent: Record<number, string>;
+	startedAt: number;
+}
+const CHAIN = 'reader.copyChain';
+/** A fresh full copy this often, and only while the app is hidden, so a restore stays short. */
+const RESTART_CHAIN_MS = 7 * 86_400_000;
+
+function readChain(): Chain | null {
+	try {
+		return JSON.parse(localStorage.getItem(CHAIN) ?? 'null');
+	} catch {
+		return null;
+	}
+}
+
+function writeChain(chain: Chain | null) {
+	try {
+		if (chain) localStorage.setItem(CHAIN, JSON.stringify(chain));
+		else localStorage.removeItem(CHAIN);
+	} catch {
+		// Without it every copy is a full one, as before chains: slower, never wrong.
+	}
+}
+
+/**
+ * What tells a changed document from the one last sent, without reading its subtitles: a
+ * document's text never changes in place, and its files say when they were written.
+ */
+async function marksOf(documents: CopyDocument[]): Promise<Record<number, string>> {
+	const marks: Record<number, string> = {};
+	for (const document of documents) {
+		const files = (await mediaFiles(document.id))
+			.filter((file) => isSubtitle(file.name) || file.name === 'meta.json')
+			.map((file) => `${file.name}:${file.size}:${file.lastModified}`)
+			.sort();
+		marks[document.id] = [
+			document.title,
+			document.createdAt,
+			document.removedAt ?? '',
+			document.rawContent.length,
+			...files
+		].join('|');
+	}
+	return marks;
+}
+
+/** Attach each document's subtitles and metadata from OPFS, as a copy carries them. */
+async function withMedia(documents: CopyDocument[]): Promise<void> {
+	for (const document of documents) {
 		const files = await mediaFiles(document.id);
 		const subtitles = files.find((file) => isSubtitle(file.name));
 		const meta = files.find((file) => file.name === 'meta.json');
@@ -42,7 +99,57 @@ export async function makeCopy(): Promise<string | null> {
 			};
 		}
 	}
-	return JSON.stringify(await seal(body));
+}
+
+/**
+ * Bring Termux up to date; true when it holds everything (or there is nothing earned to hold).
+ * An increment while the chain holds; a full copy to start one, when the worker says history no
+ * longer adds up, when Termux says the increment does not follow, and weekly while hidden.
+ */
+export async function copyNow(hidden: boolean): Promise<boolean> {
+	const { repository } = await session();
+	const chain = readChain();
+	const createdAt = new Date().toISOString();
+	const restart = !chain || (hidden && Date.now() - chain.startedAt > RESTART_CHAIN_MS);
+	if (chain && !restart) {
+		const next = await repository.exportIncrement(version, createdAt, chain.cursor);
+		if (next) {
+			const marks = await marksOf(next.increment.documents);
+			const { increment, sent } = trimDocuments(chain.sent, next.increment, marks);
+			await withMedia(increment.documents);
+			const text = JSON.stringify(await sealPiece(increment));
+			let response: Response;
+			try {
+				response = await fetch(`${SERVICE}/backup/increment`, { method: 'PUT', body: text });
+			} catch {
+				return false; // unreachable: try again later, the chain unchanged
+			}
+			if (response.status === 204) {
+				writeChain({ ...chain, cursor: next.cursor, sent });
+				noteSent(text.length);
+				return true;
+			}
+			// Refused (it does not follow what Termux holds), or a Termux from before chains: a
+			// full copy, now.
+		}
+	}
+	writeChain(null);
+	const { body, cursor } = await repository.exportCopy(version, createdAt);
+	if (holdsNothing(body)) return true;
+	const marks = await marksOf(body.documents);
+	await withMedia(body.documents);
+	const text = JSON.stringify(await seal(body));
+	if (!(await send(text))) return false;
+	writeChain({ cursor, sent: marks, startedAt: Date.now() });
+	return true;
+}
+
+function noteSent(bytes: number) {
+	try {
+		localStorage.setItem(LAST_SENT, JSON.stringify({ at: Date.now(), bytes }));
+	} catch {
+		// Only the notice reads this, and a missing value reads as stale: it errs toward warning.
+	}
 }
 
 /** Send a copy; true when the service stored it. The time is kept for the safeguard notice. */
@@ -50,11 +157,7 @@ export async function send(text: string): Promise<boolean> {
 	try {
 		const response = await fetch(`${SERVICE}/backup`, { method: 'PUT', body: text });
 		if (!response.ok) return false;
-		try {
-			localStorage.setItem(LAST_SENT, JSON.stringify({ at: Date.now(), bytes: text.length }));
-		} catch {
-			// Only the notice reads this, and a missing value reads as stale: it errs toward warning.
-		}
+		noteSent(text.length);
 		return true;
 	} catch {
 		return false;
@@ -72,6 +175,22 @@ export function lastSent(): { at: number; bytes: number } | null {
 /** The newest copy, 'none' when the service holds no copy yet, 'unreachable' when it is not running. */
 export async function latest(): Promise<Found | 'none' | 'unreachable'> {
 	if (!(await reachable())) return 'unreachable';
+	const chain = await fetch(`${SERVICE}/backup/chain`, { cache: 'no-store' });
+	if (chain.ok) {
+		// The full copy and its increments, each checked, merged into the copy they stand for.
+		const { base, increments } = (await chain.json()) as { base: unknown; increments: unknown[] };
+		const body = await open(JSON.stringify(base));
+		const pieces = [];
+		for (const piece of increments) pieces.push(await openIncrement(JSON.stringify(piece)));
+		const merged = mergeChain(body, pieces);
+		return {
+			text: JSON.stringify(await seal(merged)),
+			createdAt: merged.createdAt,
+			documents: merged.documents.length,
+			words: merged.states.length
+		};
+	}
+	// Otherwise a Termux from before chains (ADR-0048), or none yet: its latest full copy.
 	const response = await fetch(`${SERVICE}/backup/latest`, { cache: 'no-store' });
 	if (response.status === 404) return 'none';
 	const text = await response.text();

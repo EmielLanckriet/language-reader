@@ -18,7 +18,7 @@
 import type { AnkiExport } from '../domain/anki';
 import { type Database } from './db';
 import { Repository, type UpgradeBatch } from './repository';
-import { CopyRejected, type CopyBody } from '../backup/format';
+import { CopyRejected, type CopyBody, type CopyCursor } from '../backup/format';
 import { acquire, release } from './lease';
 import { fromPage } from './native-file';
 import { next, acceptsWrites, type Availability, type Event } from './availability';
@@ -369,6 +369,14 @@ function run(request: Request): unknown {
 			return repository.corrections();
 		case 'exportBody':
 			return repository.exportBody(request.args[0], request.args[1]);
+		case 'exportCopy':
+			return repository.exportCopy(request.args[0], request.args[1]);
+		case 'exportIncrement':
+			return repository.exportIncrement(
+				request.args[0],
+				request.args[1],
+				request.args[2] as CopyCursor
+			);
 		case 'restoreCopy':
 			// A refusal is an answer, not a failure: it crosses the boundary as a value, so the page
 			// can say which check refused (a thrown error arrives here without its fields).

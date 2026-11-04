@@ -159,6 +159,18 @@ export interface CardsToday {
 	counts: { due: number; fresh: number; awaitingContext: number };
 }
 
+/** History rows after this sequence number of this device: what an increment holds. */
+type Since = { deviceId: string; seq: number };
+
+/** The history tables, by the name a copy gives their rows. */
+const HISTORY_TABLES: Record<keyof CopyCounts, string> = {
+	events: 'status_event',
+	sessions: 'session',
+	encounters: 'encounter',
+	corrections: 'correction_event',
+	statuses: 'status_change'
+};
+
 /** A card's sentence ends at these, and at a line break. */
 const SENTENCE_ENDS = new Set(['。', '！', '？', '!', '?']);
 
@@ -221,7 +233,14 @@ export interface StoredDocument {
 /** Raised when storage itself fails, as distinct from input being refused (FR-022). */
 export { StorageFailure } from './failures';
 import { StorageFailure } from './failures';
-import { CopyRejected, FORMAT, type CopyBody } from '../backup/format';
+import {
+	CopyRejected,
+	FORMAT,
+	type CopyBody,
+	type CopyCounts,
+	type CopyCursor,
+	type CopyIncrement
+} from '../backup/format';
 import { ankiImportOf, planImport, type AnkiExport } from '../domain/anki';
 
 /** Every word a stretch covered in a session answered "I tapped every word I didn't know". */
@@ -910,13 +929,13 @@ export class Repository {
 	}
 
 	/** Every status change, in history order. */
-	readStatusLog(lexemeId?: LexemeId): StatusChange[] {
+	readStatusLog(lexemeId?: LexemeId, since?: Since): StatusChange[] {
 		return queryRows(
 			this.db,
 			`SELECT lexeme_id, status, cause, changed_at, device_id, device_seq FROM status_change
-       ${lexemeId === undefined ? '' : 'WHERE lexeme_id = ?'}
+       ${lexemeId !== undefined ? 'WHERE lexeme_id = ?' : since ? 'WHERE device_id = ? AND device_seq > ?' : ''}
        ORDER BY device_id, device_seq`,
-			lexemeId === undefined ? [] : [lexemeId]
+			lexemeId !== undefined ? [lexemeId] : since ? [since.deviceId, since.seq] : []
 		).map((row) => ({
 			lexemeId: Number(row.lexeme_id),
 			status: String(row.status) as Status,
@@ -1126,27 +1145,30 @@ export class Repository {
 	}
 
 	/** Every correction and undo, in the order the reader made them. */
-	readCorrections(): Correction[] {
-		return queryRows(this.db, 'SELECT * FROM correction_event ORDER BY device_id, device_seq').map(
-			(row) => ({
-				language: String(row.language),
-				form: String(row.form),
-				...(row.parts === null ? {} : { parts: JSON.parse(String(row.parts)) as Part[] }),
-				madeAt: String(row.made_at),
-				deviceId: String(row.device_id),
-				deviceSeq: Number(row.device_seq),
-				userId: Number(row.user_id),
-				...(row.document_id === null
-					? {}
-					: {
-							occurrence: {
-								documentId: Number(row.document_id),
-								fromOffset: Number(row.from_offset),
-								toOffset: Number(row.to_offset)
-							}
-						})
-			})
-		);
+	readCorrections(since?: Since): Correction[] {
+		return queryRows(
+			this.db,
+			`SELECT * FROM correction_event ${since ? 'WHERE device_id = ? AND device_seq > ?' : ''}
+       ORDER BY device_id, device_seq`,
+			since ? [since.deviceId, since.seq] : []
+		).map((row) => ({
+			language: String(row.language),
+			form: String(row.form),
+			...(row.parts === null ? {} : { parts: JSON.parse(String(row.parts)) as Part[] }),
+			madeAt: String(row.made_at),
+			deviceId: String(row.device_id),
+			deviceSeq: Number(row.device_seq),
+			userId: Number(row.user_id),
+			...(row.document_id === null
+				? {}
+				: {
+						occurrence: {
+							documentId: Number(row.document_id),
+							fromOffset: Number(row.from_offset),
+							toOffset: Number(row.to_offset)
+						}
+					})
+		}));
 	}
 
 	/** The corrections in force, most recent first, whether or not any document shows them (US3). */
@@ -2640,12 +2662,13 @@ export class Repository {
 	 * fast a person can tap, and an array is the readable shape (Principle VII). Streaming it is
 	 * an internal change if a real collection ever needs one.
 	 */
-	readHistory(): HistoryEntry[] {
+	readHistory(since?: Since): HistoryEntry[] {
 		const rows = queryRows(
 			this.db,
 			`SELECT lexeme_id, asserted, asserted_at, device_id, device_seq,
               document_id, from_offset, to_offset, observed_pronunciation, provenance, user_id
-         FROM status_event`
+         FROM status_event ${since ? 'WHERE device_id = ? AND device_seq > ?' : ''}`,
+			since ? [since.deviceId, since.seq] : []
 		);
 
 		return inHistoryOrder(
@@ -2783,38 +2806,8 @@ export class Repository {
 				createdAt,
 				writer: devices[0]?.id ?? '',
 				devices,
-				documents: queryRows(
-					this.db,
-					`SELECT id, title, language, content_type, raw_content, created_at, removed_at
-           FROM document ORDER BY id`
-				).map((row) => ({
-					id: Number(row.id),
-					title: String(row.title),
-					language: String(row.language),
-					contentType: String(row.content_type),
-					rawContent: String(row.raw_content),
-					createdAt: String(row.created_at),
-					...(row.removed_at === null ? {} : { removedAt: String(row.removed_at) })
-				})),
-				events: history.map((entry) => ({
-					deviceId: entry.deviceId,
-					deviceSeq: entry.deviceSeq,
-					...word(entry.lexemeId),
-					asserted: entry.asserted,
-					assertedAt: entry.assertedAt,
-					provenance: entry.provenance,
-					userId: entry.userId,
-					...(entry.occurrence
-						? {
-								documentId: entry.occurrence.documentId,
-								from: entry.occurrence.fromOffset,
-								to: entry.occurrence.toOffset,
-								...(entry.occurrence.observedPronunciation === undefined
-									? {}
-									: { observedPronunciation: entry.occurrence.observedPronunciation })
-							}
-						: {})
-				})),
+				documents: this.copyDocuments(),
+				events: this.copyEvents(history, word),
 				states: [...replayed.values()]
 					.map((state) => ({
 						...word(state.lexemeId),
@@ -2834,43 +2827,236 @@ export class Repository {
 								: 1
 					),
 				...this.exportEncounters(word),
-				corrections: this.readCorrections().map((correction) => ({
-					deviceId: correction.deviceId,
-					deviceSeq: correction.deviceSeq,
-					language: correction.language,
-					form: correction.form,
-					...(correction.parts ? { parts: correction.parts } : {}),
-					madeAt: correction.madeAt,
-					userId: correction.userId,
-					...(correction.occurrence
-						? {
-								documentId: correction.occurrence.documentId,
-								from: correction.occurrence.fromOffset,
-								to: correction.occurrence.toOffset
-							}
-						: {})
-				})),
-				statuses: statusLog.map((change) => ({
-					deviceId: change.deviceId,
-					deviceSeq: change.deviceSeq,
-					...word(change.lexemeId),
-					status: change.status,
-					cause: change.cause,
-					at: change.at,
-					userId: 1
-				}))
+				corrections: this.copyCorrections(this.readCorrections()),
+				statuses: this.copyStatuses(statusLog, word)
+			};
+		});
+	}
+
+	/** A copy's events, words by surface (shared by full copies and increments). */
+	private copyEvents(
+		entries: HistoryEntry[],
+		word: (lexemeId: LexemeId) => { language: string; surface: string }
+	) {
+		return entries.map((entry) => ({
+			deviceId: entry.deviceId,
+			deviceSeq: entry.deviceSeq,
+			...word(entry.lexemeId),
+			asserted: entry.asserted,
+			assertedAt: entry.assertedAt,
+			provenance: entry.provenance,
+			userId: entry.userId,
+			...(entry.occurrence
+				? {
+						documentId: entry.occurrence.documentId,
+						from: entry.occurrence.fromOffset,
+						to: entry.occurrence.toOffset,
+						...(entry.occurrence.observedPronunciation === undefined
+							? {}
+							: { observedPronunciation: entry.occurrence.observedPronunciation })
+					}
+				: {})
+		}));
+	}
+
+	private copyCorrections(corrections: Correction[]) {
+		return corrections.map((correction) => ({
+			deviceId: correction.deviceId,
+			deviceSeq: correction.deviceSeq,
+			language: correction.language,
+			form: correction.form,
+			...(correction.parts ? { parts: correction.parts } : {}),
+			madeAt: correction.madeAt,
+			userId: correction.userId,
+			...(correction.occurrence
+				? {
+						documentId: correction.occurrence.documentId,
+						from: correction.occurrence.fromOffset,
+						to: correction.occurrence.toOffset
+					}
+				: {})
+		}));
+	}
+
+	private copyStatuses(
+		changes: StatusChange[],
+		word: (lexemeId: LexemeId) => { language: string; surface: string }
+	) {
+		return changes.map((change) => ({
+			deviceId: change.deviceId,
+			deviceSeq: change.deviceSeq,
+			...word(change.lexemeId),
+			status: change.status,
+			cause: change.cause,
+			at: change.at,
+			userId: 1
+		}));
+	}
+
+	private copyDocuments() {
+		return queryRows(
+			this.db,
+			`SELECT id, title, language, content_type, raw_content, created_at, removed_at
+           FROM document ORDER BY id`
+		).map((row) => ({
+			id: Number(row.id),
+			title: String(row.title),
+			language: String(row.language),
+			contentType: String(row.content_type),
+			rawContent: String(row.raw_content),
+			createdAt: String(row.created_at),
+			...(row.removed_at === null ? {} : { removedAt: String(row.removed_at) })
+		}));
+	}
+
+	/** Where a copy made now ends: the writer's last sequence number and every table's rows. */
+	copyCursor(base: string, tip: string): CopyCursor {
+		const writer = String(queryRows(this.db, 'SELECT id FROM device LIMIT 1')[0]?.id ?? '');
+		const counts = Object.fromEntries(
+			Object.entries(HISTORY_TABLES).map(([key, table]) => [
+				key,
+				Number(queryRows(this.db, `SELECT COUNT(*) AS n FROM ${table}`)[0].n)
+			])
+		) as unknown as CopyCounts;
+		const seq = Math.max(
+			0,
+			...Object.values(HISTORY_TABLES).map((table) =>
+				Number(
+					queryRows(
+						this.db,
+						`SELECT COALESCE(MAX(device_seq), 0) AS s FROM ${table} WHERE device_id = ?`,
+						[writer]
+					)[0].s
+				)
+			)
+		);
+		return { base, tip, writer, seq, counts };
+	}
+
+	/** A full copy and the cursor an increment after it starts from (ADR-0048). */
+	exportCopy(app: string, createdAt: string): { body: CopyBody; cursor: CopyCursor } {
+		return { body: this.exportBody(app, createdAt), cursor: this.copyCursor(createdAt, createdAt) };
+	}
+
+	/**
+	 * What was added since `cursor` (ADR-0048, after Sapling's event log), or null when the
+	 * history no longer adds up to it — a row deleted, another device's rows restored — and only a
+	 * full copy will do. Documents come whole, without media: the page sends the changed ones.
+	 */
+	exportIncrement(
+		app: string,
+		createdAt: string,
+		cursor: CopyCursor
+	): { increment: CopyIncrement; cursor: CopyCursor } | null {
+		return transact(this.db, () => {
+			const now = this.copyCursor(cursor.base, createdAt);
+			if (now.writer !== cursor.writer) return null;
+			const since = { deviceId: cursor.writer, seq: cursor.seq };
+			// Surfaces of the words these rows name, not of all eleven thousand.
+			const surfaces = new Map<LexemeId, { language: string; surface: string }>();
+			const lookUp = (ids: Iterable<LexemeId>) => {
+				const wanted = [...new Set(ids)].filter((id) => !surfaces.has(id));
+				for (let i = 0; i < wanted.length; i += 500) {
+					const chunk = wanted.slice(i, i + 500);
+					for (const row of queryRows(
+						this.db,
+						`SELECT id, language, surface FROM lexeme WHERE id IN (${chunk.map(() => '?').join(',')})`,
+						chunk
+					))
+						surfaces.set(Number(row.id), {
+							language: String(row.language),
+							surface: String(row.surface)
+						});
+				}
+			};
+			const word = (lexemeId: LexemeId) => surfaces.get(lexemeId)!;
+			const history = inHistoryOrder(this.readHistory(since));
+			const statuses = this.readStatusLog(undefined, since);
+			lookUp([
+				...history.map((entry) => entry.lexemeId),
+				...statuses.map((change) => change.lexemeId),
+				...queryRows(
+					this.db,
+					`SELECT lexeme_id FROM encounter
+           WHERE device_id = ? AND device_seq > ? AND lexeme_id IS NOT NULL`,
+					[since.deviceId, since.seq]
+				).map((row) => Number(row.lexeme_id))
+			]);
+			const { sessions, encounters } = this.exportEncounters(word, since);
+			const corrections = this.readCorrections(since);
+			const added: CopyCounts = {
+				events: history.length,
+				sessions: sessions.length,
+				encounters: encounters.length,
+				corrections: corrections.length,
+				statuses: statuses.length
+			};
+			const keys = Object.keys(HISTORY_TABLES) as (keyof CopyCounts)[];
+			if (keys.some((key) => now.counts[key] !== cursor.counts[key] + added[key])) return null;
+
+			const touched = [...new Set(history.map((entry) => entry.lexemeId))];
+			const stored = new Map(
+				touched.flatMap((id) =>
+					queryRows(
+						this.db,
+						'SELECT lexeme_id, state, provenance, user_id FROM word_state WHERE lexeme_id = ?',
+						[id]
+					).map((row) => [id, row] as const)
+				)
+			);
+			const documents = this.copyDocuments();
+			return {
+				increment: {
+					format: FORMAT,
+					kind: 'increment',
+					app,
+					createdAt,
+					writer: cursor.writer,
+					base: cursor.base,
+					after: cursor.tip,
+					devices: queryRows(this.db, 'SELECT id, next_seq FROM device').map((row) => ({
+						id: String(row.id),
+						nextSeq: Number(row.next_seq)
+					})),
+					documentIds: documents.map((d) => d.id),
+					documents,
+					events: this.copyEvents(history, word),
+					states: touched
+						.filter((id) => stored.has(id))
+						.map((id) => {
+							const row = stored.get(id)!;
+							return {
+								...word(id),
+								state: String(row.state),
+								provenance: String(row.provenance),
+								userId: Number(row.user_id)
+							};
+						}),
+					statesRemoved: touched.filter((id) => !stored.has(id)).map(word),
+					sessions,
+					encounters,
+					corrections: this.copyCorrections(corrections),
+					statuses: this.copyStatuses(statuses, word),
+					counts: now.counts
+				},
+				cursor: now
 			};
 		});
 	}
 
 	/** Sessions and encounters for a copy (format 2), in history order, words by surface. */
-	private exportEncounters(word: (lexemeId: LexemeId) => { language: string; surface: string }) {
+	private exportEncounters(
+		word: (lexemeId: LexemeId) => { language: string; surface: string },
+		since?: Since
+	) {
 		const optional = <T>(key: string, value: T | null | undefined) =>
 			value === null || value === undefined ? {} : { [key]: value };
 		const sessions = queryRows(
 			this.db,
 			`SELECT device_id, device_seq, document_id, modality, started_at, user_id
-       FROM session ORDER BY device_id, device_seq`
+       FROM session ${since ? 'WHERE device_id = ? AND device_seq > ?' : ''}
+       ORDER BY device_id, device_seq`,
+			since ? [since.deviceId, since.seq] : []
 		).map((row) => ({
 			deviceId: String(row.device_id),
 			deviceSeq: Number(row.device_seq),
@@ -2883,7 +3069,9 @@ export class Repository {
 			this.db,
 			`SELECT e.*, s.device_id AS s_device, s.device_seq AS s_seq
        FROM encounter e LEFT JOIN session s ON s.id = e.session_id
-       ORDER BY e.device_id, e.device_seq`
+       ${since ? 'WHERE e.device_id = ? AND e.device_seq > ?' : ''}
+       ORDER BY e.device_id, e.device_seq`,
+			since ? [since.deviceId, since.seq] : []
 		).map((row) => ({
 			deviceId: String(row.device_id),
 			deviceSeq: Number(row.device_seq),

@@ -13,7 +13,7 @@ import type { ParameterSet } from '../domain/fit';
 import type { Status } from '../domain/status';
 
 import { RejectedInput } from '../content/types';
-import type { CopyBody } from '../backup/format';
+import type { CopyBody, CopyCursor, CopyIncrement } from '../backup/format';
 
 /** Announced after anything the reader earned was written; the copy's scheduler listens (ADR-0020). */
 export const EARNED_CHANGE = 'reader:earned-change';
@@ -417,6 +417,18 @@ export class RepositoryClient {
 
 	exportBody(app: string, createdAt: string): Promise<CopyBody> {
 		return this.call({ method: 'exportBody', args: [app, createdAt] });
+	}
+
+	exportCopy(app: string, createdAt: string): Promise<{ body: CopyBody; cursor: CopyCursor }> {
+		return this.call({ method: 'exportCopy', args: [app, createdAt] });
+	}
+
+	exportIncrement(
+		app: string,
+		createdAt: string,
+		cursor: CopyCursor
+	): Promise<{ increment: CopyIncrement; cursor: CopyCursor } | null> {
+		return this.call({ method: 'exportIncrement', args: [app, createdAt, cursor] });
 	}
 
 	startSession(documentId: number, modality: SessionKind): Promise<number> {

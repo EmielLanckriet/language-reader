@@ -303,6 +303,23 @@ def holds_something(data):
     return any(copy.get(name) for name in EARNED)
 
 
+CHAIN_LOCK = threading.Lock()
+
+
+def chain_folder(backups, name):
+    """Where the increments after a full copy live (ADR-0048): beside it, named after it."""
+    return os.path.join(backups, name[:-len('.json')] + '.d')
+
+
+def chain_tip(backups, name):
+    """The createdAt of the last piece of a chain: its newest increment, else the full copy."""
+    folder = chain_folder(backups, name)
+    pieces = sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+    last = os.path.join(folder, pieces[-1]) if pieces else os.path.join(backups, name)
+    with open(last, encoding='utf-8') as file:
+        return json.load(file).get('createdAt')
+
+
 def prune(backups):
     """The newest 20, plus the newest of each of the last 30 days; nothing younger than 30 days is lost
     unless a newer copy of the same day exists."""
@@ -316,6 +333,7 @@ def prune(backups):
     for name in names:
         if name not in keep:
             os.remove(os.path.join(backups, name))
+            shutil.rmtree(chain_folder(backups, name), ignore_errors=True)
 
 
 def translating(folder):
@@ -521,6 +539,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.put_transcript(path[len('/downloads/'):-len('/media.zh.vtt')])
         if path.startswith('/downloads/') and path.endswith('/choice.json'):
             return self.put_choice(path[len('/downloads/'):-len('/choice.json')])
+        if path == '/backup/increment':
+            return self.put_increment()
         if path != '/backup':
             return self.reply(404)
         raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))
@@ -536,6 +556,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             file.write(raw)
         os.replace(target + '.part', target)
         prune(self.backups())
+        self.reply(204)
+
+    def put_increment(self):
+        """An increment (ADR-0048) joins its full copy's chain only if it follows the chain's last
+        piece; otherwise 409, and the app sends a full copy. Stored as it came: never merged here."""
+        raw = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        try:
+            piece = json.loads(raw)
+        except ValueError:
+            return self.reply(400, {'error': 'not JSON'})
+        if not isinstance(piece, dict) or piece.get('kind') != 'increment' or not whole(piece):
+            return self.reply(400, {'error': 'integrity does not match'})
+        name = str(piece.get('base', '')).replace(':', '-') + '.json'
+        backups = self.backups()
+        with CHAIN_LOCK:
+            if not os.path.isfile(os.path.join(backups, name)):
+                return self.reply(409, {'error': 'no such full copy'})
+            if chain_tip(backups, name) != piece.get('after'):
+                return self.reply(409, {'error': 'does not follow the last piece'})
+            folder = chain_folder(backups, name)
+            os.makedirs(folder, exist_ok=True)
+            target = os.path.join(folder, '%06d.json' % (len(os.listdir(folder)) + 1))
+            with open(target + '.part', 'wb') as file:
+                file.write(raw)
+            os.replace(target + '.part', target)
         self.reply(204)
 
     def do_DELETE(self):
@@ -593,6 +638,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.reply(*subtitles(video))
         if path == '/health':
             return self.reply(200, {'version': VERSION, 'started': STARTED})
+        if path == '/backup/chain':
+            # The newest full copy with something earned, and its increments in order: the app
+            # checks each and merges them (ADR-0048).
+            backups = self.backups()
+            with CHAIN_LOCK:
+                for name in sorted((n for n in os.listdir(backups) if n.endswith('.json')), reverse=True):
+                    with open(os.path.join(backups, name), 'rb') as file:
+                        base = file.read()
+                    if holds_something(base):
+                        break
+                else:
+                    return self.reply(404, {'error': 'no copy yet'})
+                folder = chain_folder(backups, name)
+                pieces = []
+                for piece in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+                    if piece.endswith('.json'):
+                        with open(os.path.join(folder, piece), 'rb') as file:
+                            pieces.append(file.read())
+            data = b'{"base":' + base + b',"increments":[' + b','.join(pieces) + b']}'
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
         if path in ('/backup', '/backup/latest'):
             names = sorted((n for n in os.listdir(self.backups()) if n.endswith('.json')), reverse=True)
             if path == '/backup':

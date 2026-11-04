@@ -43,6 +43,8 @@ export type Call =
 	| { method: 'staleDocumentIds'; args: [string, string] }
 	| { method: 'rebuildProjection'; args: [] }
 	| { method: 'exportBody'; args: [string, string] }
+	| { method: 'exportCopy'; args: [string, string] }
+	| { method: 'exportIncrement'; args: [string, string, unknown] }
 	| { method: 'restoreCopy'; args: [unknown] }
 	| { method: 'removeDocument'; args: [number] }
 	| { method: 'replaceDocument'; args: [number, number] }

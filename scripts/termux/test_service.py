@@ -521,3 +521,52 @@ class SpeakingStories(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class KeepingAChainOfCopies(unittest.TestCase):
+    """Increments after a full copy (ADR-0048): taken only when they follow the chain's last piece,
+    and served with their full copy, unmerged, for the app to check and merge."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.service = load_service('unused')
+        self.service.Handler.root = self.root
+        self.server = self.service.http.server.ThreadingHTTPServer(('127.0.0.1', 0), self.service.Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.server.shutdown()
+
+    def sealed(self, body):
+        import hashlib
+        return {**body, 'integrity': hashlib.sha256(self.service.canonical(body).encode('utf-8')).hexdigest()}
+
+    def request(self, method, path, body=None):
+        connection = http.client.HTTPConnection('127.0.0.1', self.server.server_address[1])
+        connection.request(method, path, body=None if body is None else json.dumps(body).encode('utf-8'))
+        response = connection.getresponse()
+        return response.status, response.read()
+
+    def increment(self, created, after, n):
+        return self.sealed({'kind': 'increment', 'format': 4, 'base': 'B', 'createdAt': created,
+                            'after': after, 'encounters': [{'n': n}]})
+
+    def test_takes_only_what_follows_and_serves_the_chain(self):
+        self.assertEqual(self.request('PUT', '/backup/increment', self.increment('I1', 'B', 1))[0], 409)
+        full = self.sealed({'createdAt': 'B', 'documents': [{'id': 1}], 'events': [], 'states': []})
+        self.assertEqual(self.request('PUT', '/backup', full)[0], 204)
+        self.assertEqual(self.request('PUT', '/backup/increment', self.increment('I1', 'B', 1))[0], 204)
+        self.assertEqual(self.request('PUT', '/backup/increment', self.increment('I1b', 'B', 9))[0], 409)
+        self.assertEqual(self.request('PUT', '/backup/increment', self.increment('I2', 'I1', 2))[0], 204)
+        tampered = {**self.increment('I3', 'I2', 3), 'after': 'I1'}
+        self.assertEqual(self.request('PUT', '/backup/increment', tampered)[0], 400)
+
+        status, body = self.request('GET', '/backup/chain')
+        chain = json.loads(body)
+        self.assertEqual(status, 200)
+        self.assertEqual(chain['base']['createdAt'], 'B')
+        self.assertEqual([p['createdAt'] for p in chain['increments']], ['I1', 'I2'])
+        # A new full copy starts a new chain.
+        newer = self.sealed({'createdAt': 'C', 'documents': [{'id': 1}], 'events': [], 'states': []})
+        self.assertEqual(self.request('PUT', '/backup', newer)[0], 204)
+        self.assertEqual(json.loads(self.request('GET', '/backup/chain')[1])['increments'], [])
