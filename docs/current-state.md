@@ -41,6 +41,7 @@ pass: a real dependency even though hosting is static.
 
 ## Deployed, waiting for a phone check
 
+- Termux downloads at 360p and keeps the video only inside its bundle (storage: the phone was 96% full).
 - Sessions under More; Finish asks like leaving.
 - The word list on Progress (#47); how long it takes with thousands of words is not measured.
 - An empty sound or video file counts as none (#45).

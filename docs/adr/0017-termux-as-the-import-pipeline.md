@@ -17,7 +17,7 @@ Measured on 2026-09-25 against three Chinese vlogs: two had human Chinese subtit
 ## Decision
 
 **Termux on the phone runs the downloader, at import time only.** Sharing a URL to Termux runs
-`scripts/termux/termux-url-opener`: yt-dlp fetches a 480p mp4 and the original-language Chinese
+`scripts/termux/termux-url-opener`: yt-dlp fetches a 480p mp4 (360p since 2026-11-04, for storage) and the original-language Chinese
 subtitle tracks, and the files travel to the app as **one uncompressed tar** (Termux shares one
 file). The app receives it through its manifest `share_target`, or through a file picker, and reads
 the tar by slicing — a video is never copied into memory.

@@ -284,6 +284,8 @@ class RunningTheUrlOpener(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(job, 'progress.json')))
         with tarfile.open(os.path.join(job, 'bundle.tar')) as bundle:
             self.assertEqual(sorted(bundle.getnames()), ['./media.mp4'])
+        # The bundle holds the video; a loose copy beside it doubled the phone's storage.
+        self.assertFalse(os.path.exists(os.path.join(job, 'media.mp4')))
         log = open(os.path.join(job, 'download.log'), encoding='utf-8').read()
         self.assertIn('Extracting URL', log)
         self.assertNotIn('download:', log)
