@@ -62,6 +62,8 @@ trap finish EXIT
 # copy of the same rule); nothing is decided here.
 # --ignore-errors: a failed subtitle must not cost the video.
 # --write-thumbnail: YouTube's picture for the library, as media.jpg (ffmpeg converts it).
+# -f: 360p (storage), HTTPS formats first: HLS ones (m3u8, e.g. 605) got HTTP 403 on the phone on
+# 2026-11-04 while downloading fine on the laptop. Subtitles reach track.* only once the video arrives.
 # Through python3: the zipapp's /usr/bin/env shebang fails when Termux starts this from a share.
 # progress.json while downloading, so Reader can show a bar from the moment of the share; it goes
 # once the bundle exists. Written by Python, because a title can hold anything JSON must escape.
@@ -69,7 +71,7 @@ printf '{"stage": "starting"}' >progress.json
 python3 "$(command -v yt-dlp)" \
 	--newline --progress-template 'download:%(info.title)s	%(info.vcodec)s	%(progress._percent_str)s' \
 	--js-runtimes node \
-	-f 'bv*[height<=360][ext=mp4]+ba[ext=m4a]/b[height<=360]/b' \
+	-f 'bv*[height<=360][ext=mp4][protocol=https]+ba[ext=m4a][protocol=https]/b[height<=360][protocol=https]/bv*[height<=360][ext=mp4]+ba[ext=m4a]/b[height<=360]/b' \
 	--merge-output-format mp4 \
 	--write-subs --sub-langs 'all,-live_chat' --sub-format vtt -o 'subtitle:track.%(ext)s' \
 	--sleep-subtitles 2 --ignore-errors \
