@@ -1,0 +1,21 @@
+[package]
+name = "reader"
+version = "0.1.0"
+description = "Reader as an Android app: the same web app, its database in a file of its own (ADR-0047)"
+edition = "2021"
+publish = false
+
+[lib]
+# cdylib is Android's: gradle packs libreader_lib.so and TauriActivity calls into it.
+name = "reader_lib"
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+# devtools: a release WebView has no inspector otherwise, and CDP over adb is how the app is driven.
+tauri = { version = "2.12.5", features = ["devtools"] }
+
+[profile.release]
+opt-level = "s"

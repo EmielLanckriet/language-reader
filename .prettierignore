@@ -26,3 +26,6 @@ scripts/compare-segmenters/report.md
 # Measurement output the comparison harnesses rewrite on every run.
 scripts/compare-*/results/
 scripts/compare-senses/items.json
+
+# The native shell: Rust, Kotlin and generated Android files
+src-tauri/

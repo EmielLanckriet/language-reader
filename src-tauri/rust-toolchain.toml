@@ -1,0 +1,4 @@
+# Pinned here so building the app never changes the laptop's global toolchain (tauri 2.12 wants 1.90+).
+[toolchain]
+channel = "1.91.1"
+targets = ["aarch64-linux-android"]

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NATIVE } from '$lib/native';
 	import { browser } from '$app/environment';
 
 	/**
@@ -29,7 +30,7 @@
 		if (!browser) return;
 
 		// Already running as an installed application: there is nothing to offer.
-		installed = window.matchMedia('(display-mode: standalone)').matches;
+		installed = NATIVE || window.matchMedia('(display-mode: standalone)').matches;
 
 		function held(event: Event) {
 			// Without this the browser shows its own prompt on its own schedule, which is usually

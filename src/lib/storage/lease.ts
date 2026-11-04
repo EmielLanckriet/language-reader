@@ -12,7 +12,8 @@
  * guarantee would be a false one.
  */
 
-import { openPool, openDatabase, closeDatabase, type Database } from './db';
+import { openPool, openDatabase, closeDatabase, openNativeDatabase, type Database } from './db';
+import { NATIVE } from '../native';
 import type { SAHPoolUtil } from '@sqlite.org/sqlite-wasm';
 import type { Cause } from './availability';
 
@@ -39,7 +40,19 @@ let releaseLock: (() => void) | undefined;
 
 export type Acquired = { ok: true; db: Database } | { ok: false; cause: Cause };
 
+/** The native build's one database, opened once and kept open: there is one window, no pool. */
+let native: Promise<Database> | undefined;
+
 export async function acquire(): Promise<Acquired> {
+	if (NATIVE) {
+		try {
+			native ??= openNativeDatabase();
+			return { ok: true, db: await native };
+		} catch (error) {
+			native = undefined;
+			return { ok: false, cause: { kind: 'unavailable', reason: describe(error) } };
+		}
+	}
 	const deadline = Date.now() + SETTLE_MS;
 	let last: Acquired | undefined;
 
@@ -105,6 +118,7 @@ async function reset(): Promise<void> {
 }
 
 export async function release(db: Database | undefined): Promise<void> {
+	if (NATIVE) return;
 	try {
 		if (db && pool) await closeDatabase(db, pool);
 	} catch {

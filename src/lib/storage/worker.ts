@@ -20,6 +20,7 @@ import { type Database } from './db';
 import { Repository, type UpgradeBatch } from './repository';
 import { CopyRejected, type CopyBody } from '../backup/format';
 import { acquire, release } from './lease';
+import { fromPage } from './native-file';
 import { next, acceptsWrites, type Availability, type Event } from './availability';
 import type { Encounter, SessionKind } from '../domain/encounter';
 import { clearDiagnostics, readDiagnostics, recordDiagnostic } from '../diagnostics/log';
@@ -90,7 +91,9 @@ self.onmessage = (event: MessageEvent<ToWorker>) => {
 	const message = event.data;
 
 	if ('kind' in message) {
-		if (message.kind === 'visibility') {
+		if (message.kind === 'native-loaded' || message.kind === 'native-failed') {
+			fromPage(message);
+		} else if (message.kind === 'visibility') {
 			apply({ kind: message.visible ? 'became-visible' : 'became-hidden' });
 		} else {
 			apply({ kind: 'reader-asked-to-retry' });

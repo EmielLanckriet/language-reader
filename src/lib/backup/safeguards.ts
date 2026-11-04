@@ -3,6 +3,7 @@
  * Computed each time it is shown; nothing here is stored.
  */
 
+import { NATIVE } from '$lib/native';
 import { health, noteService } from '$lib/media/service';
 import { session } from '$lib/storage/session';
 import { lastSent } from './destination';
@@ -52,7 +53,7 @@ export async function safeguards(): Promise<Safeguards> {
 	const last = lastSent();
 	return {
 		browser: otherBrowser(navigator.userAgent),
-		installed: matchMedia('(display-mode: standalone)').matches,
+		installed: NATIVE || matchMedia('(display-mode: standalone)').matches,
 		// The app's own request, awaited: asking `persisted()` directly on start raced it, and a
 		// freshly opened install briefly claimed to be a shortcut.
 		persisted: (await session()).persistence === 'granted',

@@ -23,6 +23,27 @@ function earned<T>(result: T): T {
 	return result;
 }
 import { StorageFailure } from './failures';
+import { commitDatabaseBatch, loadDatabaseFile } from '../native';
+
+/**
+ * The native build's file operations, one after another for the life of the page: a fresh worker's
+ * load waits behind every batch an earlier worker sent, and a batch that failed stops all later
+ * ones, since each assumes the one before it landed (ADR-0047).
+ */
+let nativeChain: Promise<unknown> = Promise.resolve();
+let nativeFailure: string | null = null;
+
+function nativeStep(worker: Worker, step: () => Promise<void>): void {
+	nativeChain = nativeChain
+		.then(() => {
+			if (nativeFailure) throw new Error(nativeFailure);
+			return step();
+		})
+		.catch((error) => {
+			nativeFailure ??= `The database file could not be written: ${String(error)}`;
+			worker.postMessage({ kind: 'native-failed', message: nativeFailure } satisfies ToWorker);
+		});
+}
 import type { TaalInputs } from '../domain/taal';
 import type {
 	CardSentence,
@@ -114,9 +135,21 @@ export class RepositoryClient {
 		this.worker = worker;
 
 		this.worker.onmessage = (event: MessageEvent<Response>) => {
+			const message = event.data;
+			// Before the replaced-worker check: a batch a replaced worker sent is still a commit.
+			if (message.kind === 'native-commit') {
+				nativeStep(worker, () => commitDatabaseBatch(message.batch));
+				return;
+			}
+			if (message.kind === 'native-load') {
+				nativeStep(worker, async () => {
+					const bytes = await loadDatabaseFile();
+					worker.postMessage({ kind: 'native-loaded', bytes } satisfies ToWorker, [bytes]);
+				});
+				return;
+			}
 			// A replaced worker's last replies would otherwise settle the calls resent to its successor.
 			if (worker !== this.worker) return;
-			const message = event.data;
 			if (message.kind === 'availability') {
 				this.availability = message.state;
 				for (const watch of this.watchers) watch(message.state);

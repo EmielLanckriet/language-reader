@@ -18,6 +18,7 @@ import sqlite3InitModule, {
 } from '@sqlite.org/sqlite-wasm';
 
 import { guardPoolDirectory } from './pool-guard';
+import { installNativeFile, loadFromPage, persistThroughPage, NATIVE_VFS } from './native-file';
 import initialSql from './migrations/001-initial.sql?raw';
 import partialUpgradeSql from './migrations/002-partial-upgrade.sql?raw';
 import encountersSql from './migrations/003-encounters.sql?raw';
@@ -180,6 +181,17 @@ export function openDatabase(pool: SAHPoolUtil): Database {
  * VFS, and the library warns that doing it anyway would be undefined behaviour, so the database is
  * closed first and the pause only attempted afterwards.
  */
+/** The native build's database: the app's own file, fetched through the page (ADR-0047). */
+export async function openNativeDatabase(): Promise<Database> {
+	const sqlite = await loadSqlite();
+	installNativeFile(sqlite, DATABASE_FILE, await loadFromPage(), persistThroughPage);
+	const db = new sqlite.oo1.DB({ filename: DATABASE_FILE, vfs: NATIVE_VFS }) as Database;
+	// The journal never needs to outlive a crash: the file on disk only ever holds whole transactions.
+	db.exec('PRAGMA journal_mode = MEMORY');
+	applyMigrations(db);
+	return db;
+}
+
 export async function closeDatabase(db: Database, pool: SAHPoolUtil): Promise<void> {
 	db.close();
 	await pool.pauseVfs();

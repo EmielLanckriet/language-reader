@@ -17,6 +17,8 @@
  */
 
 /** Whether the browser promised not to evict the reader's data. */
+import { NATIVE } from '../native';
+
 export type Persistence = 'granted' | 'denied' | 'unavailable';
 
 /**
@@ -30,6 +32,8 @@ export type Persistence = 'granted' | 'denied' | 'unavailable';
  * Returns rather than throws. A refusal is information to show the reader, not a failure to start.
  */
 export async function requestPersistentStorage(): Promise<Persistence> {
+	// The native build keeps the database in its own file, outside anything a browser evicts.
+	if (NATIVE) return 'granted';
 	if (typeof navigator === 'undefined' || !navigator.storage?.persist) return 'unavailable';
 	try {
 		if (await navigator.storage.persisted()) return 'granted';

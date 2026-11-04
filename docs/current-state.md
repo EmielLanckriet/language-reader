@@ -12,6 +12,9 @@ static, offline-capable PWA on GitHub Pages (deploys on push to `main`). SQLite 
 the learning history in browser OPFS; media and models live on the device. No hosted backend.
 Termux's reader service downloads videos, keeps backup copies and runs the better translation
 pass: a real dependency even though hosting is static.
+**On the phone, a native Android app** (ADR-0047, `npm run android`, installed by adb): the same
+build in a Tauri shell, its database in a file of its own instead of browser storage, which Chrome
+wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## What it does
 
@@ -51,6 +54,11 @@ pass: a real dependency even though hosting is static.
 - Anki words exported with stability 0 can be graded.
 
 ## Open
+
+- **Native app**: videos still copied into app storage (one copy, read from Termux's, is next);
+  not cross-origin isolated; the full backup copy still costs ~1.6 s on the laptop with the real
+  library (`scripts/measure/write-cost/`). 22 videos lost in the 2026-11-04 wipe: Termux no longer
+  had their bundles.
 
 - **Phone freeze (2026-09-29)**: inference is bounded and serialized (ADR-0032); thermal safety is
   not confirmed. Do not run heavy benchmarks on the phone.

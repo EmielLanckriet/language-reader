@@ -16,13 +16,17 @@
 		"test": "npm run test:unit -- --run",
 		"verify:isolated": "node scripts/verify-in-browser/isolated.mjs",
 		"verify:browser": "node scripts/verify-in-browser/run.mjs",
-		"postbuild": "node ./scripts/spa-fallback.mjs && node ./scripts/copy-ort-runtime.mjs && node ./scripts/precache-manifest.mjs && node ./scripts/check-bundle.mjs"
+		"postbuild": "node ./scripts/spa-fallback.mjs && node ./scripts/copy-ort-runtime.mjs && node ./scripts/precache-manifest.mjs && node ./scripts/check-bundle.mjs",
+		"build:native": "npm run build -- --mode native",
+		"tauri": "tauri",
+		"android": "npm run build:native && RUSTUP_TOOLCHAIN=1.91.1 tauri android build --apk --target aarch64"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@sveltejs/adapter-static": "^3.0.10",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@tauri-apps/cli": "2.12.4",
 		"@types/node": "^24",
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",

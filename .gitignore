@@ -56,3 +56,12 @@ scripts/compare-translators/android/build/
 scripts/compare-translators/android/local.properties
 # Copied in before each emulator build (scripts/compare-translators/README.md)
 scripts/compare-translators/android/app/src/main/assets/corpus.json
+
+# The native shell (ADR-0047): Rust and Gradle build output
+/src-tauri/target/
+/src-tauri/gen/android/app/build/
+/src-tauri/gen/android/.gradle/
+/src-tauri/gen/android/buildSrc/build/
+/src-tauri/gen/android/buildSrc/.gradle/
+/src-tauri/gen/android/app/src/main/assets/
+/src-tauri/gen/android/app/src/main/jniLibs/

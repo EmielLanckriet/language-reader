@@ -13,6 +13,7 @@
 
 import { base } from '$app/paths';
 import { dev } from '$app/environment';
+import { NATIVE } from '$lib/native';
 
 let registering: Promise<ServiceWorkerRegistration | undefined> | undefined;
 
@@ -29,7 +30,8 @@ export function serviceWorker(): Promise<ServiceWorkerRegistration | undefined> 
 }
 
 async function register(): Promise<ServiceWorkerRegistration | undefined> {
-	if (!('serviceWorker' in navigator)) return undefined;
+	// The native shell ships its files and updates by APK; it has nothing to cache or offer.
+	if (NATIVE || !('serviceWorker' in navigator)) return undefined;
 
 	try {
 		// A module worker in development, where it is served unbundled, and a classic script in

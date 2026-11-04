@@ -77,7 +77,13 @@ export type Request = { id: number } & Call;
  * one being looked at, and `document.visibilityState` is `[Exposed=Window]` — so the page has to
  * tell it.
  */
-export type Control = { kind: 'visibility'; visible: boolean } | { kind: 'retry' };
+export type Control =
+	| { kind: 'visibility'; visible: boolean }
+	| { kind: 'retry' }
+	// The native build (ADR-0047): the page's answers about the database file, which only it can
+	// reach, because Tauri's invoke is not exposed to workers.
+	| { kind: 'native-loaded'; bytes: ArrayBuffer }
+	| { kind: 'native-failed'; message: string };
 
 export type ToWorker = Request | Control;
 
@@ -101,4 +107,6 @@ export type Response =
 	 */
 	| { kind: 'availability'; state: Availability }
 	| { kind: 'result'; id: number; value: unknown }
-	| { kind: 'failure'; id: number; error: Failure };
+	| { kind: 'failure'; id: number; error: Failure }
+	| { kind: 'native-load' }
+	| { kind: 'native-commit'; batch: ArrayBuffer };
