@@ -58,7 +58,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 - **Native app**: videos still copied into app storage (one copy, read from Termux's, is next);
   not cross-origin isolated. 22 videos lost in the 2026-11-04 wipe: Termux no longer
-  had their bundles.
+  had their bundles. Full screen works again (#55): `FullscreenChromeClient.kt` wraps wry's
+  generated client, which cancelled it; after a Tauri upgrade, check wry overrides nothing new.
+  Documents 41, 42, 44, 49, 50 fail to re-segment on the phone (tokens missing past the first
+  batch; whole in the 2026-11-04 backup); cause not found.
 
 - **Phone freeze (2026-09-29)**: inference is bounded and serialized (ADR-0032); thermal safety is
   not confirmed. Do not run heavy benchmarks on the phone.
