@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { englishFor, humanByLine, llmByLine } from '../../src/lib/translation/lines';
+import { englishFor, humanByLine, llmByLine, sentenceRuns } from '../../src/lib/translation/lines';
 
 /**
  * Principle VIII's one hard rule for translation: the LLM's English is never shown under, or
@@ -118,5 +118,97 @@ describe('matching a human English track to Chinese lines (spec 012, research R3
 				});
 			})
 		);
+	});
+});
+
+describe('a human track cut across lines, joined back into sentences', () => {
+	/** Each line's text, with | after a line whose sentence ends there. */
+	const shape = (runs: ReturnType<typeof sentenceRuns>) =>
+		runs.map((run) => (run ? run.text + (run.continues ? '' : '|') : undefined));
+
+	// 非诚勿扰 (Hd6Z3paEZb8) at 49:25 and 1:24:04, as the channel's English track has it.
+	it('shows each sentence under every line it spans', () => {
+		const english = [
+			'Foreign',
+			'women',
+			'might',
+			'be',
+			'more',
+			'proactive',
+			'.',
+			'I',
+			'think',
+			'there are',
+			'some differences between the two.',
+			'and then',
+			'casually logged out. Then',
+			'he asked me',
+			', "Yeah, I saw',
+			'so-and-so on your Douyin',
+			', and your chat history seems blank',
+			'."',
+			undefined,
+			'Welcome to Jiangsu Satellite TV!'
+		];
+		const women = 'Foreign women might be more proactive.';
+		const differences = 'I think there are some differences between the two.';
+		const douyin =
+			'and then casually logged out. Then he asked me, "Yeah, I saw so-and-so on your Douyin, and your chat history seems blank."';
+		expect(shape(sentenceRuns(english))).toEqual([
+			...Array(6).fill(women),
+			women + '|',
+			...Array(3).fill(differences),
+			differences + '|',
+			...Array(6).fill(douyin),
+			douyin + '|',
+			undefined,
+			'Welcome to Jiangsu Satellite TV!|'
+		]);
+	});
+
+	const sentence = fc
+		.array(fc.constantFrom('the', 'a', 'Briar', 'went', 'home', ',', '.', '!', 'I', '…'), {
+			minLength: 1,
+			maxLength: 5
+		})
+		.map((words) => words.join(' '));
+	const english = fc.array(fc.option(sentence, { nil: undefined }), { size: 'max', maxLength: 60 });
+	const words = (lines: readonly (string | undefined)[]) =>
+		lines.flatMap((text) => (text ?? '').split(/\s+|(?=[,.!?…])/).filter(Boolean));
+
+	it('loses, adds and reorders no English', () => {
+		fc.assert(
+			fc.property(english, (lines) => {
+				const runs = sentenceRuns(lines);
+				const shown = runs.filter((run) => run && !run.continues).map((run) => run!.text);
+				expect(words(shown)).toEqual(words(lines));
+			})
+		);
+	});
+
+	it('keeps lines apart that start a sentence, or that have no English', () => {
+		fc.assert(
+			fc.property(english, (lines) => {
+				const runs = sentenceRuns(lines);
+				lines.forEach((text, i) => {
+					if (text === undefined) expect(runs[i]).toBeUndefined();
+					if (runs[i]?.continues) {
+						expect(runs[i + 1]?.text).toBe(runs[i]!.text);
+						expect(lines[i + 1]!.trim()).toMatch(/^[\p{Ll},.;:!?…)]/u);
+					}
+				});
+			})
+		);
+	});
+
+	it('leaves a track whose lines each hold a sentence as it is', () => {
+		const lines = ['Stay away!', 'My nose! It hurts!', 'and a line in lower case', 'Partner?'];
+		expect(shape(sentenceRuns(lines))).toEqual(lines.map((text) => text + '|'));
+	});
+
+	it('joins no more than twelve lines', () => {
+		const lines = Array.from({ length: 40 }, (_, i) => `and ${i}`);
+		for (const run of sentenceRuns(lines))
+			expect(run!.text.split('and').length - 1).toBeLessThanOrEqual(12);
 	});
 });

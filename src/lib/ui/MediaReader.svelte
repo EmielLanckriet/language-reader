@@ -718,9 +718,9 @@
 						>{/if}{/each}{#if translations[i] || (askable && cues[i])}<button
 						class="reveal"
 						aria-label="Show the English"
-						aria-pressed={showAll || revealed.includes(i)}
+						aria-pressed={(showAll && !translations[i]?.continues) || revealed.includes(i)}
 						onclick={() => reveal(i)}>EN</button
-					>{/if}{#if showAll || revealed.includes(i)}{#if translations[i]}<span
+					>{/if}{#if (showAll && !translations[i]?.continues) || revealed.includes(i)}{#if translations[i]}<span
 							class="english"
 							class:quick={translations[i]?.source === 'quick'}
 							title={translations[i]?.source === 'quick'

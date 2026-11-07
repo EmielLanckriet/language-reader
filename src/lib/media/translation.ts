@@ -6,7 +6,7 @@
 
 import { parseSubtitles, type Cue } from './subtitles';
 import type { StoredMedia } from './store';
-import { humanByLine } from '$lib/translation/lines';
+import { humanByLine, sentenceRuns, type Run } from '$lib/translation/lines';
 
 import { SERVICE } from '$lib/media/service-address';
 const POLL_MS = 3000;
@@ -48,13 +48,16 @@ export function jobOf(meta: Record<string, unknown>): string | undefined {
 
 /**
  * The human English of a media document, one entry per Chinese line (spec 012): from the downloaded
- * track the reader chose, matched by time; empty when the document shows machine English or none.
+ * track the reader chose, matched by time, a sentence cut across lines joined back (sentenceRuns);
+ * empty when the document shows machine English or none.
  */
 export function humanLines(
 	media: Pick<StoredMedia, 'cues' | 'tracks' | 'english'>
-): (string | undefined)[] {
+): (Run | undefined)[] {
 	const setting = media.english;
 	if (setting.source !== 'track') return [];
 	const track = media.tracks.find((t) => t.file === setting.file);
-	return track ? humanByLine(media.cues, parseSubtitles(track.text, { keepRepeats: true })) : [];
+	return track
+		? sentenceRuns(humanByLine(media.cues, parseSubtitles(track.text, { keepRepeats: true })))
+		: [];
 }

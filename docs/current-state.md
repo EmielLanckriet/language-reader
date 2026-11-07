@@ -23,7 +23,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   page with predicted comprehension; videos continue where they stopped.
 - **Reading.** Dictionary segmentation at once, a contextual model improving it in the background;
   pinyin and CC-CEDICT meanings on tap, with an optional reason for the tap; a join/split holds
-  in the document it was made in only (ADR-0049, #57: 23 s → 0.6–2 s on the phone). Quick English per line, replaced by the Termux translation as it arrives.
+  in the document it was made in only (ADR-0049, #57: 23 s → 0.6–2 s on the phone). Quick English per line, replaced by the Termux translation as it arrives. A human English track
+  cut mid-sentence across lines (非诚勿扰) shows each whole sentence under the lines it spans.
 - **Memory.** Every encounter feeds reading and listening memory (FSRS, personally fitted under
   More → Cards → Learning data). Anki is a read-only seed.
 - **Word status** (spec 019): retired, active or ignored, stored apart from memory. A word becomes
