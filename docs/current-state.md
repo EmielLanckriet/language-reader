@@ -25,6 +25,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   pinyin and CC-CEDICT meanings on tap, with an optional reason for the tap; a join/split holds
   in the document it was made in only (ADR-0049, #57: 23 s → 0.6–2 s on the phone). Quick English per line, replaced by the Termux translation as it arrives. A human English track
   cut mid-sentence across lines (非诚勿扰) shows each whole sentence under the lines it spans.
+  A long press on a video's line opens it for editing by hand (ADR-0050): the Chinese joined, split
+  at a cursor, or shown earlier/later (that line or all); the English joined, split, or moved a
+  line (that line or all after). The text never changes; edits go in `layout.json`, and the English
+  becomes its own choice, "Edited by you".
 - **Memory.** Every encounter feeds reading and listening memory (FSRS, personally fitted under
   More → Cards → Learning data). Anki is a read-only seed.
 - **Word status** (spec 019): retired, active or ignored, stored apart from memory. A word becomes
@@ -43,11 +47,12 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 - **Safety**: automatic copies to Termux (none exported while Termux is unreachable: every close
   of the app exported the whole library for nothing, #56), as increments after a weekly full copy (ADR-0048), and
   restore; a deleted document with history is hidden, not erased. A copy carries a video's
-  downloaded subtitle tracks and English choice too (2026-11-07; before, a restore lost them). Report a problem or idea goes
+  downloaded subtitle tracks, English choice and line edits too (2026-11-07; before, a restore lost them, joined lines included). Report a problem or idea goes
   to GitHub issues.
 
 ## Deployed, waiting for a phone check
 
+- Editing lines by hand (ADR-0050): checked in Chrome at 390 px (`lineeditor`), not on the phone.
 - Termux downloads at 360p and keeps the video only inside its bundle (storage: the phone was 96% full).
 - Sessions under More; Finish asks like leaving.
 - The word list on Progress (#47); how long it takes with thousands of words is not measured.

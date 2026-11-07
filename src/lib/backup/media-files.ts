@@ -5,6 +5,7 @@
  */
 
 import { ENGLISH_SETTING, TRACKS, isSubtitle, isTrack } from '$lib/media/store';
+import { LAYOUT, SENTENCES } from '$lib/media/layout';
 import type { CopyDocument } from './format';
 
 export interface TextFile {
@@ -12,9 +13,18 @@ export interface TextFile {
 	text: string;
 }
 
-/** Besides the subtitles and meta.json; copies before 2026-11-07 left these out, and a restore lost them. */
+/**
+ * Besides the subtitles and meta.json; copies before 2026-11-07 left these out, and a restore lost
+ * them. The layout is the reader's own work on the lines (joins, cuts, timing, English by hand).
+ */
 function besides(name: string): boolean {
-	return name === TRACKS || name === ENGLISH_SETTING || isTrack(name);
+	return (
+		name === TRACKS ||
+		name === ENGLISH_SETTING ||
+		name === LAYOUT ||
+		name === SENTENCES ||
+		isTrack(name)
+	);
 }
 
 export function carried(name: string): boolean {

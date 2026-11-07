@@ -9,6 +9,8 @@ const files = [
 	{ name: 'track.zh-CN.vtt', text: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n欢迎' },
 	{ name: 'track.en.vtt', text: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nWelcome' },
 	{ name: 'english.json', text: '{"source":"track","file":"track.en.vtt"}' },
+	// The reader's own work on the lines (layout.ts).
+	{ name: 'layout.json', text: '{"joined":[1],"cuts":[],"offsetMs":-300,"shifts":[]}' },
 	// Derived, or found again: never carried.
 	{ name: 'media.en.vtt', text: 'WEBVTT' },
 	{ name: 'quick-english.json', text: '[]' },
@@ -23,6 +25,7 @@ describe("a copy of a video's files", () => {
 		const written = filesOf(media);
 		const wanted = [
 			'english.json',
+			'layout.json',
 			'media.zh-CN.vtt',
 			'meta.json',
 			'track.en.vtt',
@@ -39,7 +42,7 @@ describe("a copy of a video's files", () => {
 	});
 
 	it('is what it was before for a video without tracks', () => {
-		const media = mediaOf(files.filter((f) => !/^track|tracks|english/.test(f.name)))!;
+		const media = mediaOf(files.filter((f) => !/^track|tracks|english|layout/.test(f.name)))!;
 		expect(Object.keys(media).sort()).toEqual(['meta', 'subtitles']);
 		expect(filesOf(media).map((f) => f.name)).toEqual(['media.zh-CN.vtt', 'meta.json']);
 	});

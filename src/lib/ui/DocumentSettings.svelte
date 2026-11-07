@@ -86,7 +86,7 @@
 		const id = document.id;
 		if (!media) return;
 		const setting: EnglishSetting =
-			value === 'machine' || value === 'none'
+			value === 'machine' || value === 'none' || value === 'edited'
 				? { source: value }
 				: { source: 'track', file: value };
 		englishProblem = null;
@@ -128,7 +128,7 @@
 	}
 </script>
 
-{#if englishTracks.length > 0 && media}
+{#if (englishTracks.length > 0 || media?.layout.english) && media}
 	<p class="english-choice">
 		<label>
 			English
@@ -136,6 +136,7 @@
 				value={media.english.source === 'track' ? media.english.file : media.english.source}
 				onchange={(event) => void switchEnglish(event.currentTarget.value)}
 			>
+				{#if media.layout.english}<option value="edited">Edited by you</option>{/if}
 				{#each englishTracks as track (track.file)}
 					<option value={track.file}>{track.name || track.lang} (the video's own)</option>
 				{/each}

@@ -4,7 +4,7 @@
  * better line is never replaced by a rougher one, and each line says which it is.
  */
 
-export type EnglishSource = 'human' | 'llm' | 'quick';
+export type EnglishSource = 'human' | 'llm' | 'quick' | 'edited';
 
 export interface English {
 	text: string;

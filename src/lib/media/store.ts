@@ -7,6 +7,7 @@
  */
 
 import { parseSubtitles, type Cue, type SubtitleTrack } from './subtitles';
+import { LAYOUT, PLAIN, SENTENCES, layoutOf, type Layout } from './layout';
 
 export interface StoredMedia {
 	media: File | undefined;
@@ -22,11 +23,17 @@ export interface StoredMedia {
 	tracks: SubtitleTrack[];
 	/** Which English the reader shows (ENGLISH_SETTING). Derived; absent means machine. */
 	english: EnglishSetting;
+	/** How the reader cut, timed and placed English on the lines (LAYOUT); plain when untouched. */
+	layout: Layout;
 }
 
 /** The English a media document shows (spec 012): a human track, the translators, or none. */
 export type EnglishSetting =
-	{ source: 'track'; file: string } | { source: 'machine' } | { source: 'none' };
+	| { source: 'track'; file: string }
+	| { source: 'machine' }
+	| { source: 'none' }
+	/** English the reader placed on the lines by hand (layout.ts), kept in layout.json. */
+	| { source: 'edited' };
 
 async function mediaRoot(): Promise<FileSystemDirectoryHandle> {
 	const root = await navigator.storage.getDirectory();
@@ -226,9 +233,12 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 		quick: [],
 		meta: {},
 		tracks: [],
-		english: { source: 'machine' }
+		english: { source: 'machine' },
+		layout: PLAIN
 	};
 	let manifest: Omit<SubtitleTrack, 'text'>[] = [];
+	let layout: unknown;
+	let runs: unknown;
 	const texts = new Map<string, string>();
 	for await (const handle of directory.values()) {
 		if (handle.kind !== 'file') continue;
@@ -245,7 +255,10 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 		else if (file.name === TRACKS) manifest = JSON.parse(await file.text());
 		else if (file.name === ENGLISH_SETTING) found.english = JSON.parse(await file.text());
 		else if (isTrack(file.name)) texts.set(file.name, await file.text());
+		else if (file.name === LAYOUT) layout = JSON.parse(await file.text());
+		else if (file.name === SENTENCES) runs = JSON.parse(await file.text());
 	}
+	found.layout = layoutOf(layout, runs);
 	found.tracks = manifest.flatMap((track) => {
 		const text = texts.get(track.file);
 		return text === undefined ? [] : [{ ...track, text }];

@@ -16,7 +16,12 @@
 	import { joinWithNext, splitAt } from '$lib/domain/corrections';
 	import { needsImmediateRederivation, rederiveDocument, tokensFor } from '$lib/storage/rederive';
 	import { upgradeOf } from '$lib/storage/upgrades';
-	import { loadMedia, type StoredMedia } from '$lib/media/store';
+	import {
+		loadMedia,
+		ENGLISH_SETTING,
+		type EnglishSetting,
+		type StoredMedia
+	} from '$lib/media/store';
 	import { resumeOf } from '$lib/media/cover';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import { lazyLines, lineFirsts, type Lines } from '$lib/ui/lazy-lines';
@@ -24,13 +29,7 @@
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { followTranslation, humanLines as humanOf, jobOf } from '$lib/media/translation';
-	import {
-		saveMedia,
-		readMediaJson,
-		writeMediaJson,
-		QUICK_ENGLISH,
-		SOUND_ONLY
-	} from '$lib/media/store';
+	import { saveMedia, writeMediaJson, QUICK_ENGLISH, SOUND_ONLY } from '$lib/media/store';
 	import { audioOnly } from '$lib/media/audio-track';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import SessionQuestions from '$lib/ui/SessionQuestions.svelte';
@@ -48,14 +47,29 @@
 	import { colourBand } from '$lib/domain/memory';
 	import { readingsOf } from '$lib/analyzer/pronounce';
 	import type { WordMemory } from '$lib/storage/client';
-	import { englishFor, llmByLine, type English } from '$lib/translation/lines';
+	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import {
-		joinWithNext as joinSentences,
-		runsOf,
-		splitApart,
-		SENTENCES,
-		type Run
-	} from '$lib/media/sentences';
+		LAYOUT,
+		PLAIN,
+		cutChinese,
+		englishOfSpans,
+		englishShown,
+		frozen,
+		joinChinese,
+		joinEnglish,
+		placedOf,
+		shiftEnglish,
+		shiftOf,
+		shiftTime,
+		shownOf,
+		spansOf,
+		splitEnglish,
+		timedCues,
+		type Layout,
+		type Pos,
+		type Span
+	} from '$lib/media/layout';
+	import LineEditor from '$lib/ui/LineEditor.svelte';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
 		quickTranslation,
@@ -113,7 +127,9 @@
 	 * The reader chose a person's English track: only its lines are shown. A line its maker left
 	 * untranslated stays so (the reader trusts their judgement), so no translator runs.
 	 */
-	const humanChosen = $derived(media?.english.source === 'track');
+	const humanChosen = $derived(
+		media?.english.source === 'track' || media?.english.source === 'edited'
+	);
 	const english = $derived(
 		!media || noEnglish
 			? []
@@ -241,68 +257,148 @@
 	});
 
 	/**
-	 * What the player shows: lines the reader joined into one sentence as one line (sentences.ts),
-	 * with their English together. The document's own lines stay as they are underneath: the
-	 * recorder and the quick model count in them.
+	 * The document's characters, converted once.
+	 *
+	 * Every token slices this array rather than the string. Slicing a string by code point walks
+	 * it from the start each time, so doing it per token would be quadratic — invisible at three
+	 * characters and very visible at five thousand, which is the size this slice accepts.
 	 */
-	let joined = $state<Run[]>([]);
-	let joinedFor: number | undefined;
-	let joinedChanged = false;
-	// Once per document, not whenever `media` is replaced: resetting then wiped a join just made.
-	$effect(() => {
-		const id = documentId;
-		if (id === undefined || joinedFor === id) return;
-		joinedFor = id;
-		joinedChanged = false;
-		joined = [];
-		void readMediaJson<Run[]>(id, SENTENCES).then((kept) => {
-			if (documentId === id && !joinedChanged) joined = kept ?? [];
-		});
-	});
-	const clauses = $derived(media ? runsOf(media.cues.length, joined) : []);
-	function keepJoined(next: Run[]) {
-		joinedChanged = true;
-		joined = next;
-		if (documentId !== undefined) void writeMediaJson(documentId, SENTENCES, next);
+	const characters = $derived(document ? codePointsOf(document.rawContent) : []);
+
+	/**
+	 * What the player shows: the document's lines as the reader cut, joined and timed them, and the
+	 * English they placed on them by hand when they chose it (media/layout.ts, ADR-0050). The
+	 * document's own lines stay as they are underneath: the recorder and the quick model count in them.
+	 */
+	let layout = $state<Layout>(PLAIN);
+	/** Taken from `media` once per document, as it opens (load), not whenever `media` is replaced. */
+	function openLayout(kept: Layout) {
+		layout = kept;
+		editing = null;
+		undo = [];
 	}
-	const shownCues = $derived.by(() => {
-		const cues = media?.cues ?? [];
-		return clauses.map(([first, last]) => ({
-			...cues[first],
-			end: cues[last].end,
-			text: cues
-				.slice(first, last + 1)
-				.map((cue) => cue.text)
+	const shown = $derived(media ? shownOf(media.cues, layout) : []);
+	const lineStarts = $derived(lineRangesOf(characters).map(([from]) => from));
+	/** Where `pos` is in the document's text. */
+	function offsetOf(pos: Pos): number {
+		return pos.line >= lineStarts.length ? characters.length : lineStarts[pos.line] + pos.at;
+	}
+	function posOf(offset: number): Pos {
+		let line = 0;
+		while (line + 1 < lineStarts.length && lineStarts[line + 1] <= offset) line++;
+		return { line, at: offset - lineStarts[line] };
+	}
+	const shownCues = $derived(
+		shown.map((line): Cue => ({
+			start: line.start,
+			end: line.end,
+			text: characters
+				.slice(offsetOf(line.from), offsetOf(line.to))
+				.filter((c) => c !== '\n')
 				.join('')
-		}));
-	});
+		}))
+	);
+	const ownCues = $derived(media ? timedCues(media.cues, layout, shown) : []);
 	const shownLines = $derived.by(() => {
 		const source = lines;
-		const runs = clauses;
-		return lazyLines(runs.length, (i) => {
-			const [first, last] = runs[i];
+		const parts = shown;
+		return lazyLines(parts.length, (s) => {
+			const { from, to } = parts[s];
+			const [lo, hi] = [offsetOf(from), offsetOf(to)];
 			const words: LineWord[] = [];
-			for (let line = first; line <= last; line++) words.push(...(source.at(line) ?? []));
+			for (let line = from.line; line <= Math.min(to.line, source.length - 1); line++)
+				for (const word of source.at(line) ?? [])
+					if (word.key >= lo && word.key < hi) words.push(word);
 			return words;
 		});
 	});
+	const editedChosen = $derived(media?.english.source === 'edited' && Boolean(layout.english));
 	const shownEnglish = $derived(
-		clauses.map(([first, last]): English | undefined => {
-			const parts = english.slice(first, last + 1);
-			const texts = parts.map((part) => part?.text).filter(Boolean);
-			if (texts.length === 0) return undefined;
-			return {
-				text: texts.join(' '),
-				// The roughest part names the whole: one quick line makes the clause quick.
-				source: parts.some((part) => part?.source === 'quick')
-					? 'quick'
-					: parts.some((part) => part?.source === 'llm')
-						? 'llm'
-						: 'human'
-			};
-		})
+		editedChosen
+			? englishOfSpans(spansOf(layout.english ?? [], shown), shown.length)
+			: englishShown(shown, english)
 	);
-	const firstLineOf = (shown: number) => clauses[shown]?.[0] ?? shown;
+	const firstLineOf = (s: number) => shown[s]?.from.line ?? s;
+
+	// --- Editing the lines by hand: a long press on a line opens it (LineEditor) ---
+
+	let editing = $state<number | null>(null);
+	/** This visit's changes, to take back one at a time. */
+	let undo = $state<{ layout: Layout; english: EnglishSetting }[]>([]);
+
+	async function keepLayout(next: Layout, english?: EnglishSetting) {
+		const id = documentId;
+		const current = media;
+		if (id === undefined || !current) return;
+		undo = [...undo, { layout, english: current.english }];
+		layout = next;
+		await writeMediaJson(id, LAYOUT, next);
+		if (english && english.source !== current.english.source) await chooseEnglish(id, english);
+	}
+
+	async function chooseEnglish(id: number, english: EnglishSetting) {
+		await saveMedia(id, [{ name: ENGLISH_SETTING, blob: new Blob([JSON.stringify(english)]) }]);
+		// The layout too, so the English menu (DocumentSettings) offers what was just placed.
+		if (media && documentId === id) media = { ...media, english, layout };
+	}
+
+	async function takeBack() {
+		const id = documentId;
+		const last = undo.at(-1);
+		if (id === undefined || !last || !media) return;
+		undo = undo.slice(0, -1);
+		layout = last.layout;
+		await writeMediaJson(id, LAYOUT, last.layout);
+		if (JSON.stringify(last.english) !== JSON.stringify(media.english))
+			await chooseEnglish(id, last.english);
+		if (editing !== null) editing = Math.min(editing, shown.length - 1);
+	}
+
+	/** The English as spans to change: the hand-placed English, or what is shown now to start it. */
+	function spansToEdit(): Span[] | undefined {
+		if (editedChosen) return spansOf(layout.english ?? [], shown);
+		if (
+			layout.english &&
+			!confirm('Start over from the English shown now? The English you placed by hand before goes.')
+		)
+			return undefined;
+		return frozen(shownEnglish);
+	}
+
+	function editEnglish(change: (spans: Span[]) => Span[]) {
+		const spans = spansToEdit();
+		if (!spans) return;
+		void keepLayout({ ...layout, english: placedOf(change(spans), shown) }, { source: 'edited' });
+	}
+
+	const edits = {
+		joinChinese(s: number, way: -1 | 1) {
+			void keepLayout(joinChinese(layout, shown, s, way));
+			if (way === -1) editing = s - 1;
+		},
+		cutChinese(offset: number) {
+			void keepLayout(cutChinese(layout, posOf(offset)));
+		},
+		shiftTime(s: number, ms: number, all: boolean) {
+			void keepLayout(shiftTime(layout, shown, s, ms, all));
+		},
+		joinEnglish(s: number, way: -1 | 1) {
+			editEnglish((spans) => joinEnglish(spans, s, way, shown.length));
+		},
+		splitEnglish(s: number, word: number) {
+			editEnglish((spans) => splitEnglish(spans, s, word, shown.length));
+		},
+		shiftEnglish(s: number, by: -1 | 1, onward: boolean) {
+			editEnglish((spans) => shiftEnglish(spans, s, by, onward, shown.length));
+		}
+	};
+
+	function playLine(s: number) {
+		const line = shown[s];
+		if (!player || !line) return;
+		player.currentTime = line.start;
+		void player.play();
+	}
 
 	function chooseWord(_line: number, word: LineWord) {
 		open(document?.tokens.find((token) => token.start === word.key) ?? null);
@@ -515,15 +611,6 @@
 	 */
 	let refreshWhenFree = $state(false);
 
-	/**
-	 * The document's characters, converted once.
-	 *
-	 * Every token slices this array rather than the string. Slicing a string by code point walks
-	 * it from the start each time, so doing it per token would be quadratic — invisible at three
-	 * characters and very visible at five thousand, which is the size this slice accepts.
-	 */
-	const characters = $derived(document ? codePointsOf(document.rawContent) : []);
-
 	$effect(() => {
 		void load(Number(page.params.id));
 	});
@@ -571,6 +658,8 @@
 					: found?.media
 						? await resumeOf(id, found.cues).catch(() => 0)
 						: 0;
+			// In the same step: the English choice can say "edited" only with the lines it was placed on.
+			if (found) openLayout(found.layout);
 			media = found;
 		} catch (error) {
 			problem = error;
@@ -884,7 +973,7 @@
 		<MediaReader
 			file={media.media}
 			cues={shownCues}
-			sourceCues={media.cues}
+			sourceCues={ownCues}
 			lines={shownLines}
 			language={document.language}
 			{startAt}
@@ -892,9 +981,7 @@
 			askable={quick !== undefined}
 			onask={(line) => quick?.focus(firstLineOf(line), true)}
 			online={(line) => quick?.focus(firstLineOf(line))}
-			joined={clauses.map(([first, last]) => last > first)}
-			onjoin={(line) => keepJoined(joinSentences(clauses, line))}
-			onsplit={(line) => keepJoined(splitApart(clauses, line))}
+			onedit={(line) => (editing = line)}
 			onword={chooseWord}
 			{recorder}
 			title={document.title}
@@ -909,6 +996,27 @@
 				{#if quickStatus}<Progress {...quickStatus} />{/if}
 			{/snippet}
 		</MediaReader>
+		{#if editing !== null && shown[editing]}
+			{@const s = editing}
+			{@const neighbour = (n: number) =>
+				shown[n] ? { chinese: shownCues[n].text, english: shownEnglish[n]?.text } : undefined}
+			<LineEditor
+				{s}
+				count={shown.length}
+				words={shownLines.at(s) ?? []}
+				english={shownEnglish[s]?.text}
+				before={neighbour(s - 1)}
+				after={neighbour(s + 1)}
+				shiftMs={shiftOf(layout, shown, s)}
+				offsetMs={layout.offsetMs}
+				canUndo={undo.length > 0}
+				{edits}
+				onplay={() => playLine(s)}
+				onmove={(n) => (editing = n)}
+				onundo={() => void takeBack()}
+				onclose={() => (editing = null)}
+			/>
+		{/if}
 	{:else}
 		<div class="reading" lang={document.language}>
 			{#each shownRange ? document.tokens.filter((t) => t.start >= shownRange[0] && t.end <= shownRange[1]) : document.tokens as token (token.start)}{#if token.isWord}<button

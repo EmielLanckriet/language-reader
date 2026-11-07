@@ -38,9 +38,7 @@
 		online,
 		status,
 		onword,
-		joined = [],
-		onjoin,
-		onsplit,
+		onedit,
 		recorder,
 		title,
 		artist,
@@ -77,11 +75,8 @@
 		/** What the page is waiting on (progress bars), shown on the stage as well as above the list. */
 		status?: Snippet;
 		onword: (line: number, word: LineWord) => void;
-		/** Which lines are sentences the reader joined from several (media/sentences.ts). */
-		joined?: boolean[];
-		/** Join line i with the one after it, or take a joined line apart again. */
-		onjoin?: (line: number) => void;
-		onsplit?: (line: number) => void;
+		/** A long press on line i: the reader wants to cut, join, time or move its lines by hand. */
+		onedit?: (line: number) => void;
 		/** Where what happens during playback is written down (spec 007). */
 		recorder?: Recorder;
 		/** What the lock screen and headphones' controls say is playing. */
@@ -94,6 +89,7 @@
 
 	let url = $state<string | null>(null);
 	let currentLine = $state(-1);
+	const LONG_PRESS_MS = 550;
 	let revealed = $state<number[]>([]);
 	let showAll = $state(false);
 
@@ -235,6 +231,59 @@
 		viewTop = -list.getBoundingClientRect().top;
 		await tick();
 		document.getElementById(`line-${at}`)?.scrollIntoView({ block: 'center' });
+	}
+
+	/**
+	 * A long press on a line opens it for editing (onedit); the tap it ends in does nothing else, so
+	 * a word is not looked up and the English not revealed. Moving the finger, as in scrolling, is no
+	 * long press.
+	 */
+	function longPress(node: HTMLElement, line: number) {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		let x = 0;
+		let y = 0;
+		let fired = false;
+		const cancel = () => clearTimeout(timer);
+		const down = (event: PointerEvent) => {
+			if (!onedit) return;
+			fired = false;
+			[x, y] = [event.clientX, event.clientY];
+			cancel();
+			timer = setTimeout(() => {
+				fired = true;
+				onedit?.(line);
+			}, LONG_PRESS_MS);
+		};
+		const move = (event: PointerEvent) => {
+			if (Math.hypot(event.clientX - x, event.clientY - y) > 10) cancel();
+		};
+		const click = (event: Event) => {
+			if (!fired) return;
+			fired = false;
+			event.stopPropagation();
+			event.preventDefault();
+		};
+		const menu = (event: Event) => {
+			if (onedit) event.preventDefault();
+		};
+		const on: [string, EventListener, boolean?][] = [
+			['pointerdown', down as EventListener],
+			['pointermove', move as EventListener],
+			['pointerup', cancel],
+			['pointercancel', cancel],
+			['click', click, true],
+			['contextmenu', menu]
+		];
+		for (const [name, handler, capture] of on) node.addEventListener(name, handler, capture);
+		return {
+			update(next: number) {
+				line = next;
+			},
+			destroy() {
+				cancel();
+				for (const [name, handler, capture] of on) node.removeEventListener(name, handler, capture);
+			}
+		};
 	}
 
 	/** The document's own line playing at `time`, for the recorder. */
@@ -627,7 +676,7 @@
 					<button onclick={() => (bare = true)} aria-label="Hide the buttons">✕</button>
 				</div>
 				{#if currentLine >= 0 && lines.at(currentLine)}
-					<div class="subtitles">
+					<div class="subtitles" use:longPress={currentLine}>
 						<p class="chinese" lang={language}>
 							{#each lines.at(currentLine) ?? [] as word (word.key)}{#if word.isWord}<button
 										class="token {word.mark ?? 'state-none'}"
@@ -660,17 +709,6 @@
 								<button onclick={replay} aria-label="Replay this line">↻</button>
 								<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
 							</div>
-							{#if onjoin && currentLine >= 0}
-								<div class="moves">
-									{#if currentLine + 1 < cues.length}<button
-											onclick={() => onjoin(currentLine)}
-											aria-label="Join this line with the next">⊕</button
-										>{/if}{#if joined[currentLine]}<button
-											onclick={() => onsplit?.(currentLine)}
-											aria-label="Split this sentence into its lines again">✂</button
-										>{/if}
-								</div>
-							{/if}
 							<button class="setting" onclick={nextSpeed} aria-label="Playback speed"
 								>{speed}×</button
 							>
@@ -708,7 +746,7 @@
 		<div style:height="{shown.before}px"></div>
 		{#each built as i (i)}
 			{@const line = lines.at(i)}
-			<p id="line-{i}" class:current={i === currentLine} use:measure={i}>
+			<p id="line-{i}" class:current={i === currentLine} use:measure={i} use:longPress={i}>
 				{#if cues[i]}<button class="seek" aria-label="Play from here" onclick={() => seek(i)}
 						>▸</button
 					>{/if}{#each line as word (word.key)}{#if word.isWord}<button
@@ -730,15 +768,7 @@
 									: undefined}
 							lang="en">{translations[i]?.text}</span
 						>{:else if askable && cues[i]}<span class="english pending">translating…</span
-						>{/if}{/if}{#if onjoin && i + 1 < cues.length}<button
-						class="join"
-						aria-label="Join this line with the next"
-						onclick={() => onjoin(i)}>⊕</button
-					>{/if}{#if joined[i]}<button
-						class="split"
-						aria-label="Split this sentence into its lines again"
-						onclick={() => onsplit?.(i)}>✂</button
-					>{/if}
+						>{/if}{/if}
 			</p>
 		{/each}
 		<div style:height="{shown.after}px"></div>
@@ -991,12 +1021,17 @@
 		padding: 0.1rem 0.25rem;
 		border-radius: 6px;
 	}
+	/* A long press opens the line for editing, not the system's text selection. */
+	.lines p,
+	.subtitles {
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-touch-callout: none;
+	}
 	.lines p.current {
 		background: color-mix(in srgb, currentColor 8%, transparent);
 	}
-	.reveal,
-	.join,
-	.split {
+	.reveal {
 		font-size: 0.65rem;
 		vertical-align: middle;
 		margin-left: 0.4rem;

@@ -3868,6 +3868,140 @@ const scenarios = {
 		}
 	},
 
+	// Editing lines by hand (ADR-0050), on the human English fixture at phone width: a long press
+	// on a word opens the editor and does not look the word up; the Chinese is split at the cursor;
+	// the English joined, split and moved; the timing shifted and undone; after a reload the edits
+	// are still there and the English menu says "Edited by you". Screenshot /tmp/reader-line-editor.png.
+	async lineeditor() {
+		const tab = await openTab('about:blank');
+		const plain = `(p) => [...p.querySelectorAll('.token')].map((t) => { const c = t.cloneNode(true); c.querySelectorAll('rt').forEach((r) => r.remove()); return c.textContent; }).join('')`;
+		const state = `const lines = [...document.querySelectorAll('.lines p')];
+			return { count: Number(/of (\\d+) lines/.exec(document.querySelector('.all-english small')?.textContent ?? '')?.[1]), total: document.querySelector('.all-english small')?.textContent ?? '',
+				chinese: lines.slice(0, 4).map(${plain}), english: lines.slice(0, 4).map((p) => p.querySelector('.english')?.textContent ?? ''),
+				editor: document.querySelector('.editor strong')?.textContent ?? null, amount: document.querySelector('.editor .amount')?.textContent ?? null,
+				dialogs: document.querySelectorAll('[role=dialog]').length };`;
+		const editorButton = (label, nth = 0) =>
+			tab.evaluate(
+				`const b = [...document.querySelectorAll('.editor button')].filter((b) => b.textContent.trim() === ${JSON.stringify(label)})[${nth}]; if (!b || b.disabled) return false; b.click(); return true;`
+			);
+		const settle = () => new Promise((r) => setTimeout(r, 400));
+		const longPress = async (line) => {
+			const at = await tab.evaluate(
+				`const t = document.querySelector('#line-${line} .token'); t.scrollIntoView({ block: 'center' }); const r = t.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 };`
+			);
+			await tab.send('Input.dispatchMouseEvent', {
+				type: 'mousePressed',
+				x: at.x,
+				y: at.y,
+				button: 'left',
+				clickCount: 1
+			});
+			await new Promise((r) => setTimeout(r, 800));
+			await tab.send('Input.dispatchMouseEvent', {
+				type: 'mouseReleased',
+				x: at.x,
+				y: at.y,
+				button: 'left',
+				clickCount: 1
+			});
+			await settle();
+		};
+		try {
+			await importFromTermux(tab, 'Test clip, human English');
+			await tab.evaluate(ALL_LINES);
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 390,
+				height: 844,
+				deviceScaleFactor: 2,
+				mobile: true
+			});
+			await until('the subtitle question', () =>
+				tab.evaluate(
+					`const b = [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Import'); if (!b) return null; b.click(); return true;`
+				)
+			);
+			const before = await until(
+				'the lines with their English',
+				() =>
+					tab.evaluate(`${PLAY} if (!location.pathname.includes('/read/')) return null;
+						const all = document.querySelector('.all-english input'); if (!all) return null; if (!all.checked) all.click();
+						const first = document.querySelector('#line-0 .english')?.textContent; if (!first) return null; ${state}`),
+				60000,
+				250
+			);
+			await longPress(0);
+			const opened = await tab.evaluate(state);
+			await tab.send('Page.captureScreenshot', { format: 'png' }).then(async ({ data }) => {
+				const { writeFile } = await import('node:fs/promises');
+				await writeFile('/tmp/reader-line-editor.png', Buffer.from(data, 'base64'));
+			});
+			await editorButton('✂ Split', 0);
+			await settle();
+			const split = await tab.evaluate(state);
+			// Line 1's English (now under the cut-off piece too) joined with the next line's.
+			await editorButton('⤓ Join next', 1);
+			await settle();
+			const joined = await tab.evaluate(state);
+			await editorButton('✂ Split', 1);
+			await settle();
+			const englishSplit = await tab.evaluate(state);
+			await editorButton('↓ Later line', 0);
+			await settle();
+			const moved = await tab.evaluate(state);
+			await editorButton('+1 s');
+			await settle();
+			const shifted = await tab.evaluate(state);
+			await editorButton('↶ Undo');
+			await settle();
+			const undone = await tab.evaluate(state);
+			const path = await tab.evaluate(
+				'return location.pathname.replace(/^\\/language-reader/, "")'
+			);
+			await tab.goto(path);
+			const reloaded = await until(
+				'the edited lines after a reload',
+				() =>
+					tab.evaluate(`const all = document.querySelector('.all-english input'); if (!all) return null; if (!all.checked) all.click();
+						if (!document.querySelector('#line-0')) return null; const menu = [...document.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.value === 'edited'));
+						const id = location.pathname.split('/').pop(); const dir = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('media')).getDirectoryHandle(id);
+						const kept = JSON.parse(await (await (await dir.getFileHandle('layout.json')).getFile()).text());
+						const out = (() => { ${state} })(); return { ...out, menu: menu?.value ?? null, kept };`),
+				30000,
+				250
+			);
+			const words = (text) => text.split(/\s+/).filter(Boolean);
+			return {
+				pass:
+					opened.editor === `Line 1 of ${before.count}` &&
+					opened.dialogs === 0 &&
+					split.count === before.count + 1 &&
+					split.chinese[0] + split.chinese[1] === before.chinese[0] &&
+					split.chinese[2] === before.chinese[1] &&
+					joined.english[0] === '' && // a sentence over several lines shows once, under its last
+					words(joined.english[2]).length ===
+						words(before.english[0]).length + words(before.english[1]).length &&
+					englishSplit.english[0] !== '' &&
+					moved.english[0] === '' &&
+					shifted.amount === '+1.0 s' &&
+					undone.amount === '±0.0 s' &&
+					reloaded.count === split.count &&
+					JSON.stringify(reloaded.english) === JSON.stringify(moved.english) &&
+					reloaded.menu === 'edited',
+				before,
+				opened,
+				split,
+				joined,
+				englishSplit,
+				moved,
+				shifted,
+				undone,
+				reloaded
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async resume() {
 		const tab = await openTab('about:blank');
 		const pageInfo = `if (!location.pathname.includes('/document/') || !document.querySelector('.shares')) return null;
