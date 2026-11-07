@@ -6,7 +6,8 @@
 
 import { session } from '$lib/storage/session';
 import { readTar } from '$lib/media/tar';
-import { isPlayable, isSubtitle, mediaFiles, replacesIn, saveMedia } from '$lib/media/store';
+import { isPlayable, mediaFiles, replacesIn, saveMedia } from '$lib/media/store';
+import { carried, filesOf, markOf, mediaOf } from './media-files';
 import { version } from '$app/environment';
 import {
 	holdsNothing,
@@ -71,10 +72,7 @@ function writeChain(chain: Chain | null) {
 async function marksOf(documents: CopyDocument[]): Promise<Record<number, string>> {
 	const marks: Record<number, string> = {};
 	for (const document of documents) {
-		const files = (await mediaFiles(document.id))
-			.filter((file) => isSubtitle(file.name) || file.name === 'meta.json')
-			.map((file) => `${file.name}:${file.size}:${file.lastModified}`)
-			.sort();
+		const files = markOf(await mediaFiles(document.id));
 		marks[document.id] = [
 			document.title,
 			document.createdAt,
@@ -86,18 +84,14 @@ async function marksOf(documents: CopyDocument[]): Promise<Record<number, string
 	return marks;
 }
 
-/** Attach each document's subtitles and metadata from OPFS, as a copy carries them. */
+/** Attach each document's subtitles, metadata and tracks from OPFS, as a copy carries them. */
 async function withMedia(documents: CopyDocument[]): Promise<void> {
 	for (const document of documents) {
-		const files = await mediaFiles(document.id);
-		const subtitles = files.find((file) => isSubtitle(file.name));
-		const meta = files.find((file) => file.name === 'meta.json');
-		if (subtitles) {
-			document.media = {
-				subtitles: { name: subtitles.name, text: await subtitles.text() },
-				meta: meta ? JSON.parse(await meta.text()) : {}
-			};
-		}
+		const files = (await mediaFiles(document.id)).filter((file) => carried(file.name));
+		const media = mediaOf(
+			await Promise.all(files.map(async (file) => ({ name: file.name, text: await file.text() })))
+		);
+		if (media) document.media = media;
 	}
 }
 
@@ -225,10 +219,10 @@ export async function restore(text: string): Promise<string | null> {
 		const meta = { ...media.meta };
 		if (meta.replaces !== undefined)
 			meta.replaces = replacesIn(media.meta).flatMap((old) => result.restored.get(old) ?? []);
-		await saveMedia(id, [
-			{ name: media.subtitles.name, blob: new Blob([media.subtitles.text]) },
-			{ name: 'meta.json', blob: new Blob([JSON.stringify(meta)]) }
-		]);
+		await saveMedia(
+			id,
+			filesOf({ ...media, meta }).map((file) => ({ name: file.name, blob: new Blob([file.text]) }))
+		);
 		await fetchVideo(id, media.meta).catch(() => {
 			// The document reads without its video, and its page says so.
 		});

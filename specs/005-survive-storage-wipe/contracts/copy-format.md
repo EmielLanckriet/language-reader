@@ -25,8 +25,10 @@ states the rules that make a copy restorable, and that tests hold to.
    replayed. The resulting states MUST equal `states`, or the transaction rolls back.
 4. **After commit**: documents carry no tokens; they are stamped `restored`, so opening one
    re-derives it and the sweep upgrades it, as for any stale document. Media documents get their
-   subtitle file written to `media/<id>/`. The video is fetched through the service when it can be
-   found (R8). None of this is earned; failures leave readable documents.
+   subtitle file written to `media/<id>/`, with their downloaded tracks, `tracks.json` and the
+   English chosen (`media.files`, spec 012; copies before 2026-11-07 lack them). The video is
+   fetched through the service when it can be found (R8). None of this is earned; failures leave
+   readable documents.
 
 ## Statuses (format 4, spec 019)
 

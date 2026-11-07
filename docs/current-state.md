@@ -41,7 +41,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   per drill grade; each Cards review as 1.2 cards (10 s at Taal).
 - **Safety**: automatic copies to Termux (none exported while Termux is unreachable: every close
   of the app exported the whole library for nothing, #56), as increments after a weekly full copy (ADR-0048), and
-  restore; a deleted document with history is hidden, not erased. Report a problem or idea goes
+  restore; a deleted document with history is hidden, not erased. A copy carries a video's
+  downloaded subtitle tracks and English choice too (2026-11-07; before, a restore lost them). Report a problem or idea goes
   to GitHub issues.
 
 ## Deployed, waiting for a phone check

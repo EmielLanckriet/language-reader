@@ -15,8 +15,16 @@ export interface CopyDocument {
 	contentType: string;
 	rawContent: string;
 	createdAt: string;
-	/** A media document's subtitles and metadata; the video itself is found again, not copied. */
-	media?: { subtitles: { name: string; text: string }; meta: Record<string, unknown> };
+	/**
+	 * A media document's subtitles and metadata; the video itself is found again, not copied.
+	 * `files`: its downloaded tracks, their list and the English chosen (spec 012); absent before
+	 * 2026-11-07 and for videos without tracks.
+	 */
+	media?: {
+		subtitles: { name: string; text: string };
+		meta: Record<string, unknown>;
+		files?: { name: string; text: string }[];
+	};
 	/** Hidden from the library, its media gone; kept because encounters point into it (format 2). */
 	removedAt?: string;
 }
