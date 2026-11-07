@@ -54,7 +54,11 @@ async function work(repository: Repository, ids: number[], text: string, round: 
 	]);
 	repository.recordReview(token.lexemeId!, 3, undefined, at);
 	repository.setStatus(token.lexemeId!, round % 2 ? 'ignored' : 'retired');
-	repository.correct('zh', `华崑${round}`.slice(0, 2), parts('华', '崑'));
+	repository.correct('zh', `华崑${round}`.slice(0, 2), parts('华', '崑'), {
+		documentId: id,
+		fromOffset: 0,
+		toOffset: 0
+	});
 	return id;
 }
 

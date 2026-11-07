@@ -21,8 +21,7 @@ import {
 	problemWith,
 	rulesInForce,
 	type Correction,
-	type Part,
-	type Rules
+	type Part
 } from '../domain/corrections';
 import { codePointsOf } from '../domain/offsets';
 import { helpOf, isHelped, lineRangesOf, type Help } from '../domain/helped';
@@ -255,7 +254,7 @@ function engagementOf(detail: string): Engagement {
 }
 
 /** Change it when `applyCorrections` changes what it makes, so every document is checked again. */
-const CORRECTIONS_PASS = 'corrections-1';
+const CORRECTIONS_PASS = 'corrections-2'; // 2: per document (ADR-0049)
 
 /** What the words of one run (a dataset, a memory recompute) share; documents and sessions do not
  * change during one. */
@@ -548,6 +547,14 @@ export class Repository {
 				);
 			}
 
+			// A restored document arrives with no words at all (restoreCopy): nothing past the batch to
+			// tile, so only the stretch up to it is checked. Otherwise the first batch of every restored
+			// document too long for one batch failed for ever (issue #56).
+			const nothingAhead =
+				queryRows(this.db, 'SELECT 1 FROM token WHERE document_id = ? AND start >= ? LIMIT 1', [
+					documentId,
+					batch.from
+				]).length === 0;
 			const remembered = this.memoryWordsIn(documentId, batch.from, batch.through);
 			this.storeTokens(documentId, language, rawContent, batch.tokens, batch.from, batch.through);
 
@@ -561,7 +568,10 @@ export class Repository {
 				[documentId]
 			).map((token) => ({ start: Number(token.start), end: Number(token.end) }));
 
-			const problems = checkTiling(stored, rawContent);
+			const problems = checkTiling(
+				stored,
+				nothingAhead ? codePointsOf(rawContent).slice(0, batch.through).join('') : rawContent
+			);
 			if (problems.length > 0) {
 				throw new StorageFailure(
 					`${upgrade.name} v${upgrade.version} advancing document ${documentId} to ${batch.through} ` +
@@ -996,18 +1006,25 @@ export class Repository {
 	}
 
 	/**
-	 * Record how the reader says a form divides, or with `parts` null that they take it back
-	 * (spec 004), and show it in every document that contains the form.
+	 * Record how the reader says a form divides in one document, or with `parts` null that they take
+	 * it back there (spec 004), and show it at every occurrence of the form in that document. Other
+	 * documents are not touched: a correction holds where it was made (ADR-0049).
 	 *
 	 * Appended first and applied second, in one transaction, as with a mark. The rewrite reads the
 	 * analyzer's own tokens rather than the corrected ones, so undoing a join finds the analyzer's
 	 * split again without running the analyzer (FR-011).
 	 */
-	correct(language: string, form: string, parts: Part[] | null, occurrence?: Occurrence): void {
+	correct(language: string, form: string, parts: Part[] | null, occurrence: Occurrence): void {
 		const problem = problemWith(form, parts ?? undefined);
 		if (problem) throw new StorageFailure(`Cannot record that correction: ${problem}.`);
 
 		transact(this.db, () => {
+			const [document] = queryRows(this.db, 'SELECT raw_content FROM document WHERE id = ?', [
+				occurrence.documentId
+			]);
+			if (!document)
+				throw new StorageFailure(`No document with id ${occurrence.documentId} to correct.`);
+			const before = this.libraryFingerprint();
 			const deviceId = deviceIdOf(this.db);
 			run(
 				this.db,
@@ -1021,66 +1038,70 @@ export class Repository {
 					new Date().toISOString(),
 					deviceId,
 					nextDeviceSeq(this.db, deviceId),
-					occurrence?.documentId ?? null,
-					occurrence?.fromOffset ?? null,
-					occurrence?.toOffset ?? null
+					occurrence.documentId,
+					occurrence.fromOffset,
+					occurrence.toOffset
 				]
 			);
-
-			const documents = queryRows(
-				this.db,
-				'SELECT id, raw_content FROM document WHERE language = ? AND instr(raw_content, ?) > 0',
-				[language, form]
-			);
-			for (const row of documents)
-				this.rewriteCorrected(Number(row.id), language, String(row.raw_content));
+			this.rewriteCorrected(occurrence.documentId, language, String(document.raw_content));
+			this.carryCaughtUp(before);
 		});
 	}
 
 	/**
-	 * Re-applies the corrections in force to every document holding one of their forms, rewriting only
-	 * those whose words come out different; returns how many. Run once the app opens: documents made
-	 * before corrections applied in order (issue #2) hold the old rule's tokens. Background work, like
-	 * re-derivation: nothing for the reader to retry if it cannot write.
+	 * Re-applies each document's corrections to it, rewriting only documents whose words come out
+	 * different. Run once the app opens: documents can hold words from an older rule (issue #2), and
+	 * until ADR-0049 a correction applied in every document, so others still show it.
+	 *
+	 * In steps, so the worker is never held for long: documents from id `from` on, each in its own
+	 * transaction, until `budgetMs` has passed. Returns where to continue (`next`, null at the end),
+	 * or null when there was nothing to do. Background work, like re-derivation.
 	 */
-	reapplyCorrections(): number | null {
+	reapplyCorrections(
+		from = 0,
+		budgetMs = Infinity
+	): { rewritten: number; next: DocumentId | null } | null {
 		const fingerprint = `${CORRECTIONS_PASS}|${this.libraryFingerprint()}`;
 		if (this.caughtUp('corrections', fingerprint)) return null;
+		const started = performance.now();
 		const history = this.readCorrections();
-		const byLanguage = new Map<string, Rules>();
-		for (const { language } of history)
-			if (!byLanguage.has(language)) byLanguage.set(language, rulesInForce(history, language));
+		// Every form ever corrected, in any document: a document holding a form it has no rule for
+		// may still show another document's rule.
+		const forms = new Map<string, string[]>();
+		for (const { language, form } of history) {
+			const known = forms.get(language) ?? [];
+			if (!known.includes(form)) forms.set(language, [...known, form]);
+		}
+		const documents = queryRows(
+			this.db,
+			'SELECT id, language, raw_content FROM document WHERE id >= ? ORDER BY id',
+			[from]
+		);
 		let rewritten = 0;
-		transact(this.db, () => {
-			for (const [language, rules] of byLanguage) {
-				const forms = [...rules.keys()];
-				if (forms.length === 0) continue;
-				const documents = queryRows(
-					this.db,
-					`SELECT id, raw_content FROM document WHERE language = ? AND (${forms.map(() => 'instr(raw_content, ?) > 0').join(' OR ')})`,
-					[language, ...forms]
-				);
-				for (const row of documents) {
-					const documentId = Number(row.id);
-					const raw = String(row.raw_content);
-					const wanted = applyCorrections(codePointsOf(raw), this.analyzedTokens(documentId), rules)
-						.map((token) => `${token.start}:${token.end}`)
-						.join(',');
-					const stored = queryRows(
-						this.db,
-						'SELECT start, end FROM token WHERE document_id = ? ORDER BY start',
-						[documentId]
-					)
-						.map((token) => `${token.start}:${token.end}`)
-						.join(',');
-					if (wanted === stored) continue;
-					this.rewriteCorrected(documentId, language, raw);
-					rewritten++;
-				}
-			}
-			this.markCaughtUp('corrections', fingerprint);
-		});
-		return rewritten;
+		for (const row of documents) {
+			const documentId = Number(row.id);
+			if (performance.now() - started > budgetMs && documentId !== Number(documents[0].id))
+				return { rewritten, next: documentId };
+			const language = String(row.language);
+			const raw = String(row.raw_content);
+			if (!(forms.get(language) ?? []).some((form) => raw.includes(form))) continue;
+			const rules = rulesInForce(history, language, documentId);
+			const wanted = applyCorrections(codePointsOf(raw), this.analyzedTokens(documentId), rules)
+				.map((token) => `${token.start}:${token.end}`)
+				.join(',');
+			const stored = queryRows(
+				this.db,
+				'SELECT start, end FROM token WHERE document_id = ? ORDER BY start',
+				[documentId]
+			)
+				.map((token) => `${token.start}:${token.end}`)
+				.join(',');
+			if (wanted === stored) continue;
+			transact(this.db, () => this.rewriteCorrected(documentId, language, raw));
+			rewritten++;
+		}
+		this.markCaughtUp('corrections', fingerprint);
+		return { rewritten, next: null };
 	}
 
 	/**
@@ -1128,20 +1149,72 @@ export class Repository {
 		}));
 	}
 
-	/** One document's tokens rewritten from the analyzer's under the corrections in force. */
+	/**
+	 * One document's tokens brought to the analyzer's under its corrections in force, touching only
+	 * the rows that differ: a join or split changes a few words, and rewriting all of a long
+	 * transcript's 9,000 took 2 s and wrote 2.4 MB on the phone (issue #57).
+	 */
 	private rewriteCorrected(documentId: DocumentId, language: string, raw: string): void {
-		const remembered = this.memoryWordsIn(documentId, 0, Infinity);
-		const before = this.tokenSpans(documentId);
-		this.writeCorrected(documentId, language, raw, this.analyzedTokens(documentId), 0, Infinity);
-		for (const id of this.memoryWordsIn(documentId, 0, Infinity)) remembered.add(id);
-		// Only a word whose tokens moved can have a different memory: its exposures are its
-		// tokens under a read or played stretch. Recomputing every remembered word of the document
-		// took 1.5 s of a 2.1 s correction on a 44 min transcript (laptop; the phone is slower).
-		const after = this.tokenSpans(documentId);
+		const rules = rulesInForce(this.readCorrections(), language, documentId);
+		const wanted = applyCorrections(codePointsOf(raw), this.analyzedTokens(documentId), rules);
+		const shape = (start: unknown, end: unknown, isWord: boolean, key: unknown) =>
+			`${start}:${end}:${isWord ? 1 : 0}:${isWord ? key : ''}`;
+		const stored = new Map(
+			queryRows(
+				this.db,
+				`SELECT t.id, t.start, t.end, t.is_word, t.lexeme_id, l.surface FROM token t
+           LEFT JOIN lexeme l ON l.id = t.lexeme_id WHERE t.document_id = ?`,
+				[documentId]
+			).map((row) => [
+				shape(row.start, row.end, Number(row.is_word) === 1, row.surface),
+				{ id: Number(row.id), lexemeId: row.lexeme_id === null ? null : Number(row.lexeme_id) }
+			])
+		);
+		const missing = wanted.filter((token) => {
+			const key = shape(token.start, token.end, token.isWord, token.lexemeKey);
+			return !stored.delete(key);
+		});
+		// Only a word whose tokens moved can have a different memory: its exposures are its tokens
+		// under a read or played stretch. All of them are recomputed, from their whole history, so
+		// nothing a correction changed is left for the start-up sweeps (see `carryCaughtUp`).
 		const moved = new Set<LexemeId>();
-		for (const [span, id] of before) if (after.get(span) !== id) moved.add(id);
-		for (const [span, id] of after) if (before.get(span) !== id) moved.add(id);
-		this.recomputeMemory(new Set([...remembered].filter((id) => moved.has(id))));
+		for (const { id, lexemeId } of stored.values()) {
+			run(this.db, 'DELETE FROM token WHERE id = ?', [id]);
+			if (lexemeId !== null) moved.add(lexemeId);
+		}
+		const lexemes = new Map<string, LexemeId>();
+		for (const token of missing) {
+			let lexemeId: LexemeId | null = null;
+			if (token.isWord && token.lexemeKey !== undefined) {
+				lexemeId =
+					lexemes.get(token.lexemeKey) ?? this.findOrCreateLexeme(language, token.lexemeKey);
+				lexemes.set(token.lexemeKey, lexemeId);
+				moved.add(lexemeId);
+			}
+			run(
+				this.db,
+				'INSERT INTO token (document_id, lexeme_id, start, end, is_word) VALUES (?, ?, ?, ?, ?)',
+				[documentId, lexemeId, token.start, token.end, token.isWord ? 1 : 0]
+			);
+		}
+		this.recomputeMemory(moved);
+	}
+
+	/**
+	 * After a change that keeps every document and every word's memory consistent by itself (a
+	 * correction), the start-up catch-up passes that were done stay done: re-marked under the new
+	 * library fingerprint, so the next start does not re-check the library (4 s on the phone).
+	 */
+	private carryCaughtUp(before: string): void {
+		const after = this.libraryFingerprint();
+		for (const row of queryRows(this.db, 'SELECT name, fingerprint FROM catch_up')) {
+			const fingerprint = String(row.fingerprint);
+			if (!fingerprint.endsWith(before)) continue;
+			this.markCaughtUp(
+				String(row.name),
+				fingerprint.slice(0, fingerprint.length - before.length) + after
+			);
+		}
 	}
 
 	/** Every correction and undo, in the order the reader made them. */
@@ -1171,20 +1244,38 @@ export class Repository {
 		}));
 	}
 
-	/** The corrections in force, most recent first, whether or not any document shows them (US3). */
-	corrections(): { language: string; form: string; parts: string[]; madeAt: string }[] {
-		const history = this.readCorrections();
+	/**
+	 * The corrections in force, most recent first, each with the document it holds in, whether or
+	 * not that document still shows it (US3, ADR-0049).
+	 */
+	corrections(): {
+		language: string;
+		form: string;
+		parts: string[];
+		madeAt: string;
+		documentId: DocumentId;
+		title: string;
+	}[] {
 		const inForce = new Map<string, Correction>();
-		for (const correction of history) {
-			const key = `${correction.language}\u0000${correction.form}`;
+		for (const correction of this.readCorrections()) {
+			if (!correction.occurrence) continue;
+			const key = `${correction.occurrence.documentId}\u0000${correction.language}\u0000${correction.form}`;
 			inForce.delete(key);
 			if (correction.parts) inForce.set(key, correction);
 		}
+		const titles = new Map(
+			queryRows(this.db, 'SELECT id, title FROM document').map((row) => [
+				Number(row.id),
+				String(row.title)
+			])
+		);
 		return [...inForce.values()].reverse().map((correction) => ({
 			language: correction.language,
 			form: correction.form,
 			parts: correction.parts!.map((part) => part.surface),
-			madeAt: correction.madeAt
+			madeAt: correction.madeAt,
+			documentId: correction.occurrence!.documentId,
+			title: titles.get(correction.occurrence!.documentId) ?? ''
 		}));
 	}
 
@@ -1216,17 +1307,6 @@ export class Repository {
 		this.writeCorrected(documentId, language, rawContent, tokens, from, through);
 	}
 
-	/** A document's word tokens, as start:end to the word there. */
-	private tokenSpans(documentId: DocumentId): Map<string, LexemeId> {
-		return new Map(
-			queryRows(
-				this.db,
-				'SELECT start, end, lexeme_id FROM token WHERE document_id = ? AND lexeme_id IS NOT NULL',
-				[documentId]
-			).map((row) => [`${row.start}:${row.end}`, Number(row.lexeme_id)])
-		);
-	}
-
 	private writeCorrected(
 		documentId: DocumentId,
 		language: string,
@@ -1240,7 +1320,7 @@ export class Repository {
 			from,
 			Number.isFinite(through) ? through : Number.MAX_SAFE_INTEGER
 		]);
-		const rules = rulesInForce(this.readCorrections(), language);
+		const rules = rulesInForce(this.readCorrections(), language, documentId);
 		// One statement for every row, and each word looked up once: row by row, a 44 min transcript's
 		// 9,000 tokens took 0.5 s on the laptop.
 		const lexemes = new Map<string, LexemeId>();

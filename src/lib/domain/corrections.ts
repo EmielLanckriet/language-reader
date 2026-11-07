@@ -12,7 +12,7 @@
  * join of a piece an earlier split made takes effect (issue #2, ADR-0028's amendment).
  */
 
-import type { DeviceId, Occurrence } from './types';
+import type { DeviceId, DocumentId, Occurrence } from './types';
 
 /** One piece of a divided form, with the word identity the language provider gave it. */
 export interface Part {
@@ -43,13 +43,19 @@ export interface KeyedToken {
 /** Form → parts, for one language: what is in force now, in the order it was decided. */
 export type Rules = Map<string, Part[]>;
 
-export function rulesInForce(history: readonly Correction[], language: string): Rules {
+export function rulesInForce(
+	history: readonly Correction[],
+	language: string,
+	documentId: DocumentId
+): Rules {
 	const rules: Rules = new Map();
 	const ordered = [...history].sort((a, b) =>
 		a.deviceId !== b.deviceId ? (a.deviceId < b.deviceId ? -1 : 1) : a.deviceSeq - b.deviceSeq
 	);
 	for (const correction of ordered) {
 		if (correction.language !== language) continue;
+		// A correction holds in the document it was made in, and nowhere else (ADR-0049).
+		if (correction.occurrence?.documentId !== documentId) continue;
 		// Deleted first, so a form decided again moves to the end of the order.
 		rules.delete(correction.form);
 		if (correction.parts) rules.set(correction.form, correction.parts);

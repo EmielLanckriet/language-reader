@@ -75,7 +75,11 @@
 			await repository.whenQuiet(1000);
 			if (document.visibilityState !== 'visible') return;
 			// Corrections first: they move tokens, which the memory sweep then reads.
-			await repository.reapplyCorrections();
+			// In steps, so the screen's own calls never wait long behind it.
+			for (let next: number | null = 0; next !== null;) {
+				if (document.visibilityState !== 'visible') return;
+				next = (await repository.reapplyCorrections(next, 150))?.next ?? null;
+			}
 			// Memory first: a batch takes milliseconds, where a document's re-segmentation takes seconds.
 			await sweepStaleMemory(repository, () => document.visibilityState === 'visible');
 			await sweepStaleDocuments(

@@ -719,8 +719,8 @@
 	});
 
 	/**
-	 * Record how the reader says a form divides, and show it (spec 004). Applied to every document
-	 * at once by the repository; this one is re-read in place, like a batch of the upgrade.
+	 * Record how the reader says a form divides in this document, and show it (spec 004, ADR-0049).
+	 * The repository rewrites this document only; it is re-read in place, like a batch of the upgrade.
 	 */
 	async function correct(
 		change: ReturnType<typeof joinWithNext>,

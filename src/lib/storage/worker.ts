@@ -330,7 +330,7 @@ function run(request: Request): unknown {
 		case 'staleMemory':
 			return repository.staleMemory(request.args[0]);
 		case 'reapplyCorrections':
-			return repository.reapplyCorrections();
+			return repository.reapplyCorrections(request.args[0], request.args[1]);
 		case 'refreshMemory':
 			return repository.refreshMemory(request.args[0]);
 		case 'recordReview':
@@ -363,7 +363,7 @@ function run(request: Request): unknown {
 				request.args[0],
 				request.args[1],
 				request.args[2] as Part[] | null,
-				request.args[3] as Occurrence | undefined
+				request.args[3] as Occurrence
 			);
 		case 'corrections':
 			return repository.corrections();

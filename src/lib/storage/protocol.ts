@@ -58,13 +58,13 @@ export type Call =
 	| { method: 'cardSentence'; args: [number] }
 	| { method: 'cardsToday'; args: [number] }
 	| { method: 'staleMemory'; args: [number] }
-	| { method: 'reapplyCorrections'; args: [] }
+	| { method: 'reapplyCorrections'; args: [number, number] }
 	| { method: 'refreshMemory'; args: [number[]] }
 	| { method: 'importAnki'; args: [unknown] }
 	| { method: 'previewAnki'; args: [unknown] }
 	| { method: 'undoAnkiImport'; args: [string] }
 	| { method: 'ankiImports'; args: [] }
-	| { method: 'correct'; args: [string, string, unknown, unknown?] }
+	| { method: 'correct'; args: [string, string, unknown, unknown] }
 	| { method: 'corrections'; args: [] }
 	| { method: 'readDiagnostics'; args: [number?] }
 	| { method: 'clearDiagnostics'; args: [] }

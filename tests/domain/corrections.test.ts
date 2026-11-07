@@ -177,14 +177,15 @@ describe('corrections made on corrected words', () => {
 });
 
 describe('the fold', () => {
-	const at = (deviceSeq: number, form: string, parts?: string[]): Correction => ({
+	const at = (deviceSeq: number, form: string, parts?: string[], documentId = 1): Correction => ({
 		language: 'zh',
 		form,
 		...(parts ? { parts: parts.map((surface) => ({ surface, key: surface })) } : {}),
 		madeAt: '',
 		deviceId: 'd',
 		deviceSeq,
-		userId: 1
+		userId: 1,
+		occurrence: { documentId, fromOffset: 0, toOffset: 0 }
 	});
 
 	it('keeps the latest per form, and an undo leaves the form to the analyzer', () => {
@@ -195,7 +196,8 @@ describe('the fold', () => {
 				at(2, '国人', ['国', '人']),
 				at(4, '国人', ['国人'])
 			],
-			'zh'
+			'zh',
+			1
 		);
 		expect([...rules.keys()]).toEqual(['国人']);
 		expect(rules.get('国人')!.map((p) => p.surface)).toEqual(['国人']);
@@ -204,9 +206,20 @@ describe('the fold', () => {
 	it('orders the rules by when their latest correction was made', () => {
 		const rules = rulesInForce(
 			[at(1, '一个', ['一个']), at(2, '国人', ['国', '人']), at(3, '一个', ['一', '个'])],
-			'zh'
+			'zh',
+			1
 		);
 		expect([...rules.keys()]).toEqual(['国人', '一个']);
+	});
+
+	it('holds only the corrections made in the document asked about (ADR-0049)', () => {
+		const nowhere = { ...at(3, '是', ['是']), occurrence: undefined };
+		const rules = rulesInForce(
+			[at(1, '一个', ['一个'], 1), at(2, '国人', ['国', '人'], 2), nowhere],
+			'zh',
+			1
+		);
+		expect([...rules.keys()]).toEqual(['一个']);
 	});
 });
 

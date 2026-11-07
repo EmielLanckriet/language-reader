@@ -85,9 +85,16 @@
 			forgetting = null;
 		}
 	}
-	let corrections = $state<{ language: string; form: string; parts: string[]; madeAt: string }[]>(
-		[]
-	);
+	let corrections = $state<
+		{
+			language: string;
+			form: string;
+			parts: string[];
+			madeAt: string;
+			documentId: number;
+			title: string;
+		}[]
+	>([]);
 	let correctionNote = $state<string | null>(null);
 
 	async function refreshCorrections() {
@@ -95,10 +102,16 @@
 	}
 
 	/** Undoing is a further decision, recorded like the first (spec 004, FR-008). */
-	async function undoCorrection(language: string, form: string) {
+	async function undoCorrection(language: string, form: string, documentId: number, title: string) {
 		try {
-			await retrying(async () => (await session()).repository.correct(language, form, null));
-			correctionNote = `${form} is back to how the segmenter reads it.`;
+			await retrying(async () =>
+				(await session()).repository.correct(language, form, null, {
+					documentId,
+					fromOffset: 0,
+					toOffset: 0
+				})
+			);
+			correctionNote = `${form} is back to how the segmenter reads it in ${title}.`;
 			await refreshCorrections();
 		} catch (error) {
 			correctionNote = error instanceof Error ? error.message : String(error);
@@ -417,18 +430,24 @@
 	<dl class="facts">
 		<dt>Corrections</dt>
 		<dd>
-			{#each corrections as correction (correction.language + correction.form)}
+			{#each corrections as correction (correction.documentId + correction.language + correction.form)}
 				<p>
 					<span lang="zh">{correction.form}</span> →
 					<span lang="zh">{correction.parts.join(' · ')}</span>
 					<small
-						>{correction.parts.length === 1 ? 'joined' : 'split'}, {new Date(
+						>{correction.parts.length === 1 ? 'joined' : 'split'} in {correction.title}, {new Date(
 							correction.madeAt
 						).toLocaleDateString()}</small
 					>
 					<button
 						class="secondary"
-						onclick={() => undoCorrection(correction.language, correction.form)}>Undo</button
+						onclick={() =>
+							undoCorrection(
+								correction.language,
+								correction.form,
+								correction.documentId,
+								correction.title
+							)}>Undo</button
 					>
 				</p>
 			{:else}

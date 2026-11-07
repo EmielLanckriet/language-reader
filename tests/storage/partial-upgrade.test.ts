@@ -13,6 +13,7 @@ import {
 } from './support';
 import type { Database } from '../../src/lib/storage/db';
 import type { Analyzer } from '../../src/lib/analyzer/types';
+import { open, seal } from '../../src/lib/backup/format';
 
 function unitBoundaries(text: string, analyzer: Analyzer): number[] {
 	return boundariesOf(text, analyzer);
@@ -306,5 +307,40 @@ describe('upgrading a document one batch at a time', () => {
 		expect(() => repository.advanceUpgrade(id, batch, stampOf(pairwise))).toThrow(
 			/nothing to upgrade/
 		);
+	});
+});
+
+describe('a restored document', () => {
+	// A copy carries no tokens (they are derived): restoreCopy leaves each document empty, stamped
+	// 'restored', for the sweep. On the phone the sweep's first batch of a long document then
+	// failed the whole-document tiling check for ever (documents 41–50, issue #56).
+	it('upgrades in more than one batch', async () => {
+		const source = new Repository(await freshDatabase());
+		const id = source.saveDocument(
+			await pasteSource.ingest(TEXT),
+			resolveTokens(TEXT, await characterSplitter.analyze(TEXT), characterSplitter),
+			stampOf(characterSplitter)
+		);
+		source.startSession(id, 'reading');
+		const target = new Repository(await freshDatabase());
+		const [restored] = [
+			...target
+				.restoreCopy(await open(JSON.stringify(await seal(source.exportBody('t', 'now')))))
+				.values()
+		];
+
+		const boundaries = unitBoundaries(TEXT, pairwise);
+		let from = 0;
+		for (const through of [boundaries[2], boundaries[boundaries.length - 1]]) {
+			target.advanceUpgrade(
+				restored,
+				await batchOf(TEXT, pairwise, from, through),
+				stampOf(pairwise)
+			);
+			from = through;
+		}
+		const document = target.getDocument(restored);
+		expect(tiles(document.tokens, TEXT)).toBe(true);
+		expect(document.analyzer).toBe(pairwise.name);
 	});
 });

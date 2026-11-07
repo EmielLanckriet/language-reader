@@ -342,7 +342,11 @@ describe('memory kept with the history', () => {
 		const before = rows(db);
 
 		// 我看 joined: 我 and 看 lose their tokens there, and 我看 is a new word with its exposure.
-		repository.correct('zh', '我看', [{ surface: '我看', key: '我看' }]);
+		repository.correct('zh', '我看', [{ surface: '我看', key: '我看' }], {
+			documentId: documentId,
+			fromOffset: 0,
+			toOffset: 0
+		});
 		const kept = rows(db);
 		repository.rebuildMemory();
 

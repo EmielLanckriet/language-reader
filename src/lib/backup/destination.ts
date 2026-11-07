@@ -107,6 +107,9 @@ async function withMedia(documents: CopyDocument[]): Promise<void> {
  * longer adds up, when Termux says the increment does not follow, and weekly while hidden.
  */
 export async function copyNow(hidden: boolean): Promise<boolean> {
+	// Asked first: exporting is seconds of the storage worker and sealing a second of the screen,
+	// and without Termux every close of the app did both for nothing (issue #56).
+	if (!(await reachable())) return false;
 	const { repository } = await session();
 	const chain = readChain();
 	const createdAt = new Date().toISOString();

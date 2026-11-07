@@ -455,9 +455,12 @@ export class RepositoryClient {
 		return this.call({ method: 'frequencyRanks', args: [lexemeIds] });
 	}
 
-	/** Documents whose words the corrections in force would change, rewritten; how many (issue #2). */
-	reapplyCorrections(): Promise<number | null> {
-		return this.call({ method: 'reapplyCorrections', args: [] });
+	/** One step of re-applying each document's corrections: see Repository.reapplyCorrections. */
+	reapplyCorrections(
+		from: number,
+		budgetMs: number
+	): Promise<{ rewritten: number; next: DocumentId | null } | null> {
+		return this.call({ method: 'reapplyCorrections', args: [from, budgetMs] });
 	}
 
 	staleMemory(limit: number): Promise<number[]> {
@@ -511,14 +514,26 @@ export class RepositoryClient {
 		return this.call<number>({ method: 'undoAnkiImport', args: [id] }).then(earned);
 	}
 
-	/** How the reader says a form divides, or with `parts` null that they take it back (spec 004). */
-	correct(language: string, form: string, parts: Part[] | null, occurrence?: Occurrence) {
+	/**
+	 * How the reader says a form divides in one document, or with `parts` null that they take it
+	 * back there (spec 004, ADR-0049).
+	 */
+	correct(language: string, form: string, parts: Part[] | null, occurrence: Occurrence) {
 		return this.call<void>({ method: 'correct', args: [language, form, parts, occurrence] }).then(
 			earned
 		);
 	}
 
-	corrections(): Promise<{ language: string; form: string; parts: string[]; madeAt: string }[]> {
+	corrections(): Promise<
+		{
+			language: string;
+			form: string;
+			parts: string[];
+			madeAt: string;
+			documentId: DocumentId;
+			title: string;
+		}[]
+	> {
 		return this.call({ method: 'corrections', args: [] });
 	}
 

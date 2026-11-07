@@ -34,22 +34,32 @@ function oldRuleTokens(db: Database, id: number, text: string) {
 }
 
 describe('the catch-up at start', () => {
-	it('re-applies corrections once, then skips until corrections or documents change', async () => {
+	it('re-applies corrections once, then skips until documents change; a correction keeps it done', async () => {
 		const db = await freshDatabase();
 		const repository = new Repository(db);
 		const text = '华崑智驾';
 		const id = await save(repository, text);
-		repository.correct('zh', '华崑', parts('华', '崑'));
-		repository.correct('zh', '智驾', parts('智', '驾'));
-		repository.correct('zh', '崑智', parts('崑智'));
+		repository.correct('zh', '华崑', parts('华', '崑'), {
+			documentId: id,
+			fromOffset: 0,
+			toOffset: 0
+		});
+		repository.correct('zh', '智驾', parts('智', '驾'), {
+			documentId: id,
+			fromOffset: 0,
+			toOffset: 0
+		});
+		repository.correct('zh', '崑智', parts('崑智'), { documentId: id, fromOffset: 0, toOffset: 0 });
 		oldRuleTokens(db, id, text);
 
-		expect(repository.reapplyCorrections()).toBe(1);
+		expect(repository.reapplyCorrections()?.rewritten).toBe(1);
 		expect(repository.reapplyCorrections()).toBeNull();
 
-		repository.correct('zh', '驾', parts('驾'));
-		expect(repository.reapplyCorrections()).not.toBeNull();
+		// A correction rewrites its own document as it is made: nothing for the next start (#57).
+		repository.correct('zh', '驾', parts('驾'), { documentId: id, fromOffset: 0, toOffset: 0 });
 		expect(repository.reapplyCorrections()).toBeNull();
+		run(db, 'DELETE FROM catch_up');
+		expect(repository.reapplyCorrections()?.rewritten).toBe(0);
 
 		await save(repository, '智驾华崑');
 		expect(repository.reapplyCorrections()).not.toBeNull();
@@ -82,6 +92,10 @@ describe('the catch-up at start', () => {
 
 		// Nothing it reads has changed, so it does not look again, even at a library it would fault.
 		run(db, 'DELETE FROM memory');
+		expect(repository.staleMemory(100)).toEqual([]);
+
+		// A join recomputes the words it moves as it is made, so the pass stays done (#57).
+		repository.correct('zh', '我看', parts('我看'), { documentId: id, fromOffset: 0, toOffset: 2 });
 		expect(repository.staleMemory(100)).toEqual([]);
 
 		await save(repository, '他看报');

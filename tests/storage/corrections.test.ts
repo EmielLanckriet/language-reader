@@ -18,6 +18,11 @@ import { open, seal } from '../../src/lib/backup/format';
 
 const parts = (...surfaces: string[]): Part[] =>
 	surfaces.map((surface) => ({ surface, key: surface }));
+const at = (documentId: number, fromOffset = 0, toOffset = 0) => ({
+	documentId,
+	fromOffset,
+	toOffset
+});
 
 describe('correcting the segmentation', () => {
 	let db: Database;
@@ -50,23 +55,30 @@ describe('correcting the segmentation', () => {
 		};
 	}
 
-	it('joins a form in every document, and in one imported afterwards (US1.1, US1.2)', async () => {
-		const first = await save('一个人。');
+	it('joins a form everywhere in the document it was made in, and nowhere else (ADR-0049)', async () => {
+		const first = await save('一个人。一个。');
 		const second = await save('我有一个。');
-		repository.correct('zh', '一个', parts('一个'), {
-			documentId: first,
-			fromOffset: 0,
-			toOffset: 2
-		});
-		expect(shown(first)).toEqual(['一个', '人', '。']);
-		expect(shown(second)).toEqual(['我', '有', '一个', '。']);
-		expect(shown(await save('这是一个。'))).toContain('一个');
+		repository.correct('zh', '一个', parts('一个'), at(first, 0, 2));
+		expect(shown(first)).toEqual(['一个', '人', '。', '一个', '。']);
+		expect(shown(second)).toEqual(['我', '有', '一', '个', '。']);
+		expect(shown(await save('这是一个。'))).toEqual(['这', '是', '一', '个', '。']);
+	});
+
+	it('undoes a form in one document and leaves it joined in another (ADR-0049)', async () => {
+		const first = await save('一个。');
+		const second = await save('一个。');
+		repository.correct('zh', '一个', parts('一个'), at(first, 0, 2));
+		repository.correct('zh', '一个', parts('一个'), at(second, 0, 2));
+		repository.correct('zh', '一个', null, at(first, 0, 2));
+		expect(shown(first)).toEqual(['一', '个', '。']);
+		expect(shown(second)).toEqual(['一个', '。']);
+		expect(repository.corrections().map((c) => [c.form, c.documentId])).toEqual([['一个', second]]);
 	});
 
 	it('records the decision with its order and occurrence, and an undo as a further one (FR-007, FR-008)', async () => {
 		const id = await save('一个。');
 		repository.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 2 });
-		repository.correct('zh', '一个', null);
+		repository.correct('zh', '一个', null, { documentId: id, fromOffset: 0, toOffset: 0 });
 
 		const history = repository.readCorrections();
 		expect(history).toHaveLength(2);
@@ -87,7 +99,7 @@ describe('correcting the segmentation', () => {
 		const id = await save('一个。');
 		const word = repository.getDocument(id).tokens[0];
 		repository.assertState(word.lexemeId!, 'known');
-		repository.correct('zh', '一个', parts('一个'));
+		repository.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 0 });
 		const markSeq = Number(queryRows(db, 'SELECT device_seq FROM status_event')[0].device_seq);
 		expect(repository.readCorrections()[0].deviceSeq).toBe(markSeq + 1);
 	});
@@ -98,15 +110,19 @@ describe('correcting the segmentation', () => {
 		repository.assertState(yi.lexemeId!, 'known', { documentId: id, fromOffset: 0, toOffset: 1 });
 		const before = marks();
 
-		repository.correct('zh', '一个', parts('一个'));
-		repository.correct('zh', '一个', parts('一', '个'));
-		repository.correct('zh', '一个', null);
+		repository.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 0 });
+		repository.correct('zh', '一个', parts('一', '个'), {
+			documentId: id,
+			fromOffset: 0,
+			toOffset: 0
+		});
+		repository.correct('zh', '一个', null, { documentId: id, fromOffset: 0, toOffset: 0 });
 
 		const after = marks();
 		expect(after.events).toEqual(before.events);
 		expect(after.states).toEqual(before.states);
 		expect(after.lexemes).toBeGreaterThan(before.lexemes); // 一个 exists now; nothing went away
-		repository.correct('zh', '一个', parts('一个'));
+		repository.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 0 });
 		const joined = repository.getDocument(id).tokens[0];
 		expect(repository.getStates([joined.lexemeId!]).size).toBe(0);
 	});
@@ -115,7 +131,11 @@ describe('correcting the segmentation', () => {
 		const id = await save('哪国人。', pairwiseAnalyzer);
 		const pairs = shown(id);
 		const whole = pairs.find((s) => [...s].length === 2)!;
-		repository.correct('zh', whole, parts(...[...whole]));
+		repository.correct('zh', whole, parts(...[...whole]), {
+			documentId: id,
+			fromOffset: 0,
+			toOffset: 0
+		});
 		expect(shown(id).join('')).toBe('哪国人。');
 		for (const c of [...whole]) expect(shown(id)).toContain(c);
 		const lexemes = repository.getDocument(id).tokens.map((t) => t.lexemeId);
@@ -125,7 +145,7 @@ describe('correcting the segmentation', () => {
 	it('survives re-derivation and a partial upgrade by another analyzer (SC-003, FR-010)', async () => {
 		const text = '一个人。一个国。';
 		const id = await save(text, pairwiseAnalyzer);
-		repository.correct('zh', '一个', parts('一个'));
+		repository.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 0 });
 
 		// The character splitter cuts 一 · 个 apart; the correction must put them back together.
 		const tokens = resolveTokens(text, await characterSplitter.analyze(text), characterSplitter);
@@ -144,16 +164,28 @@ describe('correcting the segmentation', () => {
 
 	it('refuses parts that are not the form, and writes nothing (FR-004, FR-005)', async () => {
 		const id = await save('一个。');
-		expect(() => repository.correct('zh', '一个', parts('一'))).toThrow();
-		expect(() => repository.correct('zh', '一个', parts('一', '', '个'))).toThrow();
+		expect(() =>
+			repository.correct('zh', '一个', parts('一'), { documentId: id, fromOffset: 0, toOffset: 0 })
+		).toThrow();
+		expect(() =>
+			repository.correct('zh', '一个', parts('一', '', '个'), {
+				documentId: id,
+				fromOffset: 0,
+				toOffset: 0
+			})
+		).toThrow();
 		expect(repository.readCorrections()).toEqual([]);
 		expect(shown(id)).toEqual(['一', '个', '。']);
 	});
 
 	it('lists what is in force, including a form no document still has (US3.4)', async () => {
-		await save('一个。');
-		repository.correct('zh', '一个', parts('一个'));
-		repository.correct('zh', '国人', parts('国', '人'));
+		const id = await save('一个。');
+		repository.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 0 });
+		repository.correct('zh', '国人', parts('国', '人'), {
+			documentId: id,
+			fromOffset: 0,
+			toOffset: 0
+		});
 		// Most recent first: the one the reader is likeliest to be looking for.
 		expect(repository.corrections().map((c) => [c.form, c.parts])).toEqual([
 			['国人', ['国', '人']],
@@ -179,8 +211,8 @@ describe('a copy', () => {
 			stampOf(characterSplitter)
 		);
 		source.correct('zh', '一个', parts('一个'), { documentId: id, fromOffset: 0, toOffset: 2 });
-		source.correct('zh', '国人', parts('国人'));
-		source.correct('zh', '国人', null);
+		source.correct('zh', '国人', parts('国人'), { documentId: id, fromOffset: 0, toOffset: 0 });
+		source.correct('zh', '国人', null, { documentId: id, fromOffset: 0, toOffset: 0 });
 
 		const body = source.exportBody('test', 'now');
 		const target = new Repository(await freshDatabase());

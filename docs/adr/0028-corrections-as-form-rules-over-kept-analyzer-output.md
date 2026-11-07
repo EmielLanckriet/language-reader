@@ -1,6 +1,6 @@
 # ADR-0028: Corrections Are Rules About Forms, Applied Over The Analyzer's Kept Output
 
-**Status**: Accepted
+**Status**: Accepted; narrowed by ADR-0049 (2026-11-07): a correction holds only in the document it was made in
 **Date**: 2026-09-27
 **Relates to**: spec 004, ADR-0003 (earned vs derived), ADR-0011 (analyzer stamp), ADR-0013 (units)
 

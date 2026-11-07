@@ -1,6 +1,6 @@
 # Current state
 
-Updated 2026-10-31. What the app is and does now, what waits for a phone check, and what is open.
+Updated 2026-11-07. What the app is and does now, what waits for a phone check, and what is open.
 Keep it short: one line per change, replaced rather than appended. The detailed record up to
 2026-10-31 is in [history/current-state-2026-10-31.md](history/current-state-2026-10-31.md);
 after that, `git log` and the ADRs.
@@ -22,8 +22,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   import, or transcribed in the app by SenseVoice in 10 s then 30 s windows, resumable). Each has a
   page with predicted comprehension; videos continue where they stopped.
 - **Reading.** Dictionary segmentation at once, a contextual model improving it in the background;
-  pinyin and CC-CEDICT meanings on tap, with an optional reason for the tap; join/split
-  corrections persist. Quick English per line, replaced by the Termux translation as it arrives.
+  pinyin and CC-CEDICT meanings on tap, with an optional reason for the tap; a join/split holds
+  in the document it was made in only (ADR-0049, #57: 23 s → 0.6–2 s on the phone). Quick English per line, replaced by the Termux translation as it arrives.
 - **Memory.** Every encounter feeds reading and listening memory (FSRS, personally fitted under
   More → Cards → Learning data). Anki is a read-only seed.
 - **Word status** (spec 019): retired, active or ignored, stored apart from memory. A word becomes
@@ -39,7 +39,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 - **Taal challenge** (spec 020, ADR-0045): with a code from Taal, one session per local hour:
   reading and watching as Input, Study when "Studied it", Output when "Shadowed it"; 10 s of Study
   per drill grade; each Cards review as 1.2 cards (10 s at Taal).
-- **Safety**: automatic copies to Termux, as increments after a weekly full copy (ADR-0048), and
+- **Safety**: automatic copies to Termux (none exported while Termux is unreachable: every close
+  of the app exported the whole library for nothing, #56), as increments after a weekly full copy (ADR-0048), and
   restore; a deleted document with history is hidden, not erased. Report a problem or idea goes
   to GitHub issues.
 
@@ -60,8 +61,9 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   not cross-origin isolated. 22 videos lost in the 2026-11-04 wipe: Termux no longer
   had their bundles. Full screen works again (#55): `FullscreenChromeClient.kt` wraps wry's
   generated client, which cancelled it; after a Tauri upgrade, check wry overrides nothing new.
-  Documents 41, 42, 44, 49, 50 fail to re-segment on the phone (tokens missing past the first
-  batch; whole in the 2026-11-04 backup); cause not found.
+  Documents 41, 42, 44, 49, 50 failed to re-segment after the restore: a restored document has no
+  words, and the check after a batch wanted the whole document covered. Fixed (2026-11-07),
+  waiting for the phone app update.
 
 - **Phone freeze (2026-09-29)**: inference is bounded and serialized (ADR-0032); thermal safety is
   not confirmed. Do not run heavy benchmarks on the phone.
