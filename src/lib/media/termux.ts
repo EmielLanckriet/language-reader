@@ -4,13 +4,15 @@
  */
 
 import { importBundle, type Imported, type TrackChoice } from './import';
-import { importedJobs } from './store';
+import { awaitedVideos, importedJobs } from './store';
 
 import { SERVICE } from '$lib/media/service-address';
 
 export interface TermuxJob {
 	job: string;
 	title: string;
+	/** The YouTube id, once the bundle exists. */
+	id?: string | null;
 	bytes: number;
 	/** False while Termux is still downloading; absent from services older than this field. */
 	ready?: boolean;
@@ -50,7 +52,12 @@ export async function newFromTermux(): Promise<TermuxJob[] | 'unreachable'> {
 		return 'unreachable';
 	}
 	const imported = await importedJobs();
-	return listed.filter((job) => !imported.has(job.job));
+	// A video a document asked for again goes into that document, not into the library as new.
+	const awaited = await awaitedVideos();
+	return listed.filter(
+		(job) =>
+			!imported.has(job.job) && !(job.id ? awaited.ids.has(job.id) : awaited.titles.has(job.title))
+	);
 }
 
 export async function fetchBundle(job: TermuxJob): Promise<Blob> {

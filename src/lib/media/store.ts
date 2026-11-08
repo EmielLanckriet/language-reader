@@ -259,6 +259,8 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 		else if (file.name === SENTENCES) runs = JSON.parse(await file.text());
 	}
 	found.layout = layoutOf(layout, runs);
+	// The sound alone, downloaded again after its video was lost (media/redownload.ts), plays.
+	found.media ??= found.sound;
 	found.tracks = manifest.flatMap((track) => {
 		const text = texts.get(track.file);
 		return text === undefined ? [] : [{ ...track, text }];
@@ -361,6 +363,21 @@ async function metas(): Promise<Map<number, Record<string, unknown>>> {
 /** The documents a video's earlier subtitles were, which its meta.json records (issue #9). */
 export function replacesIn(meta: Record<string, unknown>): number[] {
 	return Array.isArray(meta.replaces) ? meta.replaces.filter((id) => typeof id === 'number') : [];
+}
+
+/**
+ * Videos whose documents asked Termux to download them again (media/redownload.ts): by YouTube id,
+ * and by title for a download still in progress, whose listing has no id yet.
+ */
+export async function awaitedVideos(): Promise<{ ids: Set<string>; titles: Set<string> }> {
+	const ids = new Set<string>();
+	const titles = new Set<string>();
+	for (const meta of (await metas()).values()) {
+		if (typeof meta.redownload !== 'string') continue;
+		if (typeof meta.id === 'string') ids.add(meta.id);
+		if (typeof meta.title === 'string') titles.add(meta.title);
+	}
+	return { ids, titles };
 }
 
 /** The library's document for this YouTube video, if it has one. */

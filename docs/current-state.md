@@ -1,6 +1,6 @@
 # Current state
 
-Updated 2026-11-07. What the app is and does now, what waits for a phone check, and what is open.
+Updated 2026-11-08. What the app is and does now, what waits for a phone check, and what is open.
 Keep it short: one line per change, replaced rather than appended. The detailed record up to
 2026-10-31 is in [history/current-state-2026-10-31.md](history/current-state-2026-10-31.md);
 after that, `git log` and the ADRs.
@@ -29,6 +29,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   at a cursor, or shown earlier/later (that line or all); the English joined, split, or moved a
   line (that line or all after). The text never changes; edits go in `layout.json`, and the English
   becomes its own choice, "Edited by you".
+  A video whose file is gone (only its sound, or nothing) offers "Download the video again" on its
+  page: Termux downloads it and it goes into the same document; its sound alone plays meanwhile.
 - **Memory.** Every encounter feeds reading and listening memory (FSRS, personally fitted under
   More → Cards → Learning data). Anki is a read-only seed.
 - **Word status** (spec 019): retired, active or ignored, stored apart from memory. A word becomes
@@ -51,6 +53,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   to GitHub issues.
 
 ## Deployed, waiting for a phone check
+
+- Download the video again (2026-11-08): checked in Chrome (`videoagain`), the button not pressed on
+  the phone. That day the sound of 21 videos lost in the wipe went back in by hand (yt-dlp on the
+  laptop) with 17 human English tracks, and the Anki recordings were imported again.
 
 - Editing lines by hand (ADR-0050): checked in Chrome at 390 px (`lineeditor`), not on the phone.
 - Termux downloads at 360p and keeps the video only inside its bundle (storage: the phone was 96% full).

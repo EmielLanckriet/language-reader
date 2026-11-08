@@ -15,6 +15,8 @@
 	import DocumentCard from '$lib/ui/DocumentCard.svelte';
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
+	import VideoAgain from '$lib/ui/VideoAgain.svelte';
+	import { isVideo, videoAddress } from '$lib/media/redownload';
 
 	/**
 	 * A document's own page (#31): every way into a video or text comes here first, with its figures,
@@ -119,6 +121,14 @@
 	<a class="play again" href={resolve('/document/[id]/hardcore', { id: String(summary.id) })}>
 		Hardcore: drill its words around watching it
 	</a>
+	{#if media && !isVideo(media.media) && videoAddress(media.meta)}
+		<VideoAgain
+			documentId={summary.id}
+			meta={media.meta}
+			sound={media.media !== undefined}
+			onvideo={async () => (media = await loadMedia(id))}
+		/>
+	{/if}
 	<DocumentSettings document={summary} bind:media reopen="/document/[id]" />
 {/if}
 

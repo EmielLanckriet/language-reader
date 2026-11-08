@@ -42,7 +42,9 @@ it('takes an empty playable file for no file', async () => {
 	expect(soundEmpty?.media?.size).toBe(64);
 	expect(soundEmpty?.cues).toHaveLength(1);
 
+	// No video, so the sound plays in its place (media/redownload.ts), and the reader still looks
+	// for the video in Termux because the sound is all there is.
 	const videoEmpty = await loadMedia(24);
-	expect(videoEmpty?.media).toBeUndefined();
+	expect(videoEmpty?.media?.name).toBe('sound-only.m4a');
 	expect(videoEmpty?.sound?.size).toBe(64);
 });

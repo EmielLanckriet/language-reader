@@ -3872,6 +3872,98 @@ const scenarios = {
 	// on a word opens the editor and does not look the word up; the Chinese is split at the cursor;
 	// the English joined, split and moved; the timing shifted and undone; after a reload the edits
 	// are still there and the English menu says "Edited by you". Screenshot /tmp/reader-line-editor.png.
+	// 2026-11-08: a video document whose video is gone but whose sound is kept offers "Download the
+	// video again"; while it waits, the library does not offer that video's download as new; once
+	// Termux has the bundle, the video goes into the same document. Fixtures `fixture-video-*`
+	// (id fixtureVideo1). The button itself is not pressed: it would run termux-url-opener.
+	async videoagain() {
+		const tab = await openTab('about:blank');
+		const folder = `const dir = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('media')).getDirectoryHandle(String(ID));
+			const read = async (n) => { try { return await (await dir.getFileHandle(n)).getFile(); } catch { return null; } };
+			const write = async (n, b) => { const w = await (await dir.getFileHandle(n, { create: true })).createWritable(); await w.write(b); await w.close(); };`;
+		const listed = (
+			title
+		) => `const items = [...document.querySelectorAll('.fresh li')]; if (!items.length) return null;
+			return items.some((li) => li.textContent.includes(${JSON.stringify(title)})) ? 'shown' : 'hidden';`;
+		try {
+			await importFromTermux(tab, 'Test clip, one video');
+			const id = await until(
+				'the reader',
+				() =>
+					tab.evaluate(
+						`${PLAY} const ask = [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Import'); if (ask) { ask.click(); return null; }
+						if (!location.pathname.includes('/read/')) return null;
+						return location.pathname.split('/').pop();`
+					),
+				60000,
+				250
+			);
+			const inside = (body) => tab.evaluate(folder.replace('ID', id) + body);
+			// The video lost, its sound kept: as the documents restored after the 2026-11-04 wipe.
+			await tab.goto('/');
+			await inside(
+				`const video = await read('media.mp4'); await write('sound-only.m4a', video); await dir.removeEntry('media.mp4'); return true;`
+			);
+			await tab.goto(`/document/${id}`);
+			const offered = await until(
+				'the offer to download the video again',
+				() =>
+					tab.evaluate(`const s = document.querySelector('section[aria-label="The video"]'); if (!s) return null;
+						return { text: s.textContent.replace(/\\s+/g, ' ').trim(), play: !!document.querySelector('a.play') };`),
+				30000,
+				250
+			);
+			await tab.goto('/');
+			const shownBefore = await until(
+				'New from Termux',
+				() => tab.evaluate(listed('Test clip, one video (again)')),
+				30000,
+				250
+			);
+			// As askForVideo leaves it once Termux took the download.
+			await inside(
+				`const meta = JSON.parse(await (await read('meta.json')).text()); meta.redownload = new Date().toISOString(); await write('meta.json', new Blob([JSON.stringify(meta)])); return true;`
+			);
+			await tab.goto('/');
+			await new Promise((r) => setTimeout(r, 1500));
+			const shownWaiting = await until(
+				'New from Termux',
+				() => tab.evaluate(listed('Test clip, one video (again)')),
+				30000,
+				250
+			);
+			await tab.goto(`/document/${id}`);
+			const attached = await until(
+				'the video back in the document',
+				() =>
+					inside(`if (document.querySelector('section[aria-label="The video"]')) return null;
+						const video = await read('media.mp4'); if (!video) return null;
+						const meta = JSON.parse(await (await read('meta.json')).text());
+						return { video: video.size, sound: (await read('sound-only.m4a'))?.size ?? 0, job: meta.job, waiting: 'redownload' in meta, id: meta.id };`),
+				30000,
+				250
+			);
+			return {
+				pass:
+					/Only the sound of this video is on the phone/.test(offered.text) &&
+					/Download the video again/.test(offered.text) &&
+					offered.play &&
+					shownBefore === 'shown' &&
+					shownWaiting === 'hidden' &&
+					attached.video > 0 &&
+					attached.sound > 0 &&
+					!attached.waiting &&
+					/^fixture-video-/.test(attached.job),
+				offered,
+				shownBefore,
+				shownWaiting,
+				attached
+			};
+		} finally {
+			await tab.close();
+		}
+	},
+
 	async lineeditor() {
 		const tab = await openTab('about:blank');
 		const plain = `(p) => [...p.querySelectorAll('.token')].map((t) => { const c = t.cloneNode(true); c.querySelectorAll('rt').forEach((r) => r.remove()); return c.textContent; }).join('')`;

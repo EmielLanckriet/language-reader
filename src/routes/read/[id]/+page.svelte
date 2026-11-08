@@ -28,6 +28,7 @@
 	import Progress from '$lib/ui/Progress.svelte';
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
 	import { findVideo } from '$lib/backup/destination';
+	import { takeVideo, waitingForVideo } from '$lib/media/redownload';
 	import { followTranslation, humanLines as humanOf, jobOf } from '$lib/media/translation';
 	import { saveMedia, writeMediaJson, QUICK_ENGLISH, SOUND_ONLY } from '$lib/media/store';
 	import { audioOnly } from '$lib/media/audio-track';
@@ -649,7 +650,12 @@
 			states = await repository.getStates(lexemesIn(document));
 			await readMemory(lexemesIn(document));
 			let found = await loadMedia(id);
-			if (found && !found.media && (await findVideo(id))) found = await loadMedia(id);
+			// No video, or only its sound in its place (loadMedia): Termux may still have the bundle.
+			if (found && (!found.media || found.media === found.sound) && (await findVideo(id)))
+				found = await loadMedia(id);
+			// A video asked for again (the document page) that Termux finished while the reader was away.
+			if (found && waitingForVideo(found.meta) && (await takeVideo(id).catch(() => false)))
+				found = await loadMedia(id);
 			// Known before the player mounts: it seeks once, when the video's metadata loads.
 			const asked = page.url.searchParams.get('t');
 			startAt =
