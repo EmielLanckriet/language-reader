@@ -54,9 +54,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
-- Download the video again (2026-11-08): checked in Chrome (`videoagain`), the button not pressed on
-  the phone. That day the sound of 21 videos lost in the wipe went back in by hand (yt-dlp on the
-  laptop) with 17 human English tracks, and the Anki recordings were imported again.
+- Download the video again (2026-11-08): checked in Chrome (`videoagain`), not installed on the
+  phone yet; ships with #58.
 
 - Editing lines by hand (ADR-0050): checked in Chrome at 390 px (`lineeditor`), not on the phone.
 - Termux downloads at 360p and keeps the video only inside its bundle (storage: the phone was 96% full).
@@ -70,6 +69,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Open
 
+- **Phone storage wiped again (#58, 2026-11-08)**: the native app's OPFS and caches went to 0
+  (96% full phone; `persist()` refused): every video folder, the Anki recordings, the models. The
+  database survived. Proposal in #58: media in the app's own files. Until then videos show as texts
+  and cards have no sound; a stopgap in `reader.copyChain` keeps copies from dropping their media.
 - **Native app**: videos still copied into app storage (one copy, read from Termux's, is next);
   not cross-origin isolated. 22 videos lost in the 2026-11-04 wipe: Termux no longer
   had their bundles. Full screen works again (#55): `FullscreenChromeClient.kt` wraps wry's
