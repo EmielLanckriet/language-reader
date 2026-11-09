@@ -314,7 +314,13 @@ export function mergeChain(base: CopyBody, increments: CopyIncrement[]): CopyBod
 		}
 		tip = piece.createdAt;
 		const documents = new Map(merged.documents.map((d) => [d.id, d]));
-		for (const document of piece.documents) documents.set(document.id, document);
+		for (const document of piece.documents) {
+			// A folder can empty without the reader doing anything (the 2026-11-08 eviction, #58):
+			// a document sent without media keeps what it had, unless it was removed.
+			const before = documents.get(document.id)?.media;
+			const keep = !document.media && before && !document.removedAt;
+			documents.set(document.id, keep ? { ...document, media: before } : document);
+		}
 		const missing = piece.documentIds.find((id) => !documents.has(id));
 		if (missing !== undefined) {
 			throw new CopyRejected('chain', `The copies lack document ${missing}.`);

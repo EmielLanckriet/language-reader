@@ -16,6 +16,7 @@
  * errors against 18.3% on six film excerpts (scripts/measure/sensevoice/issue14). Eight frames,
  * since Android's AAC decoder (FDK) still settles after two.
  */
+import type { Readable } from '$lib/media/files';
 import type { Sample } from 'mp4box';
 import { downmix, Resampler, SPEECH_RATE } from './resample';
 
@@ -40,7 +41,7 @@ export class SpeechAudio {
 	}
 
 	/** The audio of `video`, or why it cannot be had. */
-	static async open(video: Blob): Promise<SpeechAudio | AudioProblem> {
+	static async open(video: Readable): Promise<SpeechAudio | AudioProblem> {
 		const { createFile, MP4BoxBuffer } = await import('mp4box');
 		const file = createFile();
 		const samples: Sample[] = [];

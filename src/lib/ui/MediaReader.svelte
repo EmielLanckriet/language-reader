@@ -12,6 +12,7 @@
 
 <script lang="ts">
 	import { lineAt, type Cue } from '$lib/media/subtitles';
+	import { playbackUrl, type MediaFile } from '$lib/media/files';
 	import { landscapeWhileFullscreen } from '$lib/media/orientation';
 	import type { English } from '$lib/translation/lines';
 	import { tick, untrack, type Snippet } from 'svelte';
@@ -48,7 +49,7 @@
 		englishShown = false,
 		player = $bindable(null)
 	}: {
-		file: File;
+		file: MediaFile;
 		cues: Cue[];
 		/** Playing a part from a hardcore step (spec 014): stop here, in seconds, and offer `back`. */
 		until?: number;
@@ -83,7 +84,7 @@
 		title?: string;
 		artist?: string;
 		/** The video's sound alone (media/audio-track.ts): what plays while the screen is locked. */
-		soundFile?: File;
+		soundFile?: MediaFile;
 		player?: HTMLMediaElement | null;
 	} = $props();
 
@@ -106,18 +107,18 @@
 	const isAudio = $derived(/\.(m4a|mp3|ogg|opus|wav)$/i.test(file.name));
 
 	$effect(() => {
-		const made = URL.createObjectURL(file);
-		url = made;
-		return () => URL.revokeObjectURL(made);
+		const made = playbackUrl(file);
+		url = made.url;
+		return made.release;
 	});
 
 	let soundUrl = $state<string | null>(null);
 	$effect(() => {
 		if (!soundFile) return;
-		const made = URL.createObjectURL(soundFile);
-		soundUrl = made;
+		const made = playbackUrl(soundFile);
+		soundUrl = made.url;
 		return () => {
-			URL.revokeObjectURL(made);
+			made.release();
 			soundUrl = null;
 		};
 	});

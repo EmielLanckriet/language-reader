@@ -20,6 +20,7 @@
 		loadMedia,
 		ENGLISH_SETTING,
 		type EnglishSetting,
+		type MediaFile,
 		type StoredMedia
 	} from '$lib/media/store';
 	import { resumeOf } from '$lib/media/cover';
@@ -203,7 +204,7 @@
 	 * time it is opened, in the background, and kept beside it. Its own state, not part of `media`,
 	 * so that making it restarts neither the recorder nor the translators.
 	 */
-	let soundFile = $state<File | undefined>();
+	let soundFile = $state<MediaFile | undefined>();
 	$effect(() => {
 		const video = media?.media;
 		const id = documentId;

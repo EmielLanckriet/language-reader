@@ -9,12 +9,13 @@
  */
 
 import type { IsoFileOptions, Sample } from 'mp4box';
+import type { Readable } from './files';
 
 /** Read in slices, so a long video is never all in memory at once. */
 const SLICE = 4 * 1024 * 1024;
 
 /** The audio track of an MP4 as an M4A, or null when the file has no audio track mp4box can read. */
-export async function audioOnly(video: Blob): Promise<Blob | null> {
+export async function audioOnly(video: Readable): Promise<Blob | null> {
 	const { createFile, MP4BoxBuffer } = await import('mp4box');
 	const input = createFile();
 	const samples: Sample[] = [];

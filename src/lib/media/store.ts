@@ -1,16 +1,19 @@
 /**
  * The files a media document was imported from, kept verbatim beside the database.
  *
- * In the origin-private file system under `media/<documentId>/`, which SQLite's pool (in
- * `.opfs-sahpool`) never touches. No table records them: a document has media exactly when its
- * directory exists, so there is nothing to keep in step.
+ * Under `media/<documentId>/` in `files.ts`: OPFS in the browser, the app's own files natively
+ * (ADR-0051). No table records them: a document has media exactly when its directory exists, so
+ * there is nothing to keep in step.
  */
 
 import { parseSubtitles, type Cue, type SubtitleTrack } from './subtitles';
 import { LAYOUT, PLAIN, SENTENCES, layoutOf, type Layout } from './layout';
+import { files as storage, type MediaFile, type Source } from './files';
+
+export type { MediaFile } from './files';
 
 export interface StoredMedia {
-	media: File | undefined;
+	media: MediaFile | undefined;
 	cues: Cue[];
 	/** English per cue, in cue order; empty until Termux has translated it. Derived. */
 	translation: Cue[];
@@ -18,7 +21,7 @@ export interface StoredMedia {
 	quick: (string | null)[];
 	meta: Record<string, unknown>;
 	/** The video's sound as an audio-only file, once made (SOUND_ONLY). */
-	sound?: File;
+	sound?: MediaFile;
 	/** Every downloaded subtitle track (spec 012), with its text; empty for older documents. */
 	tracks: SubtitleTrack[];
 	/** Which English the reader shows (ENGLISH_SETTING). Derived; absent means machine. */
@@ -35,33 +38,20 @@ export type EnglishSetting =
 	/** English the reader placed on the lines by hand (layout.ts), kept in layout.json. */
 	| { source: 'edited' };
 
-async function mediaRoot(): Promise<FileSystemDirectoryHandle> {
-	const root = await navigator.storage.getDirectory();
-	return root.getDirectoryHandle('media', { create: true });
-}
+const MEDIA = 'media';
+const at = (...path: string[]) => [MEDIA, ...path];
 
 export interface NamedBlob {
 	name: string;
-	blob: Blob;
+	blob: Source;
 }
 
-async function directoryAt(path: string[], create: boolean): Promise<FileSystemDirectoryHandle> {
-	let directory = await mediaRoot();
-	for (const part of path) directory = await directory.getDirectoryHandle(part, { create });
-	return directory;
-}
-
-async function writeFiles(directory: FileSystemDirectoryHandle, files: NamedBlob[]) {
-	for (const { name, blob } of files) {
-		const handle = await directory.getFileHandle(name, { create: true });
-		const writable = await handle.createWritable();
-		await writable.write(blob);
-		await writable.close();
-	}
+async function writeFiles(path: string[], files: NamedBlob[]) {
+	for (const { name, blob } of files) await storage.write([...path, name], blob);
 }
 
 export async function saveMedia(documentId: number, files: NamedBlob[]): Promise<void> {
-	await writeFiles(await directoryAt([String(documentId)], true), files);
+	await writeFiles(at(String(documentId)), files);
 }
 
 /**
@@ -69,41 +59,27 @@ export async function saveMedia(documentId: number, files: NamedBlob[]): Promise
  * is created, and these files copied to it, when the transcript is complete.
  */
 export async function savePending(job: string, files: NamedBlob[]): Promise<void> {
-	await writeFiles(await directoryAt(['pending', job], true), files);
+	await writeFiles(at('pending', job), files);
 }
 
-async function filesAt(path: string[]): Promise<File[]> {
-	const files: File[] = [];
-	for await (const handle of (await directoryAt(path, false)).values()) {
-		if (handle.kind === 'file') files.push(await (handle as FileSystemFileHandle).getFile());
-	}
-	return files;
-}
-
-export function loadPending(job: string): Promise<File[]> {
-	return filesAt(['pending', job]);
+export async function loadPending(job: string): Promise<MediaFile[]> {
+	const found = await storage.files(at('pending', job));
+	if (!found) throw new Error(`No pending video ${job}`);
+	return found;
 }
 
 /** The files kept for a media document, or none when it is not one (ADR-0018). */
-export async function mediaFiles(documentId: number): Promise<File[]> {
-	try {
-		return await filesAt([String(documentId)]);
-	} catch {
-		return [];
-	}
+export async function mediaFiles(documentId: number): Promise<MediaFile[]> {
+	return (await storage.files(at(String(documentId))).catch(() => null)) ?? [];
 }
 
 /** A deleted document's files; nothing to do when it had none. */
 export async function removeMedia(documentId: number): Promise<void> {
-	try {
-		await (await mediaRoot()).removeEntry(String(documentId), { recursive: true });
-	} catch {
-		// Not a media document, or already gone.
-	}
+	await storage.remove(at(String(documentId))).catch(() => {});
 }
 
 export async function removePending(job: string): Promise<void> {
-	await (await directoryAt(['pending'], false)).removeEntry(job, { recursive: true });
+	await storage.remove(at('pending', job));
 }
 
 /**
@@ -117,57 +93,36 @@ export const TRANSCRIPT = 'transcript.json';
 export const TRANSCRIPT_METHOD = 'media.zh.method.json';
 export const TRANSCRIPT_SENT = 'transcript-sent';
 
-async function readJsonIn<T>(
-	directory: FileSystemDirectoryHandle,
-	name: string
-): Promise<T | undefined> {
+async function readJson<T>(path: string[]): Promise<T | undefined> {
 	try {
-		return JSON.parse(await (await (await directory.getFileHandle(name)).getFile()).text()) as T;
+		const file = await storage.file(path);
+		return file && (JSON.parse(await file.text()) as T);
 	} catch {
 		return undefined;
 	}
 }
 
-/** Written aside and moved into place, so an interruption leaves the previous whole version. */
-async function writeJsonIn(
-	directory: FileSystemDirectoryHandle,
-	name: string,
-	value: unknown
-): Promise<void> {
-	const aside = await directory.getFileHandle(`${name}.part`, { create: true });
-	const writable = await aside.createWritable();
-	await writable.write(JSON.stringify(value));
-	await writable.close();
-	await (aside as FileSystemFileHandle & { move(name: string): Promise<void> }).move(name);
+/** Atomic in both stores: an interruption leaves the previous whole version. */
+async function writeJson(path: string[], value: unknown): Promise<void> {
+	await storage.write(path, new Blob([JSON.stringify(value)]));
 }
 
-export async function readPending<T>(job: string, name: string): Promise<T | undefined> {
-	try {
-		return await readJsonIn<T>(await directoryAt(['pending', job], false), name);
-	} catch {
-		return undefined;
-	}
+export function readPending<T>(job: string, name: string): Promise<T | undefined> {
+	return readJson<T>(at('pending', job, name));
 }
 
 export async function writePending(job: string, name: string, value: unknown): Promise<void> {
-	await writeJsonIn(await directoryAt(['pending', job], true), name, value);
+	await writeJson(at('pending', job, name), value);
 }
 
 /** The pending videos, by folder name. */
 export async function listPending(): Promise<string[]> {
-	const jobs: string[] = [];
-	for await (const entry of (await directoryAt(['pending'], true)).values()) {
-		if (entry.kind === 'directory') jobs.push(entry.name);
-	}
-	return jobs;
+	const entries = (await storage.entries(at('pending'))) ?? [];
+	return entries.filter((entry) => entry.kind === 'directory').map((entry) => entry.name);
 }
 
-export async function readMediaJson<T>(documentId: number, name: string): Promise<T | undefined> {
-	try {
-		return await readJsonIn<T>(await directoryAt([String(documentId)], false), name);
-	} catch {
-		return undefined;
-	}
+export function readMediaJson<T>(documentId: number, name: string): Promise<T | undefined> {
+	return readJson<T>(at(String(documentId), name));
 }
 
 export async function writeMediaJson(
@@ -175,7 +130,7 @@ export async function writeMediaJson(
 	name: string,
 	value: unknown
 ): Promise<void> {
-	await writeJsonIn(await directoryAt([String(documentId)], true), name, value);
+	await writeJson(at(String(documentId), name), value);
 }
 
 /**
@@ -220,12 +175,8 @@ export function isPlayable(name: string): boolean {
 }
 
 export async function loadMedia(documentId: number): Promise<StoredMedia | null> {
-	let directory: FileSystemDirectoryHandle;
-	try {
-		directory = await (await mediaRoot()).getDirectoryHandle(String(documentId));
-	} catch {
-		return null;
-	}
+	const files = await storage.files(at(String(documentId))).catch(() => null);
+	if (!files) return null;
 	const found: StoredMedia = {
 		media: undefined,
 		cues: [],
@@ -240,9 +191,7 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 	let layout: unknown;
 	let runs: unknown;
 	const texts = new Map<string, string>();
-	for await (const handle of directory.values()) {
-		if (handle.kind !== 'file') continue;
-		const file = await (handle as FileSystemFileHandle).getFile();
+	for (const file of files) {
 		// An interrupted write leaves the file it created empty (issue #45): no file, so a derived
 		// sound is made again and a card plays the video instead.
 		if (file.size === 0 && isPlayable(file.name)) continue;
@@ -280,12 +229,7 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 const DISMISSED = 'dismissed.json';
 
 async function dismissedJobs(): Promise<string[]> {
-	try {
-		const file = await (await (await mediaRoot()).getFileHandle(DISMISSED)).getFile();
-		return JSON.parse(await file.text());
-	} catch {
-		return [];
-	}
+	return (await readJson<string[]>(at(DISMISSED))) ?? [];
 }
 
 /** One at a time: two quick taps each read the list before the other wrote it, and one was lost. */
@@ -295,31 +239,23 @@ export function dismissJob(job: string): Promise<void> {
 	dismissing = dismissing.then(async () => {
 		const jobs = await dismissedJobs();
 		if (jobs.includes(job)) return;
-		await writeFiles(await mediaRoot(), [
-			{ name: DISMISSED, blob: new Blob([JSON.stringify([...jobs, job])]) }
-		]);
+		await writeJson(at(DISMISSED), [...jobs, job]);
 	});
 	return dismissing;
 }
 
 export async function importedJobs(): Promise<Set<string>> {
 	const jobs = new Set<string>(await dismissedJobs());
-	const read = async (directory: FileSystemDirectoryHandle) => {
-		try {
-			const meta = await (await directory.getFileHandle('meta.json')).getFile();
-			const job = JSON.parse(await meta.text()).job;
-			if (typeof job === 'string') jobs.add(job);
-		} catch {
-			// Not a media document from Termux.
-		}
+	const read = async (path: string[]) => {
+		const job = (await readJson<{ job?: unknown }>([...path, 'meta.json']))?.job;
+		if (typeof job === 'string') jobs.add(job);
 	};
-	const root = await mediaRoot();
-	for await (const entry of root.values()) {
+	for (const entry of (await storage.entries(at())) ?? []) {
 		if (entry.kind !== 'directory') continue;
-		if (entry.name !== 'pending') await read(entry as FileSystemDirectoryHandle);
+		if (entry.name !== 'pending') await read(at(entry.name));
 		else {
-			for await (const job of (entry as FileSystemDirectoryHandle).values()) {
-				if (job.kind === 'directory') await read(job as FileSystemDirectoryHandle);
+			for (const job of (await storage.entries(at('pending'))) ?? []) {
+				if (job.kind === 'directory') await read(at('pending', job.name));
 			}
 		}
 	}
@@ -329,7 +265,7 @@ export async function importedJobs(): Promise<Set<string>> {
 /** The documents that are videos: those with a media folder, which a restored video keeps too. */
 export async function mediaDocuments(): Promise<Set<number>> {
 	const ids = new Set<number>();
-	for await (const entry of (await mediaRoot()).values()) {
+	for (const entry of (await storage.entries(at())) ?? []) {
 		if (entry.kind === 'directory' && /^\d+$/.test(entry.name)) ids.add(Number(entry.name));
 	}
 	return ids;
@@ -340,14 +276,7 @@ export async function mediaDocuments(): Promise<Set<number>> {
  * megabytes. For a video given new subtitles (issue #9).
  */
 export async function moveMediaFiles(from: number, to: number, names: string[]): Promise<void> {
-	const source = await directoryAt([String(from)], false);
-	const target = await directoryAt([String(to)], true);
-	for (const name of names) {
-		const handle = await source.getFileHandle(name);
-		await (
-			handle as FileSystemFileHandle & { move(to: FileSystemDirectoryHandle): Promise<void> }
-		).move(target);
-	}
+	for (const name of names) await storage.move(at(String(from), name), at(String(to), name));
 }
 
 /** Each media document's meta.json, by document. */

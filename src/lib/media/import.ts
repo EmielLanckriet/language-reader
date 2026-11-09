@@ -4,7 +4,7 @@ import { session } from '$lib/storage/session';
 import { fallbackAnalyzer } from '$lib/analyzer/active';
 import { resolveTokens, stampOf } from '$lib/analyzer/resolve';
 import { RejectedInput } from '$lib/content/types';
-import { readTar } from './tar';
+import type { Bundle, TarMember } from './tar';
 import {
 	classifyTracks,
 	choiceNeeded,
@@ -53,7 +53,7 @@ export interface ImportPlan {
 	needed: boolean;
 }
 
-type Member = Awaited<ReturnType<typeof readTar>>[number];
+type Member = TarMember;
 
 /**
  * The subtitle tracks in a bundle. From 012 on they are track.<lang>.vtt files described by
@@ -85,8 +85,8 @@ async function tracksIn(members: Member[]): Promise<SubtitleTrack[]> {
 	);
 }
 
-export async function planImport(bundle: Blob): Promise<ImportPlan> {
-	const tracks = classifyTracks(await tracksIn(await readTar(bundle)));
+export async function planImport(bundle: Bundle): Promise<ImportPlan> {
+	const tracks = classifyTracks(await tracksIn(bundle));
 	const { chinese, english } = defaultChoice(tracks);
 	return {
 		tracks,
@@ -110,11 +110,11 @@ function chineseName(track: SubtitleTrack): string {
  * beside it with tracks.json (FR-008), so a later English switch or re-import needs no download.
  */
 export async function importBundle(
-	bundle: Blob,
+	bundle: Bundle,
 	fallbackTitle: string,
 	choice?: TrackChoice
 ): Promise<Imported> {
-	const members = await readTar(bundle);
+	const members = bundle;
 	const named = (name: string) => members.find((member) => member.name === name);
 	const plan = await planImport(bundle);
 	const chosen = choice ?? plan.defaults;

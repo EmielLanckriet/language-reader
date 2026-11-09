@@ -141,4 +141,28 @@ describe('a chain of copies', () => {
 		expect(() => mergeChain(base.body, [second.increment])).toThrow();
 		expect(() => mergeChain(base.body, [first.increment, first.increment])).toThrow();
 	});
+
+	it('keeps the media a document had when a later piece sends it without (a wiped folder, #58)', async () => {
+		const repository = new Repository(await freshDatabase());
+		await work(repository, [], '我们今天学习中文', 0);
+		const base = repository.exportCopy('app', '2026-11-01T00:00:00Z');
+		const [kept, removed] = [0, 0].map(() => ({ ...base.body.documents[0] }));
+		const media = {
+			subtitles: { name: 'media.zh.vtt', text: 'WEBVTT' },
+			meta: { id: 'x' },
+			files: [{ name: 'layout.json', text: '{}' }]
+		};
+		base.body.documents = [
+			{ ...kept, id: 101, media },
+			{ ...removed, id: 102, media }
+		];
+		const next = repository.exportIncrement('app', '2026-11-02T00:00:00Z', base.cursor)!;
+		next.increment.documentIds = [101, 102];
+		next.increment.documents = [
+			{ ...kept, id: 101 },
+			{ ...removed, id: 102, removedAt: '2026-11-02T00:00:00Z' }
+		];
+		const merged = mergeChain(base.body, [next.increment]);
+		expect(merged.documents.map((d) => d.media)).toEqual([media, undefined]);
+	});
 });

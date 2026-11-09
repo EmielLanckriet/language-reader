@@ -7,9 +7,9 @@
  */
 
 import { SERVICE } from './service-address';
-import { readTar } from './tar';
 import { isPlayable, readMediaJson, saveMedia, writeMediaJson } from './store';
-import { downloadState, type TermuxJob } from './termux';
+import { bundleFromTermux, downloadState, releaseBundle, type TermuxJob } from './termux';
+import type { MediaFile } from './files';
 
 type Meta = Record<string, unknown>;
 
@@ -31,7 +31,7 @@ export function waitingForVideo(meta: Meta): boolean {
 }
 
 /** A video file, as against the sound alone. */
-export function isVideo(file: File | undefined): boolean {
+export function isVideo(file: MediaFile | undefined): boolean {
 	return !!file && /\.(mp4|webm)$/i.test(file.name);
 }
 
@@ -88,13 +88,15 @@ export async function takeVideo(documentId: number): Promise<boolean> {
 	});
 	if (!found.ok) return false;
 	const job: string = (await found.json()).job;
-	const bundle = await fetch(`${SERVICE}/downloads/${encodeURIComponent(job)}/bundle.tar`);
-	if (!bundle.ok) return false;
-	const video = (await readTar(await bundle.blob())).find(
-		(member) => isPlayable(member.name) && /\.(mp4|webm)$/i.test(member.name)
-	);
-	if (!video) return false;
-	await saveMedia(documentId, [{ name: video.name.split('/').pop()!, blob: video.blob }]);
+	try {
+		const video = (await bundleFromTermux(job))?.find(
+			(member) => isPlayable(member.name) && /\.(mp4|webm)$/i.test(member.name)
+		);
+		if (!video) return false;
+		await saveMedia(documentId, [{ name: video.name.split('/').pop()!, blob: video.blob }]);
+	} finally {
+		await releaseBundle(job);
+	}
 	// The new job is this document's from now on: not offered as new, and its translation followed.
 	const rest: Meta = { ...meta, job };
 	delete rest.redownload;

@@ -131,7 +131,7 @@ export const transcriber = new Transcriber({
 		const meta = files.find((file) => file.name === 'meta.json');
 		const title = meta ? titleIn(await meta.text(), 'Video') : 'Video';
 		const id = await createMediaDocument(title, vtt, [
-			...files.map((file) => ({ name: file.name, blob: file as Blob })),
+			...files.map((file) => ({ name: file.name, blob: file })),
 			{ name: 'media.zh.vtt', blob: new Blob([vtt], { type: 'text/vtt' }) }
 		]);
 		await writeMediaJson(id, TRANSCRIPT_METHOD, method);

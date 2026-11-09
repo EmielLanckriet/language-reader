@@ -4,6 +4,7 @@
 	import { exampleAudio } from '$lib/media/example-bundle';
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { loadMedia } from '$lib/media/store';
+	import type { Readable } from '$lib/media/files';
 	import { englishFor, llmByLine } from '$lib/translation/lines';
 	import { humanLines } from '$lib/media/translation';
 	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
@@ -47,7 +48,7 @@
 	let audio: CardAudio | undefined;
 	let playing = $state(false);
 	let audioProblem = $state('');
-	let sentenceClip = $state<{ file: Blob; start: number; end?: number } | null>(null);
+	let sentenceClip = $state<{ file: Readable; start: number; end?: number } | null>(null);
 	let wordClip: Blob | undefined;
 	let alive = true;
 	let quick: QuickTranslation | undefined;

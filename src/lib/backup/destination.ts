@@ -5,7 +5,6 @@
  */
 
 import { session } from '$lib/storage/session';
-import { readTar } from '$lib/media/tar';
 import { isPlayable, mediaFiles, replacesIn, saveMedia } from '$lib/media/store';
 import { carried, filesOf, markOf, mediaOf } from './media-files';
 import { version } from '$app/environment';
@@ -23,6 +22,7 @@ import {
 } from './format';
 
 import { SERVICE } from '$lib/media/service-address';
+import { bundleFromTermux, releaseBundle } from '$lib/media/termux';
 const LAST_SENT = 'reader.lastCopy';
 
 export type Found = { text: string; createdAt: string; documents: number; words: number };
@@ -248,10 +248,12 @@ async function fetchVideo(documentId: number, meta: Record<string, unknown>): Pr
 		if (found.ok) job = (await found.json()).job;
 	}
 	if (!job) return false;
-	const bundle = await fetch(`${SERVICE}/downloads/${encodeURIComponent(job)}/bundle.tar`);
-	if (!bundle.ok) return false;
-	const video = (await readTar(await bundle.blob())).find((member) => isPlayable(member.name));
-	if (!video) return false;
-	await saveMedia(documentId, [{ name: video.name.split('/').pop()!, blob: video.blob }]);
-	return true;
+	try {
+		const video = (await bundleFromTermux(job))?.find((member) => isPlayable(member.name));
+		if (!video) return false;
+		await saveMedia(documentId, [{ name: video.name.split('/').pop()!, blob: video.blob }]);
+		return true;
+	} finally {
+		await releaseBundle(job);
+	}
 }

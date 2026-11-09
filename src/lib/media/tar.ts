@@ -6,11 +6,16 @@
  * memory, which on a phone is the difference between working and the tab being killed.
  */
 
+import type { Readable } from './files';
+
 export interface TarMember {
 	name: string;
 	size: number;
-	blob: Blob;
+	blob: Readable;
 }
+
+/** A bundle's files: read from a tar here, or unpacked by the native shell (files.ts). */
+export type Bundle = TarMember[];
 
 const BLOCK = 512;
 
@@ -20,7 +25,7 @@ function field(header: Uint8Array, start: number, length: number): string {
 	return new TextDecoder().decode(end === -1 ? bytes : bytes.subarray(0, end));
 }
 
-export async function readTar(archive: Blob): Promise<TarMember[]> {
+export async function readTar(archive: Readable): Promise<Bundle> {
 	const members: TarMember[] = [];
 	let offset = 0;
 	let longName: string | undefined;

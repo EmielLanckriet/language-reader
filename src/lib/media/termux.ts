@@ -7,6 +7,9 @@ import { importBundle, type Imported, type TrackChoice } from './import';
 import { awaitedVideos, importedJobs } from './store';
 
 import { SERVICE } from '$lib/media/service-address';
+import { NATIVE } from '$lib/native';
+import { files, takeBundle } from './files';
+import { readTar, type Bundle } from './tar';
 
 export interface TermuxJob {
 	job: string;
@@ -60,19 +63,56 @@ export async function newFromTermux(): Promise<TermuxJob[] | 'unreachable'> {
 	);
 }
 
-export async function fetchBundle(job: TermuxJob): Promise<Blob> {
-	const response = await fetch(`${SERVICE}/downloads/${encodeURIComponent(job.job)}/bundle.tar`);
-	if (!response.ok)
-		throw new Error(`Termux could not hand over "${job.title}" (${response.status}).`);
-	return response.blob();
+/**
+ * A Termux job's bundle, or null when Termux does not have it. Natively the shell downloads and
+ * unpacks it into its own files (files.ts): a video never crosses into the page. Call
+ * `releaseBundle` when done with it.
+ */
+export async function bundleFromTermux(job: string): Promise<Bundle | null> {
+	const url = `${SERVICE}/downloads/${encodeURIComponent(job)}/bundle.tar`;
+	if (NATIVE) {
+		try {
+			return (await takeBundle(url, job)).map((file) => ({
+				name: file.name,
+				size: file.size,
+				blob: file
+			}));
+		} catch (error) {
+			if (/answered HTTP\/\S+ 404/.test(String(error))) return null;
+			throw error;
+		}
+	}
+	const response = await fetch(url);
+	if (response.status === 404) return null;
+	if (!response.ok) throw new Error(`Termux answered ${response.status}.`);
+	return readTar(await response.blob());
+}
+
+/** Natively, the unpacked bundle's folder goes once its files are taken (they are linked). */
+export async function releaseBundle(job: string): Promise<void> {
+	if (NATIVE) await files.remove(['staging', job]).catch(() => {});
+}
+
+export async function fetchBundle(job: TermuxJob): Promise<Bundle> {
+	try {
+		const bundle = await bundleFromTermux(job.job);
+		if (bundle) return bundle;
+		throw new Error('it is gone');
+	} catch (error) {
+		throw new Error(`Termux could not hand over "${job.title}" (${(error as Error).message}).`);
+	}
 }
 
 export async function importJob(
 	job: TermuxJob,
-	bundle?: Blob,
+	bundle?: Bundle,
 	choice?: TrackChoice
 ): Promise<Imported> {
-	return importBundle(bundle ?? (await fetchBundle(job)), job.title, choice);
+	try {
+		return await importBundle(bundle ?? (await fetchBundle(job)), job.title, choice);
+	} finally {
+		await releaseBundle(job.job);
+	}
 }
 
 /**

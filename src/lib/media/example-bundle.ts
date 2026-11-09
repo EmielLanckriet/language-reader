@@ -1,3 +1,4 @@
+import { files, type Readable } from './files';
 import { AUDIO_NAME, checkedExample, type AnkiExample } from '../domain/card-examples';
 import { session } from '../storage/session';
 
@@ -112,21 +113,25 @@ export async function readExampleBundle(file: Blob): Promise<ExampleBundle> {
 		}
 	return { examples, audio: [...found.values()] };
 }
-async function directory() {
-	return (await navigator.storage.getDirectory()).getDirectoryHandle('card-audio', {
-		create: true
-	});
-}
+/** Where card audio lives: files.ts, so natively in the app's own files (ADR-0051). */
+const ROOT = 'card-audio';
 interface StoredBundle {
 	file: string;
 	audio: Record<string, Pick<Asset, 'offset' | 'size' | 'mime'>>;
 }
 
-async function readBundleIndex(root: FileSystemDirectoryHandle): Promise<StoredBundle | undefined> {
+/** Read once: a card asks for its audio every time it is shown. */
+let bundleIndex: Promise<StoredBundle | undefined> | undefined;
+
+function readBundleIndex(): Promise<StoredBundle | undefined> {
+	return (bundleIndex ??= readBundleIndexFile());
+}
+
+async function readBundleIndexFile(): Promise<StoredBundle | undefined> {
 	try {
-		const value = JSON.parse(
-			await (await (await root.getFileHandle(BUNDLE_INDEX)).getFile()).text()
-		);
+		const file = await files.file([ROOT, BUNDLE_INDEX]);
+		if (!file) return;
+		const value = JSON.parse(await file.text());
 		if (typeof value.file !== 'string' || !value.file.startsWith('anki-bundle-')) return;
 		if (!value.audio || typeof value.audio !== 'object') return;
 		return value as StoredBundle;
@@ -135,17 +140,7 @@ async function readBundleIndex(root: FileSystemDirectoryHandle): Promise<StoredB
 	}
 }
 
-async function writeBundleIndex(root: FileSystemDirectoryHandle, index: StoredBundle) {
-	const temporary = await root.getFileHandle(`${BUNDLE_INDEX}.part`, { create: true });
-	const writer = await temporary.createWritable();
-	await writer.write(JSON.stringify(index));
-	await writer.close();
-	await (temporary as FileSystemFileHandle & { move(name: string): Promise<void> }).move(
-		BUNDLE_INDEX
-	);
-}
-
-async function verifiedAudio(blob: Blob, name: string): Promise<Blob | undefined> {
+async function verifiedAudio(blob: Readable, name: string): Promise<Blob | undefined> {
 	const bytes = await blob.arrayBuffer();
 	const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
 		.map((byte) => byte.toString(16).padStart(2, '0'))
@@ -156,29 +151,26 @@ async function verifiedAudio(blob: Blob, name: string): Promise<Blob | undefined
 export async function exampleAudio(name: string): Promise<Blob | undefined> {
 	if (!AUDIO_NAME.test(name)) return;
 	try {
-		const root = await directory();
-		try {
-			return await verifiedAudio(await (await root.getFileHandle(name)).getFile(), name);
-		} catch {
-			const index = await readBundleIndex(root);
-			const asset = index?.audio[name];
-			if (
-				!asset ||
-				!Number.isInteger(asset.offset) ||
-				!Number.isInteger(asset.size) ||
-				asset.offset < 0 ||
-				asset.size <= 0 ||
-				asset.size > 32 * MIB ||
-				asset.mime !== MIME[name.split('.').at(-1)!]
-			)
-				return;
-			const source = await (await root.getFileHandle(index.file)).getFile();
-			if (asset.offset + asset.size > source.size) return;
-			return await verifiedAudio(
-				source.slice(asset.offset, asset.offset + asset.size, asset.mime),
-				name
-			);
-		}
+		const single = await files.file([ROOT, name]);
+		if (single) return await verifiedAudio(single, name);
+		const index = await readBundleIndex();
+		const asset = index?.audio[name];
+		if (
+			!asset ||
+			!Number.isInteger(asset.offset) ||
+			!Number.isInteger(asset.size) ||
+			asset.offset < 0 ||
+			asset.size <= 0 ||
+			asset.size > 32 * MIB ||
+			asset.mime !== MIME[name.split('.').at(-1)!]
+		)
+			return;
+		const source = await files.file([ROOT, index.file]);
+		if (!source || asset.offset + asset.size > source.size) return;
+		return await verifiedAudio(
+			source.slice(asset.offset, asset.offset + asset.size, asset.mime),
+			name
+		);
 	} catch {
 		return;
 	}
@@ -189,22 +181,20 @@ export async function importExampleBundle(
 ): Promise<number> {
 	onProgress('Checking example bundle…');
 	const bundle = await readExampleBundle(file);
-	const root = await directory();
 	onProgress('Saving the offline audio bundle…');
 	const name = `anki-bundle-${crypto.randomUUID()}.tar`;
-	const handle = await root.getFileHandle(name, { create: true });
-	const writer = await handle.createWritable();
-	await writer.write(file);
-	await writer.close();
-	const previous = await readBundleIndex(root);
-	await writeBundleIndex(root, {
+	await files.write([ROOT, name], file);
+	const previous = await readBundleIndex();
+	const index: StoredBundle = {
 		file: name,
 		audio: Object.fromEntries(
 			bundle.audio.map(({ name, offset, size, mime }) => [name, { offset, size, mime }])
 		)
-	});
+	};
+	await files.write([ROOT, BUNDLE_INDEX], new Blob([JSON.stringify(index)]));
+	bundleIndex = Promise.resolve(index);
 	if (previous?.file && previous.file !== name)
-		await root.removeEntry(previous.file).catch(() => {});
+		await files.remove([ROOT, previous.file]).catch(() => {});
 	onProgress('Saving example sentences…');
 	return (await session()).repository.importCardExamples(bundle.examples);
 }

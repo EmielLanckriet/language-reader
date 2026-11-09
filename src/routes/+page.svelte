@@ -13,6 +13,7 @@
 	} from '$lib/media/termux';
 	import { dismissJob, listPending, loadPending } from '$lib/media/store';
 	import { planImport, titleIn, type ImportPlan, type TrackChoice } from '$lib/media/import';
+	import type { Bundle } from '$lib/media/tar';
 	import TrackChoiceSheet from '$lib/ui/TrackChoice.svelte';
 	import { transcriber } from '$lib/speech/app';
 	import type { JobState } from '$lib/speech/transcriber';
@@ -60,7 +61,7 @@
 	}
 
 	/** A download whose tracks the reader is choosing (spec 012): nothing is imported meanwhile. */
-	let asking = $state<{ job: TermuxJob; bundle: Blob; plan: ImportPlan } | null>(null);
+	let asking = $state<{ job: TermuxJob; bundle: Bundle; plan: ImportPlan } | null>(null);
 
 	async function openJob(job: TermuxJob) {
 		opening = job.job;
@@ -94,7 +95,7 @@
 		}
 	}
 
-	async function finishImport(job: TermuxJob, bundle: Blob, choice?: TrackChoice) {
+	async function finishImport(job: TermuxJob, bundle: Bundle, choice?: TrackChoice) {
 		const imported = await importJob(job, bundle, choice);
 		// The import stands even if Termux missed the choice; it then translates nothing yet.
 		if (choice) {

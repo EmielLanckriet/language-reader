@@ -6,7 +6,13 @@
 	import { fallbackAnalyzer } from '$lib/analyzer/active';
 	import { codePointsOf } from '$lib/domain/offsets';
 	import { parseSubtitles, type Cue } from '$lib/media/subtitles';
-	import { ENGLISH_SETTING, isPlayable, loadPending, type EnglishSetting } from '$lib/media/store';
+	import {
+		ENGLISH_SETTING,
+		isPlayable,
+		loadPending,
+		type EnglishSetting,
+		type MediaFile
+	} from '$lib/media/store';
 	import { titleIn } from '$lib/media/import';
 	import MediaReader, { type LineWord } from '$lib/ui/MediaReader.svelte';
 	import StateMenu from '$lib/ui/StateMenu.svelte';
@@ -31,7 +37,7 @@
 	 */
 	const job = page.params.job!;
 
-	let files = $state<File[]>([]);
+	let files = $state<MediaFile[]>([]);
 	let title = $state('');
 	let cues = $state<Cue[]>([]);
 	let lines = $state<LineWord[][]>([]);

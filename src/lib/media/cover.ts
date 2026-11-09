@@ -23,16 +23,17 @@ import {
 	writeMediaJson,
 	THUMBNAIL
 } from './store';
+import { asBlob, playbackUrl, type Readable } from './files';
 
 const ENGLISH_TITLE = 'title.en.json';
 const WIDTH = 320;
 
 /** A frame a tenth of the way in (at most a minute): past an intro card, usually the subject. */
-async function frameOf(video: Blob): Promise<Blob | undefined> {
+async function frameOf(video: Readable): Promise<Blob | undefined> {
 	const element = document.createElement('video');
 	element.muted = true;
 	element.preload = 'auto';
-	const url = URL.createObjectURL(video);
+	const { url, release } = playbackUrl(video);
 	try {
 		element.src = url;
 		await new Promise((resolve, reject) => {
@@ -52,7 +53,7 @@ async function frameOf(video: Blob): Promise<Blob | undefined> {
 	} finally {
 		element.removeAttribute('src');
 		element.load();
-		URL.revokeObjectURL(url);
+		release();
 	}
 }
 
@@ -62,7 +63,7 @@ let frames = Promise.resolve();
 export async function thumbnailOf(documentId: DocumentId): Promise<Blob | undefined> {
 	const files = await mediaFiles(documentId);
 	const kept = files.find((file) => file.name === THUMBNAIL);
-	if (kept) return kept;
+	if (kept) return asBlob(kept);
 	// The video itself: beside it may be sound-only.m4a, the audio kept for listening in the background.
 	const media = files.find((file) => isPlayable(file.name) && /\.(mp4|webm)$/i.test(file.name));
 	if (!media) return undefined;

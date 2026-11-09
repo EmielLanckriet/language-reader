@@ -18,6 +18,7 @@
 	import { startSending } from '$lib/taal/sync';
 	import { startTranscriber } from '$lib/speech/app';
 	import { describeError } from '$lib/diagnostics/describe';
+	import { prepareMediaFiles } from '$lib/media/files';
 
 	let { children } = $props();
 
@@ -41,6 +42,7 @@
 		// Registered here rather than in app.html so it happens once the application is running,
 		// and so the registration is available to the parts of the interface that need it.
 		void serviceWorker();
+		void prepareMediaFiles().catch((error) => console.error('Moving media files', error));
 		startCopying();
 		startSending();
 		// Transcribes waiting videos on any page while Reader is open (spec 008, FR-015).

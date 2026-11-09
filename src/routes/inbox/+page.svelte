@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { importBundle } from '$lib/media/import';
+	import { readTar } from '$lib/media/tar';
 	import { describeError } from '$lib/diagnostics/describe';
 
 	/**
@@ -17,7 +18,7 @@
 		importing = true;
 		problem = null;
 		try {
-			const imported = await importBundle(file, file.name.replace(/\.tar$/, ''));
+			const imported = await importBundle(await readTar(file), file.name.replace(/\.tar$/, ''));
 			await goto(
 				'pending' in imported
 					? resolve('/live/[job]', { job: imported.pending })

@@ -1,5 +1,6 @@
 import type { CardSentence } from '../storage/repository';
 import type { Cue } from './subtitles';
+import { playbackUrl, type Readable } from './files';
 
 /** Display the whole timed cue: punctuation inside a subtitle has no independent timestamp. */
 export function timedExample(sentence: CardSentence, cues: Cue[]) {
@@ -33,7 +34,7 @@ export function timedExample(sentence: CardSentence, cues: Cue[]) {
 /** Owns a single short playback. Never decodes an entire video or records a reading encounter. */
 export class CardAudio {
 	private audio: HTMLAudioElement | undefined;
-	private url: string | undefined;
+	private release: (() => void) | undefined;
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private generation = 0;
 	private timeout: ReturnType<typeof setTimeout> | undefined;
@@ -55,12 +56,12 @@ export class CardAudio {
 			this.audio.load();
 			this.audio = undefined;
 		}
-		if (this.url) URL.revokeObjectURL(this.url);
-		this.url = undefined;
+		this.release?.();
+		this.release = undefined;
 		globalThis.speechSynthesis?.cancel();
 		this.report(false);
 	}
-	play(file: Blob, start = 0, end?: number) {
+	play(file: Readable, start = 0, end?: number) {
 		this.stop();
 		const generation = this.generation;
 		const audio = new Audio();
@@ -108,8 +109,9 @@ export class CardAudio {
 		audio.ontimeupdate = stopAtEnd;
 		if (end !== undefined) this.timer = setInterval(stopAtEnd, 40);
 		this.timeout = setTimeout(fail, 15000);
-		this.url = URL.createObjectURL(file);
-		audio.src = this.url;
+		const { url, release } = playbackUrl(file);
+		this.release = release;
+		audio.src = url;
 	}
 	speak(word: string) {
 		this.stop();
