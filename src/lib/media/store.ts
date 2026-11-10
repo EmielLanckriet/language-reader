@@ -28,6 +28,15 @@ export interface StoredMedia {
 	english: EnglishSetting;
 	/** How the reader cut, timed and placed English on the lines (LAYOUT); plain when untouched. */
 	layout: Layout;
+	/** A human track's English re-cut over the lines (RECUT_ENGLISH). Derived. */
+	recut?: RecutEnglish;
+}
+
+/** A human track's English re-cut over the Chinese lines (translation/recut.ts), kept once made. */
+export interface RecutEnglish {
+	track: string;
+	version: number;
+	lines: (string | null)[];
 }
 
 /** The English a media document shows (spec 012): a human track, the translators, or none. */
@@ -160,6 +169,9 @@ export const ENGLISH_SETTING = 'english.json';
 /** Kept apart from the LLM's media.en.vtt, so neither translator can overwrite the other. */
 export const QUICK_ENGLISH = 'quick-english.json';
 
+/** RecutEnglish; not in copies, made again from the track. */
+export const RECUT_ENGLISH = 'recut-english.json';
+
 /** The video's sound alone, for listening with the screen locked (media/audio-track.ts). Derived. */
 export const SOUND_ONLY = 'sound-only.m4a';
 
@@ -201,6 +213,7 @@ export async function loadMedia(documentId: number): Promise<StoredMedia | null>
 		else if (isTranslation(file.name)) found.translation = parseSubtitles(await file.text());
 		else if (file.name === 'meta.json') found.meta = JSON.parse(await file.text());
 		else if (file.name === QUICK_ENGLISH) found.quick = JSON.parse(await file.text());
+		else if (file.name === RECUT_ENGLISH) found.recut = JSON.parse(await file.text());
 		else if (file.name === TRACKS) manifest = JSON.parse(await file.text());
 		else if (file.name === ENGLISH_SETTING) found.english = JSON.parse(await file.text());
 		else if (isTrack(file.name)) texts.set(file.name, await file.text());

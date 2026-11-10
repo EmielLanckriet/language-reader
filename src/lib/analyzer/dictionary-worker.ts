@@ -5,6 +5,7 @@
  */
 
 import { explain, type Entry } from './gloss';
+import { recutTrack } from '$lib/translation/recut';
 
 let loading: Promise<Map<string, Entry[]>> | undefined;
 
@@ -23,13 +24,19 @@ async function load(url: string): Promise<Map<string, Entry[]>> {
 }
 
 self.onmessage = async (event: MessageEvent) => {
-	const { id, url, word, readings, words } = event.data;
+	const { id, url, word, readings, words, recut } = event.data;
 	try {
 		loading ??= load(url).catch((error) => {
 			loading = undefined;
 			throw error;
 		});
 		const dictionary = await loading;
+		if (recut) {
+			// A human track re-cut over the lines (translation/recut.ts): seconds for a long video.
+			const lines = recutTrack(recut.pieces, recut.chinese, (w) => dictionary.get(w));
+			self.postMessage({ id, parts: lines });
+			return;
+		}
 		// A list of words (the word list, issue #47) is answered in one message, not one per word.
 		const parts = words
 			? (words as string[]).map((each) => explain(dictionary, each))

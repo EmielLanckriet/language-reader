@@ -52,3 +52,11 @@ export function lookUp(word: string, readings?: string[]): Promise<Part[]> {
 export function lookUpAll(words: string[]): Promise<Part[][]> {
 	return ask({ words });
 }
+
+/** A human track's English re-cut over the Chinese lines (translation/recut.ts), off the page. */
+export function recutEnglish(
+	pieces: (string | undefined)[],
+	chinese: string[]
+): Promise<(string | undefined)[]> {
+	return ask({ recut: { pieces, chinese } });
+}

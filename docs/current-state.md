@@ -1,6 +1,6 @@
 # Current state
 
-Updated 2026-11-08. What the app is and does now, what waits for a phone check, and what is open.
+Updated 2026-11-10. What the app is and does now, what waits for a phone check, and what is open.
 Keep it short: one line per change, replaced rather than appended. The detailed record up to
 2026-10-31 is in [history/current-state-2026-10-31.md](history/current-state-2026-10-31.md);
 after that, `git log` and the ADRs.
@@ -24,7 +24,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 - **Reading.** Dictionary segmentation at once, a contextual model improving it in the background;
   pinyin and CC-CEDICT meanings on tap, with an optional reason for the tap; a join/split holds
   in the document it was made in only (ADR-0049, #57: 23 s → 0.6–2 s on the phone). Quick English per line, replaced by the Termux translation as it arrives. A human English track
-  cut mid-sentence across lines (非诚勿扰) shows each whole sentence under the lines it spans.
+  is re-cut over the Chinese lines once per track (`translation/recut.ts`, in the dictionary
+  worker, kept as `recut-english.json`): its words stay, each line's share moves to fit its
+  meanings (非诚勿扰: 69% → 92% of words on their line, worst 25 lines off → 2). Replaces the
+  whole-sentence merging, which made editing harder.
   A long press on a video's line opens it for editing by hand (ADR-0050): the Chinese joined, split
   at a cursor, or shown earlier/later (that line or all); the English joined, split, or moved a
   line (that line or all after). The text never changes; edits go in `layout.json`, and the English
@@ -54,6 +57,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
+- Re-cut human English (2026-11-10): checked in Chrome (`tracks`, `lineeditor`), not on the phone;
+  the 非诚勿扰 hand edits (none worked out) are to be removed then.
 - Download the video again (2026-11-08): checked in Chrome (`videoagain`), not installed on the
   phone yet; ships with #58.
 

@@ -6,7 +6,8 @@
 
 import { parseSubtitles, type Cue } from './subtitles';
 import type { StoredMedia } from './store';
-import { humanByLine, sentenceRuns, type Run } from '$lib/translation/lines';
+import { humanByLine } from '$lib/translation/lines';
+import { RECUT_VERSION } from '$lib/translation/recut';
 
 import { SERVICE } from '$lib/media/service-address';
 const POLL_MS = 3000;
@@ -46,18 +47,34 @@ export function jobOf(meta: Record<string, unknown>): string | undefined {
 	return typeof meta.job === 'string' ? meta.job : undefined;
 }
 
-/**
- * The human English of a media document, one entry per Chinese line (spec 012): from the downloaded
- * track the reader chose, matched by time, a sentence cut across lines joined back (sentenceRuns);
- * empty when the document shows machine English or none.
- */
-export function humanLines(
+/** The chosen track's English as matched to the lines by time, before it is re-cut. */
+export function trackLines(
 	media: Pick<StoredMedia, 'cues' | 'tracks' | 'english'>
-): (Run | undefined)[] {
+): (string | undefined)[] | undefined {
 	const setting = media.english;
-	if (setting.source !== 'track') return [];
+	if (setting.source !== 'track') return undefined;
 	const track = media.tracks.find((t) => t.file === setting.file);
 	return track
-		? sentenceRuns(humanByLine(media.cues, parseSubtitles(track.text, { keepRepeats: true })))
-		: [];
+		? humanByLine(media.cues, parseSubtitles(track.text, { keepRepeats: true }))
+		: undefined;
+}
+
+/** Whether the chosen track's re-cut English is kept and current. */
+export function recutCurrent(media: Pick<StoredMedia, 'english' | 'recut'>): boolean {
+	const { english, recut } = media;
+	return (
+		english.source === 'track' && recut?.track === english.file && recut.version === RECUT_VERSION
+	);
+}
+
+/**
+ * The human English of a media document, one entry per Chinese line (spec 012): the track the
+ * reader chose, re-cut over the lines (translation/recut.ts) once that is made, matched by time
+ * until then; empty when the document shows machine English or none.
+ */
+export function humanLines(
+	media: Pick<StoredMedia, 'cues' | 'tracks' | 'english' | 'recut'>
+): (string | undefined)[] {
+	if (recutCurrent(media)) return media.recut!.lines.map((line) => line ?? undefined);
+	return trackLines(media) ?? [];
 }

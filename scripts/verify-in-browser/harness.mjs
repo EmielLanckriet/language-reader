@@ -308,6 +308,21 @@ const scenarios = {
 				60000,
 				250
 			);
+			// The track re-cut over the lines in the dictionary worker (translation/recut.ts), kept.
+			const recut = await until(
+				'the re-cut English kept beside the video',
+				() =>
+					tab.evaluate(`
+					const id = location.pathname.split('/').pop();
+					try {
+						const dir = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('media')).getDirectoryHandle(id);
+						const kept = JSON.parse(await (await (await dir.getFileHandle('recut-english.json')).getFile()).text());
+						return { track: kept.track, first: kept.lines[0], third: kept.lines[2] };
+					} catch { return null; }
+				`),
+				30000,
+				250
+			);
 			const choice = await tab.evaluate(`
 				return fetch('http://127.0.0.1:18765/downloads/fixture-tracks-english/choice.json').then((r) => r.ok ? r.json() : null);
 			`);
@@ -350,6 +365,9 @@ const scenarios = {
 					english.first === 'Human English for line 1' &&
 					english.third === 'Human English for lines 2 and 3' &&
 					english.second === '' &&
+					recut.track === 'track.en.vtt' &&
+					recut.first === 'Human English for line 1' &&
+					recut.third === 'Human English for lines 2 and 3' &&
 					termuxTranslated === false &&
 					english.humanTitle.includes('English subtitles') &&
 					choice?.english === 'track.en.vtt' &&
@@ -360,6 +378,7 @@ const scenarios = {
 				asked,
 				left,
 				english,
+				recut,
 				choice,
 				termuxTranslated,
 				before,

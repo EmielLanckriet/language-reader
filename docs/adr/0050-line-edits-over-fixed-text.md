@@ -28,3 +28,8 @@ Decided:
 - `sentences.json` is read once as joins. Copies carry `layout.json` (and `sentences.json`).
 
 Not done: card audio still uses the lines' original times.
+
+2026-11-10: a human track is now re-cut over the lines (`translation/recut.ts`) instead of joined
+into whole sentences; the first English edit starts from the re-cut lines. Hand editing as built
+here proved confusing (whole merged sentences as the unit, "and all after"); its replacement, one
+line's share of the English moved by tapping a word, is next.

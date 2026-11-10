@@ -30,8 +30,23 @@
 	import DocumentSettings from '$lib/ui/DocumentSettings.svelte';
 	import { findVideo } from '$lib/backup/destination';
 	import { takeVideo, waitingForVideo } from '$lib/media/redownload';
-	import { followTranslation, humanLines as humanOf, jobOf } from '$lib/media/translation';
-	import { saveMedia, writeMediaJson, QUICK_ENGLISH, SOUND_ONLY } from '$lib/media/store';
+	import {
+		followTranslation,
+		humanLines as humanOf,
+		jobOf,
+		recutCurrent,
+		trackLines
+	} from '$lib/media/translation';
+	import {
+		saveMedia,
+		writeMediaJson,
+		QUICK_ENGLISH,
+		RECUT_ENGLISH,
+		SOUND_ONLY,
+		type RecutEnglish
+	} from '$lib/media/store';
+	import { recutEnglish } from '$lib/analyzer/lookup';
+	import { RECUT_VERSION } from '$lib/translation/recut';
 	import { audioOnly } from '$lib/media/audio-track';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import SessionQuestions from '$lib/ui/SessionQuestions.svelte';
@@ -139,6 +154,38 @@
 				? englishFor(media.cues.length, [], [], humanLines)
 				: englishFor(media.cues.length, llmLines, quickLines)
 	);
+
+	// The chosen track's English re-cut over the lines, once per track: shown as matched by time
+	// until it is ready (translation/recut.ts).
+	$effect(() => {
+		const current = media;
+		const id = documentId;
+		if (!current || id === undefined || current.english.source !== 'track') return;
+		if (recutCurrent(current)) return;
+		const pieces = trackLines(current);
+		if (!pieces) return;
+		const track = current.english.file;
+		let stale = false;
+		recutEnglish(
+			pieces,
+			current.cues.map((cue) => cue.text)
+		)
+			.then(async (lines) => {
+				const recut: RecutEnglish = {
+					track,
+					version: RECUT_VERSION,
+					lines: lines.map((line) => line ?? null)
+				};
+				await writeMediaJson(id, RECUT_ENGLISH, recut);
+				if (stale || documentId !== id || !media) return;
+				if (media.english.source === 'track' && media.english.file === track)
+					media = { ...media, recut };
+			})
+			.catch((error) => console.warn('re-cutting the English failed', error));
+		return () => {
+			stale = true;
+		};
+	});
 
 	$effect(() => {
 		const current = media;
