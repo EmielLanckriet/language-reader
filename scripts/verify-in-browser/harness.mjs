@@ -3889,7 +3889,8 @@ const scenarios = {
 
 	// Editing lines by hand (ADR-0050), on the human English fixture at phone width: a long press
 	// on a word opens the editor and does not look the word up; the Chinese is split at the cursor;
-	// the English joined, split and moved; the timing shifted and undone; after a reload the edits
+	// a line's English made to start at a word above, end at a word below, and end at its own;
+	// the timing shifted and undone; after a reload the edits
 	// are still there and the English menu says "Edited by you". Screenshot /tmp/reader-line-editor.png.
 	// 2026-11-08: a video document whose video is gone but whose sound is kept offers "Download the
 	// video again"; while it waits, the library does not offer that video's download as new; once
@@ -4049,14 +4050,32 @@ const scenarios = {
 			await editorButton('✂ Split', 0);
 			await settle();
 			const split = await tab.evaluate(state);
-			// Line 1's English (now under the cut-off piece too) joined with the next line's.
-			await editorButton('⤓ Join next', 1);
+			// English by tapping words (2026-11-10). Shown lines now: 0 and 1 the split line 1
+			// ("Human English for line 1" over both), 2 without English, 3 "… for lines 2 and 3".
+			const near = (line, k) =>
+				tab.evaluate(
+					`const n = [...document.querySelectorAll('.editor .near')].find((n) => n.querySelector('.near-chinese')?.getAttribute('aria-label') === 'Edit line ${line}'); const w = n?.querySelectorAll('.word')[${k}]; if (!w) return false; w.click(); return true;`
+				);
+			const own = (k) =>
+				tab.evaluate(
+					`const w = document.querySelectorAll('.editor .current .word')[${k}]; if (!w) return false; w.click(); return true;`
+				);
+			await tab.evaluate(
+				`document.querySelector('.editor .near-chinese[aria-label="Edit line 2"]').click(); return true;`
+			);
 			await settle();
-			const joined = await tab.evaluate(state);
-			await editorButton('✂ Split', 1);
+			// Line 2 starts at "line", a word of line 1 above it.
+			await near(1, 3);
 			await settle();
-			const englishSplit = await tab.evaluate(state);
-			await editorButton('↓ Later line', 0);
+			const started = await tab.evaluate(state);
+			// Line 2 ends at "English", a word of line 4 below it: line 3 passed over stays empty.
+			await near(4, 1);
+			await settle();
+			const ended = await tab.evaluate(state);
+			// Line 2's own "Human": End here, so "English" goes to line 3.
+			await own(2);
+			await settle();
+			await editorButton('End here ⇥');
 			await settle();
 			const moved = await tab.evaluate(state);
 			await editorButton('+1 s');
@@ -4080,7 +4099,6 @@ const scenarios = {
 				30000,
 				250
 			);
-			const words = (text) => text.split(/\s+/).filter(Boolean);
 			return {
 				pass:
 					opened.editor === `Line 1 of ${before.count}` &&
@@ -4088,11 +4106,15 @@ const scenarios = {
 					split.count === before.count + 1 &&
 					split.chinese[0] + split.chinese[1] === before.chinese[0] &&
 					split.chinese[2] === before.chinese[1] &&
-					joined.english[0] === '' && // a sentence over several lines shows once, under its last
-					words(joined.english[2]).length ===
-						words(before.english[0]).length + words(before.english[1]).length &&
-					englishSplit.english[0] !== '' &&
-					moved.english[0] === '' &&
+					started.editor === `Line 2 of ${split.count}` &&
+					started.english[0] === 'Human English for' &&
+					started.english[1] === 'line 1' &&
+					ended.english[1] === 'line 1 Human English' &&
+					ended.english[2] === '' &&
+					ended.english[3] === 'for lines 2 and 3' &&
+					moved.english[1] === 'line 1 Human' &&
+					moved.english[2] === 'English' &&
+					moved.english[3] === 'for lines 2 and 3' &&
 					shifted.amount === '+1.0 s' &&
 					undone.amount === '±0.0 s' &&
 					reloaded.count === split.count &&
@@ -4101,8 +4123,8 @@ const scenarios = {
 				before,
 				opened,
 				split,
-				joined,
-				englishSplit,
+				started,
+				ended,
 				moved,
 				shifted,
 				undone,

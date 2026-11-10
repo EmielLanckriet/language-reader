@@ -69,18 +69,18 @@
 		LAYOUT,
 		PLAIN,
 		cutChinese,
+		englishLines,
 		englishOfSpans,
 		englishShown,
 		frozen,
 		joinChinese,
-		joinEnglish,
 		placedOf,
-		shiftEnglish,
+		setEdge,
 		shiftOf,
 		shiftTime,
 		shownOf,
 		spansOf,
-		splitEnglish,
+		spansOfLines,
 		timedCues,
 		type Layout,
 		type Pos,
@@ -414,11 +414,8 @@
 		return frozen(shownEnglish);
 	}
 
-	function editEnglish(change: (spans: Span[]) => Span[]) {
-		const spans = spansToEdit();
-		if (!spans) return;
-		void keepLayout({ ...layout, english: placedOf(change(spans), shown) }, { source: 'edited' });
-	}
+	/** Each shown line's English words, as the editor shows them to tap. */
+	const editorEnglish = $derived(englishLines(frozen(shownEnglish), shown.length));
 
 	const edits = {
 		joinChinese(s: number, way: -1 | 1) {
@@ -431,14 +428,14 @@
 		shiftTime(s: number, ms: number, all: boolean) {
 			void keepLayout(shiftTime(layout, shown, s, ms, all));
 		},
-		joinEnglish(s: number, way: -1 | 1) {
-			editEnglish((spans) => joinEnglish(spans, s, way, shown.length));
-		},
-		splitEnglish(s: number, word: number) {
-			editEnglish((spans) => splitEnglish(spans, s, word, shown.length));
-		},
-		shiftEnglish(s: number, by: -1 | 1, onward: boolean) {
-			editEnglish((spans) => shiftEnglish(spans, s, by, onward, shown.length));
+		setEdge(s: number, line: number, word: number, edge: 'start' | 'end') {
+			const spans = spansToEdit();
+			if (!spans) return;
+			const lines = setEdge(englishLines(spans, shown.length), s, line, word, edge);
+			void keepLayout(
+				{ ...layout, english: placedOf(spansOfLines(lines), shown) },
+				{ source: 'edited' }
+			);
 		}
 	};
 
@@ -1052,15 +1049,15 @@
 		</MediaReader>
 		{#if editing !== null && shown[editing]}
 			{@const s = editing}
-			{@const neighbour = (n: number) =>
-				shown[n] ? { chinese: shownCues[n].text, english: shownEnglish[n]?.text } : undefined}
+			{@const around = [s - 2, s - 1, s + 1, s + 2]
+				.filter((n) => shown[n])
+				.map((n) => ({ s: n, chinese: shownCues[n].text, english: editorEnglish[n] ?? [] }))}
 			<LineEditor
 				{s}
 				count={shown.length}
 				words={shownLines.at(s) ?? []}
-				english={shownEnglish[s]?.text}
-				before={neighbour(s - 1)}
-				after={neighbour(s + 1)}
+				english={editorEnglish[s] ?? []}
+				{around}
 				shiftMs={shiftOf(layout, shown, s)}
 				offsetMs={layout.offsetMs}
 				canUndo={undo.length > 0}

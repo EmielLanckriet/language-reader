@@ -259,74 +259,59 @@ export function englishOfSpans(spans: readonly Span[], count: number): (English 
 	return out;
 }
 
-const spanAt = (spans: readonly Span[], s: number) => spans.findIndex((x) => x.a <= s && s <= x.b);
-
-/** The English of shown line `s` and of the line before or after it become one sentence over both. */
-export function joinEnglish(spans: readonly Span[], s: number, way: -1 | 1, count: number): Span[] {
-	const here = spanAt(spans, s);
-	const mine = here >= 0 ? spans[here] : { a: s, b: s, text: '' };
-	const t = way === 1 ? mine.b + 1 : mine.a - 1;
-	if (t < 0 || t >= count) return [...spans];
-	const there = spanAt(spans, t);
-	const theirs = there >= 0 ? spans[there] : { a: t, b: t, text: '' };
-	const [first, second] = way === 1 ? [mine, theirs] : [theirs, mine];
-	const joined = {
-		a: first.a,
-		b: second.b,
-		text: [first.text, second.text].filter((x) => x.trim()).join(' ')
-	};
-	if (!joined.text) return [...spans];
-	return byStart([...spans.filter((_, i) => i !== here && i !== there), joined]);
-}
-
 export function wordsOf(text: string): string[] {
 	return text.split(/\s+/).filter(Boolean);
 }
 
 /**
- * Shown line `s`'s English cut before word `word`: what comes before stays, ending at line `s`,
- * and the rest starts at the next line, ahead of any English already there.
+ * The words of each shown line's English, from spans: English over several lines (a sentence a
+ * Chinese cut shares) belongs to the first of them, so every word is on exactly one line.
  */
-export function splitEnglish(
-	spans: readonly Span[],
-	s: number,
-	word: number,
-	count: number
-): Span[] {
-	const here = spanAt(spans, s);
-	if (here < 0 || s + 1 >= count) return [...spans];
-	const span = spans[here];
-	const words = wordsOf(span.text);
-	if (word <= 0 || word >= words.length) return [...spans];
-	const first = { a: span.a, b: s, text: words.slice(0, word).join(' ') };
-	const rest = { a: s + 1, b: Math.max(span.b, s + 1), text: words.slice(word).join(' ') };
-	return tidySpans([...spans.slice(0, here), first, rest, ...spans.slice(here + 1)]);
+export function englishLines(spans: readonly Span[], count: number): string[][] {
+	const lines: string[][] = Array.from({ length: count }, () => []);
+	for (const span of spans) if (span.a < count) lines[span.a].push(...wordsOf(span.text));
+	return lines;
+}
+
+/** One span per shown line that has English. */
+export function spansOfLines(lines: readonly string[][]): Span[] {
+	return lines.flatMap((words, s) =>
+		words.length > 0 ? [{ a: s, b: s, text: words.join(' ') }] : []
+	);
 }
 
 /**
- * Shown line `s`'s English moved one line earlier or later: alone, or with all English after it.
- * English it lands on is joined to it, in reading order.
+ * Shown line `s` starts at (or ends with) word `word` of shown line `line`: the English is one run
+ * of words over the lines, and only where lines start in it moves. Lines passed over are left
+ * without English; nothing is reordered or joined to other English.
  */
-export function shiftEnglish(
-	spans: readonly Span[],
+export function setEdge(
+	lines: readonly string[][],
 	s: number,
-	by: -1 | 1,
-	onward: boolean,
-	count: number
-): Span[] {
-	const here = spanAt(spans, s);
-	if (here < 0) return [...spans];
-	const clamp = (x: number) => Math.min(count - 1, Math.max(0, x));
-	const moves = (i: number) => i === here || (onward && i > here);
-	const moved = spans.map((span, i) =>
-		moves(i)
-			? { a: clamp(span.a + by), b: clamp(span.b + by), text: span.text, moved: true }
-			: { ...span, moved: false }
-	);
-	// On a tie, the English that was earlier stays earlier: moved later, it came first.
-	const tie = (x: { moved: boolean }) => (x.moved === (by === 1) ? -1 : 1);
-	moved.sort((x, y) => x.a - y.a || (x.moved === y.moved ? 0 : tie(x)));
-	return tidySpans(moved.map(({ a, b, text }) => ({ a, b, text })));
+	line: number,
+	word: number,
+	edge: 'start' | 'end'
+): string[][] {
+	const count = lines.length;
+	const words = lines.flat();
+	// cuts[i]: where line i starts in `words`; cuts[count]: the end.
+	const cuts: number[] = [];
+	let at = 0;
+	for (const each of lines) {
+		cuts.push(at);
+		at += each.length;
+	}
+	cuts.push(at);
+	if (s < 0 || s >= count || line < 0 || line >= count) return lines.map((each) => [...each]);
+	const g = cuts[line] + Math.max(0, Math.min(word, lines[line].length - 1));
+	const [i, k] = edge === 'start' ? [s, g] : [s + 1, g + 1];
+	// The first line starts, and the last ends, the English: words outside would have no line.
+	if (i === 0 || i === count) return lines.map((each) => [...each]);
+	cuts[i] = k;
+	// Line s holds word g: the lines up to it start at g at the latest, those after past it.
+	for (let j = 0; j <= s; j++) if (j !== i) cuts[j] = Math.min(cuts[j], g);
+	for (let j = s + 1; j < count; j++) if (j !== i) cuts[j] = Math.max(cuts[j], g + 1);
+	return lines.map((_, j) => words.slice(cuts[j], cuts[j + 1]));
 }
 
 // --- The Chinese, cut and timed ---

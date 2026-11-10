@@ -29,8 +29,9 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   meanings (非诚勿扰: 69% → 92% of words on their line, worst 25 lines off → 2). Replaces the
   whole-sentence merging, which made editing harder.
   A long press on a video's line opens it for editing by hand (ADR-0050): the Chinese joined, split
-  at a cursor, or shown earlier/later (that line or all); the English joined, split, or moved a
-  line (that line or all after). The text never changes; edits go in `layout.json`, and the English
+  at a cursor, or shown earlier/later (that line or all); the English is the line's share of one
+  run of words, moved by tapping a word: above to start there, below to end there, its own to
+  start or end there (2026-11-10). The text never changes; edits go in `layout.json`, and the English
   becomes its own choice, "Edited by you".
   A video whose file is gone (only its sound, or nothing) offers "Download the video again" on its
   page: Termux downloads it and it goes into the same document; its sound alone plays meanwhile.
@@ -57,7 +58,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
-- Re-cut human English (2026-11-10): checked in Chrome (`tracks`, `lineeditor`), not on the phone;
+- Re-cut human English and the tap-a-word English editor (2026-11-10): checked in Chrome
+  (`tracks`, `lineeditor`), not on the phone;
   the 非诚勿扰 hand edits (none worked out) are to be removed then.
 - Download the video again (2026-11-08): checked in Chrome (`videoagain`), not installed on the
   phone yet; ships with #58.

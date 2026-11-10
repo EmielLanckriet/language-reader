@@ -3,19 +3,18 @@ import fc from 'fast-check';
 import {
 	PLAIN,
 	cutChinese,
+	englishLines,
 	englishShown,
 	frozen,
 	joinChinese,
-	joinEnglish,
 	layoutOf,
 	placedOf,
-	shiftEnglish,
+	setEdge,
 	shiftTime,
 	shownOf,
 	spansOf,
-	splitEnglish,
+	spansOfLines,
 	timedCues,
-	wordsOf,
 	type Layout,
 	type Shown,
 	type Span
@@ -151,27 +150,54 @@ describe('English placed by hand', () => {
 		{ a: 1, b: 1, text: 'fine, thank you.' }
 	];
 
-	it('splits a line and puts the rest ahead of the next line’s English', () => {
-		expect(splitEnglish(spans, 0, 4, 3)).toEqual([
-			{ a: 0, b: 0, text: 'How are you today?' },
-			{ a: 1, b: 1, text: "I'm fine, thank you." }
+	// Each shown line's words, as the editor works on them.
+	const lines = [['How', 'are', 'you', 'today?', "I'm"], ['fine,', 'thank', 'you.'], [], ['Bye.']];
+
+	it('moves where a line starts to a word in the line above, or in its own line', () => {
+		expect(setEdge(lines, 1, 0, 4, 'start')).toEqual([
+			['How', 'are', 'you', 'today?'],
+			["I'm", 'fine,', 'thank', 'you.'],
+			[],
+			['Bye.']
+		]);
+		expect(setEdge(lines, 1, 1, 1, 'start')).toEqual([
+			['How', 'are', 'you', 'today?', "I'm", 'fine,'],
+			['thank', 'you.'],
+			[],
+			['Bye.']
 		]);
 	});
 
-	it('joins two lines’ English into one sentence over both', () => {
-		expect(joinEnglish(spans, 1, -1, 3)).toEqual([
-			{ a: 0, b: 1, text: "How are you today? I'm fine, thank you." }
+	it('moves where a line ends to a word below it, the lines passed over left empty', () => {
+		expect(setEdge(lines, 0, 1, 0, 'end')).toEqual([
+			['How', 'are', 'you', 'today?', "I'm", 'fine,'],
+			['thank', 'you.'],
+			[],
+			['Bye.']
+		]);
+		expect(setEdge(lines, 1, 1, 0, 'end')).toEqual([
+			lines[0],
+			['fine,'],
+			['thank', 'you.'],
+			['Bye.']
+		]);
+		expect(setEdge(lines, 0, 3, 0, 'end')).toEqual([
+			[...lines[0], ...lines[1], 'Bye.'],
+			[],
+			[],
+			[]
 		]);
 	});
 
-	it('moves a line’s English one line later, or everything from there on', () => {
-		expect(shiftEnglish(spans, 1, 1, false, 3)).toEqual([
-			spans[0],
-			{ a: 2, b: 2, text: spans[1].text }
-		]);
-		expect(shiftEnglish(spans, 0, 1, true, 3)).toEqual([
-			{ a: 1, b: 1, text: spans[0].text },
-			{ a: 2, b: 2, text: spans[1].text }
+	it('takes the spans of the English shown, each word on one line', () => {
+		const spans: Span[] = [
+			{ a: 0, b: 1, text: 'A b.' },
+			{ a: 3, b: 3, text: 'C.' }
+		];
+		expect(englishLines(spans, 4)).toEqual([['A', 'b.'], [], [], ['C.']]);
+		expect(spansOfLines(englishLines(spans, 4))).toEqual([
+			{ a: 0, b: 0, text: 'A b.' },
+			{ a: 3, b: 3, text: 'C.' }
 		]);
 	});
 
@@ -199,39 +225,38 @@ describe('English placed by hand', () => {
 		]);
 	});
 
-	it('never loses, adds or reorders a word, whatever is joined, split and moved', () => {
+	it('never loses, adds or reorders a word, wherever lines are made to start and end', () => {
 		const word = fc.constantFrom('a', 'b', 'c', 'd', 'e');
 		const start = fc.array(fc.array(word, { maxLength: 4 }), { minLength: 2, maxLength: 8 });
 		const step = fc.record({
-			kind: fc.constantFrom('join', 'split', 'shift', 'shift-on'),
 			s: fc.nat(),
-			n: fc.nat(),
-			way: fc.constantFrom(-1 as const, 1 as const)
+			line: fc.nat(),
+			word: fc.nat({ max: 5 }),
+			edge: fc.constantFrom('start' as const, 'end' as const)
 		});
 		fc.assert(
-			fc.property(start, fc.array(step, { maxLength: 15 }), (lines, steps) => {
-				const count = lines.length;
-				let spans: Span[] = lines.flatMap((words, s) =>
-					words.length ? [{ a: s, b: s, text: words.join(' ') }] : []
-				);
-				const all = () => spans.flatMap((x) => wordsOf(x.text));
+			fc.property(start, fc.array(step, { maxLength: 15 }), (first, steps) => {
+				const count = first.length;
 				// Words numbered in reading order, so a reordering shows.
 				let n = 0;
-				spans = spans.map((x) => ({
-					...x,
-					text: wordsOf(x.text)
-						.map((w) => `${w}${n++}`)
-						.join(' ')
-				}));
-				const words = all();
-				for (const { kind, s: raw, n: k, way } of steps) {
-					const s = raw % count;
-					if (kind === 'join') spans = joinEnglish(spans, s, way, count);
-					else if (kind === 'split') spans = splitEnglish(spans, s, k % 5, count);
-					else spans = shiftEnglish(spans, s, way, kind === 'shift-on', count);
-					expect(all()).toEqual(words);
-					for (const x of spans) expect(0 <= x.a && x.a <= x.b && x.b < count).toBe(true);
-					for (let i = 1; i < spans.length; i++) expect(spans[i].a).toBeGreaterThan(spans[i - 1].b);
+				let lines = first.map((words) => words.map((w) => `${w}${n++}`));
+				const words = lines.flat();
+				for (const step of steps) {
+					const s = step.s % count;
+					const line = step.line % count;
+					const before = lines;
+					lines = setEdge(lines, s, line, step.word, step.edge);
+					expect(lines.flat()).toEqual(words);
+					expect(lines).toHaveLength(count);
+					// The word asked for now starts (or ends) line s, when there was one to move.
+					const target = before[line][Math.min(step.word, before[line].length - 1)];
+					if (target === undefined) continue;
+					if ((step.edge === 'start' && s === 0) || (step.edge === 'end' && s === count - 1)) {
+						expect(lines).toEqual(before);
+						continue;
+					}
+					if (step.edge === 'start') expect(lines[s][0]).toBe(target);
+					else expect(lines[s].at(-1)).toBe(target);
 				}
 			})
 		);

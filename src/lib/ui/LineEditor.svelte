@@ -1,16 +1,19 @@
 <script lang="ts">
 	/**
 	 * One shown line opened for editing by hand (media/layout.ts): its Chinese joined to a
-	 * neighbour, cut at a cursor, or shown earlier or later; its English joined, cut, or moved to
-	 * another line. A panel along the bottom, not a dialog, so the video stays in view while timing.
+	 * neighbour, cut at a cursor, or shown earlier or later; its English is its share of the
+	 * English run of words, moved by tapping a word: one in a line above to start there, one below
+	 * to end there, one of its own to start or end there. A panel along the bottom, not a dialog, so
+	 * the video stays in view while timing.
 	 */
 	import { untrack } from 'svelte';
-	import { wordsOf } from '$lib/media/layout';
 	import type { LineWord } from './MediaReader.svelte';
 
-	interface Neighbour {
+	/** A line near the one being edited: its Chinese, and its English words to tap. */
+	interface Near {
+		s: number;
 		chinese: string;
-		english?: string;
+		english: string[];
 	}
 
 	let {
@@ -18,8 +21,7 @@
 		count,
 		words,
 		english,
-		before,
-		after,
+		around,
 		shiftMs,
 		offsetMs,
 		canUndo,
@@ -32,9 +34,10 @@
 		s: number;
 		count: number;
 		words: LineWord[];
-		english?: string;
-		before?: Neighbour;
-		after?: Neighbour;
+		/** This line's English words. */
+		english: string[];
+		/** Up to two lines before and two after, in order. */
+		around: Near[];
 		/** This line's own timing change, and every line's, in ms. */
 		shiftMs: number;
 		offsetMs: number;
@@ -44,9 +47,8 @@
 			/** A new line starting at this offset in the document. */
 			cutChinese(offset: number): void;
 			shiftTime(s: number, ms: number, all: boolean): void;
-			joinEnglish(s: number, way: -1 | 1): void;
-			splitEnglish(s: number, word: number): void;
-			shiftEnglish(s: number, by: -1 | 1, onward: boolean): void;
+			/** Line `s` starts (or ends) at word `word` of line `line`. */
+			setEdge(s: number, line: number, word: number, edge: 'start' | 'end'): void;
 		};
 		onplay: () => void;
 		onmove: (s: number) => void;
@@ -54,20 +56,21 @@
 		onclose: () => void;
 	} = $props();
 
-	const englishWords = $derived(english ? wordsOf(english) : []);
-	/** Where each cut goes: before this word. */
+	const before = $derived(around.filter((line) => line.s < s));
+	const after = $derived(around.filter((line) => line.s > s));
+	/** Where the Chinese cut goes: before this word. */
 	let chineseAt = $state(1);
-	let englishAt = $state(1);
+	/** A word of this line's English tapped: it asks whether the line starts or ends there. */
+	let chosen = $state<number | null>(null);
 	let allLines = $state(false);
-	let onward = $state(false);
 	// A new line, or the line changed under the cursor: the cursor goes back to the middle.
 	$effect(() => {
 		const n = words.length;
-		const e = englishWords.length;
 		void s;
+		void english;
 		untrack(() => {
 			chineseAt = Math.max(1, Math.floor(n / 2));
-			englishAt = Math.max(1, Math.floor(e / 2));
+			chosen = null;
 		});
 	});
 
@@ -90,15 +93,28 @@
 		<button class="icon" onclick={onclose} aria-label="Done editing">✕</button>
 	</div>
 
-	{#if before}
-		<button class="neighbour" onclick={() => onmove(s - 1)} aria-label="Edit the line before">
-			<span lang="zh">{before.chinese}</span>{#if before.english}<span lang="en"
-					>{before.english}</span
-				>{/if}
-		</button>
-	{/if}
+	{#snippet near(line: Near, edge: 'start' | 'end')}
+		<div class="near">
+			<button
+				class="near-chinese"
+				lang="zh"
+				onclick={() => onmove(line.s)}
+				aria-label="Edit line {line.s + 1}">{line.chinese}</button
+			>
+			<p class="near-english" lang="en">
+				{#each line.english as word, k (k)}<button
+						class="word"
+						onclick={() => edits.setEdge(s, line.s, k, edge)}
+						aria-label="{edge === 'start' ? 'Start' : 'End'} line {s + 1} at “{word}”"
+						>{word}</button
+					>{:else}<span class="muted">—</span>{/each}
+			</p>
+		</div>
+	{/snippet}
 
-	<div class="part">
+	{#each before as line (line.s)}{@render near(line, 'start')}{/each}
+
+	<div class="current">
 		<p class="text chinese" lang="zh">
 			{#each words as word, k (word.key)}{#if k === chineseAt && words.length > 1}<span
 						class="cursor"
@@ -107,6 +123,35 @@
 					>{word.text}</button
 				>{/each}
 		</p>
+		<p class="text english" lang="en">
+			{#each english as word, k (k)}<button
+					class="word own"
+					class:chosen={chosen === k}
+					onclick={() => (chosen = chosen === k ? null : k)}>{word}</button
+				>{:else}<span class="muted">No English on this line.</span>{/each}
+		</p>
+		{#if chosen !== null}
+			<div class="row choose">
+				<button
+					onclick={() => edits.setEdge(s, s, chosen!, 'start')}
+					disabled={chosen === 0 || s === 0}>⇤ Start here</button
+				>
+				<button
+					onclick={() => edits.setEdge(s, s, chosen!, 'end')}
+					disabled={chosen === english.length - 1 || s + 1 >= count}>End here ⇥</button
+				>
+			</div>
+		{/if}
+	</div>
+
+	{#each after as line (line.s)}{@render near(line, 'end')}{/each}
+
+	<p class="hint">
+		Tap an English word above to start this line there, below to end it there, or in this line to
+		choose. Tap a Chinese line to edit it.
+	</p>
+
+	<div class="part">
 		{#if words.length > 1}
 			<input
 				type="range"
@@ -133,55 +178,6 @@
 			<button onclick={onplay} aria-label="Play this line">▶</button>
 		</div>
 	</div>
-
-	<div class="part">
-		{#if english}
-			<p class="text" lang="en">
-				{#each englishWords as word, k (k)}{#if k === englishAt && englishWords.length > 1}<span
-							class="cursor"
-							aria-hidden="true"
-						></span>{/if}<button class="piece word" onclick={() => (englishAt = Math.max(1, k))}
-						>{word}</button
-					>{/each}
-			</p>
-			{#if englishWords.length > 1}
-				<input
-					type="range"
-					min="1"
-					max={englishWords.length - 1}
-					bind:value={englishAt}
-					aria-label="Where to split the English"
-				/>
-			{/if}
-		{:else}
-			<p class="text muted">No English on this line.</p>
-		{/if}
-		<div class="row">
-			<button onclick={() => edits.joinEnglish(s, -1)} disabled={s === 0}>⤒ Join previous</button>
-			<button onclick={() => edits.joinEnglish(s, 1)} disabled={s + 1 >= count}>⤓ Join next</button>
-			<button
-				onclick={() => edits.splitEnglish(s, englishAt)}
-				disabled={englishWords.length < 2 || s + 1 >= count}
-				title="The rest goes to the next line">✂ Split</button
-			>
-		</div>
-		<div class="row">
-			<label><input type="checkbox" bind:checked={onward} /> and all after</label>
-			<button onclick={() => edits.shiftEnglish(s, -1, onward)} disabled={!english || s === 0}
-				>↑ Earlier line</button
-			>
-			<button onclick={() => edits.shiftEnglish(s, 1, onward)} disabled={!english || s + 1 >= count}
-				>↓ Later line</button
-			>
-		</div>
-	</div>
-
-	{#if after}
-		<button class="neighbour" onclick={() => onmove(s + 1)} aria-label="Edit the line after">
-			<span lang="zh">{after.chinese}</span>{#if after.english}<span lang="en">{after.english}</span
-				>{/if}
-		</button>
-	{/if}
 </section>
 
 <style>
@@ -234,10 +230,6 @@
 		all: unset;
 		cursor: pointer;
 	}
-	/* English words are buttons side by side: the space between them is a margin. */
-	.word {
-		margin-right: 0.3em;
-	}
 	.cursor {
 		display: inline-block;
 		width: 2px;
@@ -264,13 +256,51 @@
 		text-align: center;
 		font-variant-numeric: tabular-nums;
 	}
-	.neighbour {
-		all: unset;
-		cursor: pointer;
+	.near {
 		display: flex;
 		flex-direction: column;
-		opacity: 0.55;
-		font-size: 0.9rem;
+		gap: 0.1rem;
+	}
+	.near-chinese {
+		all: unset;
+		cursor: pointer;
+		font-size: 0.95rem;
+		color: var(--muted);
+	}
+	.near-english {
+		margin: 0;
+		font-size: 0.95rem;
+		line-height: 1.7;
+	}
+	.current {
+		border: 2px solid var(--accent, #c33);
+		border-radius: 8px;
+		padding: 0.3rem 0.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+	.english {
+		font-size: 1.05rem;
+		line-height: 1.8;
+	}
+	/* Each English word is a tap target; the space between words is a margin. */
+	.word {
+		all: unset;
+		cursor: pointer;
+		margin-right: 0.3em;
+		padding: 0.1em 0.15em;
+		border-radius: 4px;
+		background: color-mix(in srgb, var(--rule) 45%, transparent);
+	}
+	.word.chosen {
+		background: var(--accent, #c33);
+		color: var(--paper);
+	}
+	.hint {
+		margin: 0;
+		font-size: 0.8rem;
+		color: var(--muted);
 	}
 	.muted {
 		color: var(--muted);
