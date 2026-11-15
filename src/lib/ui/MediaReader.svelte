@@ -438,8 +438,9 @@
 	}
 
 	/**
-	 * Language Reactor's layout: the video fills the screen, with the current line on it, Chinese
-	 * above English blurred. The list is one tap away. Remembered on this device only.
+	 * Language Reactor's layout: the video fills the screen, with the current line on it, its
+	 * English hidden until asked for (blurred until 2026-11-15, which still took the space). The
+	 * list is one tap away. Remembered on this device only.
 	 */
 	let stage = $state(readPreference('reader.stage', true));
 	const showList = $derived(!stage || isAudio);
@@ -508,6 +509,8 @@
 
 	/** Controls hidden for plain watching: only the video and its lines. For this visit only. */
 	let bare = $state(false);
+	/** The stage's less used buttons, behind ⋯. */
+	let menuOpen = $state(false);
 	function playOrPause() {
 		const media = active();
 		if (!media) return;
@@ -664,58 +667,82 @@
 						>⋯</button
 					>
 				{/if}
+				<!-- Only what is used all the time sits on the video; the rest waits behind ⋯. The
+				     buttons for a line flank it, in the bars beside a widescreen video, so the line
+				     itself sits low (2026-11-15). Rearranging them is in the backlog. -->
 				<div class="bar" class:hidden={bare}>
 					<!-- The stage covers the page, its back link too: without this, a video had no way out
 					     but Android's back gesture. -->
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- back is resolved by its maker -->
 					<a class="back-to-videos" href={back ?? resolve('/')} aria-label="Back">←</a>
-					<button onclick={() => setStage(false)} aria-label="All lines">☰</button>
-					<button onclick={toggleBlur} aria-pressed={!blurEnglish}
-						>{blurEnglish ? 'English blurred' : 'English shown'}</button
-					>
+					<span class="grow"></span>
 					<button onclick={toggleFullscreen} aria-label="Full screen">⛶</button>
-					<button onclick={() => (bare = true)} aria-label="Hide the buttons">✕</button>
+					<button
+						onclick={() => (menuOpen = !menuOpen)}
+						aria-expanded={menuOpen}
+						aria-label="More buttons">⋯</button
+					>
 				</div>
-				{#if currentLine >= 0 && lines.at(currentLine)}
-					<div class="subtitles" use:longPress={currentLine}>
-						<p class="chinese" lang={language}>
-							{#each lines.at(currentLine) ?? [] as word (word.key)}{#if word.isWord}<button
-										class="token {word.mark ?? 'state-none'}"
-										onclick={() => tap(currentLine, word)}>{@render rubied(word)}</button
-									>{:else}<span class="token">{word.text}</span>{/if}{/each}
-						</p>
+				<div class="menu" class:hidden={bare || !menuOpen}>
+					<button onclick={() => setStage(false)} aria-label="All lines">☰ All lines</button>
+					<button onclick={toggleBlur} aria-pressed={!blurEnglish} class:on={!blurEnglish}
+						>Always show English</button
+					>
+					<button onclick={() => ((bare = true), (menuOpen = false))} aria-label="Hide the buttons"
+						>✕ Hide buttons</button
+					>
+				</div>
+				<div class="under" class:bare>
+					<div class="side" class:hidden={bare}>
+						<button onclick={previous} aria-label="Previous line">◀</button>
+						<button onclick={replay} aria-label="Replay this line">↻</button>
+						<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
 						<button
-							class="english-line"
-							class:blurred={blurEnglish && unblurred !== currentLine}
-							class:quick={translations[currentLine]?.source === 'quick'}
-							title={translations[currentLine]?.source === 'human'
-								? "From the video's English subtitles"
-								: undefined}
-							lang="en"
-							onclick={showEnglish}
-							>{translations[currentLine]?.text ??
-								(askable ? 'translating…' : 'No English yet')}</button
+							class="setting"
+							onclick={togglePauseEachLine}
+							aria-pressed={pauseEachLine}
+							class:on={pauseEachLine}
+							aria-label="Stop after each line">❚❚</button
 						>
-						<!-- ◀ ↻ ▶ in the middle; the two settings aside at the edges, quieter. -->
-						<div class="steps" class:hidden={bare}>
-							<button
-								class="setting"
-								onclick={togglePauseEachLine}
-								aria-pressed={pauseEachLine}
-								class:on={pauseEachLine}
-								aria-label="Stop after each line">❚❚</button
-							>
-							<div class="moves">
-								<button onclick={previous} aria-label="Previous line">◀</button>
-								<button onclick={replay} aria-label="Replay this line">↻</button>
-								<button onclick={() => seek(currentLine + 1)} aria-label="Next line">▶</button>
-							</div>
-							<button class="setting" onclick={nextSpeed} aria-label="Playback speed"
-								>{speed}×</button
-							>
-						</div>
 					</div>
-				{/if}
+					{#if currentLine >= 0 && lines.at(currentLine)}
+						<div class="subtitles" use:longPress={currentLine}>
+							<p class="chinese" lang={language}>
+								{#each lines.at(currentLine) ?? [] as word (word.key)}{#if word.isWord}<button
+											class="token {word.mark ?? 'state-none'}"
+											onclick={() => tap(currentLine, word)}>{@render rubied(word)}</button
+										>{:else}<span class="token">{word.text}</span>{/if}{/each}
+							</p>
+							{#if !blurEnglish || unblurred === currentLine}
+								<button
+									class="english-line"
+									class:quick={translations[currentLine]?.source === 'quick'}
+									title={translations[currentLine]?.source === 'human'
+										? "From the video's English subtitles"
+										: undefined}
+									lang="en"
+									onclick={showEnglish}
+									>{translations[currentLine]?.text ??
+										(askable ? 'translating…' : 'No English yet')}</button
+								>
+							{/if}
+						</div>
+					{:else}
+						<span></span>
+					{/if}
+					<div class="side" class:hidden={bare}>
+						{#if blurEnglish}
+							<button
+								onclick={showEnglish}
+								aria-pressed={currentLine >= 0 && unblurred === currentLine}
+								class:on={currentLine >= 0 && unblurred === currentLine}
+								aria-label="Show this line's English">EN</button
+							>
+						{/if}
+						<button class="setting" onclick={nextSpeed} aria-label="Playback speed">{speed}×</button
+						>
+					</div>
+				</div>
 			{/if}
 		</div>
 		{#if !stage}
@@ -843,9 +870,13 @@
 		padding: 0.5rem;
 		justify-content: space-between;
 	}
+	.grow {
+		flex: 1;
+	}
 	.bar button,
 	.bar .back-to-videos,
-	.steps button {
+	.menu button,
+	.side button {
 		background: rgb(0 0 0 / 55%);
 		color: #fff;
 		border: 1px solid rgb(255 255 255 / 30%);
@@ -876,22 +907,72 @@
 	.stage-status :global(.progress-bar) {
 		color: #fff;
 	}
-	/* Above the video's own controls, which sit along the bottom edge. */
-	.subtitles {
+	.menu {
+		position: absolute;
+		top: 3rem;
+		right: 0.5rem;
+		z-index: 2;
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0.4rem;
+		padding: 0.5rem;
+		border-radius: 12px;
+		background: rgb(0 0 0 / 75%);
+	}
+	.menu button {
+		text-align: left;
+	}
+	.menu button.on,
+	.side button.on {
+		background: var(--accent);
+		opacity: 1;
+	}
+	/* The line and the buttons beside it, just above the video's own controls along the bottom
+	   edge; at the edge itself when those are hidden. */
+	.under {
 		position: absolute;
 		left: 0;
 		right: 0;
 		bottom: 4.5rem;
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: end;
+		gap: 0.5rem;
+		padding: 0 0.5rem;
+		pointer-events: none;
+	}
+	.under.bare {
+		bottom: 0.5rem;
+	}
+	.side {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+	.side button {
+		min-width: 2.75rem;
+		min-height: 2.5rem;
+		padding: 0.2rem 0.5rem;
+	}
+	.side .setting {
+		font-size: 0.85rem;
+		opacity: 0.6;
+		border-color: transparent;
+	}
+	.subtitles {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 0.3rem;
-		padding: 0 0.75rem;
 		text-align: center;
-		pointer-events: none;
 	}
+	.under > *,
 	.subtitles > * {
 		pointer-events: auto;
+	}
+	.under > .subtitles {
+		pointer-events: none;
 	}
 	.chinese {
 		margin: 0;
@@ -928,10 +1009,6 @@
 		border-radius: 8px;
 		padding: 0.2rem 0.6rem;
 		min-height: 0;
-		transition: filter 0.15s;
-	}
-	.english-line.blurred {
-		filter: blur(5px);
 	}
 	/*
 	 * Held upright, a video is a strip across the middle, and subtitles on it would sit far from
@@ -952,36 +1029,26 @@
 			position: static;
 			margin: 0 0.75rem 0.5rem;
 		}
-		.subtitles {
+		/* Room enough below the video: the line takes the whole width, its buttons under it. */
+		.under {
 			position: static;
 			margin-top: 1rem;
+			grid-template-columns: auto 1fr auto;
+			grid-template-areas: 'line line line' 'left . right';
+			row-gap: 1rem;
+		}
+		.under > :first-child {
+			grid-area: left;
+		}
+		.under > :nth-child(2) {
+			grid-area: line;
+		}
+		.under > :last-child {
+			grid-area: right;
 		}
 	}
 	.english-line.quick {
 		font-style: italic;
-	}
-	.steps {
-		align-self: stretch;
-		display: grid;
-		grid-template-columns: 1fr auto 1fr;
-		align-items: center;
-	}
-	.moves {
-		display: flex;
-		gap: 1.5rem;
-	}
-	.steps .setting {
-		justify-self: start;
-		font-size: 0.85rem;
-		opacity: 0.6;
-		border-color: transparent;
-	}
-	.steps .setting:last-child {
-		justify-self: end;
-	}
-	.steps .setting.on {
-		opacity: 1;
-		background: var(--accent);
 	}
 	.hidden {
 		display: none !important;

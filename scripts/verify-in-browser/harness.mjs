@@ -1531,8 +1531,9 @@ const scenarios = {
 	},
 
 	// The Language Reactor layout: on a phone-sized screen the video fills it, with the current line
-	// on it and its English blurred until tapped. Saves stage-blurred.png and stage-shown.png in the
-	// working directory, because a layout is checked by looking at it.
+	// on it and its English hidden until EN is tapped (blurred until 2026-11-15). Saves
+	// stage-hidden.png, stage-shown.png and stage-landscape.png in the working directory, because a
+	// layout is checked by looking at it.
 	async stage() {
 		const { writeFileSync } = await import('node:fs');
 		const tab = await openTab('about:blank');
@@ -1569,23 +1570,32 @@ const scenarios = {
 				() =>
 					tab.evaluate(`
 						const line = document.querySelector('.media.stage .subtitles .chinese');
-						const english = document.querySelector('.media.stage .english-line');
-						return line && english ? { chinese: line.textContent, blurred: english.classList.contains('blurred'), listHidden: !document.querySelector('.lines') } : null;
+						return line ? { chinese: line.textContent, hidden: !document.querySelector('.media.stage .english-line'), listHidden: !document.querySelector('.lines') } : null;
 					`),
 				10000,
 				250
 			);
-			await shot('stage-blurred.png');
-			await tab.evaluate(`document.querySelector('.english-line').click(); return true;`);
+			await shot('stage-hidden.png');
+			await tab.evaluate(
+				`document.querySelector('button[aria-label="Show this line\\'s English"]').click(); return true;`
+			);
 			await new Promise((r) => setTimeout(r, 400));
 			const after = await tab.evaluate(
-				`return !document.querySelector('.english-line').classList.contains('blurred');`
+				`return !!document.querySelector('.media.stage .english-line');`
 			);
 			await shot('stage-shown.png');
+			await tab.send('Emulation.setDeviceMetricsOverride', {
+				width: 915,
+				height: 412,
+				deviceScaleFactor: 2,
+				mobile: true
+			});
+			await new Promise((r) => setTimeout(r, 400));
+			await shot('stage-landscape.png');
 			return {
-				pass: before.blurred && before.listHidden && after,
+				pass: before.hidden && before.listHidden && after,
 				...before,
-				unblurredOnTap: after
+				shownOnTap: after
 			};
 		} finally {
 			await tab.close();
@@ -1650,7 +1660,9 @@ const scenarios = {
 			const replayed = await at();
 			await press('Replay this line');
 			const again = await at();
-			await tab.evaluate(`document.querySelector('.english-line').click(); return true;`);
+			await tab.evaluate(
+				`document.querySelector('button[aria-label="Show this line\\'s English"]').click(); return true;`
+			);
 			// Progress lists a session only after 10 s of playing (#32).
 			await tab.evaluate(`
 				const video = document.querySelector('video');

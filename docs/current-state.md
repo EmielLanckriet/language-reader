@@ -58,6 +58,9 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
+- The video stage's buttons beside the line (2026-11-15): ◀ ↻ ▶ ❚❚ left, EN and speed right, ☰
+  and the English setting behind ⋯, English hidden until EN; checked in Chrome (`stage`), not on
+  the phone. Rearranging them yourself is #60.
 - Re-cut human English and the tap-a-word English editor (2026-11-10): checked in Chrome
   (`tracks`, `lineeditor`), not on the phone;
   the 非诚勿扰 hand edits (none worked out) are to be removed then.

@@ -13,14 +13,51 @@ handover wait (fix deployed, watch on the phone).
 Important: #29 find which information predicts understanding, and which exposures help (first
 analysis done; needs weeks of data).
 
-Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall.
+Cards and memory: #18 fit the evidence rule · #20 Anki reset and live recall · #59 sanitize the
+due cards.
 
-Later, not worth it yet: #33 the player's words and pinyin in the background.
+Later, not worth it yet: #33 the player's words and pinyin in the background · #60 rearrange
+the video stage's buttons yourself.
 
 Library and content: #10 generated story with due words (being built: phone, laptop when online)
 · #16 word senses in context (parked).
 
 Tooling and checks: #17 Termux service dying (watch to 10-19).
+
+## Rearrange the video stage's buttons yourself — #60
+
+2026-11-15, the reader: subtitles were in the way, and most stage buttons go unused (⛶ is the one
+used often). The defaults were changed by hand that day (◀ ↻ ▶ and ❚❚ left, EN and speed right,
+the rest behind ⋯, English hidden until EN). Wanted later: a screen, from ⋯, giving each button a
+place (top, left, right, ⋯ menu, hidden; arrows for the order), the English mode (always / blurred /
+hidden with EN), and Chrome's own controls on or off (off lowers the subtitles to the edge but needs
+a seek bar of our own). Drag-and-drop was judged overkill: a place per button gets nearly all of it.
+
+## Sanitize the due cards — routine, skill or in the app — #59
+
+2026-11-12, the reader: due cards were full of non-words from wrong segmentation and subtitles.
+Cleaned by hand that day, through the storage worker over CDP (memory: storage-worker calls over
+CDP), with the same `setStatus` the Retire/Ignore buttons use:
+
+- **Retire**: active, outside the top 4000 of `frequency-zh.txt`, reading stability ≤ 14 days.
+  Only 103 of 3156 active words qualified.
+- **Ignore**: non-words among the 1165 active words outside the top 4000, whatever their
+  stability. This is where most of the junk was: 和数, 有一次, 在下面, 候 and 五度 had 19–32 days'
+  stability (video reading), so the frequency rule alone keeps them as cards.
+- Result: 61 retired, 145 ignored; due 313 → 251. List in that session's scratchpad only.
+
+What to make repeatable:
+- **Routine** (scheduled, laptop + phone over USB): needs the phone connected and the app open; a
+  bad flag lands without anyone looking.
+- **Skill** (on request): the same steps, with the proposed lists shown before writing. Cheapest.
+- **In the app**: a "Clean up cards" page proposing both lists for the reader to confirm. Needs a
+  non-word check that runs on the phone: CC-CEDICT membership catches part of it (glue like 影响到
+  and numbers like 四十 are not entries), not fragments that happen to be words.
+
+Lessons from the manual run: Haiku, asked to flag non-words, mostly returned the examples in its
+prompt (42 flags) and missed obvious fragments (楚 and 看清 from 看清楚, 了当, 宝盖); about 100 were
+added by hand. Any model pass needs a review. The cause is upstream: segmentation that glues
+words or cuts them should be fixed there too, or the cleaning never ends.
 
 ## A streak in study days that lapses only on a week under 5 — built, deployed (#38)
 
