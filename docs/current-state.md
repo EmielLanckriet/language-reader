@@ -58,6 +58,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
+- Recording for shadowing (2026-11-16, [spec](shadowing-recording-spec.md)): ⋯ → ● Recording for
+  shadowing puts ● on the stage, which records you over the line (replayed, stopping at its end);
+  ■ stops, "▶ me" plays it back, a new line discards it. Nothing stored. Microphone permissions
+  added to the Android manifest; not run in any browser or on the phone yet.
 - The video stage's buttons beside the line (2026-11-15): ◀ ↻ ▶ ❚❚ left, EN and speed right, ☰
   and the English setting behind ⋯, English hidden until EN; checked in Chrome (`stage`), not on
   the phone. Rearranging them yourself is #60.

@@ -19,6 +19,7 @@
 	import { lineWindow, offsetOf } from '$lib/media/line-window';
 	import { resolve } from '$app/paths';
 	import type { Recorder } from './recorder';
+	import { ShadowTake } from './shadowing.svelte';
 	import type { Lines } from './lazy-lines';
 
 	/**
@@ -145,6 +146,7 @@
 		const at = lineAt(cues, time);
 		if (at === currentLine) return;
 		currentLine = at;
+		take.discard();
 		if (at >= 0) online?.(at);
 		if (showList) void scrollToLine(at, true);
 	}
@@ -364,7 +366,7 @@
 	 * the line before, whose end is where the next begins, and playback stopped at once.
 	 */
 	function stopAtLineEnd(media: HTMLMediaElement): boolean {
-		if (!pauseEachLine || media.paused) return false;
+		if ((!pauseEachLine && take.state !== 'recording') || media.paused) return false;
 		const time = media.currentTime;
 		const line = lineAt(cues, time);
 		if (line < 0) return false;
@@ -548,6 +550,7 @@
 
 	function setStage(on: boolean) {
 		stage = on;
+		if (!on) take.discard();
 		keep('reader.stage', on);
 		recorder?.setting('stage', on);
 		if (!on && document.fullscreenElement) void document.exitFullscreen();
@@ -594,6 +597,44 @@
 		if (currentLine < 0) return;
 		recorder?.replay(sourceOf(currentLine), false, moment().mediaMs);
 		seek(currentLine);
+	}
+
+	/**
+	 * Shadowing: record yourself over a line, then hear it back. The take ends where the line ends
+	 * (playback stops there while recording, ❚❚ or not) or at any pause, and is thrown away when
+	 * the line changes. Clarified with the reader 2026-11-16: ● also replays the line, and ■ keeps
+	 * what was recorded.
+	 */
+	let shadowing = $state(readPreference('reader.shadowing', false));
+	const take = new ShadowTake();
+	$effect(() => () => take.discard());
+
+	function toggleShadowing() {
+		shadowing = !shadowing;
+		keep('reader.shadowing', shadowing);
+		recorder?.setting('shadowing', shadowing);
+		if (!shadowing) take.discard();
+	}
+
+	async function record() {
+		if (currentLine < 0) return;
+		if (await take.start()) replayFrom('shadow-record', false);
+	}
+
+	/** Pauses too: playing on into the next line would throw the take away. */
+	function stopTake() {
+		take.stop();
+		active()?.pause();
+	}
+
+	function playTake() {
+		active()?.pause();
+		take.play();
+	}
+
+	function paused() {
+		recorder?.paused();
+		take.stop();
 	}
 
 	function tap(line: number, word: LineWord) {
@@ -647,7 +688,7 @@
 				ontimeupdate={() => (noteTime(), follow())}
 				onplay={watchLineEnd}
 				onloadedmetadata={started}
-				onpause={() => recorder?.paused()}
+				onpause={paused}
 				onseeking={() => (seekFrom = playedTo)}
 				onseeked={() => recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
 			></video>
@@ -657,7 +698,7 @@
 					preload="auto"
 					bind:this={sound}
 					ontimeupdate={() => away && (noteTime(), follow())}
-					onpause={() => away && recorder?.paused()}
+					onpause={() => away && paused()}
 					onseeking={() => away && (seekFrom = playedTo)}
 					onseeked={() => away && recorder?.seek(Math.round(seekFrom * 1000), moment().mediaMs)}
 				></audio>{/if}
@@ -687,6 +728,9 @@
 					<button onclick={() => setStage(false)} aria-label="All lines">☰ All lines</button>
 					<button onclick={toggleBlur} aria-pressed={!blurEnglish} class:on={!blurEnglish}
 						>Always show English</button
+					>
+					<button onclick={toggleShadowing} aria-pressed={shadowing} class:on={shadowing}
+						>● Recording for shadowing</button
 					>
 					<button onclick={() => ((bare = true), (menuOpen = false))} aria-label="Hide the buttons"
 						>✕ Hide buttons</button
@@ -731,6 +775,28 @@
 						<span></span>
 					{/if}
 					<div class="side" class:hidden={bare}>
+						{#if shadowing}
+							{#if take.error}
+								<button class="shadow-error" aria-live="assertive" onclick={() => (take.error = '')}
+									>{take.error}</button
+								>
+							{/if}
+							{#if take.state === 'recorded'}
+								<button onclick={playTake} class:on={take.playing} aria-label="Play your recording"
+									>▶ me</button
+								>
+							{/if}
+							{#if take.state === 'recording'}
+								<button class="recording" onclick={stopTake} aria-label="Stop recording">■</button>
+							{:else}
+								<button
+									class="record"
+									onclick={record}
+									disabled={take.state === 'starting' || currentLine < 0}
+									aria-label="Record yourself over this line">●</button
+								>
+							{/if}
+						{/if}
 						{#if blurEnglish}
 							<button
 								onclick={showEnglish}
@@ -954,6 +1020,23 @@
 		min-width: 2.75rem;
 		min-height: 2.5rem;
 		padding: 0.2rem 0.5rem;
+	}
+	.side .record {
+		color: #e53935;
+	}
+	.side .recording {
+		background: #e53935;
+		animation: recording 1s ease-in-out infinite alternate;
+	}
+	@keyframes recording {
+		to {
+			opacity: 0.6;
+		}
+	}
+	.side .shadow-error {
+		max-width: 8rem;
+		font-size: 0.8rem;
+		border-color: #e53935;
 	}
 	.side .setting {
 		font-size: 0.85rem;
