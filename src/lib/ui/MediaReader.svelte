@@ -374,7 +374,10 @@
 		if (stoppedAt === line && time < end - 0.5) stoppedAt = -1;
 		if (time >= end - 0.05 && stoppedAt !== line) {
 			stoppedAt = line;
+			// A take ends here: play then hears the same line again, not the next (2026-11-16).
+			const tookOver = take.state === 'recording';
 			media.pause();
+			if (tookOver) media.currentTime = cues[line].start;
 			return true;
 		}
 		return false;

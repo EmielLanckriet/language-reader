@@ -22,7 +22,12 @@ export class ShadowTake {
 		this.state = 'starting';
 		let stream: MediaStream;
 		try {
-			stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			// Echo cancellation put Android in call mode, which silenced the video while recording
+			// (measured 2026-11-16: MODE_IN_COMMUNICATION with it, MODE_NORMAL without). On the
+			// speaker the video is in the take too; with headphones it is not.
+			stream = await navigator.mediaDevices.getUserMedia({
+				audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+			});
 		} catch (e) {
 			if (generation !== this.#generation) return false;
 			this.state = 'idle';
