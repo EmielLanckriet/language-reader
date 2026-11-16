@@ -24,7 +24,11 @@ export class ShadowTake {
 		try {
 			// Echo cancellation put Android in call mode, which silenced the video while recording
 			// (measured 2026-11-16: MODE_IN_COMMUNICATION with it, MODE_NORMAL without). On the
-			// speaker the video is in the take too; with headphones it is not.
+			// speaker the video is in the take too; with headphones it is not, and headphones are what
+			// this is made for. Tried and rejected: echo cancellation with the video's sound routed
+			// onto the call path. It filtered the video, but the voice came out muffled and quiet
+			// (speaking over the video is the case echo cancellation suppresses most) and the
+			// microphone took 0.41–0.47 s to open instead of 0.16–0.17 s.
 			stream = await navigator.mediaDevices.getUserMedia({
 				audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
 			});

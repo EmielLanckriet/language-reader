@@ -61,8 +61,9 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 - Recording for shadowing (2026-11-16, [spec](shadowing-recording-spec.md)): ⋯ → ● Recording for
   shadowing puts ● on the stage, which records you over the line (replayed, stopping at its end);
   ■ stops, "▶ me" plays it back, a new line discards it; play after a take replays the line. Nothing
-  stored. The microphone runs without echo cancellation: with it, Android went into call mode and
-  silenced the video. Checked on the phone over CDP; not in Firefox.
+  stored. Made for headphones: the microphone runs without echo cancellation, so on the speaker
+  the video is in the take. Call mode (echo cancellation) was tried and rejected: a muffled, quiet
+  voice and +0.3 s before the line starts. Checked on the phone over CDP; not with headphones.
 - The video stage's buttons beside the line (2026-11-15): ◀ ↻ ▶ ❚❚ left, EN and speed right, ☰
   and the English setting behind ⋯, English hidden until EN; checked in Chrome (`stage`), not on
   the phone. Rearranging them yourself is #60.
