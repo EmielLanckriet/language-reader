@@ -376,6 +376,7 @@
 			stoppedAt = line;
 			// A take ends here: play then hears the same line again, not the next (2026-11-16).
 			const tookOver = take.state === 'recording';
+			takeTail = tookOver;
 			media.pause();
 			if (tookOver) media.currentTime = cues[line].start;
 			return true;
@@ -603,12 +604,15 @@
 	}
 
 	/**
-	 * Shadowing: record yourself over a line, then hear it back. The take ends where the line ends
-	 * (playback stops there while recording, ❚❚ or not) or at any pause, and is thrown away when
-	 * the line changes. Clarified with the reader 2026-11-16: ● also replays the line, and ■ keeps
+	 * Shadowing: record yourself over a line, then hear it back. The take ends 2 s after the line
+	 * ends (playback stops there while recording, ❚❚ or not; #61), or at any other pause, and is
+	 * thrown away when the line changes. Clarified with the reader 2026-11-16: ● also replays the line, and ■ keeps
 	 * what was recorded.
 	 */
 	let shadowing = $state(readPreference('reader.shadowing', false));
+	/** The line's end paused playback during a take: the take runs on for TAIL_MS (#61). */
+	let takeTail = false;
+	const TAIL_MS = 2000;
 	const take = new ShadowTake();
 	$effect(() => () => take.discard());
 
@@ -637,7 +641,15 @@
 
 	function paused() {
 		recorder?.paused();
-		take.stop();
+		if (takeTail) take.stopAfter(TAIL_MS);
+		else take.stop();
+		takeTail = false;
+	}
+
+	/** Playing again during a take's tail ends the take, so the replay is not recorded into it. */
+	function playing() {
+		if (take.tailing) take.stop();
+		watchLineEnd();
 	}
 
 	function tap(line: number, word: LineWord) {
@@ -689,7 +701,7 @@
 				src={url}
 				bind:this={player}
 				ontimeupdate={() => (noteTime(), follow())}
-				onplay={watchLineEnd}
+				onplay={playing}
 				onloadedmetadata={started}
 				onpause={paused}
 				onseeking={() => (seekFrom = playedTo)}

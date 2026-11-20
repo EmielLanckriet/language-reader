@@ -34,3 +34,8 @@ into whole sentences; the first English edit starts from the re-cut lines. Hand 
 here proved confusing (whole merged sentences as the unit, "and all after"); its replacement, one
 line's share of the English moved by tapping a word (`setEdge`), replaced join, split and move
 the same day. Kept English is still `Placed` spans, now one per line.
+
+2026-11-20 (#61): `layout.json` gains `ends`, keyed like `shifts`: a shown line ends that much
+later with its start kept. Later than the next line's start pushes that start (subtitles are
+mostly back to back, so a line timed too short can only grow this way); capped at the next line's
+end, since swallowing it is a join. An older `layout.json` reads as no ends.

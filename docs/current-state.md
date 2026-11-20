@@ -58,6 +58,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
+- #61 and card speech (2026-11-20): a shadowing take runs on 2 s after the line ends (it cut off
+  the last words); the line editor's timing moves the Line or only its End, an end later than the
+  next line's start pushing that start; cards speak a word through Android's own text-to-speech
+  (`WordSpeech.kt`), as the native app's WebView has no speechSynthesis (silent since 2026-11-05).
 - Recording for shadowing (2026-11-16, [spec](shadowing-recording-spec.md)): ⋯ → ● Recording for
   shadowing puts ● on the stage, which records you over the line (replayed, stopping at its end);
   ■ stops, "▶ me" plays it back, a new line discards it; play after a take replays the line. Nothing

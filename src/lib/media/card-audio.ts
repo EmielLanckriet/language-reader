@@ -31,6 +31,16 @@ export function timedExample(sentence: CardSentence, cues: Cue[]) {
 	};
 }
 
+/** Android's text-to-speech in the native app, whose WebView has no speechSynthesis (WordSpeech.kt). */
+interface NativeSpeech {
+	speak(id: string, text: string): 'ok' | 'starting' | 'no-voice';
+	stop(): void;
+}
+const nativeSpeech = () => (globalThis as { ReaderSpeech?: NativeSpeech }).ReaderSpeech;
+let utterances = 0;
+const NO_VOICE =
+	'No Mandarin voice is available. Add Chinese (Mandarin) in your phone’s text-to-speech settings, or import your Anki word recordings.';
+
 /** Owns a single short playback. Never decodes an entire video or records a reading encounter. */
 export class CardAudio {
 	private audio: HTMLAudioElement | undefined;
@@ -38,6 +48,7 @@ export class CardAudio {
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private generation = 0;
 	private timeout: ReturnType<typeof setTimeout> | undefined;
+	private unlisten: (() => void) | undefined;
 	private hidden = () => {
 		if (document.hidden) this.stop();
 	};
@@ -59,6 +70,11 @@ export class CardAudio {
 		this.release?.();
 		this.release = undefined;
 		globalThis.speechSynthesis?.cancel();
+		if (this.unlisten) {
+			this.unlisten();
+			this.unlisten = undefined;
+			nativeSpeech()?.stop();
+		}
 		this.report(false);
 	}
 	play(file: Readable, start = 0, end?: number) {
@@ -116,6 +132,11 @@ export class CardAudio {
 	speak(word: string) {
 		this.stop();
 		const synthesis = globalThis.speechSynthesis;
+		const native = nativeSpeech();
+		if (!synthesis && native) {
+			this.speakNatively(native, word);
+			return;
+		}
 		if (!synthesis) {
 			this.report(false, 'Word pronunciation is unavailable on this device.');
 			return;
@@ -144,6 +165,25 @@ export class CardAudio {
 			}
 		};
 		synthesis.speak(utterance);
+		this.report(true);
+	}
+	private speakNatively(native: NativeSpeech, word: string) {
+		const generation = this.generation;
+		const id = String(++utterances);
+		const heard = (event: Event) => {
+			const { detail } = event as CustomEvent<{ id: string; event: string }>;
+			if (detail.id !== id || this.generation !== generation) return;
+			this.stop();
+			if (detail.event === 'error') this.report(false, 'Word pronunciation could not be played.');
+			if (detail.event === 'no-voice') this.report(false, NO_VOICE);
+		};
+		addEventListener('readerspeech', heard);
+		this.unlisten = () => removeEventListener('readerspeech', heard);
+		if (native.speak(id, word) === 'no-voice') {
+			this.stop();
+			this.report(false, NO_VOICE);
+			return;
+		}
 		this.report(true);
 	}
 	dispose() {

@@ -11,6 +11,8 @@ import {
 	placedOf,
 	setEdge,
 	shiftTime,
+	shiftEnd,
+	endOf,
 	shownOf,
 	spansOf,
 	spansOfLines,
@@ -73,6 +75,34 @@ describe('the Chinese cut into lines by hand', () => {
 		const all = shiftTime(one, shown, 0, -1000, true);
 		expect(shownOf(cues, all).map((s) => s.start)).toEqual([0, 2.5, 4]);
 		expect(timedCues(cues, all, shownOf(cues, all)).map((c) => c.start)).toEqual([0, 2.5, 4]);
+	});
+
+	it('ends one line later, pushing the next line’s start, or earlier, leaving a gap (#61)', () => {
+		const shown = shownOf(cues, PLAIN);
+		const later = shiftEnd(PLAIN, shown, 1, 1000);
+		expect(shownOf(cues, later).map((s) => [s.start, s.end])).toEqual([
+			[0, 2],
+			[3, 6],
+			[6, 7]
+		]);
+		expect(timedCues(cues, later, shownOf(cues, later)).map((c) => [c.start, c.end])).toEqual([
+			[0, 2],
+			[3, 6],
+			[6, 7]
+		]);
+		expect(endOf(later, shown, 1)).toBe(1000);
+		const earlier = shiftEnd(PLAIN, shown, 0, -500);
+		expect(shownOf(cues, earlier).map((s) => [s.start, s.end])).toEqual([
+			[0, 1.5],
+			[3, 5],
+			[5, 7]
+		]);
+		// Never before its own start, never past the next line's end: that is a join.
+		expect(shownOf(cues, shiftEnd(PLAIN, shown, 0, -5000))[0].end).toBe(0);
+		expect(shownOf(cues, shiftEnd(PLAIN, shown, 1, 9000)).map((s) => s.end)).toEqual([2, 7, 7]);
+		// Kept and read back; undone to nothing, it leaves nothing behind.
+		expect(layoutOf(JSON.parse(JSON.stringify(later)))).toEqual(later);
+		expect(shiftEnd(later, shown, 1, -1000).ends).toEqual([]);
 	});
 
 	it('tiles the text whatever is joined and cut', () => {

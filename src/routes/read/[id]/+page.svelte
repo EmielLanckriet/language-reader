@@ -76,6 +76,8 @@
 		joinChinese,
 		placedOf,
 		setEdge,
+		endOf,
+		shiftEnd,
 		shiftOf,
 		shiftTime,
 		shownOf,
@@ -427,6 +429,9 @@
 		},
 		shiftTime(s: number, ms: number, all: boolean) {
 			void keepLayout(shiftTime(layout, shown, s, ms, all));
+		},
+		shiftEnd(s: number, ms: number) {
+			void keepLayout(shiftEnd(layout, shown, s, ms));
 		},
 		setEdge(s: number, line: number, word: number, edge: 'start' | 'end') {
 			const spans = spansToEdit();
@@ -1059,6 +1064,7 @@
 				english={editorEnglish[s] ?? []}
 				{around}
 				shiftMs={shiftOf(layout, shown, s)}
+				endMs={endOf(layout, shown, s)}
 				offsetMs={layout.offsetMs}
 				canUndo={undo.length > 0}
 				{edits}

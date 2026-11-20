@@ -9,6 +9,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
+  private var speech: WordSpeech? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
@@ -26,11 +28,18 @@ class MainActivity : TauriActivity() {
   }
 
   override fun onWebViewCreate(webView: WebView) {
+    speech = WordSpeech(this, webView).also { webView.addJavascriptInterface(it, "ReaderSpeech") }
     // Wry sets its chrome client only after this hook returns, so wrap it on the next turn.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
     webView.post {
       val inner = webView.webChromeClient ?: return@post
       webView.webChromeClient = FullscreenChromeClient(this, inner)
     }
+  }
+
+  override fun onDestroy() {
+    speech?.shutdown()
+    speech = null
+    super.onDestroy()
   }
 }

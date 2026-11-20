@@ -35,11 +35,17 @@ export interface Layout {
 	offsetMs: number;
 	/** One shown line, by where it starts, shows this much later. */
 	shifts: { at: Pos; ms: number }[];
+	/**
+	 * One shown line, by where it starts, ends this much later, its start kept (#61). Later than
+	 * the next line's start pushes that start along; never before its own start or past the next
+	 * line's end.
+	 */
+	ends: { at: Pos; ms: number }[];
 	/** English placed by hand; absent until the reader first changes the English. */
 	english?: Placed[];
 }
 
-export const PLAIN: Layout = { joined: [], cuts: [], offsetMs: 0, shifts: [] };
+export const PLAIN: Layout = { joined: [], cuts: [], offsetMs: 0, shifts: [], ends: [] };
 
 /** A line as the player shows it: from one break to the next. */
 export interface Shown {
@@ -63,6 +69,7 @@ export function layoutOf(kept: unknown, runs?: unknown): Layout {
 			cuts: Array.isArray(k.cuts) ? k.cuts : [],
 			offsetMs: typeof k.offsetMs === 'number' ? k.offsetMs : 0,
 			shifts: Array.isArray(k.shifts) ? k.shifts : [],
+			ends: Array.isArray(k.ends) ? k.ends : [],
 			...(Array.isArray(k.english) ? { english: k.english } : {})
 		};
 	}
@@ -103,7 +110,7 @@ export function shownOf(cues: readonly Cue[], layout: Layout): Shown[] {
 	const last = cues.length - 1;
 	// Past the last line: so every line of the document starts before some shown line's end.
 	const end: Pos = { line: cues.length, at: 0 };
-	return breaks.map((from, i) => {
+	const lines = breaks.map((from, i) => {
 		const to = breaks[i + 1] ?? end;
 		const shift = (layout.offsetMs + (layout.shifts.find((s) => same(s.at, from))?.ms ?? 0)) / 1000;
 		const ends = !breaks[i + 1]
@@ -118,6 +125,14 @@ export function shownOf(cues: readonly Cue[], layout: Layout): Shown[] {
 			end: Math.max(0, ends + shift)
 		};
 	});
+	lines.forEach((line, i) => {
+		const ms = layout.ends.find((x) => same(x.at, line.from))?.ms ?? 0;
+		if (ms === 0) return;
+		const next = lines[i + 1];
+		line.end = Math.max(line.start, Math.min(line.end + ms / 1000, next?.end ?? Infinity));
+		if (next && line.end > next.start) next.start = line.end;
+	});
+	return lines;
 }
 
 /** The shown line `pos` falls in. */
@@ -145,7 +160,16 @@ export function timedCues(cues: readonly Cue[], layout: Layout, shown: readonly 
 		const at = shown[shownAt(shown, { line, at: 0 })];
 		const shift =
 			(layout.offsetMs + (layout.shifts.find((s) => same(s.at, at.from))?.ms ?? 0)) / 1000;
-		return { ...cue, start: Math.max(0, cue.start + shift), end: Math.max(0, cue.end + shift) };
+		const timed = {
+			...cue,
+			start: Math.max(0, cue.start + shift),
+			end: Math.max(0, cue.end + shift)
+		};
+		// A line ended by hand, and the start it pushed (shownOf).
+		if (same(at.from, { line, at: 0 })) timed.start = at.start;
+		if (at.to.at === 0 && at.to.line === line + 1 && layout.ends.some((x) => same(x.at, at.from)))
+			timed.end = at.end;
+		return timed;
 	});
 }
 
@@ -358,6 +382,20 @@ export function shiftTime(
 	});
 }
 
+/** Shown line `s` ends `ms` later, its start kept. */
+export function shiftEnd(layout: Layout, shown: readonly Shown[], s: number, ms: number): Layout {
+	const at = shown[s].from;
+	return tidy({
+		...layout,
+		ends: [...layout.ends.filter((x) => !same(x.at, at)), { at, ms: endOf(layout, shown, s) + ms }]
+	});
+}
+
+/** How much later shown line `s` ends, in ms. */
+export function endOf(layout: Layout, shown: readonly Shown[], s: number): number {
+	return layout.ends.find((x) => same(x.at, shown[s].from))?.ms ?? 0;
+}
+
 /** The shift of shown line `s` alone, in ms. */
 export function shiftOf(layout: Layout, shown: readonly Shown[], s: number): number {
 	return layout.shifts.find((x) => same(x.at, shown[s].from))?.ms ?? 0;
@@ -371,6 +409,7 @@ function tidy(layout: Layout): Layout {
 		...layout,
 		joined: [...new Set(layout.joined)].filter((line) => line > 0).sort((a, b) => a - b),
 		cuts,
-		shifts: layout.shifts.filter((x) => x.ms !== 0)
+		shifts: layout.shifts.filter((x) => x.ms !== 0),
+		ends: layout.ends.filter((x) => x.ms !== 0)
 	};
 }

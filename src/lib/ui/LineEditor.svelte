@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * One shown line opened for editing by hand (media/layout.ts): its Chinese joined to a
-	 * neighbour, cut at a cursor, or shown earlier or later; its English is its share of the
+	 * neighbour, cut at a cursor, shown earlier or later, or ended earlier or later; its English is its share of the
 	 * English run of words, moved by tapping a word: one in a line above to start there, one below
 	 * to end there, one of its own to start or end there. A panel along the bottom, not a dialog, so
 	 * the video stays in view while timing.
@@ -23,6 +23,7 @@
 		english,
 		around,
 		shiftMs,
+		endMs,
 		offsetMs,
 		canUndo,
 		edits,
@@ -40,6 +41,8 @@
 		around: Near[];
 		/** This line's own timing change, and every line's, in ms. */
 		shiftMs: number;
+		/** How much later this line ends, its start kept. */
+		endMs: number;
 		offsetMs: number;
 		canUndo: boolean;
 		edits: {
@@ -47,6 +50,7 @@
 			/** A new line starting at this offset in the document. */
 			cutChinese(offset: number): void;
 			shiftTime(s: number, ms: number, all: boolean): void;
+			shiftEnd(s: number, ms: number): void;
 			/** Line `s` starts (or ends) at word `word` of line `line`. */
 			setEdge(s: number, line: number, word: number, edge: 'start' | 'end'): void;
 		};
@@ -63,6 +67,8 @@
 	/** A word of this line's English tapped: it asks whether the line starts or ends there. */
 	let chosen = $state<number | null>(null);
 	let allLines = $state(false);
+	/** What the timing buttons move: the whole line, or only its end (#61). */
+	let moving = $state<'line' | 'end'>('line');
 	// A new line, or the line changed under the cursor: the cursor goes back to the middle.
 	$effect(() => {
 		const n = words.length;
@@ -76,7 +82,9 @@
 
 	const seconds = (ms: number) =>
 		`${ms > 0 ? '+' : ms < 0 ? '−' : '±'}${Math.abs(ms / 1000).toFixed(1)} s`;
-	const shift = (ms: number) => edits.shiftTime(s, ms, allLines);
+	const shift = (ms: number) =>
+		moving === 'end' ? edits.shiftEnd(s, ms) : edits.shiftTime(s, ms, allLines);
+	const amount = $derived(moving === 'end' ? endMs : allLines ? offsetMs : shiftMs);
 </script>
 
 <svelte:window
@@ -169,10 +177,16 @@
 			>
 		</div>
 		<div class="row timing">
-			<label><input type="checkbox" bind:checked={allLines} /> all lines</label>
+			<select bind:value={moving} aria-label="What the timing moves">
+				<option value="line">Line</option>
+				<option value="end">End</option>
+			</select>
+			{#if moving === 'line'}
+				<label><input type="checkbox" bind:checked={allLines} /> all lines</label>
+			{/if}
 			<button onclick={() => shift(-1000)}>−1 s</button>
 			<button onclick={() => shift(-100)}>−0.1</button>
-			<span class="amount">{seconds(allLines ? offsetMs : shiftMs)}</span>
+			<span class="amount">{seconds(amount)}</span>
 			<button onclick={() => shift(100)}>+0.1</button>
 			<button onclick={() => shift(1000)}>+1 s</button>
 			<button onclick={onplay} aria-label="Play this line">▶</button>
@@ -250,6 +264,10 @@
 	.timing label,
 	.row label {
 		font-size: 0.85rem;
+	}
+	.timing select {
+		font-size: 0.85rem;
+		min-height: 36px;
 	}
 	.amount {
 		min-width: 3.5rem;

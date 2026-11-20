@@ -14,6 +14,7 @@ export class ShadowTake {
 	#audio: HTMLAudioElement | null = null;
 	/** Bumped by discard(), so a start still waiting on the permission prompt gives up. */
 	#generation = 0;
+	#tail: ReturnType<typeof setTimeout> | undefined;
 
 	/** Resolves true once recording, false if the microphone was refused or is missing. */
 	async start(): Promise<boolean> {
@@ -61,8 +62,25 @@ export class ShadowTake {
 		return true;
 	}
 
+	/** Recording still, but ending on its own: stopAfter() was called. */
+	get tailing() {
+		return this.#tail !== undefined;
+	}
+
+	/**
+	 * Keeps recording `ms` longer, then stops: a shadower speaks behind the line, and stopping with
+	 * it cut off their last words (#61).
+	 */
+	stopAfter(ms: number) {
+		if (this.#recorder?.state !== 'recording') return;
+		clearTimeout(this.#tail);
+		this.#tail = setTimeout(() => this.stop(), ms);
+	}
+
 	/** Keeps what was recorded so far. */
 	stop() {
+		clearTimeout(this.#tail);
+		this.#tail = undefined;
 		if (this.#recorder?.state === 'recording') this.#recorder.stop();
 		this.#recorder = null;
 		this.#stream = null;
@@ -80,6 +98,8 @@ export class ShadowTake {
 
 	discard() {
 		this.#generation++;
+		clearTimeout(this.#tail);
+		this.#tail = undefined;
 		if (this.#recorder?.state === 'recording') this.#recorder.stop();
 		this.#stream?.getTracks().forEach((t) => t.stop());
 		this.#recorder = null;
