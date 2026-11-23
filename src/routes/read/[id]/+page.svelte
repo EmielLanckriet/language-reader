@@ -89,6 +89,7 @@
 		type Span
 	} from '$lib/media/layout';
 	import LineEditor from '$lib/ui/LineEditor.svelte';
+	import { requestSend } from '$lib/taal/sync';
 	import type { Cue } from '$lib/media/subtitles';
 	import {
 		quickTranslation,
@@ -556,6 +557,9 @@
 			else {
 				leaving.answered = true;
 				leaving.answer = (encounter.detail as { answer: AttentionAnswer }).answer;
+				// Answered is when Taal gets the session (the reader, 2026-11-24), not after the quiet
+				// wait a session's own writes keep putting off.
+				requestSend(true);
 			}
 		} catch (error) {
 			leaveProblem = error;
@@ -564,6 +568,7 @@
 		}
 	}
 	function leave() {
+		requestSend(true);
 		const go = leaving?.go;
 		leavingQuietly = true;
 		leaving = null;

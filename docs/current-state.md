@@ -52,6 +52,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   per drill grade; each Cards review as 1.2 cards (10 s at Taal).
   Watching counts playback plus paused time while you are at it: from a pause and from every tap or
   key, up to 3 minutes (`IDLE_MS`, 2026-11-23; before, paused time counted nothing).
+  A session goes to Taal as soon as its question is answered or the sheet closed (2026-11-24);
+  otherwise sends wait for 20 quiet seconds, which a session's own writes kept putting off.
 - **Safety**: automatic copies to Termux (none exported while Termux is unreachable: every close
   of the app exported the whole library for nothing, #56), as increments after a weekly full copy (ADR-0048), and
   restore; a deleted document with history is hidden, not erased. A copy carries a video's
@@ -60,6 +62,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
+- The upright video stage starts with the video under ← and ⛶, no black band above it, the
+  session progress under the video (2026-11-24); previewed live on the phone, not played.
 - #61 and card speech (2026-11-20): a shadowing take runs on 2 s after the line ends (it cut off
   the last words); the line editor's timing moves the Line or only its End, an end later than the
   next line's start pushing that start; cards speak a word through Android's own text-to-speech

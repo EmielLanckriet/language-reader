@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { readDayEnd } from '$lib/ui/hardcore';
 	import { session } from '$lib/storage/session';
+	import { requestSend } from '$lib/taal/sync';
 	import type { StudyOverview } from '$lib/domain/study';
 	import type { AttentionAnswer, Encounter } from '$lib/domain/encounter';
 	import ErrorNotice from './ErrorNotice.svelte';
@@ -55,6 +56,7 @@
 			await (
 				await session()
 			).repository.recordEncounters(id, [{ ...encounter, at: new Date().toISOString() }]);
+			requestSend(true);
 			await load();
 			saved = 'Saved. You can change this answer whenever you need to.';
 		} catch (error) {

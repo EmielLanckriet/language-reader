@@ -941,8 +941,10 @@
 		max-height: none;
 		object-fit: contain;
 	}
+	/* Above the video, which as a flex item with a z-index of its own would cover it. */
 	.bar {
 		position: absolute;
+		z-index: 2;
 		top: 0;
 		left: 0;
 		right: 0;
@@ -1110,22 +1112,23 @@
 	}
 	/*
 	 * Held upright, a video is a strip across the middle, and subtitles on it would sit far from
-	 * nothing. So portrait stacks: status, the video at the top, the current line right under it.
+	 * nothing. So portrait stacks: the video at the very top under ← and ⛶ (no black band for them,
+	 * 2026-11-24), the status, then the current line.
 	 */
 	@media (orientation: portrait) {
 		.media.stage {
 			justify-content: flex-start;
-			padding-top: 3.25rem;
 			overflow-y: auto;
 		}
 		.media.stage .player {
+			order: -1;
 			height: auto;
 			max-height: 45vh;
 			flex: none;
 		}
 		.stage-status {
 			position: static;
-			margin: 0 0.75rem 0.5rem;
+			margin: 0.5rem 0.75rem 0;
 		}
 		/* Room enough below the video: the line takes the whole width, its buttons under it. */
 		.under {
