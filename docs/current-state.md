@@ -63,7 +63,9 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 ## Deployed, waiting for a phone check
 
 - The upright video stage starts with the video under ← and ⛶, no black band above it, the
-  session progress under the video (2026-11-24); previewed live on the phone, not played.
+  session progress under the video (2026-11-24); previewed live on the phone, not played. The
+  dark strip across the top while playing was the empty status box: hidden when empty, checked
+  live on the phone in full screen.
 - #61 and card speech (2026-11-20): a shadowing take runs on 2 s after the line ends (it cut off
   the last words); the line editor's timing moves the Line or only its End, an end later than the
   next line's start pushing that start; cards speak a word through Android's own text-to-speech

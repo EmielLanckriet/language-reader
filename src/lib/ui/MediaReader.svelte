@@ -987,6 +987,11 @@
 		border-radius: 8px;
 		padding: 0.2rem 0.6rem;
 	}
+	/* The status snippet often renders nothing; the empty box's padding was a dark strip across
+	   the top of the video. */
+	.stage-status:empty {
+		display: none;
+	}
 	.stage-status :global(.progress-bar) {
 		color: #fff;
 	}
