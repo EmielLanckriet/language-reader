@@ -33,7 +33,8 @@ it('measures listening time at playback speed and never credits a seek', async (
 		events
 			.filter((e) => e.kind === 'study-time')
 			.reduce((n, e) => n + Number(e.detail?.durationMs), 0)
-	).toBe(3000);
+		// 3 s played at 2×, and the 30 s paused (within IDLE_MS); not the 94 s the seek jumped.
+	).toBe(3000 + 30000);
 });
 
 it('does not lose milliseconds between clock reads at the daily threshold', async () => {

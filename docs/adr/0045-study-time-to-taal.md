@@ -55,3 +55,10 @@ sign-in, the read-merge-commit of the reader's log and `taal_sent`:
 
 The bullets above on sign-in, the log's REST interface and `taal_sent` describe the first build,
 which never deployed.
+
+## Note 2026-11-23: paused video time counts
+
+The reader found the minutes far below the time spent: watching counted only while the video
+played, and pausing to look words up, read the English or shadow is most of a session. A paused
+video now counts too, from the pause and every tap or key after it, up to 3 minutes
+(`IDLE_MS` in `src/lib/ui/recorder.ts`), the way reading already counts 60 s per read line.

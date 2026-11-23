@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Recorder, recoverUnsent } from '../../src/lib/ui/recorder';
+import { IDLE_MS, Recorder, recoverUnsent } from '../../src/lib/ui/recorder';
 import { Repository } from '../../src/lib/storage/repository';
 import { queryRows } from '../../src/lib/storage/db';
 import { freshDatabase } from './support';
@@ -159,6 +159,40 @@ describe('the recorder', () => {
 			detail: '{"reason":"correction"}'
 		});
 		expect(queryRows(db, 'SELECT COUNT(*) AS n FROM session')[0].n).toBe(1);
+	});
+
+	it('counts paused time on a video while the reader is active, up to the idle limit', async () => {
+		const written: Parameters<Repository['recordEncounters']>[1] = [];
+		const sink = {
+			startSession: async () => 1,
+			recordEncounters: async (_s: number, batch: typeof written) => void written.push(...batch)
+		};
+		let clock = 0;
+		const recorder = new Recorder(sink, 7, 'media', [[0, 3]], () => clock);
+		const play = (fromMs: number, toMs: number) => {
+			for (let ms = fromMs; ms <= toMs; ms += 250) {
+				clock = ms;
+				recorder.playing(0, { mediaMs: ms, speed: 1, textVisible: true });
+			}
+		};
+		const total = () =>
+			written
+				.filter((e) => e.kind === 'study-time')
+				.reduce((sum, e) => sum + (e.detail as { durationMs: number }).durationMs, 0);
+
+		play(0, 10_000);
+		recorder.paused();
+		clock = 100_000;
+		recorder.active();
+		clock = 150_000;
+		await recorder.settled();
+		// 10 s played, then 140 s paused: a tap at 100 s kept the clock running.
+		expect(total()).toBe(150_000);
+
+		// Walked away: nothing after the idle limit counts.
+		clock = 10_000_000;
+		await recorder.close();
+		expect(total()).toBe(150_000 + IDLE_MS - 50_000);
 	});
 
 	it('keeps what it could not write yet, for a later start to write once, if the app is killed', async () => {

@@ -50,6 +50,8 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 - **Taal challenge** (spec 020, ADR-0045): with a code from Taal, one session per local hour:
   reading and watching as Input, Study when "Studied it", Output when "Shadowed it"; 10 s of Study
   per drill grade; each Cards review as 1.2 cards (10 s at Taal).
+  Watching counts playback plus paused time while you are at it: from a pause and from every tap or
+  key, up to 3 minutes (`IDLE_MS`, 2026-11-23; before, paused time counted nothing).
 - **Safety**: automatic copies to Termux (none exported while Termux is unreachable: every close
   of the app exported the whole library for nothing, #56), as increments after a weekly full copy (ADR-0048), and
   restore; a deleted document with history is hidden, not erased. A copy carries a video's

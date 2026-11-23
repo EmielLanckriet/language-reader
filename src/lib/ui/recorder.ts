@@ -94,6 +94,12 @@ const CONTINUOUS_MS = 3_000;
 const MIN_SEEK_MS = 500;
 /** Shorter stretches are the tail of a pause or a seek, not listening. */
 const MIN_PLAYED_MS = 250;
+/**
+ * A paused video counts as study time while the reader is still at it (2026-11-23: pausing to look
+ * words up, read the English or shadow is most of a session, and Taal wants the time spent): from
+ * the pause, and from every tap or key after it, up to this long. Reading counts 60 s per read line.
+ */
+export const IDLE_MS = 180_000;
 
 export class Recorder {
 	private session: number | undefined;
@@ -115,6 +121,7 @@ export class Recorder {
 	private readonly onHide = () => {
 		this.setVisible(document.visibilityState === 'visible');
 	};
+	private readonly onInput = () => this.active();
 	private readonly onLeave = () => {
 		this.setVisible(false);
 		void this.flush();
@@ -131,6 +138,8 @@ export class Recorder {
 		if (typeof window !== 'undefined') {
 			window.addEventListener('visibilitychange', this.onHide, true);
 			window.addEventListener('pagehide', this.onLeave, true);
+			for (const kind of ['pointerdown', 'keydown'])
+				window.addEventListener(kind, this.onInput, { capture: true, passive: true });
 			this.timer = setInterval(() => void this.flush(), FLUSH_EVERY_MS);
 		}
 	}
@@ -154,7 +163,17 @@ export class Recorder {
 		this.visible = visible;
 		this.readSince = visible && this.lastRead && !this.ended ? now : undefined;
 		if (this.readSince !== undefined) this.readingUntil = now + 60000;
-		if (!visible) void this.flush();
+		if (visible) this.active();
+		else void this.flush();
+	}
+
+	/** The reader did something: a paused video keeps counting for another `IDLE_MS`. */
+	active(): void {
+		if (this.modality !== 'media' || this.chunk || this.ended || !this.visible) return;
+		const now = this.now();
+		this.settleReading(now);
+		this.readSince = now;
+		this.readingUntil = now + IDLE_MS;
 	}
 
 	private addTime(durationMs: number, end = this.now()): void {
@@ -195,6 +214,8 @@ export class Recorder {
 		}
 		this.closeChunk();
 		if (line < 0) return;
+		this.settleReading();
+		this.readSince = undefined;
 		this.chunk = {
 			fromMs: moment.mediaMs,
 			toMs: moment.mediaMs,
@@ -346,6 +367,7 @@ export class Recorder {
 		const playing = this.chunk;
 		if (!playing || playing.toMs <= playing.fromMs) return;
 		this.closeChunk();
+		this.readSince = undefined;
 		this.chunk = { ...playing, fromMs: playing.toMs, fromLine: playing.toLine, at: this.stamp() };
 	}
 
@@ -382,6 +404,8 @@ export class Recorder {
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('visibilitychange', this.onHide, true);
 			window.removeEventListener('pagehide', this.onLeave, true);
+			for (const kind of ['pointerdown', 'keydown'])
+				window.removeEventListener(kind, this.onInput, true);
 		}
 		await this.settled();
 	}
@@ -423,6 +447,7 @@ export class Recorder {
 		const duration = (c.toMs - c.fromMs) / c.speed;
 		this.engaged += duration;
 		if (Number.isFinite(duration) && duration > 0) this.addTime(duration);
+		this.active();
 		const from = this.lineRanges[c.fromLine];
 		const to = this.lineRanges[c.toLine];
 		if (!from || !to || c.toMs - c.fromMs < MIN_PLAYED_MS) return;
