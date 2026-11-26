@@ -1,33 +1,65 @@
 import type { CardSentence } from '../storage/repository';
-import type { Cue } from './subtitles';
+import { englishFor, llmByLine } from '../translation/lines';
 import { playbackUrl, type Readable } from './files';
+import { englishOfShown, shownAt, shownOf, type Pos } from './layout';
+import type { StoredMedia } from './store';
+import { humanLines } from './translation';
 
-/** Display the whole timed cue: punctuation inside a subtitle has no independent timestamp. */
-export function timedExample(sentence: CardSentence, cues: Cue[]) {
+/**
+ * A card's sentence as the player shows its line (ADR-0050, #62): the whole line, since punctuation
+ * inside a subtitle has no timestamp of its own, joined, cut and timed as the reader edited it, with
+ * its English. A joined line keeps its line breaks, so `from + wordFrom` stays the word's place in
+ * the document; the card does not show them.
+ */
+export function shownExample(
+	sentence: CardSentence,
+	media: Pick<
+		StoredMedia,
+		'cues' | 'layout' | 'english' | 'translation' | 'quick' | 'tracks' | 'recut'
+	>
+) {
+	const { cues, layout } = media;
 	const cue = cues[sentence.line];
 	if (
 		sentence.source !== 'reader' ||
 		!cue ||
 		sentence.lineText !== cue.text ||
-		sentence.lineFrom === undefined ||
-		!Number.isFinite(cue.start) ||
-		!Number.isFinite(cue.end) ||
-		cue.start < 0 ||
-		cue.end <= cue.start
+		sentence.lineFrom === undefined
 	)
 		return;
-	const shift = sentence.from - sentence.lineFrom;
+	const shown = shownOf(cues, layout);
+	const at = sentence.from - sentence.lineFrom + sentence.wordFrom;
+	const s = shownAt(shown, { line: sentence.line, at });
+	const line = shown[s];
+	if (!Number.isFinite(line.start) || !Number.isFinite(line.end) || line.end <= line.start) return;
+
+	const document = cues.map((c) => c.text).join('\n');
+	const starts = [0];
+	for (const c of cues) starts.push(starts.at(-1)! + [...c.text].length + 1);
+	const offset = ({ line, at }: Pos) => starts[line] + at;
+	const from = offset(line.from);
+	// A line ending where the next starts ends before the line break.
+	const to = offset(line.to) - (line.to.at === 0 ? 1 : 0);
+	// The same distance moves `from` and `wordFrom`, so their sum stays the word's document offset.
+	const before = starts[sentence.line] + at - from;
+	const english = englishOfShown(
+		shown,
+		layout,
+		englishFor(cues.length, llmByLine(cues, media.translation), media.quick, humanLines(media)),
+		media.english.source === 'edited'
+	)[s]?.text;
 	return {
 		sentence: {
 			...sentence,
-			text: cue.text,
-			from: sentence.lineFrom,
-			to: sentence.lineFrom + [...cue.text].length,
-			wordFrom: sentence.wordFrom + shift,
-			wordTo: sentence.wordTo + shift
+			text: [...document].slice(from, to).join(''),
+			from: sentence.lineFrom + at - before,
+			to: sentence.lineFrom + at - before + (to - from),
+			wordFrom: before,
+			wordTo: before + sentence.wordTo - sentence.wordFrom
 		},
-		start: cue.start,
-		end: cue.end
+		start: line.start,
+		end: line.end,
+		english
 	};
 }
 

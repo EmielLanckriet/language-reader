@@ -70,8 +70,7 @@
 		PLAIN,
 		cutChinese,
 		englishLines,
-		englishOfSpans,
-		englishShown,
+		englishOfShown,
 		frozen,
 		joinChinese,
 		placedOf,
@@ -365,11 +364,7 @@
 		});
 	});
 	const editedChosen = $derived(media?.english.source === 'edited' && Boolean(layout.english));
-	const shownEnglish = $derived(
-		editedChosen
-			? englishOfSpans(spansOf(layout.english ?? [], shown), shown.length)
-			: englishShown(shown, english)
-	);
+	const shownEnglish = $derived(englishOfShown(shown, layout, english, editedChosen));
 	const firstLineOf = (s: number) => shown[s]?.from.line ?? s;
 
 	// --- Editing the lines by hand: a long press on a line opens it (LineEditor) ---

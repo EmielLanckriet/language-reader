@@ -1,12 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { CardAudio, timedExample } from '$lib/media/card-audio';
+	import { CardAudio, shownExample } from '$lib/media/card-audio';
 	import { exampleAudio } from '$lib/media/example-bundle';
 	import { lookUp } from '$lib/analyzer/lookup';
 	import { loadMedia } from '$lib/media/store';
 	import type { Readable } from '$lib/media/files';
-	import { englishFor, llmByLine } from '$lib/translation/lines';
-	import { humanLines } from '$lib/media/translation';
 	import { quickTranslation, type QuickTranslation } from '$lib/translation/quick';
 	import ErrorNotice from '$lib/ui/ErrorNotice.svelte';
 	import { readingsOf } from '$lib/analyzer/pronounce';
@@ -52,6 +50,8 @@
 	let wordClip: Blob | undefined;
 	let alive = true;
 	let quick: QuickTranslation | undefined;
+	/** Why the quick translator's English is not here yet, or why it will not come. */
+	let quickStatus = $state<string | undefined>();
 
 	$effect(() => {
 		audio = new CardAudio((active, error) => {
@@ -100,11 +100,13 @@
 		const text = shown?.text ?? word;
 		const from = shown?.wordFrom ?? 0;
 		const to = shown?.wordTo ?? [...word].length;
-		return [...text].map((c, i) => ({
-			c,
-			part: i < from ? 'before' : i < to ? 'word' : 'after',
-			py: readings[i] ?? ''
-		}));
+		return [...text]
+			.map((c, i) => ({
+				c,
+				part: i < from ? 'before' : i < to ? 'word' : 'after',
+				py: readings[i] ?? ''
+			}))
+			.filter((ch) => ch.c !== '\n');
 	});
 	const wordReadings = $derived(
 		readings.slice(shown?.wordFrom ?? 0, shown?.wordTo ?? [...word].length)
@@ -122,36 +124,29 @@
 		wordClip = wordFile;
 		if (sentenceFile) sentenceClip = { file: sentenceFile, start: 0 };
 		if (sentence.source === 'anki') return;
-		const timed = media && timedExample(sentence, media.cues);
+		const timed = media && shownExample(sentence, media);
 		if (timed) {
 			sentence = timed.sentence;
 			shown = sentence;
 			const file = media.sound ?? media.media;
 			if (file) sentenceClip = { file, start: timed.start, end: timed.end };
-		}
-
-		if (media && timed) {
-			// A person's English first (spec 012); a card shows English even where reading hides it.
-			const lines = englishFor(
-				media.cues.length,
-				llmByLine(media.cues, media.translation),
-				media.quick,
-				humanLines(media)
-			);
-			const line = lines[sentence.line]?.text;
-			if (line) {
-				english = line;
+			// The line's English as the player shows it, a person's first (spec 012, #62); a card shows
+			// English even where reading hides it.
+			if (timed.english) {
+				english = timed.english;
 				return;
 			}
 		}
-		const text = sentence.text;
+		const text = sentence.text.replaceAll('\n', '');
 		quick = quickTranslation(
 			() => [text],
 			() => english !== undefined,
 			(_i, found) => {
 				if (alive) english = found;
 			},
-			() => {}
+			(status) => {
+				if (alive) quickStatus = status?.label;
+			}
 		);
 		quick.more();
 		quick.focus(0, true);
@@ -209,7 +204,8 @@
 				<p class="sentence-pinyin pinyin" aria-label="Sentence pronunciation">
 					{characters.map((ch) => ch.py || ch.c).join(' ')}
 				</p>
-				{#if revealed && english}<p class="english" lang="en">{english}</p>{/if}
+				{#if revealed && english}<p class="english" lang="en">{english}</p>
+				{:else if revealed && quickStatus}<p class="note" role="status">{quickStatus}</p>{/if}
 			</div>
 		{/if}
 	</div>
@@ -290,6 +286,11 @@
 		font-family: Georgia, serif;
 		font-size: 1rem;
 		line-height: 1.7;
+		margin: 0.25rem 0;
+	}
+	.note {
+		font-size: 0.78rem;
+		color: var(--muted);
 		margin: 0.25rem 0;
 	}
 	.alternate-reading {

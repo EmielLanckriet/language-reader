@@ -65,6 +65,10 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
 
 ## Deployed, waiting for a phone check
 
+- #62 (2026-11-26): a card shows its line as the player does: joined, cut and timed by hand, with
+  that line's English, "Edited by you" included (4 of 7 videos had cards with no human English;
+  都挺好 1: 0 → 592 of 607 lines). The quick translator's status shows where it fills in.
+
 - #61 and card speech (2026-11-20): a shadowing take runs on 2 s after the line ends (it cut off
   the last words); the line editor's timing moves the Line or only its End, an end later than the
   next line's start pushing that start; cards speak a word through Android's own text-to-speech

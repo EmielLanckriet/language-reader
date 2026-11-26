@@ -283,6 +283,18 @@ export function englishOfSpans(spans: readonly Span[], count: number): (English 
 	return out;
 }
 
+/** The English each shown line has: what the reader placed by hand when they chose it, else its lines'. */
+export function englishOfShown(
+	shown: readonly Shown[],
+	layout: Layout,
+	english: readonly (English | undefined)[],
+	edited: boolean
+): (English | undefined)[] {
+	return edited && layout.english
+		? englishOfSpans(spansOf(layout.english, shown), shown.length)
+		: englishShown(shown, english);
+}
+
 export function wordsOf(text: string): string[] {
 	return text.split(/\s+/).filter(Boolean);
 }

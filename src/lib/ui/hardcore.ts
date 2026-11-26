@@ -66,7 +66,7 @@ export function firstOccurrences(
 
 /**
  * A drill card's sentence: the whole line, which for a video is the subtitle line, so the card's
- * audio is that line's (ADR-0035, `timedExample`).
+ * audio is that line's (ADR-0035, `shownExample`).
  */
 export function drillSentence(
 	document: Pick<StoredDocument, 'id' | 'title'>,
