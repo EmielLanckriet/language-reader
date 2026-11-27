@@ -3,8 +3,8 @@
 	import { readDayEnd } from '$lib/ui/hardcore';
 	import { session } from '$lib/storage/session';
 	import { requestSend } from '$lib/taal/sync';
-	import type { StudyOverview } from '$lib/domain/study';
-	import type { AttentionAnswer, Encounter } from '$lib/domain/encounter';
+	import type { StudyOverview, StudySession } from '$lib/domain/study';
+	import { answerEncounters, type AttentionAnswer, type Engagement } from '$lib/domain/encounter';
 	import ErrorNotice from './ErrorNotice.svelte';
 	import SessionQuestions from './SessionQuestions.svelte';
 
@@ -47,15 +47,18 @@
 	$effect(() => {
 		void load();
 	});
-	async function save(id: number, encounter: Omit<Encounter, 'at'>) {
+	async function answer(entry: StudySession, value: AttentionAnswer, mode?: Engagement['mode']) {
 		if (saving !== null) return;
-		saving = id;
+		saving = entry.id;
 		saveProblem = null;
 		saved = '';
 		try {
 			await (
 				await session()
-			).repository.recordEncounters(id, [{ ...encounter, at: new Date().toISOString() }]);
+			).repository.recordEncounters(
+				entry.id,
+				answerEncounters(value, mode, entry.engagement, new Date().toISOString())
+			);
 			requestSend(true);
 			await load();
 			saved = 'Saved. You can change this answer whenever you need to.';
@@ -65,8 +68,6 @@
 			saving = null;
 		}
 	}
-	const answer = (id: number, value: AttentionAnswer) =>
-		save(id, { kind: 'attention', detail: { answer: value } });
 </script>
 
 {#if problem}<ErrorNotice error={problem} onretry={load} />
@@ -101,8 +102,9 @@
 					modality={entry.modality}
 					answered={entry.answered}
 					answer={entry.answer}
+					engagement={entry.engagement}
 					disabled={saving !== null}
-					onanswer={(value) => answer(entry.id, value)}
+					onanswer={(value, mode) => answer(entry, value, mode)}
 				/>
 				{#if entry.available}<a
 						class="text-link"

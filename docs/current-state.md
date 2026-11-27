@@ -1,6 +1,6 @@
 # Current state
 
-Updated 2026-11-10. What the app is and does now, what waits for a phone check, and what is open.
+Updated 2026-11-27. What the app is and does now, what waits for a phone check, and what is open.
 Keep it short: one line per change, replaced rather than appended. The detailed record up to
 2026-10-31 is in [history/current-state-2026-10-31.md](history/current-state-2026-10-31.md);
 after that, `git log` and the ADRs.
@@ -64,6 +64,11 @@ wiped on 2026-11-04 (#54). The PWA keeps deploying for other devices.
   longer draws across the video. Confirmed by the reader on the phone.
 
 ## Deployed, waiting for a phone check
+
+- #63 (2026-11-27): a video's question offers "Just listened to it" beside "Just watched it"; both
+  also write the session's engagement mark (watched/listened), and Progress shows the week's video
+  time as watched · listened · other. Past "Just watched it" sessions were marked: 2026-11-26's
+  evening as watched, the rest as listened. Not marked: studied, shadowed, unanswered.
 
 - #62 (2026-11-26): a card shows its line as the player does: joined, cut and timed by hand, with
   that line's English, "Edited by you" included (4 of 7 videos had cards with no human English;

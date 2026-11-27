@@ -4,7 +4,16 @@ export interface StudyEvent {
 	kind: string;
 	at: string;
 	detail: Record<string, unknown>;
+	/** Study time in a video session, by its engagement mark (#63); 'other' when it has none. */
+	video?: VideoWay;
 }
+export type VideoWay = 'watched' | 'listened' | 'other';
+type Day = { durationMs: number; reviews: number; video: Record<VideoWay, number> };
+const noDay = (): Day => ({
+	durationMs: 0,
+	reviews: 0,
+	video: { watched: 0, listened: 0, other: 0 }
+});
 export interface StudySession {
 	id: number;
 	documentId: number;
@@ -36,7 +45,7 @@ export function studyWeek(
 	const { today, monday, activity } = studyDays(events, timeZone, now, dayEndHour);
 	const days = Array.from({ length: 7 }, (_, i) => {
 		const date = shiftDay(monday, i);
-		const day = activity.get(date) ?? { durationMs: 0, reviews: 0 };
+		const day = activity.get(date) ?? noDay();
 		return {
 			date,
 			label: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
@@ -44,7 +53,10 @@ export function studyWeek(
 			done: isStudyDay(day)
 		};
 	});
-	return { days, today, completed: days.filter((d) => d.done).length, target: 5 };
+	const video = noDay().video;
+	for (const day of days)
+		for (const way of Object.keys(video) as VideoWay[]) video[way] += day.video[way];
+	return { days, today, completed: days.filter((d) => d.done).length, target: 5, video };
 }
 
 /**
@@ -112,20 +124,23 @@ function studyDays(events: StudyEvent[], timeZone: string, now: Date, dayEndHour
 	const dateOf = studyDayOf(timeZone, dayEndHour);
 	const today = dateOf(now);
 	const monday = shiftDay(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
-	const activity = new Map<string, { durationMs: number; reviews: number }>();
+	const activity = new Map<string, Day>();
 	for (const event of events) {
 		const at = new Date(event.at);
 		if (!Number.isFinite(at.getTime()) || at > now) continue;
 		const date = dateOf(at);
-		const day = activity.get(date) ?? { durationMs: 0, reviews: 0 };
+		const day = activity.get(date) ?? noDay();
 		activity.set(date, day);
 		if (event.kind === 'review') day.reviews++;
 		if (
 			event.kind === 'study-time' &&
 			typeof event.detail.durationMs === 'number' &&
 			Number.isFinite(event.detail.durationMs)
-		)
-			day.durationMs += Math.max(0, Math.min(60000, event.detail.durationMs));
+		) {
+			const ms = Math.max(0, Math.min(60000, event.detail.durationMs));
+			day.durationMs += ms;
+			if (event.video) day.video[event.video] += ms;
+		}
 	}
 	return { today, monday, activity };
 }

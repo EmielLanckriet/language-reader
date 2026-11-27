@@ -5,6 +5,7 @@ import { freshDatabase } from './support';
 import { buildHistory } from '../backup/support';
 import { queryRows } from '../../src/lib/storage/db';
 import { seal, open } from '../../src/lib/backup/format';
+import { answerEncounters } from '../../src/lib/domain/encounter';
 
 it('measures listening time at playback speed and never credits a seek', async () => {
 	const events: Parameters<Repository['recordEncounters']>[1] = [];
@@ -261,6 +262,32 @@ it('asks for feedback only after 10 s of activity or playback', async () => {
 			.sessions.map((s) => ids.get(s.id))
 			.sort();
 		expect(listed).toEqual(['answeredVisit', 'tenSecondsPlayed', 'tenSecondsRead']);
+	} finally {
+		db.close();
+	}
+});
+
+it('splits a week of video time by the watched or listened answer, latest answer winning (#63)', async () => {
+	const db = await freshDatabase();
+	try {
+		const repo = new Repository(db);
+		const [id] = await buildHistory(repo, ['你好'], []);
+		const at = '2026-09-30T10:00:00Z';
+		const sessions = [0, 1, 2, 3].map(() => repo.startSession(id, 'media'));
+		const text = repo.startSession(id, 'reading');
+		for (const [n, session] of [...sessions, text].entries())
+			repo.recordEncounters(session, [
+				{ kind: 'study-time', at, detail: { durationMs: (n + 1) * 1000 } }
+			]);
+		repo.recordEncounters(sessions[0], answerEncounters('none', 'listened', null, at));
+		repo.recordEncounters(sessions[0], answerEncounters('none', 'watched', null, at));
+		repo.recordEncounters(sessions[1], answerEncounters('none', 'listened', null, at));
+		repo.recordEncounters(sessions[2], answerEncounters('all', undefined, null, at));
+		expect(repo.studyOverview('Europe/Brussels', new Date(at)).week.video).toEqual({
+			watched: 1000,
+			listened: 2000,
+			other: 3000 + 4000
+		});
 	} finally {
 		db.close();
 	}

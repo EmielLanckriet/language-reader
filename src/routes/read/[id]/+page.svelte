@@ -52,9 +52,9 @@
 	import SessionQuestions from '$lib/ui/SessionQuestions.svelte';
 	import {
 		HARDCORE_STEPS,
+		answerEncounters,
 		type AttentionAnswer,
 		type Engagement,
-		type Encounter,
 		type HardcoreStep,
 		type TapReason
 	} from '$lib/domain/encounter';
@@ -537,25 +537,19 @@
 			leavingQuietly = false;
 		}
 	}
-	async function saveLeaving(encounter: Omit<Encounter, 'at'>) {
+	async function saveLeaving(answer: AttentionAnswer, mode?: Engagement['mode']) {
 		if (!leaving || answering) return;
 		answering = true;
 		leaveProblem = null;
 		try {
-			await (
-				await session()
-			).repository.recordEncounters(leaving.session, [
-				{ ...encounter, at: new Date().toISOString() }
-			]);
-			if (encounter.kind === 'engagement')
-				leaving.engagement = encounter.detail as unknown as Engagement;
-			else {
-				leaving.answered = true;
-				leaving.answer = (encounter.detail as { answer: AttentionAnswer }).answer;
-				// Answered is when Taal gets the session (the reader, 2026-11-24), not after the quiet
-				// wait a session's own writes keep putting off.
-				requestSend(true);
-			}
+			const written = answerEncounters(answer, mode, leaving.engagement, new Date().toISOString());
+			await (await session()).repository.recordEncounters(leaving.session, written);
+			leaving.answered = true;
+			leaving.answer = answer;
+			if (written[1]) leaving.engagement = written[1].detail as unknown as Engagement;
+			// Answered is when Taal gets the session (the reader, 2026-11-24), not after the quiet
+			// wait a session's own writes keep putting off.
+			requestSend(true);
 		} catch (error) {
 			leaveProblem = error;
 		} finally {
@@ -1152,8 +1146,9 @@
 				modality={current.modality}
 				answered={current.answered}
 				answer={current.answer}
+				engagement={current.engagement}
 				disabled={answering}
-				onanswer={(value) => saveLeaving({ kind: 'attention', detail: { answer: value } })}
+				onanswer={saveLeaving}
 			/>
 			{#if leaveProblem}<ErrorNotice error={leaveProblem} />{/if}
 			<div class="leave-actions">

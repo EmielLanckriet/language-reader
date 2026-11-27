@@ -57,6 +57,26 @@ export interface Engagement {
 	followable?: 'yes' | 'partly' | 'no' | null;
 }
 
+/**
+ * What answering a session's question writes: the answer, and with "Just watched/listened to it"
+ * (#63) the engagement mark too, keeping whatever else that mark held.
+ */
+export function answerEncounters(
+	answer: AttentionAnswer,
+	mode: Engagement['mode'] | undefined,
+	engagement: Engagement | null,
+	at: string
+): Encounter[] {
+	const written: Encounter[] = [{ kind: 'attention', at, detail: { answer } }];
+	if (mode)
+		written.push({
+			kind: 'engagement',
+			at,
+			detail: { attentive: null, ...engagement, mode }
+		});
+	return written;
+}
+
 /** Why a word was tapped, when the reader says (ADR-0043): kept on its lookup, used by nothing yet. */
 export const TAP_REASONS = [
 	'unknown',

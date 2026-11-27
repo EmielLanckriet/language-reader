@@ -36,7 +36,8 @@ import {
 	studyStreak,
 	studyWeek,
 	type StudyOverview,
-	type StudySession
+	type StudySession,
+	type VideoWay
 } from '../domain/study';
 import { projectStates, RETRACTED } from '../domain/state';
 import {
@@ -2182,15 +2183,28 @@ export class Repository {
 	/** The latest sessions and what happened in them, newest first, for Diagnostics. */
 	studyOverview(timeZone: string, now = new Date(), dayEndHour = 0): StudyOverview {
 		// The whole history: the streak (#38) can reach back any number of weeks.
+		const videos = new Map(
+			queryRows(
+				this.db,
+				`SELECT s.id, (SELECT json_extract(g.detail,'$.mode') FROM encounter g
+					WHERE g.session_id=s.id AND g.kind='engagement'
+					ORDER BY g.device_id DESC,g.device_seq DESC LIMIT 1) AS mode
+				FROM session s WHERE s.modality='media'`
+			).map((row) => [
+				Number(row.id),
+				(row.mode === 'watched' || row.mode === 'listened' ? row.mode : 'other') as VideoWay
+			])
+		);
 		const history = queryRows(
 			this.db,
-			`SELECT kind, at, detail FROM encounter
+			`SELECT kind, at, detail, session_id FROM encounter
 			WHERE kind IN ('study-time','review')
 			AND (session_id IS NULL OR session_id NOT IN (${WITHDRAWN}))`
 		).map((row) => ({
 			kind: String(row.kind),
 			at: String(row.at),
-			detail: JSON.parse(String(row.detail))
+			detail: JSON.parse(String(row.detail)),
+			video: row.session_id === null ? undefined : videos.get(Number(row.session_id))
 		}));
 		const sessions: StudySession[] = queryRows(
 			this.db,
